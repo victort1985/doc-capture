@@ -58,7 +58,22 @@ jobs:
       - run: flutter pub get
 
       - name: Bump file_picker's own compileSdk to 36
-        run: python3 ../.github/scripts/patch_file_picker_sdk_version.py
+        run: python3 ../.github/scripts/patch_file_picker_sdk_version.py | tee /tmp/patch-file-picker.log
+
+      - name: diag - push file_picker patch output
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-android
+          mkdir -p .ci-debug
+          cp /tmp/patch-file-picker.log .ci-debug/patch-file-picker.log
+          find ~/.pub-cache -maxdepth 4 -iname "file_picker*" > .ci-debug/pubcache-listing.log 2>&1 || true
+          echo "PUB_CACHE env: $PUB_CACHE" >> .ci-debug/pubcache-listing.log
+          echo "HOME env: $HOME" >> .ci-debug/pubcache-listing.log
+          git add -f .ci-debug/patch-file-picker.log .ci-debug/pubcache-listing.log
+          git commit -m "debug: file_picker patch output + pub cache listing"
+          git push --force origin debug-logs-android
 
       - name: flutter build apk --release
         run: |
