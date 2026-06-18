@@ -74,7 +74,7 @@ jobs:
         if: always()
         working-directory: ${{ github.workspace }}
         run: |
-          git add .ci-debug/flutter-create-android.log
+          git add -f .ci-debug/flutter-create-android.log
           git commit -m "debug: android flutter create output"
 
       - name: diag - git push
@@ -150,7 +150,7 @@ jobs:
         if: always()
         working-directory: ${{ github.workspace }}
         run: |
-          git add .ci-debug/flutter-create-ios.log
+          git add -f .ci-debug/flutter-create-ios.log
           git commit -m "debug: ios flutter create output"
 
       - name: diag - git push
