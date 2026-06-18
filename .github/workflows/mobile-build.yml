@@ -47,6 +47,9 @@ jobs:
       - name: Add camera + location permissions
         run: python3 ../.github/scripts/patch_android_manifest.py
 
+      - name: Bump compileSdk/targetSdk to 36
+        run: python3 ../.github/scripts/patch_android_sdk_version.py
+
       - name: Set server URL
         if: ${{ inputs.server_url != '' }}
         run: sed -i "s#http://localhost:3000/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
@@ -129,6 +132,12 @@ jobs:
           mkdir Payload
           cp -r Runner.app Payload/
           zip -r ../../../doc-capture-ios-unsigned.ipa Payload
+
+      - name: diag - confirm ipa exists before upload
+        run: |
+          ls -la doc-capture-ios-unsigned.ipa
+          file doc-capture-ios-unsigned.ipa
+          pwd
 
       - name: Push diagnostic log on failure
         if: failure()
