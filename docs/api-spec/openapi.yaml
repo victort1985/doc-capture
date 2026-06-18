@@ -1,0 +1,270 @@
+openapi: 3.0.3
+info:
+  title: Doc Capture API
+  version: 0.1.0
+  description: >
+    Server API for document/photo capture, processing and storage.
+    Auth via JWT bearer token obtained from /auth/login.
+servers:
+  - url: /api
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        username: { type: string }
+        role: { type: string, enum: [admin, user] }
+        language: { type: string, example: he }
+        isActive: { type: boolean }
+    StorageConnection:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        type: { type: string, enum: [local, ftp, synology] }
+        host: { type: string, nullable: true }
+        port: { type: integer, nullable: true }
+        basePath: { type: string }
+    FileTemplate:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        pattern: { type: string, example: "{date}_{place}_{docType}_{counter}" }
+        appliesTo: { type: string, enum: [document, photo, both] }
+    UploadResult:
+      type: object
+      properties:
+        id: { type: integer }
+        generatedName: { type: string }
+        type: { type: string, enum: [document, photo] }
+        storage:
+          type: object
+          properties:
+            type: { type: string }
+            path: { type: string }
+
+security:
+  - bearerAuth: []
+
+paths:
+  /auth/login:
+    post:
+      security: []
+      summary: Authenticate and receive a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { $ref: '#/components/schemas/User' }
+        '401': { description: Invalid credentials }
+
+  /users:
+    get:
+      summary: List users (admin)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/User' }
+    post:
+      summary: Create user (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string, minLength: 6 }
+                role: { type: string, enum: [admin, user] }
+                language: { type: string }
+      responses:
+        '201': { description: Created }
+
+  /users/{id}:
+    patch:
+      summary: Update user (admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+    delete:
+      summary: Delete user (admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+
+  /storage/connections:
+    get:
+      summary: List storage connections (admin)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/StorageConnection' }
+    post:
+      summary: Create storage connection (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, type, basePath]
+              properties:
+                name: { type: string }
+                type: { type: string, enum: [local, ftp, synology] }
+                host: { type: string }
+                port: { type: integer }
+                username: { type: string }
+                password: { type: string }
+                basePath: { type: string }
+      responses:
+        '201': { description: Created }
+
+  /storage/connections/{id}:
+    patch:
+      summary: Update storage connection (admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+    delete:
+      summary: Delete storage connection (admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+
+  /storage/client-settings/{userId}:
+    get:
+      summary: Get a user's storage routing settings (admin)
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+    patch:
+      summary: Update a user's storage routing settings (admin)
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                documentStorageConnectionId: { type: integer }
+                photoStorageConnectionId: { type: integer }
+                documentSubfolderPattern: { type: string }
+                photoSubfolderPattern: { type: string }
+      responses:
+        '200': { description: OK }
+
+  /templates:
+    get:
+      summary: List naming templates (admin)
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/FileTemplate' }
+    post:
+      summary: Create naming template (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, pattern]
+              properties:
+                name: { type: string }
+                pattern: { type: string }
+                appliesTo: { type: string, enum: [document, photo, both] }
+      responses:
+        '201': { description: Created }
+
+  /templates/{id}:
+    patch:
+      summary: Update naming template (admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+    delete:
+      summary: Delete naming template (admin)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+      responses:
+        '200': { description: OK }
+
+  /files:
+    get:
+      summary: List uploaded file records (admin), with optional filters
+      parameters:
+        - { name: userId, in: query, schema: { type: integer } }
+        - { name: type, in: query, schema: { type: string, enum: [document, photo] } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+      responses:
+        '200': { description: OK }
+
+  /files/upload:
+    post:
+      summary: Batch upload of documents/photos for processing and storage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [place, docType, files]
+              properties:
+                place: { type: string }
+                docType: { type: string, enum: [document, photo] }
+                files:
+                  type: array
+                  items: { type: string, format: binary }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UploadResult' }

@@ -1,0 +1,43 @@
+# --- Server (NestJS) ---
+server/node_modules/
+server/dist/
+server/.env
+server/payload-windows/
+server/tsconfig.tsbuildinfo
+server/*.log
+
+# --- Admin panel (React/Vite) ---
+admin-panel/node_modules/
+admin-panel/dist/
+admin-panel/tsconfig.tsbuildinfo
+admin-panel/.env
+
+# --- Mobile client (Flutter) ---
+# Native platform folders are intentionally NOT committed — they're
+# regenerated on demand via `flutter create .` (see installation-guide.md
+# and .github/workflows/mobile-build.yml, which does this automatically).
+mobile-client/android/
+mobile-client/ios/
+mobile-client/macos/
+mobile-client/windows/
+mobile-client/linux/
+mobile-client/web/
+mobile-client/build/
+mobile-client/.dart_tool/
+mobile-client/.flutter-plugins
+mobile-client/.flutter-plugins-dependencies
+mobile-client/.packages
+mobile-client/pubspec.lock
+mobile-client/lib/l10n/app_localizations*.dart
+mobile-client/*.iml
+
+# --- Installer ---
+installer/Setup.exe
+
+# --- General ---
+.DS_Store
+*.log
+node_modules/
+
+__pycache__/
+*.pyc

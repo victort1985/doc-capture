@@ -1,0 +1,131 @@
+{
+  "@@locale": "en",
+  "appTitle": "Doc Capture",
+  "loginTitle": "Sign in",
+  "username": "Username",
+  "password": "Password",
+  "signIn": "Sign in",
+  "signInError": "Invalid username or password",
+  "language": "Language",
+  "languageHebrew": "Hebrew",
+  "languageEnglish": "English",
+  "languageRussian": "Russian",
+  "homeTitle": "Upload files",
+  "place": "Place",
+  "placeHint": "e.g. Tel Aviv branch",
+  "docType": "File type",
+  "docTypeDocument": "Document",
+  "docTypePhoto": "Photo",
+  "sourceCamera": "Camera",
+  "sourceFiles": "Choose files",
+  "selectedFilesCount": "{count} files selected",
+  "@selectedFilesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadButton": "Upload",
+  "uploadInProgress": "Uploading…",
+  "uploadSuccess": "Files uploaded successfully",
+  "uploadError": "Upload failed, please try again",
+  "historyTitle": "History",
+  "historyEmpty": "No files uploaded yet",
+  "settingsTitle": "Settings",
+  "signOut": "Sign out",
+  "navHome": "Home",
+  "navHistory": "History",
+  "navSettings": "Settings",
+  "cameraUnavailable": "No camera was found on this device.",
+  "cameraInitFailed": "Could not start the camera. Try again, or pick files instead.",
+  "cameraDone": "Use photos",
+  "cameraGoBack": "Go back",
+  "inventoryTitle": "Inventory",
+  "callsTitle": "Calls",
+  "callNew": "New call",
+  "callPlace": "Place / organization",
+  "callPlaceHint": "e.g. Haifa Salon",
+  "callGetLocation": "Get location",
+  "callLocationSet": "Location attached",
+  "callLocationError": "Could not get location",
+  "callUrgency": "Urgency",
+  "callUrgent": "Urgent",
+  "callNotUrgent": "Not urgent",
+  "callContactName": "Reported by",
+  "callContactPosition": "Position",
+  "callContactPhone": "Phone",
+  "callDescription": "Problem description",
+  "callUnusualDamage": "Unusual damage",
+  "callValidationError": "Please fill in all required fields",
+  "callSaveError": "Could not save the call, please try again",
+  "callSaving": "Saving…",
+  "callSubmit": "Submit call",
+  "callsLoadError": "Could not load calls",
+  "callsEmpty": "No calls yet",
+  "callDetailsTitle": "Call details",
+  "callStatusOpen": "Open",
+  "callStatusInProgress": "In progress",
+  "callStatusClosed": "Closed",
+  "callNotes": "Notes",
+  "callAddNote": "Add note",
+  "callAddPhotoNote": "Add photo note",
+  "callNoNotes": "No notes yet",
+  "callPhotoNote": "Photo",
+  "callAttachments": "Files",
+  "callNoAttachments": "No files yet",
+  "cancel": "Cancel",
+  "save": "Save",
+  "callStatusChangedBy": "Status changed by {username}",
+  "@callStatusChangedBy": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupCreated": "New call at {place} (by {createdBy})",
+  "@callPopupCreated": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "createdBy": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupStatusChanged": "{place}: status updated by {changedBy}",
+  "@callPopupStatusChanged": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "changedBy": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupNoteAdded": "{place}: new note from {author}",
+  "@callPopupNoteAdded": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "author": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupFileAdded": "{place}: new file from {uploadedBy}",
+  "@callPopupFileAdded": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "uploadedBy": {
+        "type": "String"
+      }
+    }
+  }
+}

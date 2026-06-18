@@ -1,0 +1,108 @@
+name: Mobile client build
+
+# Manual trigger any time from the Actions tab ("Run workflow"), plus
+# automatic on version tags (v1.0.0 etc.) so tagging a release also
+# produces downloadable builds attached to a GitHub Release.
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: 'Server API base URL to bake into the build (e.g. https://doccapture.example.com/api). Leave empty to keep the http://localhost:3000/api default.'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  android:
+    name: Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # android/ isn't committed (see installation-guide.md, section 3.2) —
+      # generate it fresh every build, same as a developer would locally.
+      - name: flutter create (android scaffolding)
+        run: flutter create . --platforms=android --org com.doccapture
+
+      - name: Add camera + location permissions
+        run: python3 ../.github/scripts/patch_android_manifest.py
+
+      - name: Set server URL
+        if: ${{ inputs.server_url != '' }}
+        run: sed -i "s#http://localhost:3000/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
+
+      - run: flutter pub get
+
+      - run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: doc-capture-android
+          path: mobile-client/build/app/outputs/flutter-apk/app-release.apk
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mobile-client/build/app/outputs/flutter-apk/app-release.apk
+
+  ios:
+    name: iOS IPA (unsigned)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: mobile-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # ios/ isn't committed either (installation-guide.md, section 4.2).
+      - name: flutter create (ios scaffolding)
+        run: flutter create . --platforms=ios --org com.doccapture
+
+      - name: Add camera + location usage descriptions
+        run: python3 ../.github/scripts/patch_ios_plist.py
+
+      - name: Set server URL
+        if: ${{ inputs.server_url != '' }}
+        run: sed -i '' "s#http://localhost:3000/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
+
+      - run: flutter pub get
+
+      # Unsigned archive — no Apple Developer account is assumed here.
+      # Sign it afterwards via Xcode Organizer or a resign service, exactly
+      # as documented in installation-guide.md section 4.4.
+      - run: flutter build ipa --no-codesign
+
+      - name: Zip the unsigned archive
+        run: |
+          cd build/ios/archive
+          zip -r ../../../doc-capture-ios-unsigned.zip Runner.xcarchive
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: doc-capture-ios-unsigned
+          path: mobile-client/doc-capture-ios-unsigned.zip
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: mobile-client/doc-capture-ios-unsigned.zip

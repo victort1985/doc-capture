@@ -1,0 +1,131 @@
+{
+  "@@locale": "he",
+  "appTitle": "לכידת מסמכים",
+  "loginTitle": "התחברות",
+  "username": "שם משתמש",
+  "password": "סיסמה",
+  "signIn": "התחבר",
+  "signInError": "שם משתמש או סיסמה שגויים",
+  "language": "שפה",
+  "languageHebrew": "עברית",
+  "languageEnglish": "אנגלית",
+  "languageRussian": "רוסית",
+  "homeTitle": "העלאת קבצים",
+  "place": "מקום",
+  "placeHint": "לדוגמה: סניף תל אביב",
+  "docType": "סוג קובץ",
+  "docTypeDocument": "מסמך",
+  "docTypePhoto": "תמונה",
+  "sourceCamera": "מצלמה",
+  "sourceFiles": "בחירת קבצים",
+  "selectedFilesCount": "{count} קבצים נבחרו",
+  "@selectedFilesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadButton": "העלה",
+  "uploadInProgress": "מעלה…",
+  "uploadSuccess": "הקבצים הועלו בהצלחה",
+  "uploadError": "ההעלאה נכשלה, נסה שוב",
+  "historyTitle": "היסטוריה",
+  "historyEmpty": "אין עדיין קבצים שהועלו",
+  "settingsTitle": "הגדרות",
+  "signOut": "התנתק",
+  "navHome": "בית",
+  "navHistory": "היסטוריה",
+  "navSettings": "הגדרות",
+  "cameraUnavailable": "לא נמצאה מצלמה במכשיר זה.",
+  "cameraInitFailed": "לא ניתן להפעיל את המצלמה. נסה שוב, או בחר קבצים במקום.",
+  "cameraDone": "השתמש בתמונות",
+  "cameraGoBack": "חזור",
+  "inventoryTitle": "ספירת מלאי",
+  "callsTitle": "קריאת שירות",
+  "callNew": "קריאה חדשה",
+  "callPlace": "מקום / שם הארגון",
+  "callPlaceHint": "לדוגמה: סלון חיפה",
+  "callGetLocation": "קבל מיקום",
+  "callLocationSet": "מיקום נוסף",
+  "callLocationError": "לא ניתן לקבל מיקום",
+  "callUrgency": "דחיפות",
+  "callUrgent": "דחוף",
+  "callNotUrgent": "לא דחוף",
+  "callContactName": "נרשם על ידי",
+  "callContactPosition": "תפקיד",
+  "callContactPhone": "טלפון",
+  "callDescription": "תיאור התקלה",
+  "callUnusualDamage": "נזק חריג",
+  "callValidationError": "יש למלא את כל השדות הנדרשים",
+  "callSaveError": "שמירת הקריאה נכשלה, נסה שוב",
+  "callSaving": "שומר…",
+  "callSubmit": "שלח קריאה",
+  "callsLoadError": "טעינת הקריאות נכשלה",
+  "callsEmpty": "אין קריאות עדיין",
+  "callDetailsTitle": "פרטי הקריאה",
+  "callStatusOpen": "פתוחה",
+  "callStatusInProgress": "בטיפול",
+  "callStatusClosed": "סגורה",
+  "callNotes": "הערות",
+  "callAddNote": "הוסף הערה",
+  "callAddPhotoNote": "הוסף הערה עם תמונה",
+  "callNoNotes": "אין הערות עדיין",
+  "callPhotoNote": "תמונה",
+  "callAttachments": "קבצים",
+  "callNoAttachments": "אין קבצים עדיין",
+  "cancel": "ביטול",
+  "save": "שמירה",
+  "callStatusChangedBy": "הסטטוס שונה על ידי {username}",
+  "@callStatusChangedBy": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupCreated": "קריאה חדשה: {place} (נוצרה על ידי {createdBy})",
+  "@callPopupCreated": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "createdBy": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupStatusChanged": "{place}: הסטטוס עודכן על ידי {changedBy}",
+  "@callPopupStatusChanged": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "changedBy": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupNoteAdded": "{place}: הערה חדשה מ-{author}",
+  "@callPopupNoteAdded": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "author": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupFileAdded": "{place}: קובץ חדש מ-{uploadedBy}",
+  "@callPopupFileAdded": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "uploadedBy": {
+        "type": "String"
+      }
+    }
+  }
+}

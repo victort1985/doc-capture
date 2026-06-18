@@ -1,0 +1,131 @@
+{
+  "@@locale": "ru",
+  "appTitle": "Захват документов",
+  "loginTitle": "Вход",
+  "username": "Имя пользователя",
+  "password": "Пароль",
+  "signIn": "Войти",
+  "signInError": "Неверное имя пользователя или пароль",
+  "language": "Язык",
+  "languageHebrew": "Иврит",
+  "languageEnglish": "Английский",
+  "languageRussian": "Русский",
+  "homeTitle": "Загрузка файлов",
+  "place": "Место",
+  "placeHint": "например: филиал Тель-Авив",
+  "docType": "Тип файла",
+  "docTypeDocument": "Документ",
+  "docTypePhoto": "Фото",
+  "sourceCamera": "Камера",
+  "sourceFiles": "Выбрать файлы",
+  "selectedFilesCount": "Выбрано файлов: {count}",
+  "@selectedFilesCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "uploadButton": "Загрузить",
+  "uploadInProgress": "Загрузка…",
+  "uploadSuccess": "Файлы успешно загружены",
+  "uploadError": "Ошибка загрузки, попробуйте ещё раз",
+  "historyTitle": "История",
+  "historyEmpty": "Пока нет загруженных файлов",
+  "settingsTitle": "Настройки",
+  "signOut": "Выйти",
+  "navHome": "Главная",
+  "navHistory": "История",
+  "navSettings": "Настройки",
+  "cameraUnavailable": "На этом устройстве не найдена камера.",
+  "cameraInitFailed": "Не удалось запустить камеру. Попробуйте снова или выберите файлы.",
+  "cameraDone": "Использовать фото",
+  "cameraGoBack": "Назад",
+  "inventoryTitle": "Переучет",
+  "callsTitle": "Вызовы",
+  "callNew": "Новый вызов",
+  "callPlace": "Место / организация",
+  "callPlaceHint": "например, салон в Хайфе",
+  "callGetLocation": "Получить геоданные",
+  "callLocationSet": "Геоданные добавлены",
+  "callLocationError": "Не удалось получить геоданные",
+  "callUrgency": "Срочность",
+  "callUrgent": "Срочно",
+  "callNotUrgent": "Не срочно",
+  "callContactName": "Кто создал вызов",
+  "callContactPosition": "Должность",
+  "callContactPhone": "Телефон",
+  "callDescription": "Описание проблемы",
+  "callUnusualDamage": "Необычный ущерб",
+  "callValidationError": "Заполните все обязательные поля",
+  "callSaveError": "Не удалось сохранить вызов, попробуйте снова",
+  "callSaving": "Сохранение…",
+  "callSubmit": "Создать вызов",
+  "callsLoadError": "Не удалось загрузить вызовы",
+  "callsEmpty": "Пока нет вызовов",
+  "callDetailsTitle": "Детали вызова",
+  "callStatusOpen": "Открыт",
+  "callStatusInProgress": "В работе",
+  "callStatusClosed": "Закрыт",
+  "callNotes": "Заметки",
+  "callAddNote": "Добавить заметку",
+  "callAddPhotoNote": "Добавить фото-заметку",
+  "callNoNotes": "Пока нет заметок",
+  "callPhotoNote": "Фото",
+  "callAttachments": "Файлы",
+  "callNoAttachments": "Пока нет файлов",
+  "cancel": "Отмена",
+  "save": "Сохранить",
+  "callStatusChangedBy": "Статус изменил {username}",
+  "@callStatusChangedBy": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupCreated": "Новый вызов: {place} (создал {createdBy})",
+  "@callPopupCreated": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "createdBy": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupStatusChanged": "{place}: статус изменил {changedBy}",
+  "@callPopupStatusChanged": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "changedBy": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupNoteAdded": "{place}: новая заметка от {author}",
+  "@callPopupNoteAdded": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "author": {
+        "type": "String"
+      }
+    }
+  },
+  "callPopupFileAdded": "{place}: новый файл от {uploadedBy}",
+  "@callPopupFileAdded": {
+    "placeholders": {
+      "place": {
+        "type": "String"
+      },
+      "uploadedBy": {
+        "type": "String"
+      }
+    }
+  }
+}

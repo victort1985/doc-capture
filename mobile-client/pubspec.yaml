@@ -1,0 +1,45 @@
+name: doc_capture
+description: Document & photo capture client (camera/file picker -> server upload).
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.19.0
+  google_fonts: ^6.2.1
+
+  # Networking
+  dio: ^5.4.3
+
+  # Auth/token storage
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.2.3
+
+  # State management
+  provider: ^6.1.2
+
+  # Camera & file pickers
+  camera: ^0.11.0
+  image_picker: ^1.1.2
+  file_picker: ^8.0.6
+
+  # Real-time notifications for the Calls feature
+  socket_io_client: ^2.0.3+1
+
+  # Optional "get my location" button on the call form
+  geolocator: ^13.0.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true # enables flutter gen-l10n from l10n.yaml

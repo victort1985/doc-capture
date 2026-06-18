@@ -1,0 +1,17 @@
+[Unit]
+Description=Doc Capture Server
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+# Adjust these two paths to where the app is actually deployed/unpacked:
+WorkingDirectory=/opt/doc-capture/app
+ExecStart=/usr/bin/node dist/main.js
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/opt/doc-capture/app/.env
+User=doccapture
+Group=doccapture
+
+[Install]
+WantedBy=multi-user.target
