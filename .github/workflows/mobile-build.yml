@@ -36,7 +36,7 @@ jobs:
       # android/ isn't committed (see installation-guide.md, section 3.2) —
       # generate it fresh every build, same as a developer would locally.
       - name: flutter create (android scaffolding)
-        run: flutter create . --platforms=android --org com.doccapture
+        run: flutter create . --platforms=android --project-name doc_capture --org com.doccapture
 
       - name: Add camera + location permissions
         run: python3 ../.github/scripts/patch_android_manifest.py
@@ -75,7 +75,7 @@ jobs:
 
       # ios/ isn't committed either (installation-guide.md, section 4.2).
       - name: flutter create (ios scaffolding)
-        run: flutter create . --platforms=ios --org com.doccapture
+        run: flutter create . --platforms=ios --project-name doc_capture --org com.doccapture
 
       - name: Add camera + location usage descriptions
         run: python3 ../.github/scripts/patch_ios_plist.py

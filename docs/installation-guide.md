@@ -210,15 +210,18 @@ ip addr                         # узнать IP-адрес сервера дл
 
 ```bash
 cd mobile-client
-flutter create . --platforms=android
+flutter create . --platforms=android --project-name doc_capture
 flutter pub get
 ```
 `flutter create .` нужен один раз — в репозитории есть только Dart-код
 (`lib/`, `pubspec.yaml`), а папки `android/` (нативный проект) сознательно
 не закоммичены. Команда добезопасно достроит `android/` рядом с
-существующим кодом, не трогая `lib/`. `flutter pub get` также генерирует
-файлы локализации из `lib/l10n/app_*.arb` — это нужно сделать перед
-первой сборкой.
+существующим кодом, не трогая `lib/`. **Важно**: `--project-name doc_capture`
+обязателен — без него Flutter попытается взять имя проекта из имени папки
+(`mobile-client`), а дефис в имени недопустим для Dart-пакета, и команда
+просто упадёт с ошибкой "is not a valid Dart package name". `flutter pub get`
+также генерирует файлы локализации из `lib/l10n/app_*.arb` — это нужно
+сделать перед первой сборкой.
 
 После `flutter create .` один раз вручную добавить разрешение на камеру
 в `android/app/src/main/AndroidManifest.xml` (внутри тега `<manifest>`,
@@ -284,12 +287,14 @@ flutter install
 
 ```bash
 cd mobile-client
-flutter create . --platforms=ios
+flutter create . --platforms=ios --project-name doc_capture
 flutter pub get
 ```
 Как и для Android (см. 3.2) — `android/`/`ios/` не закоммичены в
 репозиторий, только Dart-код, поэтому `flutter create .` нужен один раз
-перед первой сборкой на каждой платформе.
+перед первой сборкой на каждой платформе. `--project-name doc_capture` —
+по той же причине: без него имя возьмётся из папки `mobile-client`, а
+дефис там недопустим, команда упадёт.
 
 Добавить разрешение на камеру в `ios/Runner/Info.plist` (внутри
 основного `<dict>`), если его там ещё нет:
