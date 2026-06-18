@@ -135,9 +135,22 @@ jobs:
 
       - name: diag - confirm ipa exists before upload
         run: |
-          ls -la doc-capture-ios-unsigned.ipa
-          file doc-capture-ios-unsigned.ipa
-          pwd
+          ls -la doc-capture-ios-unsigned.ipa | tee /tmp/diag-ipa.log
+          file doc-capture-ios-unsigned.ipa | tee -a /tmp/diag-ipa.log
+          du -sh doc-capture-ios-unsigned.ipa | tee -a /tmp/diag-ipa.log
+          du -sh build/ios/iphoneos/Payload | tee -a /tmp/diag-ipa.log
+
+      - name: diag - push file info
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-ios
+          mkdir -p .ci-debug
+          cp /tmp/diag-ipa.log .ci-debug/diag-ipa.log
+          git add -f .ci-debug/diag-ipa.log
+          git commit -m "debug: ios ipa file info"
+          git push --force origin debug-logs-ios
 
       - name: Push diagnostic log on failure
         if: failure()
