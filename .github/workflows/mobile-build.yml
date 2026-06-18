@@ -82,6 +82,21 @@ jobs:
         with:
           name: doc-capture-android
           path: mobile-client/build/app/outputs/flutter-apk/app-release.apk
+        continue-on-error: true
+
+      # upload-artifact@v4 has been unreliable in this repo (intermittent
+      # FinalizeArtifact failures, a known issue upstream) — push the APK
+      # straight into the repo via git as a fallback delivery path that's
+      # proven solid throughout this whole debugging session.
+      - name: Push APK to git as a fallback delivery path
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B build-android
+          git add -f mobile-client/build/app/outputs/flutter-apk/app-release.apk
+          git commit -m "build: android apk"
+          git push --force origin build-android
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
@@ -154,6 +169,17 @@ jobs:
         with:
           name: doc-capture-ios-unsigned
           path: mobile-client/doc-capture-ios-unsigned.ipa
+        continue-on-error: true
+
+      - name: Push IPA to git as a fallback delivery path
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B build-ios
+          git add -f mobile-client/doc-capture-ios-unsigned.ipa
+          git commit -m "build: ios unsigned ipa"
+          git push --force origin build-ios
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
