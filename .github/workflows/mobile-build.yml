@@ -35,8 +35,21 @@ jobs:
 
       # android/ isn't committed (see installation-guide.md, section 3.2) —
       # generate it fresh every build, same as a developer would locally.
+      # Logs aren't reachable from my own sandbox (GitHub's log storage
+      # domain isn't on its network allowlist) — capture this command's
+      # exact output to a file and upload it as an artifact instead, so a
+      # failure can actually be diagnosed.
       - name: flutter create (android scaffolding)
-        run: flutter create . --platforms=android --project-name doc_capture --org com.doccapture
+        run: |
+          set -o pipefail
+          flutter create . --platforms=android --project-name doc_capture --org com.doccapture 2>&1 | tee /tmp/flutter-create-android.log
+
+      - name: Upload diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-create-android-log
+          path: /tmp/flutter-create-android.log
 
       - name: Add camera + location permissions
         run: python3 ../.github/scripts/patch_android_manifest.py
@@ -75,7 +88,16 @@ jobs:
 
       # ios/ isn't committed either (installation-guide.md, section 4.2).
       - name: flutter create (ios scaffolding)
-        run: flutter create . --platforms=ios --project-name doc_capture --org com.doccapture
+        run: |
+          set -o pipefail
+          flutter create . --platforms=ios --project-name doc_capture --org com.doccapture 2>&1 | tee /tmp/flutter-create-ios.log
+
+      - name: Upload diagnostic log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flutter-create-ios-log
+          path: /tmp/flutter-create-ios.log
 
       - name: Add camera + location usage descriptions
         run: python3 ../.github/scripts/patch_ios_plist.py
