@@ -51,23 +51,14 @@ jobs:
       - name: Bump compileSdk/targetSdk to 36
         run: python3 ../.github/scripts/patch_android_sdk_version.py
 
-      - name: diag - dump build.gradle.kts after patch attempt
-        working-directory: ${{ github.workspace }}
-        run: |
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git checkout -B debug-logs-android
-          mkdir -p .ci-debug
-          cp mobile-client/android/app/build.gradle.kts .ci-debug/build.gradle.kts
-          git add -f .ci-debug/build.gradle.kts
-          git commit -m "debug: real generated build.gradle.kts after patch attempt"
-          git push --force origin debug-logs-android
-
       - name: Set server URL
         if: ${{ inputs.server_url != '' }}
         run: sed -i "s#http://localhost:3000/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
 
       - run: flutter pub get
+
+      - name: Bump file_picker's own compileSdk to 36
+        run: python3 ../.github/scripts/patch_file_picker_sdk_version.py
 
       - name: flutter build apk --release
         run: |
@@ -145,25 +136,6 @@ jobs:
           mkdir Payload
           cp -r Runner.app Payload/
           zip -r ../../../doc-capture-ios-unsigned.ipa Payload
-
-      - name: diag - confirm ipa exists before upload
-        run: |
-          ls -la doc-capture-ios-unsigned.ipa | tee /tmp/diag-ipa.log
-          file doc-capture-ios-unsigned.ipa | tee -a /tmp/diag-ipa.log
-          du -sh doc-capture-ios-unsigned.ipa | tee -a /tmp/diag-ipa.log
-          du -sh build/ios/iphoneos/Payload | tee -a /tmp/diag-ipa.log
-
-      - name: diag - push file info
-        working-directory: ${{ github.workspace }}
-        run: |
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git checkout -B debug-logs-ios
-          mkdir -p .ci-debug
-          cp /tmp/diag-ipa.log .ci-debug/diag-ipa.log
-          git add -f .ci-debug/diag-ipa.log
-          git commit -m "debug: ios ipa file info"
-          git push --force origin debug-logs-ios
 
       - name: Push diagnostic log on failure
         if: failure()
