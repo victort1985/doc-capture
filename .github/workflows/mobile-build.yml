@@ -47,18 +47,40 @@ jobs:
           set -o pipefail
           flutter create . --platforms=android --project-name doc_capture --org com.doccapture 2>&1 | tee /tmp/flutter-create-android.log
 
-      - name: Push diagnostic log
+      - name: diag - check log file exists
         if: always()
+        run: ls -la /tmp/flutter-create-android.log && wc -l /tmp/flutter-create-android.log
+
+      - name: diag - git checkout branch
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: git checkout -B debug-logs-android
+
+      - name: diag - copy log into repo
+        if: always()
+        working-directory: ${{ github.workspace }}
         run: |
-          cd ${{ github.workspace }}
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git checkout -B debug-logs-android
           mkdir -p .ci-debug
           cp /tmp/flutter-create-android.log .ci-debug/flutter-create-android.log
+
+      - name: diag - git config
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+
+      - name: diag - git add+commit
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
           git add .ci-debug/flutter-create-android.log
-          git commit -m "debug: android flutter create output" || echo "nothing to commit"
-          git push --force origin debug-logs-android
+          git commit -m "debug: android flutter create output"
+
+      - name: diag - git push
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: git push --force origin debug-logs-android
 
       - name: Add camera + location permissions
         run: python3 ../.github/scripts/patch_android_manifest.py
@@ -101,18 +123,40 @@ jobs:
           set -o pipefail
           flutter create . --platforms=ios --project-name doc_capture --org com.doccapture 2>&1 | tee /tmp/flutter-create-ios.log
 
-      - name: Push diagnostic log
+      - name: diag - check log file exists
         if: always()
+        run: ls -la /tmp/flutter-create-ios.log && wc -l /tmp/flutter-create-ios.log
+
+      - name: diag - git checkout branch
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: git checkout -B debug-logs-ios
+
+      - name: diag - copy log into repo
+        if: always()
+        working-directory: ${{ github.workspace }}
         run: |
-          cd ${{ github.workspace }}
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git checkout -B debug-logs-ios
           mkdir -p .ci-debug
           cp /tmp/flutter-create-ios.log .ci-debug/flutter-create-ios.log
+
+      - name: diag - git config
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+
+      - name: diag - git add+commit
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: |
           git add .ci-debug/flutter-create-ios.log
-          git commit -m "debug: ios flutter create output" || echo "nothing to commit"
-          git push --force origin debug-logs-ios
+          git commit -m "debug: ios flutter create output"
+
+      - name: diag - git push
+        if: always()
+        working-directory: ${{ github.workspace }}
+        run: git push --force origin debug-logs-ios
 
       - name: Add camera + location usage descriptions
         run: python3 ../.github/scripts/patch_ios_plist.py
