@@ -111,10 +111,24 @@ jobs:
       # Unsigned archive — no Apple Developer account is assumed here.
       # Sign it afterwards via Xcode Organizer or a resign service, exactly
       # as documented in installation-guide.md section 4.4.
-      - name: flutter build ipa --no-codesign
+      # `flutter build ipa --no-codesign` can produce an unsigned
+      # .xcarchive, but the final archive -> .ipa export step always calls
+      # Xcode's own `xcodebuild -exportArchive`, which requires a signing
+      # team regardless of --no-codesign (see flutter/flutter#101765) — it
+      # fails with "Development Team... Provisioning Profile" even here.
+      # The standard workaround: build just the .app bundle and pack the
+      # IPA's Payload/ folder by hand, skipping the export step entirely.
+      - name: flutter build ios --no-codesign
         run: |
           set -o pipefail
-          flutter build ipa --no-codesign 2>&1 | tee /tmp/build-ios.log
+          flutter build ios --release --no-codesign 2>&1 | tee /tmp/build-ios.log
+
+      - name: Package Payload/*.ipa by hand
+        run: |
+          cd build/ios/iphoneos
+          mkdir Payload
+          cp -r Runner.app Payload/
+          zip -r ../../../doc-capture-ios-unsigned.ipa Payload
 
       - name: Push diagnostic log on failure
         if: failure()
@@ -129,18 +143,13 @@ jobs:
           git commit -m "debug: ios build output"
           git push --force origin debug-logs-ios
 
-      - name: Zip the unsigned archive
-        run: |
-          cd build/ios/archive
-          zip -r ../../../doc-capture-ios-unsigned.zip Runner.xcarchive
-
       - uses: actions/upload-artifact@v4
         with:
           name: doc-capture-ios-unsigned
-          path: mobile-client/doc-capture-ios-unsigned.zip
+          path: mobile-client/doc-capture-ios-unsigned.ipa
 
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: mobile-client/doc-capture-ios-unsigned.zip
+          files: mobile-client/doc-capture-ios-unsigned.ipa

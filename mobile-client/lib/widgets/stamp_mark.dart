@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'theme.dart';
+import '../app/theme.dart';
 
 /// The brand mark, drawn in code so it matches the admin-panel's inline SVG
 /// pixel-for-pixel without needing an image asset: a circular ink-stamp
