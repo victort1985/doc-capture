@@ -51,6 +51,18 @@ jobs:
       - name: Bump compileSdk/targetSdk to 36
         run: python3 ../.github/scripts/patch_android_sdk_version.py
 
+      - name: diag - dump build.gradle.kts after patch attempt
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-android
+          mkdir -p .ci-debug
+          cp mobile-client/android/app/build.gradle.kts .ci-debug/build.gradle.kts
+          git add -f .ci-debug/build.gradle.kts
+          git commit -m "debug: real generated build.gradle.kts after patch attempt"
+          git push --force origin debug-logs-android
+
       - name: Set server URL
         if: ${{ inputs.server_url != '' }}
         run: sed -i "s#http://localhost:3000/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
