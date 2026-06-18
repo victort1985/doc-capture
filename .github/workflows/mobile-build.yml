@@ -14,6 +14,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   android:
     name: Android APK
@@ -44,12 +47,18 @@ jobs:
           set -o pipefail
           flutter create . --platforms=android --project-name doc_capture --org com.doccapture 2>&1 | tee /tmp/flutter-create-android.log
 
-      - name: Upload diagnostic log
+      - name: Push diagnostic log
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-create-android-log
-          path: /tmp/flutter-create-android.log
+        run: |
+          cd ${{ github.workspace }}
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-android
+          mkdir -p .ci-debug
+          cp /tmp/flutter-create-android.log .ci-debug/flutter-create-android.log
+          git add .ci-debug/flutter-create-android.log
+          git commit -m "debug: android flutter create output" || echo "nothing to commit"
+          git push --force origin debug-logs-android
 
       - name: Add camera + location permissions
         run: python3 ../.github/scripts/patch_android_manifest.py
@@ -92,12 +101,18 @@ jobs:
           set -o pipefail
           flutter create . --platforms=ios --project-name doc_capture --org com.doccapture 2>&1 | tee /tmp/flutter-create-ios.log
 
-      - name: Upload diagnostic log
+      - name: Push diagnostic log
         if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-create-ios-log
-          path: /tmp/flutter-create-ios.log
+        run: |
+          cd ${{ github.workspace }}
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-ios
+          mkdir -p .ci-debug
+          cp /tmp/flutter-create-ios.log .ci-debug/flutter-create-ios.log
+          git add .ci-debug/flutter-create-ios.log
+          git commit -m "debug: ios flutter create output" || echo "nothing to commit"
+          git push --force origin debug-logs-ios
 
       - name: Add camera + location usage descriptions
         run: python3 ../.github/scripts/patch_ios_plist.py
