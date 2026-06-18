@@ -6,6 +6,7 @@
   "password": "סיסמה",
   "signIn": "התחבר",
   "signInError": "שם משתמש או סיסמה שגויים",
+  "signInConnectionError": "לא ניתן להתחבר לשרת. בדוק את הגדרות החיבור (כתובת השרת, http/https)",
   "language": "שפה",
   "languageHebrew": "עברית",
   "languageEnglish": "אנגלית",

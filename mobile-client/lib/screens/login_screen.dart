@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app/theme.dart';
@@ -57,7 +58,25 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const RootScreen()),
       );
+    } on DioException catch (e) {
+      if (!mounted) return;
+      final l10n = AppLocalizations.of(context)!;
+      // A 401 really is a wrong username/password — anything else (no
+      // connection, TLS handshake failure, timeout, DNS failure, wrong
+      // protocol/port) is a *reachability* problem and showing the generic
+      // "wrong username or password" message for those was actively
+      // misleading (this is exactly what happened testing http vs https on
+      // a LAN address: the connection itself failed, but the message implied
+      // the typed password was wrong). Surface those distinctly so the user
+      // checks their connection settings instead of re-typing a password
+      // that was never actually wrong.
+      if (e.response?.statusCode == 401) {
+        setState(() => _error = l10n.signInError);
+      } else {
+        setState(() => _error = l10n.signInConnectionError);
+      }
     } catch (_) {
+      if (!mounted) return;
       setState(() => _error = AppLocalizations.of(context)!.signInError);
     } finally {
       if (mounted) setState(() => _loading = false);

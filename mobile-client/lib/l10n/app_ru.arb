@@ -6,6 +6,7 @@
   "password": "Пароль",
   "signIn": "Войти",
   "signInError": "Неверное имя пользователя или пароль",
+  "signInConnectionError": "Не удалось подключиться к серверу. Проверьте настройки подключения (адрес сервера, http/https)",
   "language": "Язык",
   "languageHebrew": "Иврит",
   "languageEnglish": "Английский",

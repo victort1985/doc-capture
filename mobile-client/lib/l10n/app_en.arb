@@ -6,6 +6,7 @@
   "password": "Password",
   "signIn": "Sign in",
   "signInError": "Invalid username or password",
+  "signInConnectionError": "Could not reach the server. Check your connection settings (server address, http/https)",
   "language": "Language",
   "languageHebrew": "Hebrew",
   "languageEnglish": "English",
