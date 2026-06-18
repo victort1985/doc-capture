@@ -14,6 +14,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   android:
     name: Android APK
@@ -50,7 +53,23 @@ jobs:
 
       - run: flutter pub get
 
-      - run: flutter build apk --release
+      - name: flutter build apk --release
+        run: |
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee /tmp/build-android.log
+
+      - name: Push diagnostic log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-android
+          mkdir -p .ci-debug
+          cp /tmp/build-android.log .ci-debug/build-android.log
+          git add -f .ci-debug/build-android.log
+          git commit -m "debug: android build output"
+          git push --force origin debug-logs-android
 
       - uses: actions/upload-artifact@v4
         with:
@@ -92,7 +111,23 @@ jobs:
       # Unsigned archive — no Apple Developer account is assumed here.
       # Sign it afterwards via Xcode Organizer or a resign service, exactly
       # as documented in installation-guide.md section 4.4.
-      - run: flutter build ipa --no-codesign
+      - name: flutter build ipa --no-codesign
+        run: |
+          set -o pipefail
+          flutter build ipa --no-codesign 2>&1 | tee /tmp/build-ios.log
+
+      - name: Push diagnostic log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-ios
+          mkdir -p .ci-debug
+          cp /tmp/build-ios.log .ci-debug/build-ios.log
+          git add -f .ci-debug/build-ios.log
+          git commit -m "debug: ios build output"
+          git push --force origin debug-logs-ios
 
       - name: Zip the unsigned archive
         run: |
