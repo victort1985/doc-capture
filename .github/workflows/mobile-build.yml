@@ -14,9 +14,6 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: write
-
 jobs:
   android:
     name: Android APK
@@ -38,49 +35,11 @@ jobs:
 
       # android/ isn't committed (see installation-guide.md, section 3.2) —
       # generate it fresh every build, same as a developer would locally.
-      # Logs aren't reachable from my own sandbox (GitHub's log storage
-      # domain isn't on its network allowlist) — capture this command's
-      # exact output to a file and upload it as an artifact instead, so a
-      # failure can actually be diagnosed.
+      # --project-name is required: without it flutter infers the name from
+      # the containing folder, and "mobile-client" has a hyphen, which is
+      # not a valid Dart package name.
       - name: flutter create (android scaffolding)
-        run: |
-          set -o pipefail
-          flutter create . --platforms=android --project-name doc_capture --org com.doccapture 2>&1 | tee /tmp/flutter-create-android.log
-
-      - name: diag - check log file exists
-        if: always()
-        run: ls -la /tmp/flutter-create-android.log && wc -l /tmp/flutter-create-android.log
-
-      - name: diag - git checkout branch
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: git checkout -B debug-logs-android
-
-      - name: diag - copy log into repo
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir -p .ci-debug
-          cp /tmp/flutter-create-android.log .ci-debug/flutter-create-android.log
-
-      - name: diag - git config
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: |
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-
-      - name: diag - git add+commit
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: |
-          git add -f .ci-debug/flutter-create-android.log
-          git commit -m "debug: android flutter create output"
-
-      - name: diag - git push
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: git push --force origin debug-logs-android
+        run: flutter create . --platforms=android --project-name doc_capture --org com.doccapture
 
       - name: Add camera + location permissions
         run: python3 ../.github/scripts/patch_android_manifest.py
@@ -119,44 +78,7 @@ jobs:
 
       # ios/ isn't committed either (installation-guide.md, section 4.2).
       - name: flutter create (ios scaffolding)
-        run: |
-          set -o pipefail
-          flutter create . --platforms=ios --project-name doc_capture --org com.doccapture 2>&1 | tee /tmp/flutter-create-ios.log
-
-      - name: diag - check log file exists
-        if: always()
-        run: ls -la /tmp/flutter-create-ios.log && wc -l /tmp/flutter-create-ios.log
-
-      - name: diag - git checkout branch
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: git checkout -B debug-logs-ios
-
-      - name: diag - copy log into repo
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: |
-          mkdir -p .ci-debug
-          cp /tmp/flutter-create-ios.log .ci-debug/flutter-create-ios.log
-
-      - name: diag - git config
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: |
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-
-      - name: diag - git add+commit
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: |
-          git add -f .ci-debug/flutter-create-ios.log
-          git commit -m "debug: ios flutter create output"
-
-      - name: diag - git push
-        if: always()
-        working-directory: ${{ github.workspace }}
-        run: git push --force origin debug-logs-ios
+        run: flutter create . --platforms=ios --project-name doc_capture --org com.doccapture
 
       - name: Add camera + location usage descriptions
         run: python3 ../.github/scripts/patch_ios_plist.py
