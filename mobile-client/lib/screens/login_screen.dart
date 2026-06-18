@@ -5,6 +5,7 @@ import '../l10n/app_localizations.dart';
 import '../store/app_state.dart';
 import '../widgets/copyright_notice.dart';
 import '../widgets/stamp_mark.dart';
+import 'connection_settings_screen.dart';
 import 'root_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -184,6 +185,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                 ),
               ),
               const CopyrightNotice(light: true),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: IconButton(
+                  icon: const Icon(Icons.settings_outlined, color: Colors.white70),
+                  tooltip: l10n.connectionSettingsTitle,
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const ConnectionSettingsScreen()),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

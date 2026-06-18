@@ -37,7 +37,7 @@ class DocCaptureApp extends StatelessWidget {
         Provider<CallsService>.value(value: callsService),
         Provider<NotificationsService>.value(value: notificationsService),
         ChangeNotifierProvider<AppState>(
-          create: (_) => AppState(settingsService, authService),
+          create: (_) => AppState(settingsService, authService, apiService),
         ),
       ],
       child: const _AppRoot(),

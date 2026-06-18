@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../store/app_state.dart';
+import 'connection_settings_screen.dart';
 import 'login_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -43,6 +44,17 @@ class SettingsScreen extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.dns_outlined, color: AppColors.inkSoft),
+            title: Text(l10n.connectionSettingsTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+            trailing: const Icon(Icons.chevron_right, size: 18),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const ConnectionSettingsScreen()),
             ),
           ),
         ),
