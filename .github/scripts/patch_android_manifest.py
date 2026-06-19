@@ -1,7 +1,27 @@
-"""Adds the camera + location permissions documented in
-installation-guide.md (section 3.2) to a freshly `flutter create`d
+"""Adds required permissions to a freshly `flutter create`d
 AndroidManifest.xml. Idempotent — safe to run on a manifest that already
 has them.
+
+INTERNET is the critical one: confirmed via a real generated manifest
+dumped from this exact CI pipeline that `flutter create` does NOT add
+it by default on the Flutter version in use here (despite some Flutter
+docs implying it's included by default — verified directly rather than
+trusting that). Without it, Android blocks ALL network access for the
+app at the OS level, on every network type uniformly (not just one) —
+confirmed via real-device testing where DNS lookups failed with "No
+address associated with hostname" and even a raw socket connect to a
+literal IP failed with "Operation not permitted" (errno=1), on both
+Wi-Fi and cellular, while the same device's browser worked fine
+throughout (since browsers have their own INTERNET permission as a
+system app). This was the actual root cause behind a long chain of
+connection-error debugging that initially looked like — and partially
+genuinely was contributed to by — IPv6 routing and carrier DNS
+flakiness, but none of those fixes could have worked without this one,
+since the OS was blocking the app's network access outright regardless
+of what the app's own networking code did.
+
+Camera + location permissions documented in installation-guide.md
+(section 3.2).
 
 Also enables cleartext (plain http) traffic. Real-world testing found
 the app's connection-settings "direct address" mode (LAN IP, no TLS
@@ -19,6 +39,7 @@ import re
 PATH = "android/app/src/main/AndroidManifest.xml"
 
 PERMISSIONS = (
+    '    <uses-permission android:name="android.permission.INTERNET" />\n'
     '    <uses-permission android:name="android.permission.CAMERA" />\n'
     '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
     '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
