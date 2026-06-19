@@ -132,18 +132,32 @@ Future<List<DiagnosticStepResult>> runConnectionTest(
     results.add(DiagnosticStepResult('DNS lookup (single attempt)', false, e.toString()));
   }
 
+  // Tested directly (not just as a silent fallback inside lookupWithRetry)
+  // so it's visible on its own whether DoH actually works on this network
+  // independent of whatever the OS resolver is doing.
+  try {
+    final doh = await lookupViaDoH(uri.host).timeout(const Duration(seconds: 10));
+    results.add(DiagnosticStepResult(
+      'DNS-over-HTTPS fallback',
+      true,
+      '${doh.length} address(es) via Cloudflare DoH',
+    ));
+  } catch (e) {
+    results.add(DiagnosticStepResult('DNS-over-HTTPS fallback', false, e.toString()));
+  }
+
   List<InternetAddress> addresses = [];
   try {
     addresses = await lookupWithRetry(uri.host).timeout(const Duration(seconds: 12));
     final ipv4Count = addresses.where((a) => a.type == InternetAddressType.IPv4).length;
     final ipv6Count = addresses.where((a) => a.type == InternetAddressType.IPv6).length;
     results.add(DiagnosticStepResult(
-      'DNS lookup (with retry)',
+      'DNS lookup (retry + DoH fallback)',
       true,
       '$ipv4Count IPv4, $ipv6Count IPv6 address(es) found',
     ));
   } catch (e) {
-    results.add(DiagnosticStepResult('DNS lookup (with retry)', false, e.toString()));
+    results.add(DiagnosticStepResult('DNS lookup (retry + DoH fallback)', false, e.toString()));
     return results; // nothing past this point can work without DNS
   }
 
