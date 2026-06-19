@@ -73,7 +73,17 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       if (e.response?.statusCode == 401) {
         setState(() => _error = l10n.signInError);
       } else {
-        setState(() => _error = l10n.signInConnectionError);
+        // Temporary extra diagnostic detail appended to the generic
+        // message — added specifically because the generic message alone
+        // wasn't enough to tell a true network failure apart from e.g. a
+        // 403 from an Access/proxy layer rejecting the request for a
+        // reason unrelated to plain reachability. Once the cloud-mode
+        // connection path is confirmed solid in practice this detail can
+        // be dropped again, but for now it turns "can't reach the server"
+        // reports into something diagnosable without needing device logs.
+        final status = e.response?.statusCode;
+        final detail = status != null ? 'HTTP $status' : e.type.name;
+        setState(() => _error = '${l10n.signInConnectionError} ($detail)');
       }
     } catch (_) {
       if (!mounted) return;
