@@ -10,7 +10,7 @@ import 'connection_diagnostics.dart';
 /// Token) can be changed at runtime via [configureServer] — see the
 /// connection settings screen — not just baked in at build time.
 class ApiService {
-  ApiService({String baseUrl = 'http://localhost:3000/api'})
+  ApiService({String baseUrl = 'https://app.doc-capture.app/api'})
       : _baseUrl = baseUrl,
         _dio = Dio(BaseOptions(baseUrl: baseUrl)) {
     // Prefer IPv4 when a host resolves to both IPv4 and IPv6 addresses

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       server_url:
-        description: 'Server API base URL to bake into the build (e.g. https://doccapture.example.com/api). Leave empty to keep the http://localhost:3000/api default.'
+        description: 'Server API base URL to bake into the build (e.g. https://doccapture.example.com/api). Leave empty to keep the https://app.doc-capture.app/api default.'
         required: false
         default: ''
   push:
@@ -53,7 +53,7 @@ jobs:
 
       - name: Set server URL
         if: ${{ inputs.server_url != '' }}
-        run: sed -i "s#http://localhost:3000/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
+        run: sed -i "s#https://app.doc-capture.app/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
 
       - run: flutter pub get
 
@@ -126,7 +126,7 @@ jobs:
 
       - name: Set server URL
         if: ${{ inputs.server_url != '' }}
-        run: sed -i '' "s#http://localhost:3000/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
+        run: sed -i '' "s#https://app.doc-capture.app/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
 
       - run: flutter pub get
 
