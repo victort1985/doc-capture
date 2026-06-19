@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app/theme.dart';
@@ -29,6 +33,7 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
   bool _loading = true;
   bool _saving = false;
   bool _secretVisible = false;
+  String? _importError;
 
   @override
   void initState() {
@@ -47,6 +52,41 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
       _clientSecretController.text = secret ?? '';
     }
     if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _importFromFile() async {
+    setState(() => _importError = null);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['json'],
+    );
+    final path = result?.files.single.path;
+    if (path == null) return; // user cancelled the picker
+
+    try {
+      final raw = await File(path).readAsString();
+      final data = jsonDecode(raw);
+      if (data is! Map) throw const FormatException('not an object');
+
+      final modeStr = data['mode'] as String?;
+      final mode = modeStr == ConnectionMode.cloud.name ? ConnectionMode.cloud : ConnectionMode.direct;
+      final address = data['address'] as String?;
+      if (address == null || address.trim().isEmpty) {
+        throw const FormatException('missing "address"');
+      }
+
+      setState(() {
+        _mode = mode;
+        _addressController.text = address.trim();
+        if (mode == ConnectionMode.cloud) {
+          _clientIdController.text = (data['clientId'] as String?)?.trim() ?? '';
+          _clientSecretController.text = (data['clientSecret'] as String?)?.trim() ?? '';
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _importError = AppLocalizations.of(context)!.connectionImportError);
+    }
   }
 
   Future<void> _save() async {
@@ -90,6 +130,27 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
               children: [
+                OutlinedButton.icon(
+                  onPressed: _importFromFile,
+                  icon: const Icon(Icons.file_open_outlined, size: 18),
+                  label: Text(l10n.connectionImportButton),
+                ),
+                if (_importError != null) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFBE9E7),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(children: [
+                      const Icon(Icons.error_outline, size: 16, color: Color(0xFFC1402A)),
+                      const SizedBox(width: 8),
+                      Expanded(child: Text(_importError!, style: const TextStyle(fontSize: 12.5, color: Color(0xFFC1402A)))),
+                    ]),
+                  ),
+                ],
+                const SizedBox(height: 20),
                 Text(l10n.connectionModeLabel, style: const TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 RadioListTile<ConnectionMode>(

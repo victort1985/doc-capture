@@ -46,6 +46,8 @@
   "connectionClientIdLabel": "Client ID",
   "connectionClientSecretLabel": "Client Secret",
   "connectionSaveButton": "Сохранить",
+  "connectionImportButton": "Импорт из файла",
+  "connectionImportError": "Не удалось прочитать файл настроек. Убедитесь, что это корректный JSON-файл, созданный для Doc Capture",
   "navHome": "Главная",
   "navHistory": "История",
   "navSettings": "Настройки",

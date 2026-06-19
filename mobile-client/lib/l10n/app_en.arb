@@ -46,6 +46,8 @@
   "connectionClientIdLabel": "Client ID",
   "connectionClientSecretLabel": "Client Secret",
   "connectionSaveButton": "Save",
+  "connectionImportButton": "Import from file",
+  "connectionImportError": "Could not read the settings file. Make sure it's a valid JSON file generated for Doc Capture",
   "navHome": "Home",
   "navHistory": "History",
   "navSettings": "Settings",
