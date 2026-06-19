@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
+import 'connection_diagnostics.dart';
+
 /// Thin wrapper around Dio carrying the JWT and a configurable base URL.
 /// The base URL (and, for Cloudflare-Access-gated servers, a Service
 /// Token) can be changed at runtime via [configureServer] — see the
@@ -38,6 +40,11 @@ class ApiService {
         return client;
       },
     );
+    // TEMPORARY: logs every request this client makes into an in-memory,
+    // never-persisted diagnostics log — see connection_diagnostics.dart
+    // for why and the plan to remove it once cloud-mode connectivity is
+    // confirmed solid across real devices/networks.
+    _dio.interceptors.add(DiagnosticsInterceptor());
   }
 
   String _baseUrl;

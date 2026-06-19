@@ -8,6 +8,7 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/settings_service.dart';
 import '../store/app_state.dart';
+import 'connection_diagnostics_screen.dart';
 import 'login_screen.dart';
 
 /// Lets the user point the app at a different server without rebuilding:
@@ -89,6 +90,24 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
     }
   }
 
+  Future<void> _exportToFile() async {
+    final data = {
+      'mode': _mode.name,
+      'address': _addressController.text.trim(),
+      if (_mode == ConnectionMode.cloud) 'clientId': _clientIdController.text.trim(),
+      if (_mode == ConnectionMode.cloud) 'clientSecret': _clientSecretController.text.trim(),
+    };
+    final bytes = utf8.encode(const JsonEncoder.withIndent('  ').convert(data));
+    final path = await FilePicker.platform.saveFile(
+      fileName: 'doc-capture-connection.json',
+      bytes: bytes,
+    );
+    if (path == null || !mounted) return; // user cancelled
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(AppLocalizations.of(context)!.connectionExportSuccess)),
+    );
+  }
+
   Future<void> _save() async {
     setState(() => _saving = true);
     final appState = context.read<AppState>();
@@ -130,10 +149,24 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
           : ListView(
               padding: const EdgeInsets.fromLTRB(18, 16, 18, 32),
               children: [
-                OutlinedButton.icon(
-                  onPressed: _importFromFile,
-                  icon: const Icon(Icons.file_open_outlined, size: 18),
-                  label: Text(l10n.connectionImportButton),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _importFromFile,
+                        icon: const Icon(Icons.file_open_outlined, size: 18),
+                        label: Text(l10n.connectionImportButton, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _exportToFile,
+                        icon: const Icon(Icons.save_outlined, size: 18),
+                        label: Text(l10n.connectionExportButton, overflow: TextOverflow.ellipsis),
+                      ),
+                    ),
+                  ],
                 ),
                 if (_importError != null) ...[
                   const SizedBox(height: 10),
@@ -232,6 +265,20 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                           child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                         )
                       : Text(l10n.connectionSaveButton),
+                ),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => ConnectionDiagnosticsScreen(
+                        config: ConnectionConfig(mode: _mode, address: _addressController.text.trim()),
+                        clientId: _mode == ConnectionMode.cloud ? _clientIdController.text.trim() : null,
+                        clientSecret: _mode == ConnectionMode.cloud ? _clientSecretController.text.trim() : null,
+                      ),
+                    ),
+                  ),
+                  icon: const Icon(Icons.network_check, size: 18),
+                  label: Text(l10n.connectionDiagnosticsButton),
                 ),
               ],
             ),
