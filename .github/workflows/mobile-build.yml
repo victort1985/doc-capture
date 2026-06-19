@@ -45,8 +45,30 @@ jobs:
       - name: flutter create (android scaffolding)
         run: flutter create . --platforms=android --project-name doc_capture --org com.doccapture
 
+      - name: diag - dump fresh AndroidManifest.xml before any patching
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-android
+          mkdir -p .ci-debug
+          cp mobile-client/android/app/src/main/AndroidManifest.xml .ci-debug/AndroidManifest-fresh.xml
+          git add -f .ci-debug/AndroidManifest-fresh.xml
+          git commit -m "debug: fresh AndroidManifest.xml from flutter create"
+          git push --force origin debug-logs-android
+
       - name: Add camera + location permissions
         run: python3 ../.github/scripts/patch_android_manifest.py
+
+      - name: diag - dump AndroidManifest.xml after patching
+        working-directory: ${{ github.workspace }}
+        run: |
+          git checkout debug-logs-android
+          cp mobile-client/android/app/src/main/AndroidManifest.xml .ci-debug/AndroidManifest-patched.xml
+          git add -f .ci-debug/AndroidManifest-patched.xml
+          git commit -m "debug: patched AndroidManifest.xml"
+          git push --force origin debug-logs-android
+          git checkout main
 
       - name: Bump compileSdk/targetSdk to 36
         run: python3 ../.github/scripts/patch_android_sdk_version.py
