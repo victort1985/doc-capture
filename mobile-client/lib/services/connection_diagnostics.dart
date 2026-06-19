@@ -5,6 +5,7 @@ import 'package:dio/io.dart';
 import 'package:flutter/foundation.dart';
 
 import 'settings_service.dart';
+import 'dns_lookup.dart';
 
 /// One logged HTTP attempt made by the app's shared Dio client. Kept in
 /// memory only — never persisted to disk, never sent anywhere — purely a
@@ -115,18 +116,34 @@ Future<List<DiagnosticStepResult>> runConnectionTest(
   final uri = Uri.parse(baseUrl);
   final port = uri.hasPort ? uri.port : (uri.scheme == 'https' ? 443 : 80);
 
+  // Single, no-retry attempt first — shown separately from the
+  // retry-wrapped version below so it's visible whether this network is
+  // currently hitting the transient carrier-DNS failure at all, or
+  // whether it's resolved cleanly and the retry logic is just a safety
+  // net for occasional, not constant in our case.
+  try {
+    final single = await InternetAddress.lookup(uri.host).timeout(const Duration(seconds: 6));
+    results.add(DiagnosticStepResult(
+      'DNS lookup (single attempt)',
+      true,
+      '${single.length} address(es) on the first try',
+    ));
+  } catch (e) {
+    results.add(DiagnosticStepResult('DNS lookup (single attempt)', false, e.toString()));
+  }
+
   List<InternetAddress> addresses = [];
   try {
-    addresses = await InternetAddress.lookup(uri.host).timeout(const Duration(seconds: 8));
+    addresses = await lookupWithRetry(uri.host).timeout(const Duration(seconds: 12));
     final ipv4Count = addresses.where((a) => a.type == InternetAddressType.IPv4).length;
     final ipv6Count = addresses.where((a) => a.type == InternetAddressType.IPv6).length;
     results.add(DiagnosticStepResult(
-      'DNS lookup',
+      'DNS lookup (with retry)',
       true,
       '$ipv4Count IPv4, $ipv6Count IPv6 address(es) found',
     ));
   } catch (e) {
-    results.add(DiagnosticStepResult('DNS lookup', false, e.toString()));
+    results.add(DiagnosticStepResult('DNS lookup (with retry)', false, e.toString()));
     return results; // nothing past this point can work without DNS
   }
 
@@ -151,7 +168,7 @@ Future<List<DiagnosticStepResult>> runConnectionTest(
     createHttpClient: () {
       final client = HttpClient();
       client.connectionFactory = (connUri, proxyHost, proxyPort) async {
-        final addrs = await InternetAddress.lookup(connUri.host);
+        final addrs = await lookupWithRetry(connUri.host);
         final v4 = addrs.where((a) => a.type == InternetAddressType.IPv4);
         final target = v4.isNotEmpty ? v4.first : addrs.first;
         return Socket.startConnect(target, connUri.port);

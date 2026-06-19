@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
 import 'connection_diagnostics.dart';
+import 'dns_lookup.dart';
 
 /// Thin wrapper around Dio carrying the JWT and a configurable base URL.
 /// The base URL (and, for Cloudflare-Access-gated servers, a Service
@@ -13,26 +14,36 @@ class ApiService {
   ApiService({String baseUrl = 'https://app.doc-capture.app/api'})
       : _baseUrl = baseUrl,
         _dio = Dio(BaseOptions(baseUrl: baseUrl)) {
-    // Prefer IPv4 when a host resolves to both IPv4 and IPv6 addresses
-    // (Cloudflare's edge does, e.g. app.doc-capture.app). Found via real
-    // device testing: a phone's system browser reached the Cloudflare
-    // Access login page for this exact host fine, but the app's own login
-    // request failed with DioExceptionType.connectionError — a
-    // socket-level failure, not an HTTP error, ruling out a bad
-    // Service Token. dart:io's HttpClient doesn't implement Happy
-    // Eyeballs (RFC 8305): it tries addresses in the order DNS returned
-    // them without interleaving families, so on a network where IPv6 is
-    // advertised but not actually routable (common on mobile/home
-    // networks), it can fail outright instead of falling back to IPv4
-    // the way browsers do (this is a known dart-lang/sdk class of issue,
-    // e.g. dart-lang/sdk#41451 and flutter/flutter#116537). Resolving the
-    // host ourselves and connecting to an IPv4 address directly sidesteps
-    // it; falls back to whatever's available if a host is IPv6-only.
+    // Prefer IPv4 when a host resolves to both IPv4 and IPv6 addresses,
+    // and retry the DNS lookup itself a few times before giving up.
+    //
+    // Real-device evidence behind each part of this:
+    // - IPv4 preference: dart:io's HttpClient doesn't implement Happy
+    //   Eyeballs (RFC 8305) — it tries addresses in DNS order without
+    //   interleaving families, so on a network where IPv6 is advertised
+    //   but not actually routable it can fail outright instead of
+    //   falling back to IPv4 the way browsers do (dart-lang/sdk#41451,
+    //   flutter/flutter#116537).
+    // - Retry: a later test on cellular data caught a different,
+    //   sharper failure — InternetAddress.lookup() itself throwing
+    //   SocketException ("No address associated with hostname", errno=7)
+    //   for this exact host, while the phone's own browser resolved the
+    //   identical hostname on the identical connection around the same
+    //   moment without any problem. That same-device, same-network,
+    //   app-vs-browser split is the tell: it points at the OS-level raw
+    //   socket DNS path specifically, not at the domain/zone/tunnel
+    //   (independently confirmed working repeatedly via curl with the
+    //   real Service Token, and via the system browser reaching
+    //   Cloudflare Access). This matches a known, documented class of
+    //   issue for CNAME-based tunnel setups on Android — see
+    //   immich-app/immich#15547 for a near-identical real-world report.
+    //   Retrying with a short delay is the standard mitigation for this
+    //   kind of transient carrier-resolver hiccup.
     _dio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
         client.connectionFactory = (uri, proxyHost, proxyPort) async {
-          final addresses = await InternetAddress.lookup(uri.host);
+          final addresses = await lookupWithRetry(uri.host);
           final ipv4 = addresses.where((a) => a.type == InternetAddressType.IPv4);
           final target = ipv4.isNotEmpty ? ipv4.first : addresses.first;
           return Socket.startConnect(target, uri.port);
