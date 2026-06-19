@@ -28,6 +28,7 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
   ConnectionMode _mode = ConnectionMode.direct;
   bool _loading = true;
   bool _saving = false;
+  bool _secretVisible = false;
 
   @override
   void initState() {
@@ -152,8 +153,12 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                     decoration: InputDecoration(
                       labelText: l10n.connectionClientSecretLabel,
                       prefixIcon: const Icon(Icons.key_outlined, size: 20),
+                      suffixIcon: IconButton(
+                        icon: Icon(_secretVisible ? Icons.visibility_off_outlined : Icons.visibility_outlined, size: 20),
+                        onPressed: () => setState(() => _secretVisible = !_secretVisible),
+                      ),
                     ),
-                    obscureText: true,
+                    obscureText: !_secretVisible,
                     autocorrect: false,
                   ),
                 ],

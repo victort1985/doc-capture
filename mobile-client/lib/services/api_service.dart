@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:dio/dio.dart';
+import 'package:dio/io.dart';
 
 /// Thin wrapper around Dio carrying the JWT and a configurable base URL.
 /// The base URL (and, for Cloudflare-Access-gated servers, a Service
@@ -7,7 +10,35 @@ import 'package:dio/dio.dart';
 class ApiService {
   ApiService({String baseUrl = 'http://localhost:3000/api'})
       : _baseUrl = baseUrl,
-        _dio = Dio(BaseOptions(baseUrl: baseUrl));
+        _dio = Dio(BaseOptions(baseUrl: baseUrl)) {
+    // Prefer IPv4 when a host resolves to both IPv4 and IPv6 addresses
+    // (Cloudflare's edge does, e.g. app.doc-capture.app). Found via real
+    // device testing: a phone's system browser reached the Cloudflare
+    // Access login page for this exact host fine, but the app's own login
+    // request failed with DioExceptionType.connectionError — a
+    // socket-level failure, not an HTTP error, ruling out a bad
+    // Service Token. dart:io's HttpClient doesn't implement Happy
+    // Eyeballs (RFC 8305): it tries addresses in the order DNS returned
+    // them without interleaving families, so on a network where IPv6 is
+    // advertised but not actually routable (common on mobile/home
+    // networks), it can fail outright instead of falling back to IPv4
+    // the way browsers do (this is a known dart-lang/sdk class of issue,
+    // e.g. dart-lang/sdk#41451 and flutter/flutter#116537). Resolving the
+    // host ourselves and connecting to an IPv4 address directly sidesteps
+    // it; falls back to whatever's available if a host is IPv6-only.
+    _dio.httpClientAdapter = IOHttpClientAdapter(
+      createHttpClient: () {
+        final client = HttpClient();
+        client.connectionFactory = (uri, proxyHost, proxyPort) async {
+          final addresses = await InternetAddress.lookup(uri.host);
+          final ipv4 = addresses.where((a) => a.type == InternetAddressType.IPv4);
+          final target = ipv4.isNotEmpty ? ipv4.first : addresses.first;
+          return Socket.startConnect(target, uri.port);
+        };
+        return client;
+      },
+    );
+  }
 
   String _baseUrl;
   String get baseUrl => _baseUrl;
