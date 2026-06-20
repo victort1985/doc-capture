@@ -156,6 +156,11 @@ class _LogTile extends StatelessWidget {
                   entry.summary,
                   style: TextStyle(fontSize: 11, color: ok ? Colors.green : AppColors.primary),
                 ),
+                if (entry.bodySnippet != null)
+                  Text(
+                    entry.bodySnippet!,
+                    style: const TextStyle(fontSize: 10.5, color: AppColors.inkSoft),
+                  ),
               ],
             ),
           ),

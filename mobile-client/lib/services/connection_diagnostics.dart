@@ -24,6 +24,7 @@ class ConnectionLogEntry {
     this.statusCode,
     this.errorType,
     this.errorMessage,
+    this.bodySnippet,
   });
 
   final DateTime time;
@@ -32,6 +33,7 @@ class ConnectionLogEntry {
   final int? statusCode;
   final String? errorType;
   final String? errorMessage;
+  final String? bodySnippet;
 
   String get summary {
     if (statusCode != null) return 'HTTP $statusCode';
@@ -65,11 +67,13 @@ class ConnectionDiagnostics {
 class DiagnosticsInterceptor extends Interceptor {
   @override
   void onResponse(Response response, ResponseInterceptorHandler handler) {
+    final isError = (response.statusCode ?? 200) >= 400;
     ConnectionDiagnostics.instance.add(ConnectionLogEntry(
       time: DateTime.now(),
       method: response.requestOptions.method,
       url: response.requestOptions.uri.toString(),
       statusCode: response.statusCode,
+      bodySnippet: isError ? _snippet(response.data) : null,
     ));
     handler.next(response);
   }
@@ -83,8 +87,18 @@ class DiagnosticsInterceptor extends Interceptor {
       statusCode: err.response?.statusCode,
       errorType: err.type.name,
       errorMessage: err.message,
+      bodySnippet: _snippet(err.response?.data),
     ));
     handler.next(err);
+  }
+
+  /// First 300 chars of a response body — enough to tell a Cloudflare
+  /// HTML error page apart from our own server's JSON error, without
+  /// keeping a potentially large response in memory indefinitely.
+  static String? _snippet(dynamic data) {
+    if (data == null) return null;
+    final text = data is String ? data : data.toString();
+    return text.length > 300 ? '${text.substring(0, 300)}…' : text;
   }
 }
 
@@ -204,6 +218,7 @@ Future<List<DiagnosticStepResult>> runConnectionTest(
     ));
   } on DioException catch (e) {
     final status = e.response?.statusCode;
+    final body = DiagnosticsInterceptor._snippet(e.response?.data);
     if (status == 401) {
       // Reached the real server and got its normal "no JWT" response —
       // this is what success looks like for this test, since we're not
@@ -214,6 +229,12 @@ Future<List<DiagnosticStepResult>> runConnectionTest(
         'Server request',
         false,
         'HTTP 403 — Cloudflare Access rejected the request (check Client ID/Secret)',
+      ));
+    } else if (status != null && status >= 400) {
+      results.add(DiagnosticStepResult(
+        'Server request',
+        false,
+        'HTTP $status${body != null ? ' — $body' : ''}',
       ));
     } else if (status != null) {
       results.add(DiagnosticStepResult('Server request', true, 'HTTP $status'));
