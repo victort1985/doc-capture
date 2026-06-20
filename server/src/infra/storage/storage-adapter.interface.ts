@@ -21,7 +21,7 @@ export interface StorageAdapter {
 }
 
 export interface StorageConnectionConfig {
-  type: 'local' | 'ftp' | 'synology';
+  type: 'local' | 'ftp' | 'sftp' | 'synology';
   host?: string;
   port?: number;
   username?: string;

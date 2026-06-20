@@ -1,6 +1,7 @@
 import { StorageAdapter, StorageConnectionConfig } from './storage-adapter.interface';
 import { LocalStorageAdapter } from './local-storage.adapter';
 import { FtpStorageAdapter } from './ftp-storage.adapter';
+import { SftpStorageAdapter } from './sftp-storage.adapter';
 import { SynologyStorageAdapter } from './synology-storage.adapter';
 
 export function createStorageAdapter(config: StorageConnectionConfig): StorageAdapter {
@@ -9,6 +10,8 @@ export function createStorageAdapter(config: StorageConnectionConfig): StorageAd
       return new LocalStorageAdapter(config);
     case 'ftp':
       return new FtpStorageAdapter(config);
+    case 'sftp':
+      return new SftpStorageAdapter(config);
     case 'synology':
       return new SynologyStorageAdapter(config);
     default:

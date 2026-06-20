@@ -5,7 +5,7 @@ import { apiFetch } from '../services/api';
 interface Connection {
   id: number;
   name: string;
-  type: 'local' | 'ftp' | 'synology';
+  type: 'local' | 'ftp' | 'sftp' | 'synology';
   host?: string;
   port?: number;
   basePath: string;
@@ -144,6 +144,7 @@ export default function StoragePage() {
               >
                 <option value="local">Local filesystem</option>
                 <option value="ftp">FTP</option>
+                <option value="sftp">SFTP</option>
                 <option value="synology">Synology NAS (WebDAV)</option>
               </select>
             </div>

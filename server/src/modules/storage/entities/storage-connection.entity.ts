@@ -10,6 +10,7 @@ import { encryptString, decryptString } from '../../../common/crypto/encryption.
 export enum StorageType {
   LOCAL = 'local',
   FTP = 'ftp',
+  SFTP = 'sftp',
   SYNOLOGY = 'synology',
 }
 

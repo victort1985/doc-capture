@@ -77,8 +77,8 @@ export class StorageService {
   }
 
   async testConnection(connectionId: number): Promise<{ ok: boolean; message: string }> {
-    const adapter = await this.getAdapter(connectionId);
     try {
+      const adapter = await this.getAdapter(connectionId);
       return await adapter.testConnection();
     } catch (err) {
       return { ok: false, message: (err as Error).message };
