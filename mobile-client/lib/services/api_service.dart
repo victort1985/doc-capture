@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
@@ -95,8 +96,34 @@ class ApiService {
     return res.data;
   }
 
+  Future<dynamic> patch(String path, Map<String, dynamic> body) async {
+    final res = await _dio.patch(path, data: body);
+    return res.data;
+  }
+
+  Future<dynamic> patchFormData(String path, FormData data) async {
+    final res = await _dio.patch(path, data: data);
+    return res.data;
+  }
+
+  Future<void> delete(String path) async {
+    await _dio.delete(path);
+  }
+
   Future<dynamic> get(String path, {Map<String, dynamic>? query}) async {
     final res = await _dio.get(path, queryParameters: query);
     return res.data;
+  }
+
+  /// Authenticated binary fetch — used to view already-uploaded photos and
+  /// documents in-app (spec: viewing existing attachments needs the same
+  /// auth/CF-Access headers as everything else, so a plain Image.network
+  /// URL won't work).
+  Future<Uint8List> getBytes(String path) async {
+    final res = await _dio.get<List<int>>(
+      path,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data!);
   }
 }

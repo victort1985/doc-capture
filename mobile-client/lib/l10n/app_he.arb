@@ -65,6 +65,8 @@
   "callNew": "קריאה חדשה",
   "callPlace": "מקום / שם הארגון",
   "callPlaceHint": "לדוגמה: סלון חיפה",
+  "callCityHint": "עיר…",
+  "callPickContact": "בחר מפנקס הטלפונים",
   "callGetLocation": "קבל מיקום",
   "callLocationSet": "מיקום נוסף",
   "callLocationError": "לא ניתן לקבל מיקום",
@@ -146,5 +148,32 @@
         "type": "String"
       }
     }
-  }
+  },
+  "phoneBookTitle": "פנקס טלפונים",
+  "phoneBookClients": "לקוחות",
+  "phoneBookTechnicians": "טכנאים",
+  "phoneBookSuppliers": "ספקים",
+  "phoneBookSearchHint": "חיפוש לפי שם…",
+  "phoneBookEmpty": "לא נמצאו אנשי קשר",
+  "phoneBookDeleteTitle": "למחוק את איש הקשר?",
+  "phoneBookDeleteConfirm": "לא ניתן לבטל פעולה זו.",
+  "delete": "מחק",
+  "phoneBookFieldFirstName": "שם פרטי",
+  "phoneBookFieldLastName": "שם משפחה",
+  "phoneBookFieldCity": "עיר",
+  "phoneBookFieldOrganization": "ארגון",
+  "phoneBookFieldPosition": "תפקיד",
+  "phoneBookFieldPhone": "טלפון",
+  "phoneBookFieldEmail": "דוא\"ל",
+  "phoneBookFieldNotes": "הערות",
+  "phoneBookEditTitle": "עריכת איש קשר",
+  "phoneBookAddTitle": "איש קשר חדש",
+  "phoneBookTakePhoto": "צילום תמונה",
+  "phoneBookChooseFromGallery": "בחירה מהגלריה",
+  "phoneBookCategory": "קטגוריה",
+  "phoneBookValidationError": "שם פרטי, שם משפחה וטלפון הם שדות חובה",
+  "phoneBookSaveError": "לא ניתן לשמור את איש הקשר, נסה שוב",
+  "phoneBookSaving": "שומר…",
+  "phoneBookSave": "שמור איש קשר",
+  "callViewFileError": "לא ניתן לפתוח את הקובץ, נסה שוב"
 }

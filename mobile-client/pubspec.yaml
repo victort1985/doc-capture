@@ -34,6 +34,9 @@ dependencies:
   # Optional "get my location" button on the call form
   geolocator: ^13.0.1
 
+  # Tap-to-call: opens the phone's own dialer with a number pre-filled
+  url_launcher: ^6.3.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

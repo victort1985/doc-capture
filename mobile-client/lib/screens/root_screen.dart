@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../services/notifications_service.dart';
 import 'inventory_screen.dart';
 import 'calls/calls_list_screen.dart';
+import 'phonebook_screen.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -57,6 +58,7 @@ class _RootScreenState extends State<RootScreen> {
         children: [
           const InventoryScreen(),
           CallsListScreen(key: _callsListKey),
+          const PhoneBookScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -72,6 +74,11 @@ class _RootScreenState extends State<RootScreen> {
             icon: const Icon(Icons.support_agent_outlined),
             selectedIcon: const Icon(Icons.support_agent),
             label: l10n.callsTitle,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.contacts_outlined),
+            selectedIcon: const Icon(Icons.contacts),
+            label: l10n.phoneBookTitle,
           ),
         ],
       ),

@@ -65,6 +65,8 @@
   "callNew": "Новый вызов",
   "callPlace": "Место / организация",
   "callPlaceHint": "например, салон в Хайфе",
+  "callCityHint": "Город…",
+  "callPickContact": "Выбрать из телефонной книги",
   "callGetLocation": "Получить геоданные",
   "callLocationSet": "Геоданные добавлены",
   "callLocationError": "Не удалось получить геоданные",
@@ -146,5 +148,32 @@
         "type": "String"
       }
     }
-  }
+  },
+  "phoneBookTitle": "Телефонная книга",
+  "phoneBookClients": "Клиенты",
+  "phoneBookTechnicians": "Техники",
+  "phoneBookSuppliers": "Поставщики",
+  "phoneBookSearchHint": "Поиск по имени…",
+  "phoneBookEmpty": "Контакты не найдены",
+  "phoneBookDeleteTitle": "Удалить контакт?",
+  "phoneBookDeleteConfirm": "Это действие нельзя отменить.",
+  "delete": "Удалить",
+  "phoneBookFieldFirstName": "Имя",
+  "phoneBookFieldLastName": "Фамилия",
+  "phoneBookFieldCity": "Город",
+  "phoneBookFieldOrganization": "Организация",
+  "phoneBookFieldPosition": "Должность",
+  "phoneBookFieldPhone": "Телефон",
+  "phoneBookFieldEmail": "E-mail",
+  "phoneBookFieldNotes": "Заметки",
+  "phoneBookEditTitle": "Редактировать контакт",
+  "phoneBookAddTitle": "Новый контакт",
+  "phoneBookTakePhoto": "Снять фото",
+  "phoneBookChooseFromGallery": "Выбрать из галереи",
+  "phoneBookCategory": "Категория",
+  "phoneBookValidationError": "Имя, фамилия и телефон обязательны",
+  "phoneBookSaveError": "Не удалось сохранить контакт, попробуйте снова",
+  "phoneBookSaving": "Сохранение…",
+  "phoneBookSave": "Сохранить контакт",
+  "callViewFileError": "Не удалось открыть файл, попробуйте снова"
 }

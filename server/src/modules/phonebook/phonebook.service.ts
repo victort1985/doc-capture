@@ -128,6 +128,20 @@ export class PhoneBookService {
     await this.contactsRepo.remove(contact);
   }
 
+  /** Streams a contact's photo back, decrypting if needed. */
+  async downloadPhoto(id: number): Promise<{ buffer: Buffer; mimetype: string }> {
+    const contact = await this.contactsRepo.findOne({
+      where: { id },
+      relations: ['photoStorageConnection'],
+    });
+    if (!contact?.photoRelativePath || !contact.photoStorageConnection) {
+      throw new NotFoundException('This contact has no photo');
+    }
+    const adapter = await this.storageService.getAdapter(contact.photoStorageConnection.id);
+    const bytes = await adapter.read(contact.photoRelativePath);
+    return { buffer: bytes, mimetype: 'image/jpeg' };
+  }
+
   /**
    * Writes the contact's JSON data file (always) and photo (if provided)
    * into PhoneBook/ on the editing user's configured storage connection,
@@ -155,6 +169,11 @@ export class PhoneBookService {
     });
 
     const { adapter } = await this.storageService.getAdapterWithMeta(connectionId);
+    // Deliberately not applying encryptAtRest here, unlike calls/document
+    // uploads: phone book entries are directory data (names, phone
+    // numbers, job titles), not the sensitive scanned documents the
+    // encryption setting was built to protect, so reading them back
+    // doesn't go through a decrypt step either (see downloadPhoto below).
 
     const dataRelativePath = `PhoneBook/${baseName}.json`;
     const dataBuffer = Buffer.from(

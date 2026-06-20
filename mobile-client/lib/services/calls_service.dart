@@ -28,6 +28,7 @@ class CallsService {
 
   Future<ServiceCall> create({
     required String place,
+    int? locationId,
     double? latitude,
     double? longitude,
     required CallUrgency urgency,
@@ -39,6 +40,7 @@ class CallsService {
   }) async {
     final json = await _api.post('/calls', {
       'place': place,
+      if (locationId != null) 'locationId': locationId,
       if (latitude != null) 'latitude': latitude,
       if (longitude != null) 'longitude': longitude,
       'urgency': urgencyToJson(urgency),

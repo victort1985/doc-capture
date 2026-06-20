@@ -4,6 +4,7 @@ import '../../app/theme.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/service_call.dart';
 import '../../services/calls_service.dart';
+import '../../widgets/elapsed_timer_text.dart';
 import 'create_call_screen.dart';
 import 'call_detail_screen.dart';
 
@@ -100,7 +101,20 @@ class CallsListScreenState extends State<CallsListScreen> {
                         ),
                       ),
                       title: Text(call.place, style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text(call.contactName),
+                      subtitle: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(child: Text(call.contactName, overflow: TextOverflow.ellipsis)),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.timer_outlined, size: 12, color: Colors.red),
+                          const SizedBox(width: 2),
+                          ElapsedTimerText(
+                            start: call.createdAt,
+                            end: call.status == CallStatus.closed ? call.statusChangedAt : null,
+                            style: const TextStyle(fontSize: 11.5, color: Colors.red, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
                       trailing: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(

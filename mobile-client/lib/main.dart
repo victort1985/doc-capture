@@ -10,6 +10,8 @@ import 'services/file_service.dart';
 import 'services/settings_service.dart';
 import 'services/calls_service.dart';
 import 'services/notifications_service.dart';
+import 'services/locations_service.dart';
+import 'services/phonebook_service.dart';
 import 'store/app_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/root_screen.dart';
@@ -29,6 +31,8 @@ class DocCaptureApp extends StatelessWidget {
     final fileService = FileService(apiService);
     final callsService = CallsService(apiService);
     final notificationsService = NotificationsService(apiService);
+    final locationsService = LocationsService(apiService);
+    final phoneBookService = PhoneBookService(apiService);
 
     return MultiProvider(
       providers: [
@@ -36,6 +40,8 @@ class DocCaptureApp extends StatelessWidget {
         Provider<FileService>.value(value: fileService),
         Provider<CallsService>.value(value: callsService),
         Provider<NotificationsService>.value(value: notificationsService),
+        Provider<LocationsService>.value(value: locationsService),
+        Provider<PhoneBookService>.value(value: phoneBookService),
         ChangeNotifierProvider<AppState>(
           create: (_) => AppState(settingsService, authService, apiService),
         ),

@@ -27,6 +27,27 @@ String statusToJson(CallStatus s) {
   }
 }
 
+class WorkingSession {
+  final int id;
+  final String userName;
+  final DateTime startedAt;
+  final DateTime? endedAt;
+
+  WorkingSession({
+    required this.id,
+    required this.userName,
+    required this.startedAt,
+    this.endedAt,
+  });
+
+  factory WorkingSession.fromJson(Map<String, dynamic> json) => WorkingSession(
+        id: json['id'],
+        userName: json['userName'] ?? '',
+        startedAt: DateTime.parse(json['startedAt']),
+        endedAt: json['endedAt'] != null ? DateTime.parse(json['endedAt']) : null,
+      );
+}
+
 class ServiceCall {
   final int id;
   final String place;
@@ -44,6 +65,7 @@ class ServiceCall {
   final DateTime? statusChangedAt;
   final String? closedByUsername;
   final DateTime createdAt;
+  final List<WorkingSession> workingSessions;
 
   ServiceCall({
     required this.id,
@@ -62,6 +84,7 @@ class ServiceCall {
     this.statusChangedAt,
     this.closedByUsername,
     required this.createdAt,
+    this.workingSessions = const [],
   });
 
   factory ServiceCall.fromJson(Map<String, dynamic> json) => ServiceCall(
@@ -81,6 +104,9 @@ class ServiceCall {
         statusChangedAt: json['statusChangedAt'] != null ? DateTime.parse(json['statusChangedAt']) : null,
         closedByUsername: json['closedBy']?['username'],
         createdAt: DateTime.parse(json['createdAt']),
+        workingSessions: (json['workingSessions'] as List<dynamic>? ?? [])
+            .map((e) => WorkingSession.fromJson(e as Map<String, dynamic>))
+            .toList(),
       );
 }
 

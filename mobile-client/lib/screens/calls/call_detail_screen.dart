@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../app/theme.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/service_call.dart';
 import '../../services/calls_service.dart';
 import '../../services/file_service.dart';
+import '../../services/api_service.dart';
+import '../../widgets/callable_text.dart';
+import '../../widgets/elapsed_timer_text.dart';
 import '../camera_screen.dart';
 
 class CallDetailScreen extends StatefulWidget {
@@ -145,11 +149,52 @@ class _CallDetailScreenState extends State<CallDetailScreen> {
     }
   }
 
-  Widget _infoRow(String label, String value) => Padding(
+  Future<void> _viewNotePhoto(int noteId) async {
+    try {
+      final bytes = await context.read<ApiService>().getBytes('/calls/notes/$noteId/photo');
+      if (!mounted) return;
+      await showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          insetPadding: const EdgeInsets.all(12),
+          child: InteractiveViewer(child: Image.memory(bytes)),
+        ),
+      );
+    } catch (_) {
+      if (mounted) _showSnack(AppLocalizations.of(context)!.callViewFileError);
+    }
+  }
+
+  /// Best-effort: downloads the attachment, writes it to a temp file, and
+  /// asks the OS to open it with whatever app handles PDFs. No PDF viewer
+  /// is bundled in-app — if no app on the device is registered to open
+  /// PDFs (rare but possible), this surfaces an error rather than
+  /// silently doing nothing.
+  Future<void> _viewAttachment(int attachmentId, String filename) async {
+    try {
+      final bytes = await context.read<ApiService>().getBytes('/calls/attachments/$attachmentId/download');
+      final tmp = await File('${Directory.systemTemp.path}/$filename').create(recursive: true);
+      await tmp.writeAsBytes(bytes);
+      final opened = await launchUrl(Uri.file(tmp.path), mode: LaunchMode.externalApplication);
+      if (!opened && mounted) _showSnack(AppLocalizations.of(context)!.callViewFileError);
+    } catch (_) {
+      if (mounted) _showSnack(AppLocalizations.of(context)!.callViewFileError);
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _infoRow(String label, String value, {bool callable = false}) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
         child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
           SizedBox(width: 110, child: Text(label, style: const TextStyle(color: AppColors.inkSoft, fontSize: 12.5))),
-          Expanded(child: Text(value, style: const TextStyle(fontSize: 13.5))),
+          Expanded(
+            child: callable
+                ? CallableText(value, style: const TextStyle(fontSize: 13.5))
+                : Text(value, style: const TextStyle(fontSize: 13.5)),
+          ),
         ]),
       );
 
@@ -191,10 +236,36 @@ class _CallDetailScreenState extends State<CallDetailScreen> {
                                 style: TextStyle(color: _statusColor(call.status), fontSize: 11.5, fontWeight: FontWeight.w600)),
                           ),
                         ]),
+                        const SizedBox(height: 6),
+                        Row(children: [
+                          const Icon(Icons.timer_outlined, size: 14, color: Colors.red),
+                          const SizedBox(width: 4),
+                          ElapsedTimerText(
+                            start: call.createdAt,
+                            end: call.status == CallStatus.closed ? call.statusChangedAt : null,
+                            style: const TextStyle(fontSize: 12.5, color: Colors.red, fontWeight: FontWeight.w600),
+                          ),
+                        ]),
+                        if (call.workingSessions.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Wrap(spacing: 12, runSpacing: 4, children: call.workingSessions.map((s) => Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.person_outline, size: 13, color: AppColors.inkSoft),
+                              const SizedBox(width: 3),
+                              Text('${s.userName}: ', style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
+                              ElapsedTimerText(
+                                start: s.startedAt,
+                                end: s.endedAt,
+                                style: const TextStyle(fontSize: 12, color: AppColors.inkSoft, fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          )).toList()),
+                        ],
                         const SizedBox(height: 10),
                         _infoRow(l10n.callContactName, call.contactName),
                         _infoRow(l10n.callContactPosition, call.contactPosition),
-                        _infoRow(l10n.callContactPhone, call.contactPhone),
+                        _infoRow(l10n.callContactPhone, call.contactPhone, callable: true),
                         _infoRow(l10n.callUrgency, call.urgency == CallUrgency.urgent ? l10n.callUrgent : l10n.callNotUrgent),
                         if (call.unusualDamage) _infoRow(l10n.callUnusualDamage, '✓'),
                         const SizedBox(height: 8),
@@ -236,6 +307,8 @@ class _CallDetailScreenState extends State<CallDetailScreen> {
                           leading: Icon(n.hasPhoto ? Icons.image_outlined : Icons.notes_outlined, size: 20),
                           title: Text(n.text ?? l10n.callPhotoNote),
                           subtitle: Text(n.authorUsername, style: const TextStyle(fontSize: 11.5)),
+                          trailing: n.hasPhoto ? const Icon(Icons.visibility_outlined, size: 18) : null,
+                          onTap: n.hasPhoto ? () => _viewNotePhoto(n.id) : null,
                         ),
                       )),
                   const SizedBox(height: 20),
@@ -249,6 +322,8 @@ class _CallDetailScreenState extends State<CallDetailScreen> {
                           leading: const Icon(Icons.picture_as_pdf_outlined, size: 20),
                           title: Text(a.originalName),
                           subtitle: Text(a.uploadedByUsername, style: const TextStyle(fontSize: 11.5)),
+                          trailing: const Icon(Icons.visibility_outlined, size: 18),
+                          onTap: () => _viewAttachment(a.id, a.generatedName),
                         ),
                       )),
                 ],

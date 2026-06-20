@@ -65,6 +65,8 @@
   "callNew": "New call",
   "callPlace": "Place / organization",
   "callPlaceHint": "e.g. Haifa Salon",
+  "callCityHint": "City…",
+  "callPickContact": "Pick from phone book",
   "callGetLocation": "Get location",
   "callLocationSet": "Location attached",
   "callLocationError": "Could not get location",
@@ -146,5 +148,32 @@
         "type": "String"
       }
     }
-  }
+  },
+  "phoneBookTitle": "Phone book",
+  "phoneBookClients": "Clients",
+  "phoneBookTechnicians": "Technicians",
+  "phoneBookSuppliers": "Suppliers",
+  "phoneBookSearchHint": "Search by name…",
+  "phoneBookEmpty": "No contacts found",
+  "phoneBookDeleteTitle": "Delete contact?",
+  "phoneBookDeleteConfirm": "This cannot be undone.",
+  "delete": "Delete",
+  "phoneBookFieldFirstName": "First name",
+  "phoneBookFieldLastName": "Last name",
+  "phoneBookFieldCity": "City",
+  "phoneBookFieldOrganization": "Organization",
+  "phoneBookFieldPosition": "Position",
+  "phoneBookFieldPhone": "Phone",
+  "phoneBookFieldEmail": "E-mail",
+  "phoneBookFieldNotes": "Notes",
+  "phoneBookEditTitle": "Edit contact",
+  "phoneBookAddTitle": "New contact",
+  "phoneBookTakePhoto": "Take photo",
+  "phoneBookChooseFromGallery": "Choose from gallery",
+  "phoneBookCategory": "Category",
+  "phoneBookValidationError": "First name, last name and phone are required",
+  "phoneBookSaveError": "Could not save the contact, please try again",
+  "phoneBookSaving": "Saving…",
+  "phoneBookSave": "Save contact",
+  "callViewFileError": "Could not open the file, please try again"
 }

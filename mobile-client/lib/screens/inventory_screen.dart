@@ -4,10 +4,13 @@ import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/file_service.dart';
+import '../services/locations_service.dart';
+import '../models/location.dart' as loc;
 import '../store/app_state.dart';
 import 'camera_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/search_picker_field.dart';
 
 /// Everything that existed before the Calls feature (upload / history /
 /// settings) now lives together under the "Переучет" (Inventory) tab —
@@ -137,9 +140,12 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _sectionLabel(l10n.place.toUpperCase()),
-                  TextField(
+                  SearchPickerField<loc.Location>(
                     controller: _placeController,
-                    decoration: InputDecoration(hintText: l10n.placeHint, prefixIcon: const Icon(Icons.storefront_outlined, size: 20)),
+                    hintText: l10n.placeHint,
+                    search: (q) => context.read<LocationsService>().searchLocations(q),
+                    displayString: (l) => l.name,
+                    onSelected: (l) {},
                   ),
                   const SizedBox(height: 18),
                   _sectionLabel(l10n.docType.toUpperCase()),

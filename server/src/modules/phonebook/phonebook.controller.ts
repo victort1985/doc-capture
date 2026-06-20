@@ -8,10 +8,12 @@ import {
   Patch,
   Post,
   Query,
+  Res,
   UseGuards,
   UseInterceptors,
   UploadedFile,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { PhoneBookService } from './phonebook.service';
 import { CreateContactDto } from './dto/create-contact.dto';
@@ -50,6 +52,13 @@ export class PhoneBookController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number) {
     return this.phoneBookService.findOne(id);
+  }
+
+  @Get(':id/photo')
+  async downloadPhoto(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const file = await this.phoneBookService.downloadPhoto(id);
+    res.set({ 'Content-Type': file.mimetype });
+    res.send(file.buffer);
   }
 
   @Post()

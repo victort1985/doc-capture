@@ -4,7 +4,13 @@ import 'package:provider/provider.dart';
 import '../../app/theme.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/service_call.dart';
+import '../../models/location.dart' as loc;
+import '../../models/contact.dart';
 import '../../services/calls_service.dart';
+import '../../services/locations_service.dart';
+import '../../services/phonebook_service.dart';
+import '../../widgets/search_picker_field.dart';
+import '../../widgets/contact_picker_sheet.dart';
 
 class CreateCallScreen extends StatefulWidget {
   const CreateCallScreen({super.key});
@@ -26,6 +32,9 @@ class _CreateCallScreenState extends State<CreateCallScreen> {
   bool _locating = false;
   bool _saving = false;
   String? _error;
+
+  loc.City? _selectedCity;
+  loc.Location? _selectedLocation;
 
   Future<void> _getLocation() async {
     setState(() { _locating = true; _error = null; });
@@ -62,6 +71,7 @@ class _CreateCallScreenState extends State<CreateCallScreen> {
     try {
       await context.read<CallsService>().create(
             place: _place.text.trim(),
+            locationId: _selectedLocation?.id,
             latitude: _lat,
             longitude: _lng,
             urgency: _urgency,
@@ -96,7 +106,28 @@ class _CreateCallScreenState extends State<CreateCallScreen> {
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 24),
           children: [
             _label(l10n.callPlace.toUpperCase()),
-            TextField(controller: _place, decoration: InputDecoration(hintText: l10n.callPlaceHint)),
+            SearchPickerField<loc.City>(
+              hintText: l10n.callCityHint,
+              controller: null,
+              search: (q) => context.read<LocationsService>().searchCities(q),
+              displayString: (c) => c.region != null ? '${c.name} (${c.region!.name})' : c.name,
+              onSelected: (c) => setState(() {
+                _selectedCity = c;
+                _selectedLocation = null;
+              }),
+            ),
+            const SizedBox(height: 8),
+            SearchPickerField<loc.Location>(
+              controller: _place,
+              hintText: l10n.callPlaceHint,
+              search: (q) => context.read<LocationsService>().searchLocations(q, cityId: _selectedCity?.id),
+              displayString: (l) => l.name,
+              onTextChanged: (_) => _selectedLocation = null,
+              onSelected: (l) => setState(() {
+                _selectedLocation = l;
+                _selectedCity ??= l.city;
+              }),
+            ),
             const SizedBox(height: 6),
             Align(
               alignment: AlignmentDirectional.centerStart,
@@ -119,6 +150,23 @@ class _CreateCallScreenState extends State<CreateCallScreen> {
               onSelectionChanged: (s) => setState(() => _urgency = s.first),
             ),
             const SizedBox(height: 18),
+            Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                onPressed: () async {
+                  final contact = await showContactPicker(context, organizationId: _selectedLocation?.id);
+                  if (contact != null) {
+                    setState(() {
+                      _contactName.text = contact.fullName;
+                      _contactPosition.text = contact.position ?? '';
+                      _contactPhone.text = contact.phone;
+                    });
+                  }
+                },
+                icon: const Icon(Icons.contacts_outlined, size: 16),
+                label: Text(l10n.callPickContact),
+              ),
+            ),
             _label(l10n.callContactName.toUpperCase()),
             TextField(controller: _contactName),
             const SizedBox(height: 12),
