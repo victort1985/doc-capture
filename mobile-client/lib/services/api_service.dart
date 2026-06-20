@@ -14,40 +14,21 @@ class ApiService {
   ApiService({String baseUrl = 'https://app.doc-capture.app/api'})
       : _baseUrl = baseUrl,
         _dio = Dio(BaseOptions(baseUrl: baseUrl)) {
-    // Prefer IPv4 when a host resolves to both IPv4 and IPv6 addresses,
-    // and retry the DNS lookup itself a few times before giving up.
-    //
-    // Real-device evidence behind each part of this:
-    // - IPv4 preference: dart:io's HttpClient doesn't implement Happy
-    //   Eyeballs (RFC 8305) — it tries addresses in DNS order without
-    //   interleaving families, so on a network where IPv6 is advertised
-    //   but not actually routable it can fail outright instead of
-    //   falling back to IPv4 the way browsers do (dart-lang/sdk#41451,
-    //   flutter/flutter#116537).
-    // - Retry: a later test on cellular data caught a different,
-    //   sharper failure — InternetAddress.lookup() itself throwing
-    //   SocketException ("No address associated with hostname", errno=7)
-    //   for this exact host, while the phone's own browser resolved the
-    //   identical hostname on the identical connection around the same
-    //   moment without any problem. That same-device, same-network,
-    //   app-vs-browser split is the tell: it points at the OS-level raw
-    //   socket DNS path specifically, not at the domain/zone/tunnel
-    //   (independently confirmed working repeatedly via curl with the
-    //   real Service Token, and via the system browser reaching
-    //   Cloudflare Access). This matches a known, documented class of
-    //   issue for CNAME-based tunnel setups on Android — see
-    //   immich-app/immich#15547 for a near-identical real-world report.
-    //   Retrying with a short delay is the standard mitigation for this
-    //   kind of transient carrier-resolver hiccup.
+    // Resolves via lookupWithRetry (IPv4-preferring, with DNS-over-HTTPS
+    // fallback) AND — critically — manually upgrades the connection to
+    // TLS for https:// requests. That second part isn't optional: a
+    // custom connectionFactory's returned Socket is NOT automatically
+    // wrapped in TLS by HttpClient, something this project shipped
+    // without realizing for several releases (confirmed via real-device
+    // testing surfacing Cloudflare's own "400 The plain HTTP request was
+    // sent to HTTPS port" error). See buildSecureConnectionFactory's own
+    // doc comment in dns_lookup.dart for the full evidence trail and the
+    // earlier IPv4/retry/DoH reasoning, which all remain valid — they
+    // just couldn't have worked while this gap existed underneath them.
     _dio.httpClientAdapter = IOHttpClientAdapter(
       createHttpClient: () {
         final client = HttpClient();
-        client.connectionFactory = (uri, proxyHost, proxyPort) async {
-          final addresses = await lookupWithRetry(uri.host);
-          final ipv4 = addresses.where((a) => a.type == InternetAddressType.IPv4);
-          final target = ipv4.isNotEmpty ? ipv4.first : addresses.first;
-          return Socket.startConnect(target, uri.port);
-        };
+        client.connectionFactory = buildSecureConnectionFactory();
         return client;
       },
     );

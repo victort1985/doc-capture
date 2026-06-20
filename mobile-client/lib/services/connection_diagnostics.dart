@@ -185,8 +185,8 @@ Future<List<DiagnosticStepResult>> runConnectionTest(
     results.add(await _testSocket('IPv6 reachability (${ipv6.first.address})', ipv6.first, port));
   }
 
-  // Mirrors ApiService's own IPv4-preferring connectionFactory, so this
-  // test reflects exactly what the real app would do, not a generic check.
+  // Mirrors ApiService's own connection setup exactly (same shared
+  // helper), so this test reflects exactly what the real app does.
   final dio = Dio(BaseOptions(
     baseUrl: baseUrl,
     connectTimeout: const Duration(seconds: 10),
@@ -195,12 +195,7 @@ Future<List<DiagnosticStepResult>> runConnectionTest(
   dio.httpClientAdapter = IOHttpClientAdapter(
     createHttpClient: () {
       final client = HttpClient();
-      client.connectionFactory = (connUri, proxyHost, proxyPort) async {
-        final addrs = await lookupWithRetry(connUri.host);
-        final v4 = addrs.where((a) => a.type == InternetAddressType.IPv4);
-        final target = v4.isNotEmpty ? v4.first : addrs.first;
-        return Socket.startConnect(target, connUri.port);
-      };
+      client.connectionFactory = buildSecureConnectionFactory();
       return client;
     },
   );
