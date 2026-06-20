@@ -117,6 +117,20 @@ jobs:
         with:
           channel: 'stable'
 
+      # Belt-and-suspenders alongside the pubspec.yaml
+      # flutter: config: enable-swift-package-manager: false setting —
+      # real-world CI evidence showed that setting alone is inconsistently
+      # applied (one run succeeded, the very next failed with the exact
+      # same 'requires a Development Team' error and the exact same SPM
+      # warning still present, with no code change in between). Since
+      # this pipeline runs a completely fresh `flutter create` every
+      # time (ios/ isn't committed), setting it globally BEFORE that
+      # scaffolding step ensures the generated Xcode project is never
+      # SPM-wired in the first place, rather than hoping a later step
+      # un-wires it based on the pubspec setting.
+      - name: Disable Swift Package Manager globally (flutter_secure_storage doesn't support it yet)
+        run: flutter config --no-enable-swift-package-manager
+
       # ios/ isn't committed either (installation-guide.md, section 4.2).
       - name: flutter create (ios scaffolding)
         run: flutter create . --platforms=ios --project-name doc_capture --org com.doccapture
