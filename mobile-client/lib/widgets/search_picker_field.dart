@@ -20,6 +20,7 @@ class SearchPickerField<T> extends StatefulWidget {
     this.initialText,
     this.enabled = true,
     this.controller,
+    this.onTextChanged,
   });
 
   final Future<List<T>> Function(String query) search;
