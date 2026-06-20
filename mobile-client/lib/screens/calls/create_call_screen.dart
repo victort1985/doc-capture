@@ -122,6 +122,7 @@ class _CreateCallScreenState extends State<CreateCallScreen> {
               hintText: l10n.callPlaceHint,
               search: (q) => context.read<LocationsService>().searchLocations(q, cityId: _selectedCity?.id),
               displayString: (l) => l.name,
+              listLabel: (l) => l.city != null ? '${l.name} (${l.city!.name})' : l.name,
               onTextChanged: (_) => _selectedLocation = null,
               onSelected: (l) => setState(() {
                 _selectedLocation = l;

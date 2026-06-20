@@ -145,6 +145,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                     hintText: l10n.placeHint,
                     search: (q) => context.read<LocationsService>().searchLocations(q),
                     displayString: (l) => l.name,
+                    listLabel: (l) => l.city != null ? '${l.name} (${l.city!.name})' : l.name,
                     onSelected: (l) {},
                   ),
                   const SizedBox(height: 18),

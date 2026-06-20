@@ -24,7 +24,15 @@ class SearchPickerField<T> extends StatefulWidget {
   });
 
   final Future<List<T>> Function(String query) search;
+  /// What gets written into the field once an item is selected — keep
+  /// this the "clean" value (e.g. just the location name), since it's
+  /// also what gets submitted as the actual place/organization text.
   final String Function(T) displayString;
+  /// What's shown for each row in the results list — defaults to
+  /// [displayString], but pass a more detailed version (e.g. with the
+  /// city in parentheses) when results can otherwise look identical,
+  /// like two locations sharing a name in different cities.
+  final String Function(T)? listLabel;
   final void Function(T) onSelected;
   final String? hintText;
   final String? initialText;
@@ -126,7 +134,7 @@ class _SearchPickerFieldState<T> extends State<SearchPickerField<T>> {
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, i) => ListTile(
                 dense: true,
-                title: Text(widget.displayString(_results[i])),
+                title: Text((widget.listLabel ?? widget.displayString)(_results[i])),
                 onTap: () => _select(_results[i]),
               ),
             ),

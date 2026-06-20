@@ -160,6 +160,7 @@ class _ContactEditScreenState extends State<ContactEditScreen> {
               controller: _orgField,
               search: (q) => context.read<LocationsService>().searchLocations(q, cityId: _selectedCity?.id),
               displayString: (l) => l.name,
+              listLabel: (l) => l.city != null ? '${l.name} (${l.city!.name})' : l.name,
               onSelected: (l) => setState(() => _selectedOrganization = l),
             ),
             _label(l10n.phoneBookFieldPosition.toUpperCase()),
