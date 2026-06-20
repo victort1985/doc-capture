@@ -62,7 +62,16 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
 
   Future<void> _upload(FileService fileService) async {
     final l10n = AppLocalizations.of(context)!;
-    if (_selectedFiles.isEmpty || _placeController.text.trim().isEmpty) return;
+    if (_selectedFiles.isEmpty || _placeController.text.trim().isEmpty) {
+      // Was a silent no-op before — tapping Upload with a required field
+      // empty looked exactly like a broken button (nothing visibly
+      // happened). Surface why instead of failing silently.
+      setState(() {
+        _statusMessage = l10n.uploadMissingFields;
+        _statusIsError = true;
+      });
+      return;
+    }
 
     setState(() { _uploading = true; _statusMessage = l10n.uploadInProgress; _statusIsError = false; });
     try {

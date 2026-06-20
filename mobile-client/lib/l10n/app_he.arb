@@ -31,6 +31,7 @@
   "uploadInProgress": "מעלה…",
   "uploadSuccess": "הקבצים הועלו בהצלחה",
   "uploadError": "ההעלאה נכשלה, נסה שוב",
+  "uploadMissingFields": "הוסף לפחות תמונה אחת ומלא את שדה המקום לפני ההעלאה",
   "historyTitle": "היסטוריה",
   "historyEmpty": "אין עדיין קבצים שהועלו",
   "settingsTitle": "הגדרות",

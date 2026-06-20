@@ -31,6 +31,7 @@
   "uploadInProgress": "Загрузка…",
   "uploadSuccess": "Файлы успешно загружены",
   "uploadError": "Ошибка загрузки, попробуйте ещё раз",
+  "uploadMissingFields": "Добавьте хотя бы одно фото и заполните поле «Место» перед загрузкой",
   "historyTitle": "История",
   "historyEmpty": "Пока нет загруженных файлов",
   "settingsTitle": "Настройки",
