@@ -76,6 +76,15 @@ export class StorageService {
     });
   }
 
+  async testConnection(connectionId: number): Promise<{ ok: boolean; message: string }> {
+    const adapter = await this.getAdapter(connectionId);
+    try {
+      return await adapter.testConnection();
+    } catch (err) {
+      return { ok: false, message: (err as Error).message };
+    }
+  }
+
   /** Same as getAdapter(), plus the connection's encryptAtRest preference, in a single lookup. */
   async getAdapterWithMeta(
     connectionId: number,

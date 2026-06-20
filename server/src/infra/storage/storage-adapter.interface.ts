@@ -9,6 +9,15 @@ export interface StorageAdapter {
   exists(relativePath: string): Promise<boolean>;
   /** Remove a file at the given relative path. */
   remove(relativePath: string): Promise<void>;
+  /**
+   * Verifies the connection actually works right now: for remote adapters,
+   * a real auth+connect to the host (not just "is a file present" — a
+   * connection can fail for reasons unrelated to any specific path, like
+   * wrong credentials or an unreachable host). Used by the admin panel's
+   * per-row "Test" button so a broken connection is caught before it's
+   * relied on for a real upload.
+   */
+  testConnection(): Promise<{ ok: boolean; message: string }>;
 }
 
 export interface StorageConnectionConfig {

@@ -94,4 +94,18 @@ export class FtpStorageAdapter implements StorageAdapter {
       `FTP remove on ${this.config.host}`,
     );
   }
+
+  async testConnection(): Promise<{ ok: boolean; message: string }> {
+    try {
+      await withTimeout(
+        this.withClient(async (client) => {
+          await client.cd(this.config.basePath);
+        }),
+        `FTP test-connection to ${this.config.host}`,
+      );
+      return { ok: true, message: `Connected to ${this.config.host}:${this.config.port || 21}` };
+    } catch (err) {
+      return { ok: false, message: (err as Error).message };
+    }
+  }
 }

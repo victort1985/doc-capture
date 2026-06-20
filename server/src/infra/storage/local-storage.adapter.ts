@@ -38,4 +38,14 @@ export class LocalStorageAdapter implements StorageAdapter {
   async remove(relativePath: string): Promise<void> {
     await fs.rm(this.resolve(relativePath), { force: true });
   }
+
+  async testConnection(): Promise<{ ok: boolean; message: string }> {
+    try {
+      await fs.mkdir(this.config.basePath, { recursive: true });
+      await fs.access(this.config.basePath, fs.constants.W_OK);
+      return { ok: true, message: `Writable: ${this.config.basePath}` };
+    } catch (err) {
+      return { ok: false, message: (err as Error).message };
+    }
+  }
 }

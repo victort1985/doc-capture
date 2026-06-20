@@ -47,6 +47,11 @@ export class StorageController {
     return this.storageService.removeConnection(id);
   }
 
+  @Post('connections/:id/test')
+  testConnection(@Param('id', ParseIntPipe) id: number) {
+    return this.storageService.testConnection(id);
+  }
+
   @Get('client-settings/:userId')
   getClientSettings(@Param('userId', ParseIntPipe) userId: number) {
     return this.storageService.getClientSettings(userId);

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, X, Trash2, Pencil, HardDrive, Save } from 'lucide-react';
+import { Plus, X, Trash2, Pencil, HardDrive, Save, Wifi, Loader2, Check, AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
 interface Connection {
@@ -20,6 +20,7 @@ export default function StoragePage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [testResults, setTestResults] = useState<Record<number, { ok: boolean; message: string } | 'pending'>>({});
 
   async function load() {
     try {
@@ -94,6 +95,21 @@ export default function StoragePage() {
     if (!confirm('Delete this storage connection?')) return;
     await apiFetch(`/storage/connections/${id}`, { method: 'DELETE' });
     load();
+  }
+
+  async function testConnection(id: number) {
+    setTestResults((prev) => ({ ...prev, [id]: 'pending' }));
+    try {
+      const result = await apiFetch<{ ok: boolean; message: string }>(`/storage/connections/${id}/test`, {
+        method: 'POST',
+      });
+      setTestResults((prev) => ({ ...prev, [id]: result }));
+    } catch (err) {
+      setTestResults((prev) => ({
+        ...prev,
+        [id]: { ok: false, message: err instanceof Error ? err.message : 'Test failed' },
+      }));
+    }
   }
 
   const needsNetwork = form.type !== 'local';
@@ -213,24 +229,56 @@ export default function StoragePage() {
               </tr>
             </thead>
             <tbody>
-              {connections.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.name}</td>
-                  <td><span className="stamp-badge neutral">{c.type}</span></td>
-                  <td className="mono">{c.host ? `${c.host}:${c.port ?? ''}` : '—'}</td>
-                  <td className="mono">{c.basePath}</td>
-                  <td>
-                    <div className="row-actions">
-                      <button className="ghost" onClick={() => openEditForm(c)} title="Edit">
-                        <Pencil size={15} />
-                      </button>
-                      <button className="ghost" onClick={() => removeConnection(c.id)} title="Delete" style={{ color: 'var(--danger)' }}>
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {connections.map((c) => {
+                const result = testResults[c.id];
+                return (
+                  <tr key={c.id}>
+                    <td>
+                      {c.name}
+                      {result && result !== 'pending' && (
+                        <div
+                          style={{
+                            marginTop: 4,
+                            fontSize: 12,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            color: result.ok ? 'var(--success, #2e7d32)' : 'var(--danger)',
+                          }}
+                        >
+                          {result.ok ? <Check size={13} /> : <AlertTriangle size={13} />}
+                          <span>{result.message}</span>
+                        </div>
+                      )}
+                    </td>
+                    <td><span className="stamp-badge neutral">{c.type}</span></td>
+                    <td className="mono">{c.host ? `${c.host}:${c.port ?? ''}` : '—'}</td>
+                    <td className="mono">{c.basePath}</td>
+                    <td>
+                      <div className="row-actions">
+                        <button
+                          className="ghost"
+                          onClick={() => testConnection(c.id)}
+                          disabled={result === 'pending'}
+                          title="Test connection"
+                        >
+                          {result === 'pending' ? (
+                            <Loader2 size={15} className="spin" />
+                          ) : (
+                            <Wifi size={15} />
+                          )}
+                        </button>
+                        <button className="ghost" onClick={() => openEditForm(c)} title="Edit">
+                          <Pencil size={15} />
+                        </button>
+                        <button className="ghost" onClick={() => removeConnection(c.id)} title="Delete" style={{ color: 'var(--danger)' }}>
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

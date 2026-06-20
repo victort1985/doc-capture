@@ -359,3 +359,11 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
   .copyright-footer { position: static; margin-top: 24px; opacity: 0.5; }
 }
 
+.spin {
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+

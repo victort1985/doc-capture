@@ -73,4 +73,13 @@ export class SynologyStorageAdapter implements StorageAdapter {
       }
     }
   }
+
+  async testConnection(): Promise<{ ok: boolean; message: string }> {
+    try {
+      await withTimeout(this.ensureDir(this.config.basePath), `WebDAV test-connection to ${this.config.host}`);
+      return { ok: true, message: `Connected to ${this.config.host}` };
+    } catch (err) {
+      return { ok: false, message: (err as Error).message };
+    }
+  }
 }
