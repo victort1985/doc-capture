@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
@@ -16,11 +15,6 @@ class FileService {
   Future<List<File>> pickFromGallery() async {
     final picked = await _imagePicker.pickMultiImage();
     return picked.map((x) => File(x.path)).toList();
-  }
-
-  Future<File?> captureFromCamera(CameraController controller) async {
-    final shot = await controller.takePicture();
-    return File(shot.path);
   }
 
   Future<List<File>> pickFromFileManager() async {

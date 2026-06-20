@@ -57,6 +57,7 @@
   "cameraUnavailable": "На этом устройстве не найдена камера.",
   "cameraInitFailed": "Не удалось запустить камеру. Попробуйте снова или выберите файлы.",
   "cameraDone": "Использовать фото",
+  "cameraAddAnother": "Добавить ещё",
   "cameraGoBack": "Назад",
   "inventoryTitle": "Переучет",
   "callsTitle": "Вызовы",

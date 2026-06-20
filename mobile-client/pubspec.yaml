@@ -25,7 +25,6 @@ dependencies:
   provider: ^6.1.2
 
   # Camera & file pickers
-  camera: ^0.11.0
   image_picker: ^1.1.2
   file_picker: ^8.0.6
 

@@ -57,6 +57,7 @@
   "cameraUnavailable": "לא נמצאה מצלמה במכשיר זה.",
   "cameraInitFailed": "לא ניתן להפעיל את המצלמה. נסה שוב, או בחר קבצים במקום.",
   "cameraDone": "השתמש בתמונות",
+  "cameraAddAnother": "הוסף עוד",
   "cameraGoBack": "חזור",
   "inventoryTitle": "ספירת מלאי",
   "callsTitle": "קריאת שירות",
