@@ -15,6 +15,7 @@ class SearchPickerField<T> extends StatefulWidget {
     super.key,
     required this.search,
     required this.displayString,
+    this.listLabel,
     required this.onSelected,
     this.hintText,
     this.initialText,
