@@ -1,0 +1,85 @@
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { LocationsService } from './locations.service';
+import { CreateRegionDto } from './dto/create-region.dto';
+import { CreateCityDto } from './dto/create-city.dto';
+import { CreateLocationDto } from './dto/create-location.dto';
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
+
+@Controller('locations')
+@UseGuards(JwtAuthGuard)
+export class LocationsController {
+  constructor(private readonly locationsService: LocationsService) {}
+
+  // --- Regions ---
+
+  @Get('regions')
+  findAllRegions() {
+    return this.locationsService.findAllRegions();
+  }
+
+  @Post('regions')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  createRegion(@Body() dto: CreateRegionDto) {
+    return this.locationsService.createRegion(dto);
+  }
+
+  @Delete('regions/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  deleteRegion(@Param('id', ParseIntPipe) id: number) {
+    return this.locationsService.deleteRegion(id);
+  }
+
+  // --- Cities ---
+
+  /** Search-as-you-type: ?q=<prefix>&regionId=<id> */
+  @Get('cities')
+  findCities(@Query('q') q?: string, @Query('regionId') regionId?: string) {
+    return this.locationsService.findCities(q, regionId ? parseInt(regionId, 10) : undefined);
+  }
+
+  @Post('cities')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  createCity(@Body() dto: CreateCityDto) {
+    return this.locationsService.createCity(dto);
+  }
+
+  @Delete('cities/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  deleteCity(@Param('id', ParseIntPipe) id: number) {
+    return this.locationsService.deleteCity(id);
+  }
+
+  // --- Locations ("place" / "organization") ---
+
+  /** Search-as-you-type: ?q=<prefix>&cityId=<id> */
+  @Get()
+  findLocations(@Query('q') q?: string, @Query('cityId') cityId?: string) {
+    return this.locationsService.findLocations(q, cityId ? parseInt(cityId, 10) : undefined);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.locationsService.findLocationById(id);
+  }
+
+  @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  createLocation(@Body() dto: CreateLocationDto) {
+    return this.locationsService.createLocation(dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  deleteLocation(@Param('id', ParseIntPipe) id: number) {
+    return this.locationsService.deleteLocation(id);
+  }
+}

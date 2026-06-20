@@ -47,23 +47,42 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       const payload = this.jwtService.verify(token);
       (client.data as any).userId = payload.sub;
       (client.data as any).username = payload.username;
+      // Per-user room so call-created notifications can be targeted to
+      // specific technicians (by region) instead of broadcast to everyone.
+      client.join(`user:${payload.sub}`);
     } catch {
       client.disconnect(true);
     }
   }
 
   handleDisconnect(_client: Socket): void {
-    // Nothing to clean up — no per-connection server-side state is kept.
+    // Nothing to clean up — no per-connection server-side state is kept
+    // (Socket.IO removes room membership automatically on disconnect).
   }
 
-  broadcastCallCreated(call: ServiceCall): void {
-    this.emit('call:created', {
+  /**
+   * Only technicians covering the call's region, plus anyone marked
+   * "Глобальный", are notified of a brand-new call — everyone else only
+   * finds out once they open the Calls list. Status changes, notes, and
+   * attachments on a call already in progress stay broadcast to everyone,
+   * since by that point someone outside the call's region may well have
+   * picked it up or be watching it (e.g. an admin).
+   */
+  broadcastCallCreated(call: ServiceCall, targetUserIds: number[]): void {
+    const payload = {
       id: call.id,
       place: call.place,
       urgency: call.urgency,
       unusualDamage: call.unusualDamage,
       createdBy: call.createdBy?.username,
-    });
+    };
+    if (!this.server) {
+      this.logger.warn('Tried to emit "call:created" before the WS server was ready');
+      return;
+    }
+    for (const userId of targetUserIds) {
+      this.server.to(`user:${userId}`).emit('call:created', payload);
+    }
   }
 
   broadcastStatusChanged(call: ServiceCall, previousStatus: CallStatus): void {

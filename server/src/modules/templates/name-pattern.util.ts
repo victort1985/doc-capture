@@ -25,3 +25,29 @@ export function resolveNamePattern(pattern: string, ctx: NamePatternContext): st
 export function sanitize(value: string): string {
   return value.replace(/[^a-zA-Z0-9-_]+/g, '_');
 }
+
+export interface PhoneBookNamePatternContext {
+  organization: string;
+  city: string;
+  position: string;
+  firstName: string;
+  lastName: string;
+  year: number;
+}
+
+export const DEFAULT_PHONEBOOK_PATTERN =
+  '{organization}_{city}_{position}_{firstName}_{lastName}_{year}';
+
+/** Filename for a phone book contact's stored record — admin-configurable pattern (see Templates). */
+export function resolvePhoneBookNamePattern(
+  pattern: string,
+  ctx: PhoneBookNamePatternContext,
+): string {
+  return pattern
+    .replace('{organization}', sanitize(ctx.organization || 'unknown'))
+    .replace('{city}', sanitize(ctx.city || 'unknown'))
+    .replace('{position}', sanitize(ctx.position || 'unknown'))
+    .replace('{firstName}', sanitize(ctx.firstName || 'unknown'))
+    .replace('{lastName}', sanitize(ctx.lastName || 'unknown'))
+    .replace('{year}', String(ctx.year));
+}

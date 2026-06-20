@@ -11,6 +11,11 @@ export enum TemplateAppliesTo {
   DOCUMENT = 'document',
   PHOTO = 'photo',
   BOTH = 'both',
+  // Global (no per-user variant) filename pattern for phone book contact
+  // files — separate placeholder set ({organization} {city} {position}
+  // {firstName} {lastName} {year}), so it doesn't mix with the
+  // document/photo upload templates above.
+  PHONEBOOK = 'phonebook',
 }
 
 @Entity('file_templates')

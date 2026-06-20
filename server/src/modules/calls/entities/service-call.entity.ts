@@ -3,10 +3,13 @@ import {
   CreateDateColumn,
   Entity,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
+import { Location } from '../../locations/entities/location.entity';
+import { CallWorkingSession } from './call-working-session.entity';
 
 export enum CallUrgency {
   URGENT = 'urgent',
@@ -24,9 +27,20 @@ export class ServiceCall {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // Place / organization name (spec field 1).
+  // Place / organization name (spec field 1). Kept as a plain string for
+  // backward compatibility with existing calls and any code that reads
+  // it directly (folder naming, exports, etc.) — when `location` below
+  // is set, this is kept in sync with `location.name` server-side.
   @Column()
   place: string;
+
+  // Optional FK into the shared locations directory (added later —
+  // nullable so existing calls created before this feature still work).
+  // The same Location entity also doubles as "Организация" on phone
+  // book contacts, so this is what links a call to "people who work
+  // here" for contact lookup.
+  @ManyToOne(() => Location, { nullable: true, onDelete: 'SET NULL' })
+  location?: Location;
 
   // Optional geodata (spec field 2) — nullable, the mobile client only
   // sends these if the person actually taps "get location".
@@ -86,6 +100,12 @@ export class ServiceCall {
 
   @Column({ default: false })
   storageFolderFinalized: boolean;
+
+  // The red "time since opened" timer is just createdAt below, computed
+  // client-side. Per-user "in progress" timers (spec item 8) are tracked
+  // separately, one row per press — see CallWorkingSession.
+  @OneToMany(() => CallWorkingSession, (session) => session.call)
+  workingSessions: CallWorkingSession[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -6,10 +6,12 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CallsService } from './calls.service';
 import { CreateCallDto } from './dto/create-call.dto';
@@ -79,5 +81,27 @@ export class CallsController {
       throw new BadRequestException('No file provided');
     }
     return this.callsService.addAttachment(id, user.id, file);
+  }
+
+  // --- Viewing already-added photos/documents on a call (spec item 1) ---
+
+  @Get('notes/:noteId/photo')
+  async downloadNotePhoto(@Param('noteId', ParseIntPipe) noteId: number, @Res() res: Response) {
+    const file = await this.callsService.downloadNotePhoto(noteId);
+    res.set({
+      'Content-Type': file.mimetype,
+      'Content-Disposition': `inline; filename="${file.filename.replace(/"/g, '')}"`,
+    });
+    res.send(file.buffer);
+  }
+
+  @Get('attachments/:attachmentId/download')
+  async downloadAttachment(@Param('attachmentId', ParseIntPipe) attachmentId: number, @Res() res: Response) {
+    const file = await this.callsService.downloadAttachment(attachmentId);
+    res.set({
+      'Content-Type': file.mimetype,
+      'Content-Disposition': `inline; filename="${file.filename.replace(/"/g, '')}"`,
+    });
+    res.send(file.buffer);
   }
 }

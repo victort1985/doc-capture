@@ -1,17 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { ServiceCall, CallStatus } from './entities/service-call.entity';
 import { CallNote } from './entities/call-note.entity';
 import { CallAttachment } from './entities/call-attachment.entity';
+import { CallWorkingSession } from './entities/call-working-session.entity';
 import { CreateCallDto } from './dto/create-call.dto';
 import { StorageService } from '../storage/storage.service';
 import { UsersService } from '../users/users.service';
 import { processDocument } from '../files/processors/document.processor';
 import { processPhoto } from '../files/processors/photo.processor';
-import { encryptBuffer } from '../../common/crypto/encryption.util';
+import { encryptBuffer, decryptBuffer } from '../../common/crypto/encryption.util';
 import { sanitize } from '../templates/name-pattern.util';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { LocationsService } from '../locations/locations.service';
 
 @Injectable()
 export class CallsService {
@@ -19,14 +21,28 @@ export class CallsService {
     @InjectRepository(ServiceCall) private readonly callsRepo: Repository<ServiceCall>,
     @InjectRepository(CallNote) private readonly notesRepo: Repository<CallNote>,
     @InjectRepository(CallAttachment) private readonly attachmentsRepo: Repository<CallAttachment>,
+    @InjectRepository(CallWorkingSession) private readonly workingSessionsRepo: Repository<CallWorkingSession>,
     private readonly storageService: StorageService,
     private readonly usersService: UsersService,
     private readonly notifications: NotificationsGateway,
+    private readonly locationsService: LocationsService,
   ) {}
 
   async create(userId: number, dto: CreateCallDto): Promise<ServiceCall> {
+    // When a Location was picked from the directory, trust its name over
+    // whatever free-text the client also sent for `place` — keeps the two
+    // in sync rather than risking them drifting apart.
+    let place = dto.place;
+    let location: { id: number } | undefined;
+    if (dto.locationId) {
+      const found = await this.locationsService.findLocationById(dto.locationId);
+      place = found.name;
+      location = { id: found.id };
+    }
+
     let call = this.callsRepo.create({
-      place: dto.place,
+      place,
+      location: location as any,
       latitude: dto.latitude,
       longitude: dto.longitude,
       urgency: dto.urgency,
@@ -44,11 +60,21 @@ export class CallsService {
     // one, then saved back — see finalizeFolderOnClose() for the rename
     // that happens when the call is closed.
     const date = call.createdAt.toISOString().slice(0, 10);
-    call.storageFolderName = `calls/${call.id}_${date}_${sanitize(dto.place)}`;
+    call.storageFolderName = `calls/${call.id}_${date}_${sanitize(place)}`;
     call = await this.callsRepo.save(call);
 
     const full = await this.findOne(call.id);
-    this.notifications.broadcastCallCreated(full);
+
+    // Route the "new call" notification: technicians covering the call's
+    // region, plus anyone global. If the call has no resolvable region
+    // (free-text place not yet in the directory), fall back to notifying
+    // everyone rather than silently notifying no one.
+    const regionId = full.location?.city?.region?.id;
+    const targetUsers = regionId
+      ? await this.usersService.findUsersForRegion(regionId)
+      : await this.usersService.findAll();
+    this.notifications.broadcastCallCreated(full, targetUsers.map((u) => u.id));
+
     return full;
   }
 
@@ -57,7 +83,7 @@ export class CallsService {
     // authenticated user can see and pick up, per spec ("when one of the
     // users selects a call").
     return this.callsRepo.find({
-      relations: ['createdBy', 'statusChangedBy', 'closedBy'],
+      relations: ['createdBy', 'statusChangedBy', 'closedBy', 'location', 'location.city', 'location.city.region', 'workingSessions', 'workingSessions.user'],
       order: { createdAt: 'DESC' },
     });
   }
@@ -65,7 +91,7 @@ export class CallsService {
   async findOne(id: number): Promise<ServiceCall> {
     const call = await this.callsRepo.findOne({
       where: { id },
-      relations: ['createdBy', 'statusChangedBy', 'closedBy'],
+      relations: ['createdBy', 'statusChangedBy', 'closedBy', 'location', 'location.city', 'location.city.region', 'workingSessions', 'workingSessions.user'],
     });
     if (!call) throw new NotFoundException('Call not found');
     return call;
@@ -87,6 +113,37 @@ export class CallsService {
     });
   }
 
+  /** Streams a note's photo back (spec item 1: view already-added photos on an open call). */
+  async downloadNotePhoto(noteId: number): Promise<{ buffer: Buffer; filename: string; mimetype: string }> {
+    const note = await this.notesRepo.findOne({
+      where: { id: noteId },
+      relations: ['photoStorageConnection'],
+    });
+    if (!note?.photoRelativePath || !note.photoStorageConnection) {
+      throw new NotFoundException('This note has no photo');
+    }
+    const adapter = await this.storageService.getAdapter(note.photoStorageConnection.id);
+    let bytes = await adapter.read(note.photoRelativePath);
+    if (note.photoEncrypted) bytes = decryptBuffer(bytes);
+    return { buffer: bytes, filename: note.photoGeneratedName || 'photo.jpg', mimetype: 'image/jpeg' };
+  }
+
+  /** Streams an attachment's file back (spec item 1: view already-added documents on an open call). */
+  async downloadAttachment(attachmentId: number): Promise<{ buffer: Buffer; filename: string; mimetype: string }> {
+    const attachment = await this.attachmentsRepo.findOne({
+      where: { id: attachmentId },
+      relations: ['storageConnection'],
+    });
+    if (!attachment) throw new NotFoundException('Attachment not found');
+    if (!attachment.relativePath || !attachment.storageConnection) {
+      throw new BadRequestException('This attachment has no recorded storage path and can no longer be read back.');
+    }
+    const adapter = await this.storageService.getAdapter(attachment.storageConnection.id);
+    let bytes = await adapter.read(attachment.relativePath);
+    if (attachment.encrypted) bytes = decryptBuffer(bytes);
+    return { buffer: bytes, filename: attachment.originalName, mimetype: 'application/pdf' };
+  }
+
   async updateStatus(
     callId: number,
     userId: number,
@@ -100,15 +157,52 @@ export class CallsService {
 
     let folderRenameWarning: string | undefined;
 
+    if (status === CallStatus.IN_PROGRESS) {
+      // Each user who presses "In progress" gets their own timer (spec
+      // item 8) — but pressing it again while already active for this
+      // same user shouldn't start a second concurrent one for them.
+      const alreadyActive = await this.workingSessionsRepo.findOne({
+        where: { call: { id: callId }, user: { id: userId }, endedAt: IsNull() },
+      });
+      if (!alreadyActive) {
+        const user = await this.usersService.findById(userId);
+        await this.workingSessionsRepo.save(
+          this.workingSessionsRepo.create({
+            call: { id: callId } as any,
+            user: { id: userId } as any,
+            userName: [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username,
+            startedAt: new Date(),
+          }),
+        );
+      }
+    }
+
     if (status === CallStatus.CLOSED && !call.storageFolderFinalized) {
       call.closedBy = { id: userId } as any;
       folderRenameWarning = await this.finalizeFolderOnClose(call, userId);
+    }
+
+    if (status === CallStatus.CLOSED) {
+      // Stop every still-running timer, not just the closing user's own —
+      // anyone else who pressed "In progress" and never closed it out
+      // themselves still gets their elapsed time finalized here.
+      await this.workingSessionsRepo.update(
+        { call: { id: callId }, endedAt: IsNull() },
+        { endedAt: new Date() },
+      );
     }
 
     const saved = await this.callsRepo.save(call);
     const full = await this.findOne(saved.id);
     this.notifications.broadcastStatusChanged(full, previousStatus);
     return { call: full, folderRenameWarning };
+  }
+
+  findWorkingSessions(callId: number): Promise<CallWorkingSession[]> {
+    return this.workingSessionsRepo.find({
+      where: { call: { id: callId } },
+      order: { startedAt: 'ASC' },
+    });
   }
 
   /**

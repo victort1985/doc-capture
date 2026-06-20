@@ -85,6 +85,12 @@ export class TemplatesService {
     return candidates[0];
   }
 
+  /** Single global pattern (no per-user variant) for phone book contact filenames. */
+  async findPhoneBookTemplate(): Promise<FileTemplate | undefined> {
+    const tpl = await this.templatesRepo.findOne({ where: { appliesTo: TemplateAppliesTo.PHONEBOOK } });
+    return tpl ?? undefined;
+  }
+
   // ---- File log (admin view, with basic filters) ----
 
   findFileRecords(filters: { userId?: number; type?: string; from?: string; to?: string }) {
