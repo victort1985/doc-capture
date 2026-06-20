@@ -8,6 +8,7 @@ import StoragePage from './pages/StoragePage';
 import StorageRoutingPage from './pages/StorageRoutingPage';
 import TemplatesPage from './pages/TemplatesPage';
 import FilesPage from './pages/FilesPage';
+import LocationsPage from './pages/LocationsPage';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
           }
         >
           <Route path="/users" element={<UsersPage />} />
+          <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />
           <Route path="/storage-routing" element={<StorageRoutingPage />} />
           <Route path="/templates" element={<TemplatesPage />} />

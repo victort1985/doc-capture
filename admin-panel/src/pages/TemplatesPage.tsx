@@ -6,11 +6,13 @@ interface Template {
   id: number;
   name: string;
   pattern: string;
-  appliesTo: 'document' | 'photo' | 'both';
+  appliesTo: 'document' | 'photo' | 'both' | 'phonebook';
 }
 
 const EMPTY_FORM = { name: '', pattern: '{date}_{place}_{docType}_{counter}', appliesTo: 'both' };
 const PLACEHOLDERS = ['{date}', '{time}', '{place}', '{username}', '{docType}', '{counter}', '{uuid}'];
+const PHONEBOOK_PLACEHOLDERS = ['{organization}', '{city}', '{position}', '{firstName}', '{lastName}', '{year}'];
+const PHONEBOOK_DEFAULT_PATTERN = '{organization}_{city}_{position}_{firstName}_{lastName}_{year}';
 
 export default function TemplatesPage() {
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -70,10 +72,30 @@ export default function TemplatesPage() {
             </div>
             <div>
               <label>Applies to</label>
-              <select value={form.appliesTo} onChange={(e) => setForm({ ...form, appliesTo: e.target.value })}>
+              <select
+                value={form.appliesTo}
+                onChange={(e) => {
+                  const appliesTo = e.target.value;
+                  setForm({
+                    ...form,
+                    appliesTo,
+                    // Switching into/out of "Phone book" swaps the default
+                    // pattern too, since the placeholder sets don't mix —
+                    // only auto-replace if the field still has the default
+                    // value for the OTHER kind (don't clobber a custom edit).
+                    pattern:
+                      appliesTo === 'phonebook' && form.pattern === EMPTY_FORM.pattern
+                        ? PHONEBOOK_DEFAULT_PATTERN
+                        : appliesTo !== 'phonebook' && form.pattern === PHONEBOOK_DEFAULT_PATTERN
+                          ? EMPTY_FORM.pattern
+                          : form.pattern,
+                  });
+                }}
+              >
                 <option value="both">Both</option>
                 <option value="document">Document</option>
                 <option value="photo">Photo</option>
+                <option value="phonebook">Phone book</option>
               </select>
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
@@ -85,7 +107,7 @@ export default function TemplatesPage() {
                 required
               />
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 8, fontFamily: 'var(--font-mono)' }}>
-                {PLACEHOLDERS.join('   ')}
+                {(form.appliesTo === 'phonebook' ? PHONEBOOK_PLACEHOLDERS : PLACEHOLDERS).join('   ')}
               </p>
             </div>
           </div>
