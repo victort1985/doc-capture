@@ -52,7 +52,7 @@ export class PhoneBookService {
       qb.andWhere('organization.id = :organizationId', { organizationId: filters.organizationId });
     }
     if (filters.tenantId != null) {
-      qb.andWhere('contact.tenantId = :tenantId', { tenantId: filters.tenantId });
+      qb.andWhere('(contact.tenantId = :tenantId OR contact.tenantId IS NULL)', { tenantId: filters.tenantId });
     }
     if (filters.q?.trim()) {
       qb.andWhere('(contact.firstName ILIKE :q OR contact.lastName ILIKE :q)', {
@@ -62,14 +62,14 @@ export class PhoneBookService {
     return qb.getMany();
   }
 
-  /** @param tenantId If provided, 404s unless the contact belongs to this tenant (same out-of-scope-looks-like-not-found pattern as Users/Locations). */
+  /** @param tenantId If provided, 404s unless the contact belongs to this tenant OR has no tenant at all (legacy contact, treated as shared — same reasoning as Location). */
   async findOne(id: number, tenantId?: number | null): Promise<PhoneBookContact> {
     const contact = await this.contactsRepo.findOne({
       where: { id },
       relations: ['city', 'city.region', 'organization', 'createdBy', 'tenant'],
     });
     if (!contact) throw new NotFoundException('Contact not found');
-    if (tenantId != null && contact.tenant?.id !== tenantId) {
+    if (tenantId != null && contact.tenant != null && contact.tenant.id !== tenantId) {
       throw new NotFoundException('Contact not found');
     }
     return contact;
@@ -146,13 +146,13 @@ export class PhoneBookService {
     await this.contactsRepo.remove(contact);
   }
 
-  /** Streams a contact's photo back. @param tenantId same out-of-scope-is-404 pattern as the other methods. */
+  /** Streams a contact's photo back. @param tenantId same out-of-scope-is-404 pattern as the other methods (null-tenant contacts are treated as shared, not off-limits). */
   async downloadPhoto(id: number, tenantId?: number | null): Promise<{ buffer: Buffer; mimetype: string }> {
     const contact = await this.contactsRepo.findOne({
       where: { id },
       relations: ['photoStorageConnection', 'tenant'],
     });
-    if (tenantId != null && contact?.tenant?.id !== tenantId) {
+    if (tenantId != null && contact?.tenant != null && contact.tenant.id !== tenantId) {
       throw new NotFoundException('This contact has no photo');
     }
     if (!contact?.photoRelativePath || !contact.photoStorageConnection) {

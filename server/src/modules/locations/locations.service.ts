@@ -80,7 +80,19 @@ export class LocationsService {
 
   // --- Locations ("place" in calls/inventory, "organization" in phone book) ---
 
-  /** Search-as-you-type by prefix, optionally narrowed to a city. Scoped to the requester's organization unless they're the super-admin. */
+  /**
+   * Search-as-you-type by prefix, optionally narrowed to a city.
+   *
+   * Scoping: an org-scoped requester sees their own organization's
+   * locations PLUS any location with no organization at all — those
+   * predate multi-tenancy (every location that existed before
+   * Organizations was added) and are treated as shared/global rather
+   * than "belongs to nobody, visible only to the super-admin" — the
+   * literal first thing that happened after this scoping shipped was
+   * regular users losing the ability to search any existing place,
+   * since none of them had been assigned to an organization yet. The
+   * super-admin still sees everything regardless.
+   */
   findLocations(query?: string, cityId?: number, organizationId?: number | null): Promise<Location[]> {
     const qb = this.locationsRepo
       .createQueryBuilder('location')
@@ -95,16 +107,19 @@ export class LocationsService {
       qb.andWhere('city.id = :cityId', { cityId });
     }
     if (organizationId != null) {
-      qb.andWhere('location.organizationId = :organizationId', { organizationId });
+      qb.andWhere('(location.organizationId = :organizationId OR location.organizationId IS NULL)', { organizationId });
     }
     return qb.getMany();
   }
 
   /**
    * @param organizationId If provided, the lookup 404s unless the location
-   * belongs to this organization — used when resolving a client-supplied
-   * locationId (call creation, phone book contact's organization field)
-   * so one tenant can't reference another's location by guessing an id.
+   * belongs to this organization OR has no organization at all (see
+   * findLocations for why null-organization locations are treated as
+   * shared rather than off-limits) — used when resolving a
+   * client-supplied locationId (call creation, phone book contact's
+   * organization field) so one tenant can't reference another
+   * (non-null, non-theirs) tenant's location by guessing an id.
    * Omit for trusted internal lookups where the id is already known-valid.
    */
   async findLocationById(id: number, organizationId?: number | null): Promise<Location> {
@@ -113,7 +128,7 @@ export class LocationsService {
       relations: ['city', 'city.region', 'organization'],
     });
     if (!location) throw new NotFoundException('Location not found');
-    if (organizationId != null && location.organization?.id !== organizationId) {
+    if (organizationId != null && location.organization != null && location.organization.id !== organizationId) {
       throw new NotFoundException('Location not found');
     }
     return location;

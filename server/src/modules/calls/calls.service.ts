@@ -82,11 +82,21 @@ export class CallsService {
     return full;
   }
 
-  /** Super-admin (organizationId null) sees every call; an org-scoped user sees only their own organization's — see Organization. */
+  /**
+   * Super-admin (organizationId null) sees every call. An org-scoped
+   * user sees their own organization's calls PLUS any call with no
+   * organization at all — those predate multi-tenancy and are treated
+   * as shared/global rather than invisible to everyone but the
+   * super-admin (same reasoning as Location — see
+   * LocationsService.findLocations).
+   */
   findAll(requester?: { organizationId: number | null }): Promise<ServiceCall[]> {
     return this.callsRepo.find({
       relations: ['createdBy', 'statusChangedBy', 'closedBy', 'location', 'location.city', 'location.city.region', 'workingSessions', 'workingSessions.user', 'organization'],
-      where: requester?.organizationId != null ? { organization: { id: requester.organizationId } } : {},
+      where:
+        requester?.organizationId != null
+          ? [{ organization: { id: requester.organizationId } }, { organization: IsNull() }]
+          : {},
       order: { createdAt: 'DESC' },
     });
   }
