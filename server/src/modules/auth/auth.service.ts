@@ -32,6 +32,7 @@ export class AuthService {
         username: user.username,
         language: user.language,
         role: user.role,
+        organizationId: user.organization?.id ?? null,
       },
     };
   }

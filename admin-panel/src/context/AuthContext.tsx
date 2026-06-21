@@ -6,6 +6,7 @@ interface AuthUser {
   username: string;
   role: string;
   language: string;
+  organizationId: number | null;
 }
 
 interface AuthContextValue {

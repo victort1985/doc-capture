@@ -1,6 +1,6 @@
-const BASE_URL = '/api';
+export const BASE_URL = '/api';
 
-function getToken(): string | null {
+export function getToken(): string | null {
   return sessionStorage.getItem('token');
 }
 
@@ -48,4 +48,17 @@ export async function apiFetch<T>(
 
   if (res.status === 204) return undefined as T;
   return res.json();
+}
+
+/** Authenticated binary fetch — plain <img src> can't send an Authorization
+ * header, so logo/photo previews need to fetch bytes and turn them into a
+ * blob: URL instead of pointing the <img> straight at the API. */
+export async function apiFetchBlob(path: string): Promise<string | null> {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return null;
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
 }

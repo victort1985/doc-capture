@@ -10,6 +10,7 @@ import TemplatesPage from './pages/TemplatesPage';
 import FilesPage from './pages/FilesPage';
 import LocationsPage from './pages/LocationsPage';
 import CallsPage from './pages/CallsPage';
+import OrganizationsPage from './pages/OrganizationsPage';
 
 export default function App() {
   return (
@@ -23,6 +24,7 @@ export default function App() {
             </ProtectedRoute>
           }
         >
+          <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/calls" element={<CallsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, X, Power, Trash2, UserRound } from 'lucide-react';
 import { apiFetch } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Region {
   id: number;
@@ -25,18 +26,26 @@ interface UserRow {
   city?: City;
   regions?: Region[];
   isGlobal: boolean;
+  organization?: { id: number; name: string };
+}
+interface Org {
+  id: number;
+  name: string;
 }
 
 const EMPTY_FORM = {
   username: '', password: '', role: 'user', language: 'he',
   firstName: '', lastName: '', specialization: '', phone: '',
-  cityId: '', regionIds: [] as number[], isGlobal: false,
+  cityId: '', regionIds: [] as number[], isGlobal: false, organizationId: '',
 };
 
 export default function UsersPage() {
+  const { user: me } = useAuth();
+  const isSuperAdmin = me?.organizationId == null;
   const [users, setUsers] = useState<UserRow[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
+  const [orgs, setOrgs] = useState<Org[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [showForm, setShowForm] = useState(false);
@@ -51,6 +60,13 @@ export default function UsersPage() {
       setUsers(u);
       setCities(c);
       setRegions(r);
+      // Org dropdown is only meaningful for the super-admin — an
+      // org-scoped admin's new users are auto-assigned their own
+      // organization server-side regardless of what's sent, so org-admins
+      // don't need this list at all (and would 403 fetching it anyway).
+      if (isSuperAdmin) {
+        setOrgs(await apiFetch<Org[]>('/organizations'));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
     }
@@ -67,6 +83,7 @@ export default function UsersPage() {
         body: JSON.stringify({
           ...form,
           cityId: form.cityId ? Number(form.cityId) : undefined,
+          organizationId: form.organizationId ? Number(form.organizationId) : undefined,
         }),
       });
       setForm(EMPTY_FORM);
@@ -151,6 +168,17 @@ export default function UsersPage() {
                 <option value="ru">ru — Russian</option>
               </select>
             </div>
+            {isSuperAdmin && (
+              <div>
+                <label>Organization</label>
+                <select value={form.organizationId} onChange={(e) => setForm({ ...form, organizationId: e.target.value })}>
+                  <option value="">— Super-admin (no organization) —</option>
+                  {orgs.map((o) => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label>First name</label>
               <input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
@@ -224,6 +252,7 @@ export default function UsersPage() {
                 <th>Username</th>
                 <th>Role</th>
                 <th>Language</th>
+                {isSuperAdmin && <th>Organization</th>}
                 <th>Regions</th>
                 <th>Status</th>
                 <th />
@@ -243,6 +272,9 @@ export default function UsersPage() {
                   </td>
                   <td className="mono">{u.role}</td>
                   <td className="mono">{u.language}</td>
+                  {isSuperAdmin && (
+                    <td>{u.organization?.name ?? <span style={{ color: 'var(--ink-soft)' }}>super-admin</span>}</td>
+                  )}
                   <td>
                     {u.isGlobal ? (
                       <span className="stamp-badge on">global</span>

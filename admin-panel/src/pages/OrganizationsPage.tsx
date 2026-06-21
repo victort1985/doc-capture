@@ -1,0 +1,177 @@
+import { useEffect, useRef, useState } from 'react';
+import { Plus, Trash2, Upload, Building2 } from 'lucide-react';
+import { apiFetch, apiFetchBlob, getToken, BASE_URL } from '../services/api';
+
+interface Org {
+  id: number;
+  name: string;
+  createdAt: string;
+}
+
+function LogoThumb({ orgId, version }: { orgId: number; version: number }) {
+  const [url, setUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    let objectUrl: string | null = null;
+    apiFetchBlob(`/organizations/${orgId}/logo`).then((u) => {
+      if (cancelled) return;
+      objectUrl = u;
+      setUrl(u);
+    });
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orgId, version]);
+
+  return (
+    <div style={{
+      width: 40, height: 40, borderRadius: 8, overflow: 'hidden',
+      background: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}>
+      {url ? (
+        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+      ) : (
+        <Building2 size={18} color="var(--ink-soft)" />
+      )}
+    </div>
+  );
+}
+
+export default function OrganizationsPage() {
+  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [newName, setNewName] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const fileInputs = useRef<Record<number, HTMLInputElement | null>>({});
+  const [logoVersion, setLogoVersion] = useState(0); // bump to refetch the thumb after a new upload
+
+  async function load() {
+    try {
+      setOrgs(await apiFetch<Org[]>('/organizations'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load organizations');
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  async function createOrg(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    try {
+      await apiFetch('/organizations', { method: 'POST', body: JSON.stringify({ name: newName }) });
+      setNewName('');
+      setShowForm(false);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create organization');
+    }
+  }
+
+  async function removeOrg(id: number) {
+    if (!confirm('Delete this organization? Users in it keep their accounts but lose their organization assignment.')) return;
+    await apiFetch(`/organizations/${id}`, { method: 'DELETE' });
+    load();
+  }
+
+  async function uploadLogo(id: number, file: File) {
+    setError(null);
+    const formData = new FormData();
+    formData.append('logo', file);
+    try {
+      const res = await fetch(`${BASE_URL}/organizations/${id}/logo`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Upload failed');
+      setLogoVersion((v) => v + 1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload logo');
+    }
+  }
+
+  return (
+    <div>
+      <div className="topbar">
+        <div>
+          <span className="eyebrow">Multi-tenant</span>
+          <h1 className="page-title">Organizations</h1>
+        </div>
+        <button onClick={() => setShowForm((s) => !s)}>
+          <Plus size={16} /> Create organization
+        </button>
+      </div>
+
+      <p style={{ color: 'var(--ink-soft)', marginTop: -8, marginBottom: 24, maxWidth: 640 }}>
+        Each organization's users only see their own organization's calls,
+        locations, and phone book. The logo uploaded here shows as an
+        80%-opacity background in that organization's mobile app.
+      </p>
+
+      {error && <div className="error-banner">{error}</div>}
+
+      {showForm && (
+        <form className="card form-card" onSubmit={createOrg} style={{ maxWidth: 420 }}>
+          <label>Organization name</label>
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} required autoFocus />
+          <div className="form-actions">
+            <button type="submit"><Plus size={16} /> Create</button>
+          </div>
+        </form>
+      )}
+
+      <div className="card">
+        <table>
+          <thead>
+            <tr>
+              <th>Logo</th>
+              <th>Name</th>
+              <th>Created</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {orgs.map((o) => (
+              <tr key={o.id}>
+                <td><LogoThumb orgId={o.id} version={logoVersion} /></td>
+                <td>{o.name}</td>
+                <td className="mono">{new Date(o.createdAt).toLocaleDateString()}</td>
+                <td>
+                  <div className="row-actions">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      ref={(el) => { fileInputs.current[o.id] = el; }}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) uploadLogo(o.id, file);
+                        e.target.value = '';
+                      }}
+                    />
+                    <button className="ghost" onClick={() => fileInputs.current[o.id]?.click()} title="Upload logo">
+                      <Upload size={15} />
+                    </button>
+                    <button className="ghost" onClick={() => removeOrg(o.id)} title="Delete" style={{ color: 'var(--danger)' }}>
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {orgs.length === 0 && (
+              <tr><td colSpan={4} style={{ textAlign: 'center', padding: 32, color: 'var(--ink-soft)' }}>
+                <Building2 size={28} strokeWidth={1.5} style={{ marginBottom: 8 }} /><br />
+                No organizations yet
+              </td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

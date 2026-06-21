@@ -1,10 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall } from 'lucide-react';
+import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall, Building2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import StampMark from './StampMark';
 import CopyrightFooter from './CopyrightFooter';
 
-const NAV = [
+const BASE_NAV = [
   { to: '/calls', label: 'Calls', icon: PhoneCall },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/locations', label: 'Locations', icon: MapPin },
@@ -17,6 +17,12 @@ const NAV = [
 export default function Layout() {
   const { user, logout } = useAuth();
   const initial = user?.username?.[0]?.toUpperCase() ?? '?';
+  // Organizations management is super-admin only (organizationId === null)
+  // — an org-scoped admin would just get a 403 from the API anyway, so
+  // don't show the nav item at all rather than show a dead end.
+  const nav = user?.organizationId == null
+    ? [{ to: '/organizations', label: 'Organizations', icon: Building2 }, ...BASE_NAV]
+    : BASE_NAV;
 
   return (
     <div className="layout">
@@ -29,7 +35,7 @@ export default function Layout() {
           </div>
         </div>
         <nav>
-          {NAV.map((item) => {
+          {nav.map((item) => {
             const Icon = item.icon;
             return (
               <NavLink key={item.to} to={item.to}>
