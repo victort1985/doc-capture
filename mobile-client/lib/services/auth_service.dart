@@ -29,6 +29,8 @@ class AuthService {
   final ApiService _api;
   final _storage = const FlutterSecureStorage();
   static const _tokenKey = 'auth_token';
+  static const _savedUsernameKey = 'saved_username';
+  static const _savedPasswordKey = 'saved_password';
 
   Future<AuthUser> login(String username, String password) async {
     final response = await _api.post('/auth/login', {
@@ -39,6 +41,30 @@ class AuthService {
     await _storage.write(key: _tokenKey, value: token);
     _api.setToken(token);
     return AuthUser.fromJson(response['user'] as Map<String, dynamic>);
+  }
+
+  /// "Remember me" — same secure storage as the JWT token itself (not
+  /// SharedPreferences, which isn't encrypted at rest). This is a
+  /// convenience separate from the token-based auto-login that already
+  /// exists (restoreToken + fetchCurrentUser): that one silently resumes
+  /// a still-valid session, while this one is for when there's no valid
+  /// session to resume — the fields are just pre-filled instead of
+  /// re-typing a password from scratch.
+  Future<void> saveCredentials(String username, String password) async {
+    await _storage.write(key: _savedUsernameKey, value: username);
+    await _storage.write(key: _savedPasswordKey, value: password);
+  }
+
+  Future<(String, String)?> loadSavedCredentials() async {
+    final username = await _storage.read(key: _savedUsernameKey);
+    final password = await _storage.read(key: _savedPasswordKey);
+    if (username == null || password == null) return null;
+    return (username, password);
+  }
+
+  Future<void> clearSavedCredentials() async {
+    await _storage.delete(key: _savedUsernameKey);
+    await _storage.delete(key: _savedPasswordKey);
   }
 
   Future<String?> restoreToken() async {

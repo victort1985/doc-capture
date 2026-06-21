@@ -12,6 +12,12 @@ class AppState extends ChangeNotifier {
   final AuthService _authService;
   final ApiService _apiService;
 
+  /// Exposed read-only for LoginScreen's "remember me" (saved-credentials
+  /// prefill) — everything else about auth stays routed through this
+  /// class's own methods (login/logout/bootstrap) rather than callers
+  /// reaching into AuthService directly for those.
+  AuthService get authService => _authService;
+
   String languageCode = SettingsService.defaultLanguage; // 'he' by default
   AuthUser? currentUser;
   bool initialized = false;

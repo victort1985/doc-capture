@@ -22,6 +22,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   bool _loading = false;
   String? _error;
   bool _obscure = true;
+  bool _rememberMe = false;
 
   late final AnimationController _stampController;
   late final Animation<double> _stampScale;
@@ -41,6 +42,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       CurvedAnimation(parent: _stampController, curve: Curves.easeOutCubic),
     );
     WidgetsBinding.instance.addPostFrameCallback((_) => _stampController.forward());
+    _prefillSavedCredentials();
+  }
+
+  Future<void> _prefillSavedCredentials() async {
+    final saved = await context.read<AppState>().authService.loadSavedCredentials();
+    if (saved != null && mounted) {
+      setState(() {
+        _usernameController.text = saved.$1;
+        _passwordController.text = saved.$2;
+        _rememberMe = true;
+      });
+    }
   }
 
   @override
@@ -54,6 +67,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     try {
       final appState = context.read<AppState>();
       await appState.login(_usernameController.text.trim(), _passwordController.text);
+      if (_rememberMe) {
+        await appState.authService.saveCredentials(_usernameController.text.trim(), _passwordController.text);
+      } else {
+        await appState.authService.clearSavedCredentials();
+      }
       if (!mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const RootScreen()),
@@ -171,6 +189,19 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 onPressed: () => setState(() => _obscure = !_obscure),
                               ),
                             ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Checkbox(
+                                value: _rememberMe,
+                                onChanged: (v) => setState(() => _rememberMe = v ?? false),
+                              ),
+                              GestureDetector(
+                                onTap: () => setState(() => _rememberMe = !_rememberMe),
+                                child: Text(l10n.rememberMe, style: const TextStyle(fontSize: 13.5)),
+                              ),
+                            ],
                           ),
                           if (_error != null) ...[
                             const SizedBox(height: 14),
