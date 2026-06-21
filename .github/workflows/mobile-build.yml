@@ -45,6 +45,21 @@ jobs:
       - name: flutter create (android scaffolding)
         run: flutter create . --platforms=android --project-name doc_capture --org com.doccapture
 
+      - name: diag - dump gradle files
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-gradle
+          mkdir -p .ci-debug
+          cp mobile-client/android/settings.gradle.kts .ci-debug/settings.gradle.kts
+          cp mobile-client/android/build.gradle.kts .ci-debug/build.gradle.kts
+          cp mobile-client/android/app/build.gradle.kts .ci-debug/app-build.gradle.kts
+          git add -f .ci-debug/settings.gradle.kts .ci-debug/build.gradle.kts .ci-debug/app-build.gradle.kts
+          git commit -m "debug: fresh gradle files"
+          git push --force origin debug-logs-gradle
+          git checkout main
+
       - name: Add camera + location permissions
         run: python3 ../.github/scripts/patch_android_manifest.py
 
