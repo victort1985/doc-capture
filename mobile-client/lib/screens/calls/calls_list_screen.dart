@@ -26,6 +26,15 @@ class CallsListScreenState extends State<CallsListScreen> {
 
   void refresh() => setState(() => _future = context.read<CallsService>().list());
 
+  /// Opens a call's detail screen directly — used when tapping a
+  /// real-time notification popup (see RootScreen) rather than the
+  /// person tapping a row in this list themselves.
+  void openCall(int id) {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => CallDetailScreen(callId: id)),
+    ).then((_) => refresh());
+  }
+
   Color _statusColor(CallStatus s) {
     switch (s) {
       case CallStatus.open:

@@ -65,13 +65,26 @@ export class UsersService {
   }
 
   /** Used for call-notification routing: technicians covering this region (within the given organization, if any), plus anyone marked global. */
+  /**
+   * Used for call-notification routing: technicians covering this region
+   * (within the given organization, if any), plus anyone marked global.
+   *
+   * A user with no organization assigned matches regardless of the
+   * call's organization — same "null = shared, not off-limits" rule
+   * applied to Locations/Calls/PhoneBookContact, and specifically fixes
+   * a real case: a user marked isGlobal=true but never assigned to an
+   * organization (easy oversight — "global" can feel like it should be
+   * above organizational scoping) was being silently excluded from
+   * every single call's notifications, since `user.organizationId =
+   * :organizationId` is never true when the left side is NULL.
+   */
   async findUsersForRegion(regionId: number, organizationId: number | null): Promise<User[]> {
     const qb = this.usersRepo
       .createQueryBuilder('user')
       .leftJoin('user.regions', 'region')
       .where('(region.id = :regionId OR user.isGlobal = true)', { regionId });
     if (organizationId != null) {
-      qb.andWhere('user.organizationId = :organizationId', { organizationId });
+      qb.andWhere('(user.organizationId = :organizationId OR user.organizationId IS NULL)', { organizationId });
     }
     return qb.getMany();
   }

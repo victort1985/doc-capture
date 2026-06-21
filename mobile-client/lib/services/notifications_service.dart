@@ -13,7 +13,7 @@ class NotificationsService {
   IO.Socket? _socket;
 
   void connect({
-    required void Function(String place, String createdBy) onCallCreated,
+    required void Function(int id, String place, String createdBy) onCallCreated,
     required void Function(String place, String status, String changedBy) onStatusChanged,
     required void Function(String place, String author) onNoteAdded,
     required void Function(String place, String uploadedBy) onAttachmentAdded,
@@ -30,7 +30,7 @@ class NotificationsService {
           .build(),
     );
 
-    _socket!.on('call:created', (data) => onCallCreated(data['place'], data['createdBy']));
+    _socket!.on('call:created', (data) => onCallCreated(data['id'], data['place'], data['createdBy']));
     _socket!.on('call:status_changed', (data) => onStatusChanged(data['place'], data['status'], data['changedBy']));
     _socket!.on('call:note_added', (data) => onNoteAdded(data['place'], data['author']));
     _socket!.on('call:attachment_added', (data) => onAttachmentAdded(data['place'], data['uploadedBy']));

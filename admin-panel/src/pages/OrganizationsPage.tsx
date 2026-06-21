@@ -138,7 +138,20 @@ export default function OrganizationsPage() {
             {orgs.map((o) => (
               <tr key={o.id}>
                 <td><LogoThumb orgId={o.id} version={logoVersion} /></td>
-                <td>{o.name}</td>
+                <td>
+                  <input
+                    defaultValue={o.name}
+                    onBlur={async (e) => {
+                      const newName = e.target.value.trim();
+                      if (newName && newName !== o.name) {
+                        await apiFetch(`/organizations/${o.id}`, { method: 'PATCH', body: JSON.stringify({ name: newName }) });
+                        load();
+                      }
+                    }}
+                    style={{ border: '1px solid transparent', background: 'transparent', padding: '4px 6px' }}
+                    onFocus={(e) => { e.target.style.border = '1px solid var(--border)'; e.target.style.background = 'var(--surface)'; }}
+                  />
+                </td>
                 <td className="mono">{new Date(o.createdAt).toLocaleDateString()}</td>
                 <td>
                   <div className="row-actions">

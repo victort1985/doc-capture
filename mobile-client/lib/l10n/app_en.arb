@@ -175,5 +175,6 @@
   "phoneBookSaveError": "Could not save the contact, please try again",
   "phoneBookSaving": "Saving…",
   "phoneBookSave": "Save contact",
-  "callViewFileError": "Could not open the file, please try again"
+  "callViewFileError": "Could not open the file, please try again",
+  "callPopupView": "View"
 }

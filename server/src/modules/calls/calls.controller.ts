@@ -6,6 +6,7 @@ import {
   Get,
   Param,
   ParseIntPipe,
+  Patch,
   Post,
   Res,
   UploadedFile,
@@ -16,6 +17,7 @@ import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CallsService } from './calls.service';
 import { CreateCallDto } from './dto/create-call.dto';
+import { UpdateCallDto } from './dto/update-call.dto';
 import { UpdateCallStatusDto } from './dto/update-call-status.dto';
 import { AddNoteDto } from './dto/add-note.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -56,6 +58,13 @@ export class CallsController {
   @Roles(UserRole.ADMIN)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.callsService.remove(id);
+  }
+
+  @Patch(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateCallDto) {
+    return this.callsService.update(id, dto);
   }
 
   @Post(':id/status')

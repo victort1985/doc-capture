@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, X, Power, Trash2, UserRound } from 'lucide-react';
+import { Plus, X, Power, Trash2, UserRound, Pencil } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -49,6 +49,7 @@ export default function UsersPage() {
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
 
   async function load() {
     try {
@@ -74,24 +75,55 @@ export default function UsersPage() {
 
   useEffect(() => { load(); }, []);
 
-  async function createUser(e: React.FormEvent) {
+  async function submitUser(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    const payload: Record<string, unknown> = {
+      ...form,
+      cityId: form.cityId ? Number(form.cityId) : undefined,
+      organizationId: form.organizationId ? Number(form.organizationId) : undefined,
+    };
+    // Editing: an empty password field means "leave it unchanged" — don't
+    // force re-entering a password just to fix someone's specialization.
+    if (editingId && !payload.password) delete payload.password;
     try {
-      await apiFetch('/users', {
-        method: 'POST',
-        body: JSON.stringify({
-          ...form,
-          cityId: form.cityId ? Number(form.cityId) : undefined,
-          organizationId: form.organizationId ? Number(form.organizationId) : undefined,
-        }),
-      });
+      if (editingId) {
+        await apiFetch(`/users/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+      } else {
+        await apiFetch('/users', { method: 'POST', body: JSON.stringify(payload) });
+      }
       setForm(EMPTY_FORM);
       setShowForm(false);
+      setEditingId(null);
       load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create user');
+      setError(err instanceof Error ? err.message : 'Failed to save user');
     }
+  }
+
+  function openEditForm(u: UserRow) {
+    setEditingId(u.id);
+    setForm({
+      username: u.username,
+      password: '',
+      role: u.role,
+      language: u.language,
+      firstName: u.firstName || '',
+      lastName: u.lastName || '',
+      specialization: u.specialization || '',
+      phone: u.phone || '',
+      cityId: u.city ? String(u.city.id) : '',
+      regionIds: u.regions?.map((r) => r.id) || [],
+      isGlobal: u.isGlobal,
+      organizationId: u.organization ? String(u.organization.id) : '',
+    });
+    setShowForm(true);
+  }
+
+  function cancelForm() {
+    setForm(EMPTY_FORM);
+    setEditingId(null);
+    setShowForm(false);
   }
 
   function toggleRegion(id: number) {
@@ -122,7 +154,7 @@ export default function UsersPage() {
           <span className="eyebrow">Access control</span>
           <h1 className="page-title">Users</h1>
         </div>
-        <button onClick={() => setShowForm((v) => !v)}>
+        <button onClick={() => (showForm ? cancelForm() : setShowForm(true))}>
           {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New user</>}
         </button>
       </div>
@@ -130,7 +162,8 @@ export default function UsersPage() {
       {error && <div className="error-banner">{error}</div>}
 
       {showForm && (
-        <form className="card form-card" onSubmit={createUser}>
+        <form className="card form-card" onSubmit={submitUser}>
+          <h3 style={{ marginTop: 0 }}>{editingId ? `Edit user — ${form.username}` : 'New user'}</h3>
           <div className="form-grid">
             <div>
               <label>Username</label>
@@ -141,12 +174,12 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <label>Password</label>
+              <label>Password {editingId && <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>(leave blank to keep current)</span>}</label>
               <input
                 type="password"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                required
+                required={!editingId}
                 minLength={6}
               />
             </div>
@@ -233,7 +266,7 @@ export default function UsersPage() {
             </div>
           </div>
           <div className="form-actions">
-            <button type="submit"><Plus size={16} /> Create user</button>
+            <button type="submit">{editingId ? <><Plus size={16} /> Save changes</> : <><Plus size={16} /> Create user</>}</button>
           </div>
         </form>
       )}
@@ -291,6 +324,9 @@ export default function UsersPage() {
                   </td>
                   <td>
                     <div className="row-actions">
+                      <button className="ghost" onClick={() => openEditForm(u)} title="Edit">
+                        <Pencil size={15} />
+                      </button>
                       <button className="ghost" onClick={() => toggleActive(u)} title={u.isActive ? 'Disable' : 'Enable'}>
                         <Power size={15} />
                       </button>

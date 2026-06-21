@@ -175,5 +175,6 @@
   "phoneBookSaveError": "לא ניתן לשמור את איש הקשר, נסה שוב",
   "phoneBookSaving": "שומר…",
   "phoneBookSave": "שמור איש קשר",
-  "callViewFileError": "לא ניתן לפתוח את הקובץ, נסה שוב"
+  "callViewFileError": "לא ניתן לפתוח את הקובץ, נסה שוב",
+  "callPopupView": "הצג"
 }

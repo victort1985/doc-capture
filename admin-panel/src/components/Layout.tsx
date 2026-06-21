@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall, Building2 } from 'lucide-react';
+import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall, Building2, Contact } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import StampMark from './StampMark';
 import CopyrightFooter from './CopyrightFooter';
@@ -7,6 +7,7 @@ import CopyrightFooter from './CopyrightFooter';
 const BASE_NAV = [
   { to: '/calls', label: 'Calls', icon: PhoneCall },
   { to: '/users', label: 'Users', icon: Users },
+  { to: '/phonebook', label: 'Phone book', icon: Contact },
   { to: '/locations', label: 'Locations', icon: MapPin },
   { to: '/storage', label: 'Storage connections', icon: HardDrive },
   { to: '/storage-routing', label: 'Storage routing', icon: Route },

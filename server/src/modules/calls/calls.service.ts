@@ -6,6 +6,7 @@ import { CallNote } from './entities/call-note.entity';
 import { CallAttachment } from './entities/call-attachment.entity';
 import { CallWorkingSession } from './entities/call-working-session.entity';
 import { CreateCallDto } from './dto/create-call.dto';
+import { UpdateCallDto } from './dto/update-call.dto';
 import { StorageService } from '../storage/storage.service';
 import { UsersService } from '../users/users.service';
 import { processDocument } from '../files/processors/document.processor';
@@ -114,6 +115,36 @@ export class CallsService {
   async remove(id: number): Promise<void> {
     const call = await this.findOne(id);
     await this.callsRepo.remove(call);
+  }
+
+  /** Admin-only general edit (enforced at the controller) — corrects place/contact/urgency/description directly, distinct from the normal open/in-progress/closed status flow any user can trigger via updateStatus. */
+  async update(id: number, dto: UpdateCallDto): Promise<ServiceCall> {
+    const call = await this.findOne(id);
+    let place = dto.place ?? call.place;
+    let location = call.location;
+    if (dto.locationId !== undefined) {
+      if (dto.locationId) {
+        const found = await this.locationsService.findLocationById(dto.locationId);
+        place = found.name;
+        location = found;
+      } else {
+        location = undefined as any;
+      }
+    }
+    Object.assign(call, {
+      place,
+      location,
+      latitude: dto.latitude ?? call.latitude,
+      longitude: dto.longitude ?? call.longitude,
+      urgency: dto.urgency ?? call.urgency,
+      contactName: dto.contactName ?? call.contactName,
+      contactPosition: dto.contactPosition ?? call.contactPosition,
+      contactPhone: dto.contactPhone ?? call.contactPhone,
+      description: dto.description ?? call.description,
+      unusualDamage: dto.unusualDamage ?? call.unusualDamage,
+    });
+    await this.callsRepo.save(call);
+    return this.findOne(id);
   }
 
   findNotes(callId: number): Promise<CallNote[]> {

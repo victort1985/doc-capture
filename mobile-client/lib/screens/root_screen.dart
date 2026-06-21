@@ -31,16 +31,26 @@ class _RootScreenState extends State<RootScreen> {
     final l10n = AppLocalizations.of(context)!;
     final notifications = context.read<NotificationsService>();
     notifications.connect(
-      onCallCreated: (place, createdBy) => _popup(l10n.callPopupCreated(place, createdBy)),
+      onCallCreated: (id, place, createdBy) => _popup(
+        l10n.callPopupCreated(place, createdBy),
+        onTap: () {
+          setState(() => _index = 1); // switch to the Calls tab
+          _callsListKey.currentState?.openCall(id);
+        },
+      ),
       onStatusChanged: (place, status, changedBy) => _popup(l10n.callPopupStatusChanged(place, changedBy)),
       onNoteAdded: (place, author) => _popup(l10n.callPopupNoteAdded(place, author)),
       onAttachmentAdded: (place, uploadedBy) => _popup(l10n.callPopupFileAdded(place, uploadedBy)),
     );
   }
 
-  void _popup(String message) {
+  void _popup(String message, {VoidCallback? onTap}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    final l10n = AppLocalizations.of(context)!;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(message),
+      action: onTap != null ? SnackBarAction(label: l10n.callPopupView, onPressed: onTap) : null,
+    ));
     _callsListKey.currentState?.refresh();
   }
 
