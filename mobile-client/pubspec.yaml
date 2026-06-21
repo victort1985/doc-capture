@@ -37,6 +37,23 @@ dependencies:
   # Tap-to-call: opens the phone's own dialer with a number pre-filled
   url_launcher: ^6.3.1
 
+  # Real OS-level push notifications (home screen / locked phone) — the
+  # in-app WebSocket popups only fire while the app is open. Android-only
+  # for now: iOS push needs an Apple Developer Program membership (APNs)
+  # that doesn't exist yet — see firebase_messaging_service.dart for how
+  # this degrades safely on iOS without one.
+  firebase_core: ^4.10.0
+  firebase_messaging: ^16.4.0
+
+  # firebase_messaging's own requestPermission() historically didn't
+  # reliably trigger Android 13+'s POST_NOTIFICATIONS system dialog
+  # (a real, long-documented FlutterFire issue — flutterfire#8720) —
+  # using this instead for that specific permission is the well-
+  # established reliable path, confirmed working across Android
+  # versions regardless of which exact firebase_messaging release is
+  # in use.
+  permission_handler: ^12.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

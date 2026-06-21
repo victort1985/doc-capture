@@ -43,6 +43,7 @@ PERMISSIONS = (
     '    <uses-permission android:name="android.permission.CAMERA" />\n'
     '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n'
     '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n'
+    '    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n'
 )
 
 

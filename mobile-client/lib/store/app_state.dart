@@ -2,15 +2,17 @@ import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/settings_service.dart';
+import '../services/push_notifications_service.dart';
 
 /// Root app state: current locale + current user session.
 /// Kept deliberately small — feature screens own their own local state.
 class AppState extends ChangeNotifier {
-  AppState(this._settingsService, this._authService, this._apiService);
+  AppState(this._settingsService, this._authService, this._apiService, this._pushNotificationsService);
 
   final SettingsService _settingsService;
   final AuthService _authService;
   final ApiService _apiService;
+  final PushNotificationsService _pushNotificationsService;
 
   /// Exposed read-only for LoginScreen's "remember me" (saved-credentials
   /// prefill) — everything else about auth stays routed through this
@@ -38,6 +40,9 @@ class AppState extends ChangeNotifier {
 
     await _authService.restoreToken();
     currentUser = await _authService.fetchCurrentUser();
+    if (currentUser != null) {
+      await _pushNotificationsService.initAndRegister();
+    }
 
     initialized = true;
     notifyListeners();
@@ -93,9 +98,11 @@ class AppState extends ChangeNotifier {
     currentUser = await _authService.login(username, password);
     // Respect the user's saved per-account language if present.
     await setLanguage(currentUser!.language);
+    await _pushNotificationsService.initAndRegister();
   }
 
   Future<void> logout() async {
+    await _pushNotificationsService.unregister();
     await _authService.logout();
     currentUser = null;
     notifyListeners();

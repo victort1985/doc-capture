@@ -73,6 +73,19 @@ export class User {
   @Column({ default: false })
   isGlobal: boolean;
 
+  // Real OS-level push (FCM) — set when the mobile app registers a
+  // device token after login; cleared on logout. Android only for now
+  // (no Apple Developer Program account yet for iOS APNs — see
+  // push_notifications_service.dart on the client for the full
+  // explanation), so platform is always 'android' in practice today,
+  // but kept as a column rather than assumed so iOS can register
+  // alongside it later without a schema change.
+  @Column({ nullable: true })
+  pushToken?: string;
+
+  @Column({ nullable: true })
+  pushPlatform?: string;
+
   // Multi-tenant boundary. Null = super-admin (sees/manages everything
   // across all organizations) — naturally true for the bootstrap admin
   // created when the server was first set up, since nothing ever assigns

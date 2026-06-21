@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1054062631953",
+    "project_id": "doc-capture",
+    "storage_bucket": "doc-capture.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1054062631953:android:cb6c4b6ee24171879525b0",
+        "android_client_info": {
+          "package_name": "com.doccapture.doc_capture"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD7_qdN01h7KF_IcxfAaw2K1bQBWNc9juc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

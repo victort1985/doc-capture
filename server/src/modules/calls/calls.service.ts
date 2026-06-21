@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, Repository } from 'typeorm';
-import { ServiceCall, CallStatus } from './entities/service-call.entity';
+import { ServiceCall, CallStatus, CallUrgency } from './entities/service-call.entity';
 import { CallNote } from './entities/call-note.entity';
 import { CallAttachment } from './entities/call-attachment.entity';
 import { CallWorkingSession } from './entities/call-working-session.entity';
@@ -15,6 +15,7 @@ import { encryptBuffer, decryptBuffer } from '../../common/crypto/encryption.uti
 import { sanitize } from '../templates/name-pattern.util';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
 import { LocationsService } from '../locations/locations.service';
+import { PushService } from '../push/push.service';
 
 @Injectable()
 export class CallsService {
@@ -27,6 +28,7 @@ export class CallsService {
     private readonly usersService: UsersService,
     private readonly notifications: NotificationsGateway,
     private readonly locationsService: LocationsService,
+    private readonly pushService: PushService,
   ) {}
 
   async create(userId: number, organizationId: number | null, dto: CreateCallDto): Promise<ServiceCall> {
@@ -79,6 +81,17 @@ export class CallsService {
       ? await this.usersService.findUsersForRegion(regionId, orgId)
       : await this.usersService.findAll({ organizationId: orgId });
     this.notifications.broadcastCallCreated(full, targetUsers.map((u) => u.id));
+
+    const pushTargets = targetUsers.filter((u) => u.pushToken).map((u) => ({ token: u.pushToken! }));
+    if (pushTargets.length) {
+      const urgencyPrefix = full.urgency === CallUrgency.URGENT ? '🔴 ' : '';
+      await this.pushService.sendToMany(
+        pushTargets,
+        `${urgencyPrefix}New call: ${full.place}`,
+        `From ${full.createdBy?.username ?? 'unknown'}`,
+        { callId: String(full.id) },
+      );
+    }
 
     return full;
   }

@@ -168,4 +168,12 @@ export class UsersService {
     const user = await this.findById(id, requester);
     await this.usersRepo.remove(user);
   }
+
+  async setPushToken(userId: number, token: string, platform: string): Promise<void> {
+    await this.usersRepo.update(userId, { pushToken: token, pushPlatform: platform });
+  }
+
+  async clearPushToken(userId: number): Promise<void> {
+    await this.usersRepo.update(userId, { pushToken: null as any, pushPlatform: null as any });
+  }
 }

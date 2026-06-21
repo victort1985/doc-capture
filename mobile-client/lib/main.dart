@@ -12,6 +12,7 @@ import 'services/calls_service.dart';
 import 'services/notifications_service.dart';
 import 'services/locations_service.dart';
 import 'services/phonebook_service.dart';
+import 'services/push_notifications_service.dart';
 import 'store/app_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/root_screen.dart';
@@ -33,6 +34,7 @@ class DocCaptureApp extends StatelessWidget {
     final notificationsService = NotificationsService(apiService);
     final locationsService = LocationsService(apiService);
     final phoneBookService = PhoneBookService(apiService);
+    final pushNotificationsService = PushNotificationsService(apiService);
 
     return MultiProvider(
       providers: [
@@ -42,8 +44,9 @@ class DocCaptureApp extends StatelessWidget {
         Provider<NotificationsService>.value(value: notificationsService),
         Provider<LocationsService>.value(value: locationsService),
         Provider<PhoneBookService>.value(value: phoneBookService),
+        Provider<PushNotificationsService>.value(value: pushNotificationsService),
         ChangeNotifierProvider<AppState>(
-          create: (_) => AppState(settingsService, authService, apiService),
+          create: (_) => AppState(settingsService, authService, apiService, pushNotificationsService),
         ),
       ],
       child: const _AppRoot(),

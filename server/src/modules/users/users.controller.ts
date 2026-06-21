@@ -45,4 +45,20 @@ export class UsersController {
   remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     return this.usersService.remove(id, { organizationId: user.organizationId });
   }
+
+  // Push-token registration is for the logged-in user's own device, not
+  // an admin-management action — overrides the class-level
+  // @Roles(ADMIN) so any authenticated user (technician or admin) can
+  // call these for themselves.
+  @Post('me/push-token')
+  @Roles(UserRole.ADMIN, UserRole.USER)
+  setPushToken(@Body() dto: { token: string; platform: string }, @CurrentUser() user: RequestUser) {
+    return this.usersService.setPushToken(user.id, dto.token, dto.platform);
+  }
+
+  @Delete('me/push-token')
+  @Roles(UserRole.ADMIN, UserRole.USER)
+  clearPushToken(@CurrentUser() user: RequestUser) {
+    return this.usersService.clearPushToken(user.id);
+  }
 }

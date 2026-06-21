@@ -10,6 +10,7 @@ import { StorageModule } from '../storage/storage.module';
 import { UsersModule } from '../users/users.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { LocationsModule } from '../locations/locations.module';
+import { PushModule } from '../push/push.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { LocationsModule } from '../locations/locations.module';
     UsersModule,
     NotificationsModule,
     LocationsModule,
+    PushModule,
   ],
   controllers: [CallsController],
   providers: [CallsService],
