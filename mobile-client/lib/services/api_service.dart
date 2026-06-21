@@ -74,6 +74,17 @@ class ApiService {
   String? _token;
   String? get token => _token;
 
+  /// Current Cloudflare Access Service Token headers, if a cloud
+  /// connection is configured — needed by NotificationsService, since its
+  /// raw Socket.IO connection doesn't go through this Dio instance at all
+  /// and so doesn't automatically pick up headers set via configureServer.
+  Map<String, dynamic>? get cfAccessHeaders {
+    final id = _dio.options.headers['CF-Access-Client-Id'];
+    final secret = _dio.options.headers['CF-Access-Client-Secret'];
+    if (id == null || secret == null) return null;
+    return {'CF-Access-Client-Id': id, 'CF-Access-Client-Secret': secret};
+  }
+
   void setToken(String? token) {
     _token = token;
     if (token == null) {

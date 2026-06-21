@@ -21,14 +21,25 @@ class NotificationsService {
     final token = _api.token;
     if (token == null) return;
 
-    _socket = IO.io(
-      _api.serverOrigin,
-      IO.OptionBuilder()
-          .setTransports(['websocket'])
-          .setPath('/ws/notifications')
-          .setAuth({'token': token})
-          .build(),
-    );
+    final optionBuilder = IO.OptionBuilder()
+        .setTransports(['websocket'])
+        .setPath('/ws/notifications')
+        .setAuth({'token': token});
+
+    // Cloud connections sit behind Cloudflare Access (Service Token
+    // required on every request to this host) — this socket is its own
+    // separate connection, not routed through the shared Dio instance,
+    // so it doesn't inherit those headers automatically the way normal
+    // API calls do. Without them, Access blocks the handshake before it
+    // ever reaches our server, and the socket just silently never
+    // connects — no popup ever fires, with no obvious error on screen,
+    // which is exactly what this looked like before being traced here.
+    final cfHeaders = _api.cfAccessHeaders;
+    if (cfHeaders != null) {
+      optionBuilder.setExtraHeaders(cfHeaders);
+    }
+
+    _socket = IO.io(_api.serverOrigin, optionBuilder.build());
 
     _socket!.on('call:created', (data) => onCallCreated(data['id'], data['place'], data['createdBy']));
     _socket!.on('call:status_changed', (data) => onStatusChanged(data['place'], data['status'], data['changedBy']));
