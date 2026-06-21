@@ -144,6 +144,9 @@ jobs:
       - name: Add camera + location usage descriptions
         run: python3 ../.github/scripts/patch_ios_plist.py
 
+      - name: Bump iOS deployment target to 15.0 (firebase_core requirement)
+        run: python3 ../.github/scripts/patch_ios_deployment_target.py
+
       - name: Set server URL
         if: ${{ inputs.server_url != '' }}
         run: sed -i '' "s#https://app.doc-capture.app/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
