@@ -63,6 +63,7 @@ class _PhoneBookScreenState extends State<PhoneBookScreen> with SingleTickerProv
     final isAdmin = context.watch<AppState>().currentUser?.role == 'admin';
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(l10n.phoneBookTitle),
         bottom: TabBar(

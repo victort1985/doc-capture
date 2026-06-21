@@ -105,6 +105,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
             : SettingsScreen(appState: appState);
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(l10n.inventoryTitle),
         bottom: TabBar(

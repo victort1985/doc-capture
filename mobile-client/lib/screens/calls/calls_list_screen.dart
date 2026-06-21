@@ -52,6 +52,7 @@ class CallsListScreenState extends State<CallsListScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(title: Text(l10n.callsTitle)),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {

@@ -5,6 +5,7 @@ import '../services/notifications_service.dart';
 import 'inventory_screen.dart';
 import 'calls/calls_list_screen.dart';
 import 'phonebook_screen.dart';
+import '../widgets/organization_logo_background.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -53,13 +54,15 @@ class _RootScreenState extends State<RootScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      body: IndexedStack(
-        index: _index,
-        children: [
-          const InventoryScreen(),
-          CallsListScreen(key: _callsListKey),
-          const PhoneBookScreen(),
-        ],
+      body: OrganizationLogoBackground(
+        child: IndexedStack(
+          index: _index,
+          children: [
+            const InventoryScreen(),
+            CallsListScreen(key: _callsListKey),
+            const PhoneBookScreen(),
+          ],
+        ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
