@@ -10,6 +10,7 @@ import '../../services/file_service.dart';
 import '../../services/api_service.dart';
 import '../../widgets/callable_text.dart';
 import '../../widgets/elapsed_timer_text.dart';
+import '../../widgets/media_thumbnail.dart';
 import '../camera_screen.dart';
 
 class CallDetailScreen extends StatefulWidget {
@@ -284,7 +285,14 @@ class _CallDetailScreenState extends State<CallDetailScreen> {
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     if (call.status != CallStatus.open)
                       OutlinedButton(onPressed: () => _changeStatus(CallStatus.open), child: Text(l10n.callStatusOpen)),
-                    if (call.status != CallStatus.inProgress)
+                    // Stays visible even once already "in progress" —
+                    // multiple technicians each press this independently
+                    // to start their own timer (spec item 8). Pressing it
+                    // again for a user who already has an active session
+                    // is a safe no-op server-side, so this is never
+                    // destructive, just sometimes redundant for whoever
+                    // pressed it first.
+                    if (call.status != CallStatus.closed)
                       OutlinedButton(onPressed: () => _changeStatus(CallStatus.inProgress), child: Text(l10n.callStatusInProgress)),
                     if (call.status != CallStatus.closed)
                       FilledButton(onPressed: () => _changeStatus(CallStatus.closed), child: Text(l10n.callStatusClosed)),
@@ -304,7 +312,9 @@ class _CallDetailScreenState extends State<CallDetailScreen> {
                   if (detail.notes.isEmpty) Text(l10n.callNoNotes, style: const TextStyle(color: AppColors.inkSoft, fontSize: 13)),
                   ...detail.notes.map((n) => Card(
                         child: ListTile(
-                          leading: Icon(n.hasPhoto ? Icons.image_outlined : Icons.notes_outlined, size: 20),
+                          leading: n.hasPhoto
+                              ? MediaThumbnail.photo(url: '/calls/notes/${n.id}/photo')
+                              : const Icon(Icons.notes_outlined, size: 20),
                           title: Text(n.text ?? l10n.callPhotoNote),
                           subtitle: Text(n.authorUsername, style: const TextStyle(fontSize: 11.5)),
                           trailing: n.hasPhoto ? const Icon(Icons.visibility_outlined, size: 18) : null,
@@ -319,7 +329,7 @@ class _CallDetailScreenState extends State<CallDetailScreen> {
                   if (detail.attachments.isEmpty) Text(l10n.callNoAttachments, style: const TextStyle(color: AppColors.inkSoft, fontSize: 13)),
                   ...detail.attachments.map((a) => Card(
                         child: ListTile(
-                          leading: const Icon(Icons.picture_as_pdf_outlined, size: 20),
+                          leading: const MediaThumbnail.pdf(),
                           title: Text(a.originalName),
                           subtitle: Text(a.uploadedByUsername, style: const TextStyle(fontSize: 11.5)),
                           trailing: const Icon(Icons.visibility_outlined, size: 18),
