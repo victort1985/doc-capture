@@ -97,6 +97,12 @@ export class CallsService {
     return call;
   }
 
+  /** Admin-only (enforced at the controller). Cascades to notes/attachments/working sessions via DB FK — doesn't remove the underlying files from storage, just the database records and history. */
+  async remove(id: number): Promise<void> {
+    const call = await this.findOne(id);
+    await this.callsRepo.remove(call);
+  }
+
   findNotes(callId: number): Promise<CallNote[]> {
     return this.notesRepo.find({
       where: { call: { id: callId } },

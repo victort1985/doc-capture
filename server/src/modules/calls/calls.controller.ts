@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   ParseIntPipe,
@@ -18,7 +19,10 @@ import { CreateCallDto } from './dto/create-call.dto';
 import { UpdateCallStatusDto } from './dto/update-call-status.dto';
 import { AddNoteDto } from './dto/add-note.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { UserRole } from '../users/entities/user.entity';
 
 const MAX_FILE_SIZE = parseInt(process.env.MAX_FILE_SIZE_MB || '20', 10) * 1024 * 1024;
 
@@ -45,6 +49,13 @@ export class CallsController {
       this.callsService.findAttachments(id),
     ]);
     return { ...call, notes, attachments };
+  }
+
+  @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.callsService.remove(id);
   }
 
   @Post(':id/status')

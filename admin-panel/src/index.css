@@ -234,6 +234,7 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
 .stamp-badge.on { color: var(--success); background: var(--success-wash); }
 .stamp-badge.off { color: var(--ink-soft); border-style: dashed; background: var(--surface-muted); }
 .stamp-badge.neutral { color: var(--primary); background: var(--primary-wash); }
+.stamp-badge.danger { color: var(--danger); background: rgba(181, 71, 27, 0.12); }
 
 /* ---------- Forms ---------- */
 

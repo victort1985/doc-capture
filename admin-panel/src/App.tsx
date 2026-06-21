@@ -9,6 +9,7 @@ import StorageRoutingPage from './pages/StorageRoutingPage';
 import TemplatesPage from './pages/TemplatesPage';
 import FilesPage from './pages/FilesPage';
 import LocationsPage from './pages/LocationsPage';
+import CallsPage from './pages/CallsPage';
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
             </ProtectedRoute>
           }
         >
+          <Route path="/calls" element={<CallsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />

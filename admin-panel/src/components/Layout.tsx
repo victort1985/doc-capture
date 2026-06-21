@@ -1,10 +1,11 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin } from 'lucide-react';
+import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import StampMark from './StampMark';
 import CopyrightFooter from './CopyrightFooter';
 
 const NAV = [
+  { to: '/calls', label: 'Calls', icon: PhoneCall },
   { to: '/users', label: 'Users', icon: Users },
   { to: '/locations', label: 'Locations', icon: MapPin },
   { to: '/storage', label: 'Storage connections', icon: HardDrive },
