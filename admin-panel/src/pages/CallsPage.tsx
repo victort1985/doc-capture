@@ -52,6 +52,21 @@ export default function CallsPage() {
     setEditing(false);
   }
 
+  async function openDetailForEdit(id: number) {
+    const d = await apiFetch<CallDetail>(`/calls/${id}`);
+    setDetail(d);
+    setEditForm({
+      place: d.place,
+      urgency: d.urgency,
+      contactName: d.contactName,
+      contactPosition: d.contactPosition,
+      contactPhone: d.contactPhone,
+      description: d.description,
+      unusualDamage: d.unusualDamage,
+    });
+    setEditing(true);
+  }
+
   function startEdit() {
     if (!detail) return;
     setEditForm({
@@ -130,6 +145,7 @@ export default function CallsPage() {
                 <td>
                   <div className="row-actions">
                     <button className="ghost" onClick={() => openDetail(c.id)} title="View / logs"><Eye size={15} /></button>
+                    <button className="ghost" onClick={() => openDetailForEdit(c.id)} title="Edit"><Pencil size={15} /></button>
                     <button className="ghost" onClick={() => removeCall(c.id)} title="Delete" style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                   </div>
                 </td>
