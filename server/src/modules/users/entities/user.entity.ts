@@ -10,6 +10,7 @@ import {
 } from 'typeorm';
 import { Region } from '../../locations/entities/region.entity';
 import { City } from '../../locations/entities/city.entity';
+import { Organization } from '../../organizations/entities/organization.entity';
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -71,6 +72,14 @@ export class User {
   // region-specific technicians.
   @Column({ default: false })
   isGlobal: boolean;
+
+  // Multi-tenant boundary. Null = super-admin (sees/manages everything
+  // across all organizations) — naturally true for the bootstrap admin
+  // created when the server was first set up, since nothing ever assigns
+  // it one. Any other user (admin or regular) with this set only sees
+  // data belonging to their own organization.
+  @ManyToOne(() => Organization, { nullable: true, onDelete: 'SET NULL' })
+  organization?: Organization;
 
   @CreateDateColumn()
   createdAt: Date;

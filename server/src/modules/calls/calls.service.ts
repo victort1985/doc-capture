@@ -28,14 +28,14 @@ export class CallsService {
     private readonly locationsService: LocationsService,
   ) {}
 
-  async create(userId: number, dto: CreateCallDto): Promise<ServiceCall> {
+  async create(userId: number, organizationId: number | null, dto: CreateCallDto): Promise<ServiceCall> {
     // When a Location was picked from the directory, trust its name over
     // whatever free-text the client also sent for `place` — keeps the two
     // in sync rather than risking them drifting apart.
     let place = dto.place;
     let location: { id: number } | undefined;
     if (dto.locationId) {
-      const found = await this.locationsService.findLocationById(dto.locationId);
+      const found = await this.locationsService.findLocationById(dto.locationId, organizationId);
       place = found.name;
       location = { id: found.id };
     }
@@ -53,6 +53,7 @@ export class CallsService {
       unusualDamage: dto.unusualDamage ?? false,
       status: CallStatus.OPEN,
       createdBy: { id: userId } as any,
+      organization: organizationId ? ({ id: organizationId } as any) : undefined,
     });
     call = await this.callsRepo.save(call);
 
@@ -66,24 +67,26 @@ export class CallsService {
     const full = await this.findOne(call.id);
 
     // Route the "new call" notification: technicians covering the call's
-    // region, plus anyone global. If the call has no resolvable region
+    // region within the SAME organization as the call, plus anyone
+    // global in that organization. If the call has no resolvable region
     // (free-text place not yet in the directory), fall back to notifying
-    // everyone rather than silently notifying no one.
+    // everyone in the call's organization rather than silently notifying
+    // no one — but never across organizations, even as a fallback.
     const regionId = full.location?.city?.region?.id;
+    const orgId = full.organization?.id ?? null;
     const targetUsers = regionId
-      ? await this.usersService.findUsersForRegion(regionId)
-      : await this.usersService.findAll();
+      ? await this.usersService.findUsersForRegion(regionId, orgId)
+      : await this.usersService.findAll({ organizationId: orgId });
     this.notifications.broadcastCallCreated(full, targetUsers.map((u) => u.id));
 
     return full;
   }
 
-  findAll(): Promise<ServiceCall[]> {
-    // Deliberately not scoped per-user — this is a shared team inbox any
-    // authenticated user can see and pick up, per spec ("when one of the
-    // users selects a call").
+  /** Super-admin (organizationId null) sees every call; an org-scoped user sees only their own organization's — see Organization. */
+  findAll(requester?: { organizationId: number | null }): Promise<ServiceCall[]> {
     return this.callsRepo.find({
-      relations: ['createdBy', 'statusChangedBy', 'closedBy', 'location', 'location.city', 'location.city.region', 'workingSessions', 'workingSessions.user'],
+      relations: ['createdBy', 'statusChangedBy', 'closedBy', 'location', 'location.city', 'location.city.region', 'workingSessions', 'workingSessions.user', 'organization'],
+      where: requester?.organizationId != null ? { organization: { id: requester.organizationId } } : {},
       order: { createdAt: 'DESC' },
     });
   }
@@ -91,7 +94,7 @@ export class CallsService {
   async findOne(id: number): Promise<ServiceCall> {
     const call = await this.callsRepo.findOne({
       where: { id },
-      relations: ['createdBy', 'statusChangedBy', 'closedBy', 'location', 'location.city', 'location.city.region', 'workingSessions', 'workingSessions.user'],
+      relations: ['createdBy', 'statusChangedBy', 'closedBy', 'location', 'location.city', 'location.city.region', 'workingSessions', 'workingSessions.user', 'organization'],
     });
     if (!call) throw new NotFoundException('Call not found');
     return call;

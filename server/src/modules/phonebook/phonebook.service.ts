@@ -23,11 +23,19 @@ export class PhoneBookService {
     private readonly templatesService: TemplatesService,
   ) {}
 
-  /** Search-as-you-type by first/last name prefix, optionally filtered by category and/or organization (= a Location, the same directory used for "Место" on calls). */
+  /**
+   * Search-as-you-type by first/last name prefix, optionally filtered by
+   * category and/or organization (= a Location — "people who work at
+   * this place", the business field, NOT the multi-tenant boundary).
+   * `tenantId` is the multi-tenant scope: null only for the super-admin
+   * (sees every organization's contacts); otherwise restricted to that
+   * tenant's own contacts regardless of what else is searched for.
+   */
   findAll(filters: {
     category?: ContactCategory;
     q?: string;
     organizationId?: number;
+    tenantId?: number | null;
   }): Promise<PhoneBookContact[]> {
     const qb = this.contactsRepo
       .createQueryBuilder('contact')
@@ -43,6 +51,9 @@ export class PhoneBookService {
     if (filters.organizationId) {
       qb.andWhere('organization.id = :organizationId', { organizationId: filters.organizationId });
     }
+    if (filters.tenantId != null) {
+      qb.andWhere('contact.tenantId = :tenantId', { tenantId: filters.tenantId });
+    }
     if (filters.q?.trim()) {
       qb.andWhere('(contact.firstName ILIKE :q OR contact.lastName ILIKE :q)', {
         q: `${filters.q.trim()}%`,
@@ -51,23 +62,28 @@ export class PhoneBookService {
     return qb.getMany();
   }
 
-  async findOne(id: number): Promise<PhoneBookContact> {
+  /** @param tenantId If provided, 404s unless the contact belongs to this tenant (same out-of-scope-looks-like-not-found pattern as Users/Locations). */
+  async findOne(id: number, tenantId?: number | null): Promise<PhoneBookContact> {
     const contact = await this.contactsRepo.findOne({
       where: { id },
-      relations: ['city', 'city.region', 'organization', 'createdBy'],
+      relations: ['city', 'city.region', 'organization', 'createdBy', 'tenant'],
     });
     if (!contact) throw new NotFoundException('Contact not found');
+    if (tenantId != null && contact.tenant?.id !== tenantId) {
+      throw new NotFoundException('Contact not found');
+    }
     return contact;
   }
 
   async create(
     userId: number,
+    tenantId: number | null,
     dto: CreateContactDto,
     photo?: { buffer: Buffer; mimetype: string },
   ): Promise<PhoneBookContact> {
     const city = dto.cityId ? await this.locationsService.findCityById(dto.cityId) : undefined;
     const organization = dto.organizationId
-      ? await this.locationsService.findLocationById(dto.organizationId)
+      ? await this.locationsService.findLocationById(dto.organizationId, tenantId)
       : undefined;
 
     const contact = this.contactsRepo.create({
@@ -81,6 +97,7 @@ export class PhoneBookService {
       email: dto.email,
       notes: dto.notes,
       createdBy: { id: userId } as any,
+      tenant: tenantId != null ? ({ id: tenantId } as any) : undefined,
     });
     const saved = await this.contactsRepo.save(contact);
 
@@ -91,16 +108,17 @@ export class PhoneBookService {
 
   async update(
     id: number,
+    tenantId: number | null,
     dto: UpdateContactDto,
     userId: number,
     photo?: { buffer: Buffer; mimetype: string },
   ): Promise<PhoneBookContact> {
-    const contact = await this.findOne(id);
+    const contact = await this.findOne(id, tenantId);
     const city = dto.cityId !== undefined
       ? (dto.cityId ? await this.locationsService.findCityById(dto.cityId) : undefined)
       : contact.city;
     const organization = dto.organizationId !== undefined
-      ? (dto.organizationId ? await this.locationsService.findLocationById(dto.organizationId) : undefined)
+      ? (dto.organizationId ? await this.locationsService.findLocationById(dto.organizationId, tenantId) : undefined)
       : contact.organization;
 
     Object.assign(contact, {
@@ -123,17 +141,20 @@ export class PhoneBookService {
     return this.findOne(saved.id);
   }
 
-  async remove(id: number): Promise<void> {
-    const contact = await this.findOne(id);
+  async remove(id: number, tenantId: number | null): Promise<void> {
+    const contact = await this.findOne(id, tenantId);
     await this.contactsRepo.remove(contact);
   }
 
-  /** Streams a contact's photo back, decrypting if needed. */
-  async downloadPhoto(id: number): Promise<{ buffer: Buffer; mimetype: string }> {
+  /** Streams a contact's photo back. @param tenantId same out-of-scope-is-404 pattern as the other methods. */
+  async downloadPhoto(id: number, tenantId?: number | null): Promise<{ buffer: Buffer; mimetype: string }> {
     const contact = await this.contactsRepo.findOne({
       where: { id },
-      relations: ['photoStorageConnection'],
+      relations: ['photoStorageConnection', 'tenant'],
     });
+    if (tenantId != null && contact?.tenant?.id !== tenantId) {
+      throw new NotFoundException('This contact has no photo');
+    }
     if (!contact?.photoRelativePath || !contact.photoStorageConnection) {
       throw new NotFoundException('This contact has no photo');
     }

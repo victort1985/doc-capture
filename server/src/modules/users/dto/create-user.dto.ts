@@ -55,4 +55,12 @@ export class CreateUserDto {
   @IsBoolean()
   @IsOptional()
   isGlobal?: boolean;
+
+  // Multi-tenant boundary — omit entirely to create a super-admin (only
+  // allowed when the requester is themselves a super-admin; enforced in
+  // UsersService, not just here, since DTO validation alone can't see
+  // who's making the request).
+  @IsInt()
+  @IsOptional()
+  organizationId?: number;
 }

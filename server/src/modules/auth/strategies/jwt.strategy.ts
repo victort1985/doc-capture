@@ -34,6 +34,15 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user.isActive) {
       throw new UnauthorizedException('Account disabled');
     }
-    return { id: user.id, username: user.username, role: user.role, language: user.language };
+    return {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+      language: user.language,
+      // null = super-admin (sees/manages everything); set = scoped to
+      // that organization's data only. Always derived from the live DB
+      // row above, never trusted from the JWT payload itself.
+      organizationId: user.organization?.id ?? null,
+    };
   }
 }

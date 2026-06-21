@@ -1,6 +1,6 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { Region } from './entities/region.entity';
 import { City } from './entities/city.entity';
 import { Location } from './entities/location.entity';
@@ -80,8 +80,8 @@ export class LocationsService {
 
   // --- Locations ("place" in calls/inventory, "organization" in phone book) ---
 
-  /** Search-as-you-type by prefix, optionally narrowed to a city. */
-  findLocations(query?: string, cityId?: number): Promise<Location[]> {
+  /** Search-as-you-type by prefix, optionally narrowed to a city. Scoped to the requester's organization unless they're the super-admin. */
+  findLocations(query?: string, cityId?: number, organizationId?: number | null): Promise<Location[]> {
     const qb = this.locationsRepo
       .createQueryBuilder('location')
       .leftJoinAndSelect('location.city', 'city')
@@ -94,26 +94,49 @@ export class LocationsService {
     if (cityId) {
       qb.andWhere('city.id = :cityId', { cityId });
     }
+    if (organizationId != null) {
+      qb.andWhere('location.organizationId = :organizationId', { organizationId });
+    }
     return qb.getMany();
   }
 
-  async findLocationById(id: number): Promise<Location> {
+  /**
+   * @param organizationId If provided, the lookup 404s unless the location
+   * belongs to this organization — used when resolving a client-supplied
+   * locationId (call creation, phone book contact's organization field)
+   * so one tenant can't reference another's location by guessing an id.
+   * Omit for trusted internal lookups where the id is already known-valid.
+   */
+  async findLocationById(id: number, organizationId?: number | null): Promise<Location> {
     const location = await this.locationsRepo.findOne({
       where: { id },
-      relations: ['city', 'city.region'],
+      relations: ['city', 'city.region', 'organization'],
     });
     if (!location) throw new NotFoundException('Location not found');
+    if (organizationId != null && location.organization?.id !== organizationId) {
+      throw new NotFoundException('Location not found');
+    }
     return location;
   }
 
-  async createLocation(dto: CreateLocationDto): Promise<Location> {
+  async createLocation(dto: CreateLocationDto, organizationId?: number | null): Promise<Location> {
     const city = await this.citiesRepo.findOne({ where: { id: dto.cityId } });
     if (!city) throw new NotFoundException('City not found');
     const existing = await this.locationsRepo.findOne({
-      where: { name: dto.name, city: { id: dto.cityId } },
+      where: {
+        name: dto.name,
+        city: { id: dto.cityId },
+        organization: organizationId != null ? { id: organizationId } : IsNull(),
+      },
     });
     if (existing) throw new ConflictException('A location with this name already exists in this city');
-    return this.locationsRepo.save(this.locationsRepo.create({ name: dto.name, city }));
+    return this.locationsRepo.save(
+      this.locationsRepo.create({
+        name: dto.name,
+        city,
+        organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
+      }),
+    );
   }
 
   async deleteLocation(id: number): Promise<void> {

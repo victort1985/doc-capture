@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { City } from './city.entity';
+import { Organization } from '../../organizations/entities/organization.entity';
 
 /**
  * Single shared "place" directory. Reused for two purposes by design
@@ -12,7 +13,7 @@ import { City } from './city.entity';
  *   matches the call's `location`.
  */
 @Entity('locations')
-@Index(['name', 'city'], { unique: true })
+@Index(['name', 'city', 'organization'], { unique: true })
 export class Location {
   @PrimaryGeneratedColumn()
   id: number;
@@ -22,6 +23,13 @@ export class Location {
 
   @ManyToOne(() => City, { onDelete: 'RESTRICT' })
   city: City;
+
+  // Nullable for backward compatibility with locations created before
+  // multi-tenancy existed — those stay visible only to the super-admin
+  // (organization === null) until reassigned. New locations created by
+  // an org-scoped admin get this auto-set to their organization.
+  @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
+  organization?: Organization;
 
   @CreateDateColumn()
   createdAt: Date;

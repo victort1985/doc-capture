@@ -10,6 +10,7 @@ import { City } from '../../locations/entities/city.entity';
 import { Location } from '../../locations/entities/location.entity';
 import { StorageConnection } from '../../storage/entities/storage-connection.entity';
 import { User } from '../../users/entities/user.entity';
+import { Organization } from '../../organizations/entities/organization.entity';
 
 export enum ContactCategory {
   CLIENT = 'client',
@@ -77,6 +78,16 @@ export class PhoneBookContact {
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
   createdBy?: User;
+
+  // Multi-tenant boundary — see User.organization. Named `tenant` here
+  // (not `organization`) since that name is already taken by the
+  // business field above (the contact's actual employer/workplace,
+  // which is a Location, not an Organization — confusingly similar
+  // names for two different concepts). Auto-set from the creating
+  // user's organization; null only for contacts created before this
+  // feature existed (visible only to the super-admin until reassigned).
+  @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
+  tenant?: Organization;
 
   @CreateDateColumn()
   createdAt: Date;

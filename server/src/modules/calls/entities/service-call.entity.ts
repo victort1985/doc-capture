@@ -10,6 +10,7 @@ import {
 import { User } from '../../users/entities/user.entity';
 import { Location } from '../../locations/entities/location.entity';
 import { CallWorkingSession } from './call-working-session.entity';
+import { Organization } from '../../organizations/entities/organization.entity';
 
 export enum CallUrgency {
   URGENT = 'urgent',
@@ -78,6 +79,11 @@ export class ServiceCall {
   // trusted from client input.
   @ManyToOne(() => User)
   createdBy: User;
+
+  // Multi-tenant boundary — see User.organization. Auto-set from the
+  // creating user's organization at creation time.
+  @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
+  organization?: Organization;
 
   @ManyToOne(() => User, { nullable: true })
   statusChangedBy?: User;

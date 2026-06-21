@@ -6,14 +6,17 @@ import { CreateLocationDto } from './dto/create-location.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
+
+type RequestUser = { organizationId: number | null };
 
 @Controller('locations')
 @UseGuards(JwtAuthGuard)
 export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}
 
-  // --- Regions ---
+  // --- Regions (shared geography reference data, not org-scoped) ---
 
   @Get('regions')
   findAllRegions() {
@@ -34,7 +37,7 @@ export class LocationsController {
     return this.locationsService.deleteRegion(id);
   }
 
-  // --- Cities ---
+  // --- Cities (shared geography reference data, not org-scoped) ---
 
   /** Search-as-you-type: ?q=<prefix>&regionId=<id> */
   @Get('cities')
@@ -56,24 +59,24 @@ export class LocationsController {
     return this.locationsService.deleteCity(id);
   }
 
-  // --- Locations ("place" / "organization") ---
+  // --- Locations ("place" / "organization" business field) — org-scoped ---
 
-  /** Search-as-you-type: ?q=<prefix>&cityId=<id> */
+  /** Search-as-you-type: ?q=<prefix>&cityId=<id>. Scoped to the requester's organization unless they're the super-admin. */
   @Get()
-  findLocations(@Query('q') q?: string, @Query('cityId') cityId?: string) {
-    return this.locationsService.findLocations(q, cityId ? parseInt(cityId, 10) : undefined);
+  findLocations(@CurrentUser() user: RequestUser, @Query('q') q?: string, @Query('cityId') cityId?: string) {
+    return this.locationsService.findLocations(q, cityId ? parseInt(cityId, 10) : undefined, user.organizationId);
   }
 
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number) {
-    return this.locationsService.findLocationById(id);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    return this.locationsService.findLocationById(id, user.organizationId);
   }
 
   @Post()
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  createLocation(@Body() dto: CreateLocationDto) {
-    return this.locationsService.createLocation(dto);
+  createLocation(@Body() dto: CreateLocationDto, @CurrentUser() user: RequestUser) {
+    return this.locationsService.createLocation(dto, user.organizationId);
   }
 
   @Delete(':id')

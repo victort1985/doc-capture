@@ -32,13 +32,13 @@ export class CallsController {
   constructor(private readonly callsService: CallsService) {}
 
   @Post()
-  create(@Body() dto: CreateCallDto, @CurrentUser() user: { id: number }) {
-    return this.callsService.create(user.id, dto);
+  create(@Body() dto: CreateCallDto, @CurrentUser() user: { id: number; organizationId: number | null }) {
+    return this.callsService.create(user.id, user.organizationId, dto);
   }
 
   @Get()
-  findAll() {
-    return this.callsService.findAll();
+  findAll(@CurrentUser() user: { organizationId: number | null }) {
+    return this.callsService.findAll({ organizationId: user.organizationId });
   }
 
   @Get(':id')
