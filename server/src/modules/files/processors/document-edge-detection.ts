@@ -1,14 +1,18 @@
-import cvModule from '@techstark/opencv-js';
-
-/**
- * @techstark/opencv-js is a pure-WASM build of OpenCV.js — no native
- * compilation needed (unlike opencv4nodejs or jscanify, which pulls in
- * node-canvas/Cairo). Chosen specifically to avoid native-dependency
- * install risk on the production server, matching how sharp (also a
- * pure-binary, no-native-build dependency) is already used here.
- */
-
-type Cv = typeof cvModule;
+// Deliberately NOT a static top-level import. A static `import cvModule
+// from '@techstark/opencv-js'` runs the library's WASM init as a side
+// effect of NestJS loading this module at server BOOTSTRAP (this file
+// gets pulled in via the dependency graph regardless of whether anyone
+// has ever uploaded a document yet) — confirmed as the real cause of a
+// production incident: the server process sat at 100% CPU indefinitely
+// from the moment it started, with no further log output and no
+// incoming requests, exactly matching instability with this library's
+// WASM init already observed during development (see the retry/polling
+// comment below — that was written after reproducing a related hang in
+// sandbox testing). A dynamic import() inside getCv() defers all of
+// that to the first time a document actually needs cropping, so a
+// problem with this one feature can no longer take the whole server
+// down before a single request is even handled.
+type Cv = any;
 let cvReady: Promise<Cv> | null = null;
 
 /**
@@ -21,25 +25,26 @@ let cvReady: Promise<Cv> | null = null;
  * indefinite hang waiting for an event that already happened). Polling
  * is immune to that ordering issue.
  */
-function getCv(): Promise<Cv> {
+async function getCv(): Promise<Cv> {
   if (cvReady) return cvReady;
-  cvReady = new Promise((resolve, reject) => {
-    if ((cvModule as any).Mat) {
-      resolve(cvModule);
-      return;
-    }
-    let attempts = 0;
-    const interval = setInterval(() => {
-      attempts++;
-      if ((cvModule as any).Mat) {
-        clearInterval(interval);
-        resolve(cvModule);
-      } else if (attempts > 200) {
-        clearInterval(interval);
-        reject(new Error('OpenCV.js failed to initialize within 10s'));
-      }
-    }, 50);
-  });
+  cvReady = (async () => {
+    const cvModule = (await import('@techstark/opencv-js')) as any;
+    const cv = cvModule.default ?? cvModule;
+    if (cv.Mat) return cv;
+    return new Promise((resolve, reject) => {
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        if (cv.Mat) {
+          clearInterval(interval);
+          resolve(cv);
+        } else if (attempts > 200) {
+          clearInterval(interval);
+          reject(new Error('OpenCV.js failed to initialize within 10s'));
+        }
+      }, 50);
+    });
+  })();
   return cvReady;
 }
 
