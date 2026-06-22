@@ -17,6 +17,7 @@ import { LocationsModule } from './modules/locations/locations.module';
 import { PhoneBookModule } from './modules/phonebook/phonebook.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { PushModule } from './modules/push/push.module';
+import { CalendarModule } from './modules/calendar/calendar.module';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -51,6 +52,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     PhoneBookModule,
     OrganizationsModule,
     PushModule,
+    CalendarModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

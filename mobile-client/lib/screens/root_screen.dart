@@ -5,6 +5,7 @@ import '../services/notifications_service.dart';
 import 'inventory_screen.dart';
 import 'calls/calls_list_screen.dart';
 import 'phonebook_screen.dart';
+import 'calendar_screen.dart';
 import '../widgets/organization_logo_background.dart';
 
 class RootScreen extends StatefulWidget {
@@ -71,6 +72,7 @@ class _RootScreenState extends State<RootScreen> {
             const InventoryScreen(),
             CallsListScreen(key: _callsListKey),
             const PhoneBookScreen(),
+            const CalendarScreen(),
           ],
         ),
       ),
@@ -92,6 +94,11 @@ class _RootScreenState extends State<RootScreen> {
             icon: const Icon(Icons.contacts_outlined),
             selectedIcon: const Icon(Icons.contacts),
             label: l10n.phoneBookTitle,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.calendar_month_outlined),
+            selectedIcon: const Icon(Icons.calendar_month),
+            label: l10n.calendarTitle,
           ),
         ],
       ),

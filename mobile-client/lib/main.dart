@@ -14,6 +14,7 @@ import 'services/locations_service.dart';
 import 'services/phonebook_service.dart';
 import 'services/push_notifications_service.dart';
 import 'services/biometric_service.dart';
+import 'services/calendar_service.dart';
 import 'store/app_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/root_screen.dart';
@@ -37,6 +38,7 @@ class DocCaptureApp extends StatelessWidget {
     final phoneBookService = PhoneBookService(apiService);
     final pushNotificationsService = PushNotificationsService(apiService);
     final biometricService = BiometricService();
+    final calendarService = CalendarService(apiService);
 
     return MultiProvider(
       providers: [
@@ -48,6 +50,7 @@ class DocCaptureApp extends StatelessWidget {
         Provider<PhoneBookService>.value(value: phoneBookService),
         Provider<PushNotificationsService>.value(value: pushNotificationsService),
         Provider<BiometricService>.value(value: biometricService),
+        Provider<CalendarService>.value(value: calendarService),
         ChangeNotifierProvider<AppState>(
           create: (_) => AppState(settingsService, authService, apiService, pushNotificationsService),
         ),
