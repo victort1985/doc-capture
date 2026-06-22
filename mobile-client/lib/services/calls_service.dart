@@ -14,9 +14,50 @@ class CallsService {
   CallsService(this._api);
   final ApiService _api;
 
+  // ETag-based cache: we cache the last known list and its server-
+  // provided ETag. On every poll we send If-None-Match; if the server
+  // responds 304 the list hasn't changed and we return the cached copy
+  // instead of parsing a fresh response — saves both bandwidth and the
+  // setState/rebuild cycle that would otherwise flash the UI with an
+  // identical list every 15 seconds for no reason.
+  List<ServiceCall>? _cachedCalls;
+  String? _callsEtag;
+
   Future<List<ServiceCall>> list() async {
-    final data = await _api.get('/calls') as List;
-    return data.map((j) => ServiceCall.fromJson(j as Map<String, dynamic>)).toList();
+    return (await listIfChanged()).$2;
+  }
+
+  /// Returns (changed, calls).  changed=false means the server confirmed
+  /// nothing has changed since the last successful fetch (304 Not Modified
+  /// with a matching ETag) — the caller can skip re-rendering in that case.
+  Future<(bool, List<ServiceCall>)> listIfChanged() async {
+    try {
+      final res = await _api.getRaw(
+        '/calls',
+        headers: _callsEtag != null ? {'If-None-Match': _callsEtag!} : null,
+      );
+      if (res.statusCode == 304 && _cachedCalls != null) {
+        return (false, _cachedCalls!);
+      }
+      final etag = res.headers.value('etag');
+      if (etag != null) _callsEtag = etag;
+      final calls = (res.data as List)
+          .map((j) => ServiceCall.fromJson(j as Map<String, dynamic>))
+          .toList();
+      _cachedCalls = calls;
+      return (true, calls);
+    } catch (_) {
+      // Network error — return cached data if available so the UI doesn't
+      // blank out, or re-throw to let the caller show an error if there's
+      // nothing cached at all.
+      if (_cachedCalls != null) return (false, _cachedCalls!);
+      rethrow;
+    }
+  }
+
+  void clearCache() {
+    _cachedCalls = null;
+    _callsEtag = null;
   }
 
   Future<CallDetail> getOne(int id) async {

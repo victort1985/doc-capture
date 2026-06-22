@@ -177,5 +177,6 @@
   "phoneBookSave": "Save contact",
   "callViewFileError": "Could not open the file, please try again",
   "callPopupView": "View",
-  "rememberMe": "Remember me"
+  "rememberMe": "Remember me",
+  "loginWithBiometrics": "Sign in with biometrics"
 }

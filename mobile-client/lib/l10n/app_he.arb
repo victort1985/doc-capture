@@ -177,5 +177,6 @@
   "phoneBookSave": "שמור איש קשר",
   "callViewFileError": "לא ניתן לפתוח את הקובץ, נסה שוב",
   "callPopupView": "הצג",
-  "rememberMe": "זכור אותי"
+  "rememberMe": "זכור אותי",
+  "loginWithBiometrics": "כניסה עם זיהוי ביומטרי"
 }

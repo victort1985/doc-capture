@@ -126,6 +126,25 @@ class ApiService {
     return res.data;
   }
 
+  /// Like [get] but returns the full Dio Response — needed for ETag-based
+  /// conditional requests where the 304 status code itself is meaningful
+  /// (the normal [get] would throw on non-2xx, and we need to inspect
+  /// headers too). validateStatus allows 304 through without throwing.
+  Future<Response<dynamic>> getRaw(
+    String path, {
+    Map<String, dynamic>? query,
+    Map<String, dynamic>? headers,
+  }) async {
+    return _dio.get(
+      path,
+      queryParameters: query,
+      options: Options(
+        headers: headers,
+        validateStatus: (status) => status != null && (status < 400 || status == 304),
+      ),
+    );
+  }
+
   /// Authenticated binary fetch — used to view already-uploaded photos and
   /// documents in-app (spec: viewing existing attachments needs the same
   /// auth/CF-Access headers as everything else, so a plain Image.network

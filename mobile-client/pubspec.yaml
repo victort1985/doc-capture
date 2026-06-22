@@ -54,6 +54,9 @@ dependencies:
   # in use.
   permission_handler: ^12.0.3
 
+  # Biometric login (Face ID / Touch ID on iOS, fingerprint on Android)
+  local_auth: ^2.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

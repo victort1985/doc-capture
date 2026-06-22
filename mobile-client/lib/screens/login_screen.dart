@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
+import '../services/biometric_service.dart';
 import '../store/app_state.dart';
 import '../widgets/copyright_notice.dart';
 import '../widgets/stamp_mark.dart';
@@ -23,6 +24,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
   String? _error;
   bool _obscure = true;
   bool _rememberMe = false;
+  bool _biometricAvailable = false;
 
   late final AnimationController _stampController;
   late final Animation<double> _stampScale;
@@ -54,6 +56,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         _rememberMe = true;
       });
     }
+    // Check biometric availability and auto-prompt if enabled + creds exist
+    final bio = context.read<BiometricService>();
+    final available = await bio.isAvailable();
+    final enabled = await bio.isEnabled();
+    if (mounted) setState(() => _biometricAvailable = available);
+    if (available && enabled && saved != null && mounted) {
+      _tryBiometric();
+    }
+  }
+
+  Future<void> _tryBiometric() async {
+    final ok = await context.read<BiometricService>().authenticate();
+    if (!ok || !mounted) return;
+    // Biometric OK — use the already-prefilled credentials to log in
+    await _submit();
   }
 
   @override
@@ -201,8 +218,42 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 onTap: () => setState(() => _rememberMe = !_rememberMe),
                                 child: Text(l10n.rememberMe, style: const TextStyle(fontSize: 13.5)),
                               ),
+                              if (_biometricAvailable) ...[
+                                const Spacer(),
+                                FutureBuilder<bool>(
+                                  future: context.read<BiometricService>().isEnabled(),
+                                  builder: (context, snap) {
+                                    final enabled = snap.data ?? false;
+                                    return Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.fingerprint, size: 18, color: enabled ? Theme.of(context).colorScheme.primary : AppColors.inkSoft),
+                                        const SizedBox(width: 4),
+                                        Switch(
+                                          value: enabled,
+                                          onChanged: (v) async {
+                                            await context.read<BiometricService>().setEnabled(v);
+                                            setState(() {});
+                                          },
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ],
                             ],
                           ),
+                          if (_biometricAvailable) ...[
+                            const SizedBox(height: 6),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                icon: const Icon(Icons.fingerprint, size: 20),
+                                label: Text(l10n.loginWithBiometrics),
+                                onPressed: _tryBiometric,
+                              ),
+                            ),
+                          ],
                           if (_error != null) ...[
                             const SizedBox(height: 14),
                             Container(

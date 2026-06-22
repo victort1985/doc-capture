@@ -11,6 +11,8 @@ ENTRIES = (
     "\t<key>NSLocationWhenInUseUsageDescription</key>\n"
     "\t<string>Location is used to attach the call's location when you tap "
     '"get location".</string>\n'
+    "\t<key>NSFaceIDUsageDescription</key>\n"
+    "\t<string>Face ID lets you unlock Doc Capture quickly without typing your password.</string>\n"
 )
 
 

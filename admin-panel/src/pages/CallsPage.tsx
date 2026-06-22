@@ -44,7 +44,11 @@ export default function CallsPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const t = setInterval(load, 15_000);
+    return () => clearInterval(t);
+  }, [statusFilter]);
 
   async function openDetail(id: number) {
     const d = await apiFetch<CallDetail>(`/calls/${id}`);

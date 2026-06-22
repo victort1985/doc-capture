@@ -4,6 +4,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   Param,
   ParseIntPipe,
   Patch,
@@ -14,6 +15,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { Response } from 'express';
+import { createHash } from 'crypto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CallsService } from './calls.service';
 import { CreateCallDto } from './dto/create-call.dto';
@@ -39,8 +41,23 @@ export class CallsController {
   }
 
   @Get()
-  findAll(@CurrentUser() user: { organizationId: number | null }) {
-    return this.callsService.findAll({ organizationId: user.organizationId });
+  async findAll(
+    @CurrentUser() user: { organizationId: number | null },
+    @Headers('if-none-match') ifNoneMatch: string | undefined,
+    @Res() res: Response,
+  ) {
+    const calls = await this.callsService.findAll({ organizationId: user.organizationId });
+    // ETag is a hash of the serialized data — when the client sends
+    // If-None-Match with a previously seen ETag and the data hasn't
+    // changed, we return 304 with no body (saves bandwidth and parse
+    // time on repeated polls, critical for the 15-second auto-refresh
+    // the mobile app and admin panel run).
+    const etag = `"${createHash('sha1').update(JSON.stringify(calls)).digest('hex').slice(0, 16)}"`;
+    if (ifNoneMatch === etag) {
+      res.status(304).end();
+      return;
+    }
+    res.set({ ETag: etag }).json(calls);
   }
 
   @Get(':id')

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app/theme.dart';
@@ -16,15 +17,42 @@ class CallsListScreen extends StatefulWidget {
 }
 
 class CallsListScreenState extends State<CallsListScreen> {
-  late Future<List<ServiceCall>> _future;
+  List<ServiceCall> _calls = [];
+  bool _loading = true;
+  String? _error;
+  Timer? _pollTimer;
+  static const _pollInterval = Duration(seconds: 15);
 
   @override
   void initState() {
     super.initState();
-    _future = context.read<CallsService>().list();
+    _load(force: true);
+    _pollTimer = Timer.periodic(_pollInterval, (_) => _load());
   }
 
-  void refresh() => setState(() => _future = context.read<CallsService>().list());
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _load({bool force = false}) async {
+    if (force) setState(() => _loading = true);
+    try {
+      final service = context.read<CallsService>();
+      if (force) service.clearCache();
+      final (changed, calls) = await service.listIfChanged();
+      if (changed && mounted) {
+        setState(() { _calls = calls; _loading = false; _error = null; });
+      } else if (force && mounted) {
+        setState(() { _loading = false; });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+    }
+  }
+
+  void refresh() => _load(force: true);
 
   /// Opens a call's detail screen directly — used when tapping a
   /// real-time notification popup (see RootScreen) rather than the
@@ -75,25 +103,18 @@ class CallsListScreenState extends State<CallsListScreen> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async => refresh(),
-          child: FutureBuilder<List<ServiceCall>>(
-            future: _future,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState != ConnectionState.done) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError) {
-                return Center(child: Text(l10n.callsLoadError));
-              }
-              final calls = snapshot.data!;
-              if (calls.isEmpty) {
-                return Center(child: Text(l10n.callsEmpty, style: const TextStyle(color: AppColors.inkSoft)));
-              }
-              return ListView.separated(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+                  ? Center(child: Text(l10n.callsLoadError))
+                  : _calls.isEmpty
+                      ? Center(child: Text(l10n.callsEmpty, style: const TextStyle(color: AppColors.inkSoft)))
+                      : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(14, 10, 14, 80),
-                itemCount: calls.length,
+                itemCount: _calls.length,
                 separatorBuilder: (_, __) => const SizedBox(height: 8),
                 itemBuilder: (context, i) {
-                  final call = calls[i];
+                  final call = _calls[i];
                   return Card(
                     child: ListTile(
                       onTap: () async {
@@ -139,9 +160,7 @@ class CallsListScreenState extends State<CallsListScreen> {
                     ),
                   );
                 },
-              );
-            },
-          ),
+              ),
         ),
       ),
     );
