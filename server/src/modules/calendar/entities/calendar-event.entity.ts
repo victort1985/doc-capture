@@ -64,6 +64,13 @@ export class CalendarEvent {
   @Column({ type: 'enum', enum: CalendarEventRepeat, default: CalendarEventRepeat.NONE })
   repeat: CalendarEventRepeat;
 
+  // Additional fields (מפרט טכני / ציוד נדרש)
+  @Column({ type: 'text', nullable: true })
+  technicalRequirements?: string;
+
+  @Column({ type: 'text', nullable: true })
+  requiredEquipment?: string;
+
   // For future Google Calendar sync
   @Column({ nullable: true })
   googleEventId?: string;

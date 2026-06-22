@@ -60,6 +60,8 @@ class CalendarEvent {
   final String? location;
   final String? color;
   final CalendarEventRepeat repeat;
+  final String? technicalRequirements;
+  final String? requiredEquipment;
   final String? createdByUsername;
   final List<CalendarAttachment> attachments;
   final DateTime createdAt;
@@ -76,6 +78,8 @@ class CalendarEvent {
     this.location,
     this.color,
     required this.repeat,
+    this.technicalRequirements,
+    this.requiredEquipment,
     this.createdByUsername,
     this.attachments = const [],
     required this.createdAt,
@@ -93,6 +97,8 @@ class CalendarEvent {
         location: json['location'],
         color: json['color'],
         repeat: repeatFromJson(json['repeat'] ?? 'none'),
+        technicalRequirements: json['technicalRequirements'],
+        requiredEquipment: json['requiredEquipment'],
         createdByUsername: json['createdBy']?['username'],
         attachments: (json['attachments'] as List<dynamic>? ?? [])
             .map((a) => CalendarAttachment.fromJson(a as Map<String, dynamic>))

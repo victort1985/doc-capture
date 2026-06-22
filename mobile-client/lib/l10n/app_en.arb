@@ -204,5 +204,6 @@
   "calendarAttachmentsSaveFirst": "Save the event first, then add attachments",
   "calendarCamera": "Camera",
   "calendarGallery": "Gallery",
-  "calendarFile": "File"
+  "calendarFile": "File",
+  "calendarColor": "Color"
 }

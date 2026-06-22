@@ -35,4 +35,12 @@ export class CreateEventDto {
   @IsEnum(CalendarEventRepeat)
   @IsOptional()
   repeat?: CalendarEventRepeat;
+
+  @IsString()
+  @IsOptional()
+  technicalRequirements?: string;
+
+  @IsString()
+  @IsOptional()
+  requiredEquipment?: string;
 }

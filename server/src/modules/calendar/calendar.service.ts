@@ -83,6 +83,8 @@ export class CalendarService {
         location: dto.location,
         color: dto.color,
         repeat: dto.repeat,
+        technicalRequirements: dto.technicalRequirements,
+        requiredEquipment: dto.requiredEquipment,
         createdBy: { id: userId } as any,
       }),
     );
@@ -102,6 +104,8 @@ export class CalendarService {
       location: dto.location ?? event.location,
       color: dto.color ?? event.color,
       repeat: dto.repeat ?? event.repeat,
+      technicalRequirements: dto.technicalRequirements ?? event.technicalRequirements,
+      requiredEquipment: dto.requiredEquipment ?? event.requiredEquipment,
     });
     await this.eventsRepo.save(event);
     return this.findEvent(id, organizationId);

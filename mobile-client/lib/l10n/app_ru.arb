@@ -204,5 +204,6 @@
   "calendarAttachmentsSaveFirst": "Сначала сохрани событие, затем добавь вложения",
   "calendarCamera": "Камера",
   "calendarGallery": "Галерея",
-  "calendarFile": "Файл"
+  "calendarFile": "Файл",
+  "calendarColor": "Цвет"
 }

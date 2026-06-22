@@ -26,6 +26,8 @@ class CalendarService {
     String? location,
     String? color,
     CalendarEventRepeat repeat = CalendarEventRepeat.none,
+    String? technicalRequirements,
+    String? requiredEquipment,
   }) async {
     final json = await _api.post('/calendar/events', {
       'title': title,
@@ -37,6 +39,8 @@ class CalendarService {
       if (location != null) 'location': location,
       if (color != null) 'color': color,
       'repeat': repeatToJson(repeat),
+      if (technicalRequirements != null) 'technicalRequirements': technicalRequirements,
+      if (requiredEquipment != null) 'requiredEquipment': requiredEquipment,
     });
     return CalendarEvent.fromJson(json as Map<String, dynamic>);
   }
