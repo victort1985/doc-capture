@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 0.1.0
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=3.5.0 <4.0.0'
 
 dependencies:
   flutter:
@@ -62,9 +62,9 @@ dependencies:
 
   # Management tab: warehouse barcodes + PDF export + QR/barcode scanner
   barcode_widget: ^2.0.6
-  pdf: ^3.11.2
-  printing: ^5.14.2
-  mobile_scanner: ^7.0.1
+  pdf: ^3.10.8
+  printing: ^5.13.2
+  mobile_scanner: ^5.2.3
 
 dev_dependencies:
   flutter_test:

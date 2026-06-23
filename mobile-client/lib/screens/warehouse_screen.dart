@@ -392,7 +392,9 @@ class _BarcodeScannerScreen extends StatelessWidget {
       body: MobileScanner(
         onDetect: (capture) {
           final code = capture.barcodes.firstOrNull?.rawValue;
-          if (code != null) Navigator.of(context).pop(code);
+          if (code != null && context.mounted) {
+            Navigator.of(context).pop(code);
+          }
         },
       ),
     );
