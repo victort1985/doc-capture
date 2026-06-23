@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -11,6 +12,18 @@ import '../services/api_service.dart';
 import '../services/management_services.dart';
 import 'barcode_scanner_screen.dart';
 
+// ─── Barcode generator (client-side, random) ──────────────────────────────────
+
+String generateLocalBarcode() {
+  // DC + 10 random digits — unique enough for warehouse use, doesn't hit
+  // the server until the user explicitly links it to an item.
+  final rng = Random.secure();
+  final digits = List.generate(10, (_) => rng.nextInt(10)).join();
+  return 'DC$digits';
+}
+
+// ─── Main screen ──────────────────────────────────────────────────────────────
+
 class WarehouseScreen extends StatefulWidget {
   const WarehouseScreen({super.key});
   @override
@@ -22,7 +35,6 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   List<WarehouseItem> _items = [];
   List<WarehouseCategory> _categories = [];
   int? _selectedCategoryId;
-  String _query = '';
   bool _loading = true;
 
   @override
@@ -36,97 +48,123 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
     setState(() => _loading = true);
     try {
       final cats = await _svc.listCategories();
-      final items = await _svc.listItems(categoryId: _selectedCategoryId, q: _query);
+      final items = await _svc.listItems(categoryId: _selectedCategoryId);
       if (mounted) setState(() { _categories = cats; _items = items; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  Future<void> _printPdf({List<WarehouseItem>? selection}) async {
-    final l10n = AppLocalizations.of(context)!;
-    final rows = selection ?? _items;
+  // ── Generate + print barcode ──────────────────────────────────────────────
+
+  Future<void> _generateAndPrint() async {
+    final code = generateLocalBarcode();
+    // Show barcode and print dialog
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Generated barcode'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8), color: Colors.white),
+            child: Column(children: [
+              // Visual barcode representation (lines)
+              _BarcodeVisual(data: code),
+              const SizedBox(height: 6),
+              Text(code, style: const TextStyle(fontFamily: 'Courier', fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+            ]),
+          ),
+          const SizedBox(height: 12),
+          const Text('Scan this barcode when adding\nan item to the warehouse.', textAlign: TextAlign.center, style: TextStyle(color: AppColors.inkSoft, fontSize: 13)),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Close')),
+          FilledButton.icon(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _printBarcode(code);
+            },
+            icon: const Icon(Icons.print_outlined, size: 16),
+            label: const Text('Print'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _printBarcode(String code) async {
     final pdf = pw.Document();
     pdf.addPage(pw.Page(
-      pageFormat: PdfPageFormat.a4,
-      build: (c) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text(l10n.warehouseInventoryReport, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 8),
-        pw.Text('${DateTime.now().toLocal().toString().substring(0, 16)}', style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-        pw.SizedBox(height: 14),
-        pw.Table.fromTextArray(
-          headers: ['#', l10n.warehouseName, l10n.warehouseBarcode, l10n.warehouseCategory, l10n.warehouseQty, l10n.warehouseUnit, l10n.warehouseLocation],
-          data: rows.asMap().entries.map((e) => [
-            '${e.key + 1}',
-            e.value.name,
-            e.value.barcode,
-            e.value.category?.name ?? '—',
-            '${e.value.quantity}',
-            e.value.unit ?? '—',
-            e.value.location ?? '—',
-          ]).toList(),
-          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-          cellStyle: const pw.TextStyle(fontSize: 9),
-        ),
-      ]),
+      pageFormat: const PdfPageFormat(62 * PdfPageFormat.mm, 30 * PdfPageFormat.mm),
+      margin: const pw.EdgeInsets.all(4 * PdfPageFormat.mm),
+      build: (c) => pw.Column(
+        mainAxisAlignment: pw.MainAxisAlignment.center,
+        children: [
+          pw.Barcode.widget(data: code, barcode: pw.Barcode.code128(), height: 15 * PdfPageFormat.mm),
+          pw.SizedBox(height: 2 * PdfPageFormat.mm),
+          pw.Text(code, style: const pw.TextStyle(fontSize: 8)),
+        ],
+      ),
     ));
     await Printing.layoutPdf(onLayout: (_) => pdf.save());
   }
 
-  void _scanBarcode() async {
+  // ── Scan and link barcode to item ─────────────────────────────────────────
+
+  Future<void> _scanToAddItem() async {
     final l10n = AppLocalizations.of(context)!;
     final code = await Navigator.of(context).push<String>(
       MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
     );
-    if (code == null || code.isEmpty || !mounted) return;
-    final item = await _svc.findByBarcode(code);
+    if (code == null || !mounted) return;
+
+    // Check if already linked
+    final existing = await _svc.findByBarcode(code);
     if (!mounted) return;
-    if (item != null) {
-      _showItemDetail(item);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.warehouseNotFound)));
+    if (existing != null) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Barcode already linked to: ${existing.name}')));
+      _showItemDetail(existing);
+      return;
     }
+
+    // New barcode — link to item
+    await _showAddItemDialog(prefilledBarcode: code);
   }
 
-  void _showItemDetail(WarehouseItem item) async {
-    final l10n = AppLocalizations.of(context)!;
-    await showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
-      builder: (ctx) => _ItemDetailSheet(item: item, svc: _svc, onRefresh: _load),
-    );
-  }
+  // ── Add item dialog ───────────────────────────────────────────────────────
 
-  Future<void> _showAddItemDialog() async {
+  Future<void> _showAddItemDialog({String? prefilledBarcode}) async {
     final l10n = AppLocalizations.of(context)!;
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
     final unitCtrl = TextEditingController();
     final locCtrl  = TextEditingController();
+    final qtyCtrl  = TextEditingController(text: '0');
     int? catId;
-    final barcode  = await _svc.generateBarcode();
+    final barcode  = prefilledBarcode ?? generateLocalBarcode();
+
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => AlertDialog(
         title: Text(l10n.warehouseAddItem),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Barcode display (text, copyable)
+          // Barcode display
           GestureDetector(
-            onTap: () {
-              Clipboard.setData(ClipboardData(text: barcode));
-              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Barcode copied')));
-            },
+            onTap: () { Clipboard.setData(ClipboardData(text: barcode)); ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Copied'))); },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
+              decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6), color: Colors.grey.shade50),
               child: Column(children: [
-                Text(barcode, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 2)),
+                _BarcodeVisual(data: barcode),
+                const SizedBox(height: 4),
+                Text(barcode, style: const TextStyle(fontFamily: 'Courier', fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
                 const Text('tap to copy', style: TextStyle(fontSize: 10, color: AppColors.inkSoft)),
               ]),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 10),
           TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.warehouseName)),
           TextField(controller: descCtrl, decoration: InputDecoration(labelText: l10n.warehouseDescription)),
           DropdownButtonFormField<int>(
@@ -135,6 +173,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
             items: _categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
             onChanged: (v) => setSt(() => catId = v),
           ),
+          TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.warehouseQty)),
           TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.warehouseUnit)),
           TextField(controller: locCtrl, decoration: InputDecoration(labelText: l10n.warehouseLocation)),
         ])),
@@ -146,6 +185,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
               await _svc.createItem({
                 'name': nameCtrl.text.trim(),
                 'barcode': barcode,
+                'quantity': int.tryParse(qtyCtrl.text) ?? 0,
                 if (descCtrl.text.isNotEmpty) 'description': descCtrl.text.trim(),
                 if (catId != null) 'categoryId': catId,
                 if (unitCtrl.text.isNotEmpty) 'unit': unitCtrl.text.trim(),
@@ -161,80 +201,143 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
     );
   }
 
+  void _showItemDetail(WarehouseItem item) async {
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      builder: (_) => _ItemDetailSheet(item: item, svc: _svc, onRefresh: _load),
+    );
+  }
+
+  Future<void> _printAllPdf() async {
+    final l10n = AppLocalizations.of(context)!;
+    final rows = _selectedCategoryId != null ? _items : await _svc.listItems();
+    final pdf = pw.Document();
+    pdf.addPage(pw.Page(
+      pageFormat: PdfPageFormat.a4,
+      build: (c) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+        pw.Text(l10n.warehouseInventoryReport, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 8),
+        pw.Text(DateTime.now().toLocal().toString().substring(0, 16), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
+        pw.SizedBox(height: 14),
+        pw.Table.fromTextArray(
+          headers: ['#', 'Name', 'Barcode', 'Category', 'Qty', 'Unit', 'Location'],
+          data: rows.asMap().entries.map((e) => [
+            '${e.key + 1}', e.value.name, e.value.barcode,
+            e.value.category?.name ?? '—', '${e.value.quantity}',
+            e.value.unit ?? '—', e.value.location ?? '—',
+          ]).toList(),
+          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
+          cellStyle: const pw.TextStyle(fontSize: 9),
+        ),
+      ]),
+    ));
+    await Printing.layoutPdf(onLayout: (_) => pdf.save());
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+
+    // Group items by category
+    final Map<String, List<WarehouseItem>> grouped = {};
+    for (final item in _items) {
+      final key = item.category?.name ?? 'Uncategorized';
+      grouped.putIfAbsent(key, () => []).add(item);
+    }
+
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: Column(children: [
         // Toolbar
         Padding(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
           child: Row(children: [
-            Expanded(
-              child: TextField(
-                decoration: InputDecoration(
-                  hintText: l10n.warehouseSearch,
-                  prefixIcon: const Icon(Icons.search, size: 18),
-                  isDense: true,
-                ),
-                onChanged: (v) { _query = v; _load(); },
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton.outlined(onPressed: _scanBarcode, icon: const Icon(Icons.qr_code_scanner), tooltip: l10n.warehouseScan),
-            IconButton.outlined(onPressed: () => _printPdf(), icon: const Icon(Icons.picture_as_pdf_outlined), tooltip: l10n.warehousePrint),
+            Expanded(child: Text(l10n.warehouseTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18))),
+            IconButton.outlined(icon: const Icon(Icons.qr_code_outlined, size: 20), tooltip: 'Generate barcode', onPressed: _generateAndPrint),
+            IconButton.outlined(icon: const Icon(Icons.qr_code_scanner, size: 20), tooltip: l10n.warehouseScan, onPressed: _scanToAddItem),
+            IconButton.outlined(icon: const Icon(Icons.picture_as_pdf_outlined, size: 20), tooltip: l10n.warehousePrint, onPressed: _printAllPdf),
           ]),
         ),
-        // Category filter
+
+        // Category filter chips
         if (_categories.isNotEmpty)
           SizedBox(
-            height: 36,
+            height: 34,
             child: ListView(
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 10),
               children: [
-                _CatChip(label: l10n.warehouseAll, selected: _selectedCategoryId == null, onTap: () { _selectedCategoryId = null; _load(); }),
-                ..._categories.map((c) => _CatChip(label: c.name, selected: _selectedCategoryId == c.id, onTap: () { _selectedCategoryId = c.id; _load(); })),
+                _CatChip(label: l10n.warehouseAll, selected: _selectedCategoryId == null, onTap: () { setState(() => _selectedCategoryId = null); _load(); }),
+                ..._categories.map((c) => _CatChip(label: c.name, selected: _selectedCategoryId == c.id, onTap: () { setState(() => _selectedCategoryId = c.id); _load(); })),
               ],
             ),
           ),
         const SizedBox(height: 4),
+
+        // Item list grouped by category
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _items.isEmpty
                   ? Center(child: Text(l10n.warehouseEmpty, style: const TextStyle(color: AppColors.inkSoft)))
-                  : ListView.separated(
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (_, i) {
-                        final item = _items[i];
-                        return ListTile(
-                          onTap: () => _showItemDetail(item),
-                          title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('${item.barcode}${item.category != null ? ' · ${item.category!.name}' : ''}'),
-                          trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                            Text('${item.quantity}', style: TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 16,
-                              color: item.quantity == 0 ? Colors.red : AppColors.primary,
-                            )),
-                            if (item.unit != null) Text(item.unit!, style: const TextStyle(fontSize: 10, color: AppColors.inkSoft)),
-                          ]),
-                        );
-                      },
+                  : RefreshIndicator(
+                      onRefresh: _load,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 80),
+                        children: grouped.entries.map((entry) => _CategorySection(
+                          name: entry.key,
+                          items: entry.value,
+                          onTap: _showItemDetail,
+                        )).toList(),
+                      ),
                     ),
         ),
       ]),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddItemDialog,
+        onPressed: () => _showAddItemDialog(),
         child: const Icon(Icons.add),
       ),
     );
   }
 }
 
-// ── Item detail sheet (barcode + transactions) ────────────────────────────────
+// ─── Category section ─────────────────────────────────────────────────────────
+
+class _CategorySection extends StatelessWidget {
+  const _CategorySection({required this.name, required this.items, required this.onTap});
+  final String name;
+  final List<WarehouseItem> items;
+  final void Function(WarehouseItem) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(2, 14, 2, 6),
+        child: Text(name.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 0.8, color: AppColors.inkSoft)),
+      ),
+      ...items.map((item) => Card(
+        margin: const EdgeInsets.only(bottom: 6),
+        child: ListTile(
+          onTap: () => onTap(item),
+          title: Text(item.name, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: item.location != null ? Text(item.location!, style: const TextStyle(fontSize: 12)) : null,
+          trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text('${item.quantity}', style: TextStyle(
+              fontWeight: FontWeight.w800, fontSize: 20,
+              color: item.quantity == 0 ? Colors.red : AppColors.primary,
+            )),
+            if (item.unit != null) Text(item.unit!, style: const TextStyle(fontSize: 10, color: AppColors.inkSoft)),
+          ]),
+        ),
+      )),
+    ]);
+  }
+}
+
+// ─── Item detail sheet ────────────────────────────────────────────────────────
 
 class _ItemDetailSheet extends StatefulWidget {
   const _ItemDetailSheet({required this.item, required this.svc, required this.onRefresh});
@@ -248,19 +351,17 @@ class _ItemDetailSheet extends StatefulWidget {
 class _ItemDetailSheetState extends State<_ItemDetailSheet> {
   List<WarehouseTransaction> _txs = [];
   bool _loading = true;
+  bool _showTx = false;
 
   @override
   void initState() {
     super.initState();
-    _loadTxs();
+    widget.svc.listTransactions(widget.item.id).then((txs) {
+      if (mounted) setState(() { _txs = txs; _loading = false; });
+    });
   }
 
-  Future<void> _loadTxs() async {
-    final txs = await widget.svc.listTransactions(widget.item.id);
-    if (mounted) setState(() { _txs = txs; _loading = false; });
-  }
-
-  Future<void> _addTx(BuildContext context, String type) async {
+  Future<void> _addTx(String type) async {
     final l10n = AppLocalizations.of(context)!;
     final qtyCtrl = TextEditingController(text: '1');
     final reasonCtrl = TextEditingController();
@@ -280,7 +381,8 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
               if (qty == null || qty <= 0) return;
               await widget.svc.addTransaction(widget.item.id, type, qty, reason: reasonCtrl.text.isNotEmpty ? reasonCtrl.text : null);
               if (context.mounted) Navigator.pop(context);
-              _loadTxs();
+              final txs = await widget.svc.listTransactions(widget.item.id);
+              if (mounted) setState(() { _txs = txs; });
               widget.onRefresh();
             },
             child: Text(l10n.calendarSave),
@@ -294,102 +396,125 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final item = widget.item;
-    return Column(children: [
-      const SizedBox(height: 8),
-      Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        child: Row(children: [
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
-            if (item.category != null) Text(item.category!.name, style: const TextStyle(color: AppColors.inkSoft, fontSize: 13)),
-          ])),
-          // Barcode text
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-            decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
-            child: Text(item.barcode, style: const TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.65,
+      maxChildSize: 0.95,
+      minChildSize: 0.4,
+      expand: false,
+      builder: (_, ctrl) => Column(children: [
+        const SizedBox(height: 8),
+        Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(2))),
+        const SizedBox(height: 12),
+
+        // Header
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 20)),
+              if (item.category != null) Text(item.category!.name, style: const TextStyle(color: AppColors.inkSoft, fontSize: 13)),
+            ])),
+            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text('${item.quantity}', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 32, color: item.quantity == 0 ? Colors.red : AppColors.primary)),
+              if (item.unit != null) Text(item.unit!, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
+            ]),
+          ]),
+        ),
+        const SizedBox(height: 12),
+
+        // Info rows
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            if (item.location != null) _InfoRow(icon: Icons.location_on_outlined, text: item.location!),
+            if (item.description != null) _InfoRow(icon: Icons.notes_outlined, text: item.description!),
+            _InfoRow(icon: Icons.qr_code_2, text: item.barcode),
+          ]),
+        ),
+        const SizedBox(height: 12),
+
+        // Stock buttons
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(children: [
+            Expanded(child: OutlinedButton.icon(
+              onPressed: () => _addTx('in'),
+              icon: const Icon(Icons.add, size: 18),
+              label: Text(l10n.warehouseIn),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.green),
+            )),
+            const SizedBox(width: 8),
+            Expanded(child: OutlinedButton.icon(
+              onPressed: () => _addTx('out'),
+              icon: const Icon(Icons.remove, size: 18),
+              label: Text(l10n.warehouseOut),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+            )),
+          ]),
+        ),
+        const Divider(height: 24),
+
+        // History toggle
+        GestureDetector(
+          onTap: () => setState(() => _showTx = !_showTx),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(children: [
+              Text(l10n.warehouseHistory, style: const TextStyle(fontWeight: FontWeight.w600)),
+              const Spacer(),
+              Icon(_showTx ? Icons.expand_less : Icons.expand_more),
+            ]),
           ),
-        ]),
-      ),
-      // Stock info
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(children: [
-          _StatBox(label: l10n.warehouseQty, value: '${item.quantity}${item.unit != null ? ' ${item.unit}' : ''}', color: item.quantity == 0 ? Colors.red : AppColors.primary),
-          const SizedBox(width: 8),
-          if (item.location != null) _StatBox(label: l10n.warehouseLocation, value: item.location!),
-        ]),
-      ),
-      const SizedBox(height: 12),
-      // In/Out buttons
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(children: [
-          Expanded(child: OutlinedButton.icon(
-            onPressed: () => _addTx(context, 'in'),
-            icon: const Icon(Icons.add, size: 18),
-            label: Text(l10n.warehouseIn),
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.green),
-          )),
-          const SizedBox(width: 8),
-          Expanded(child: OutlinedButton.icon(
-            onPressed: () => _addTx(context, 'out'),
-            icon: const Icon(Icons.remove, size: 18),
-            label: Text(l10n.warehouseOut),
-            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-          )),
-        ]),
-      ),
-      const Divider(height: 24),
-      Expanded(
-        child: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _txs.isEmpty
-                ? Center(child: Text(l10n.warehouseNoTransactions, style: const TextStyle(color: AppColors.inkSoft)))
-                : ListView.separated(
-                    itemCount: _txs.length,
-                    separatorBuilder: (_, __) => const Divider(height: 1),
-                    itemBuilder: (_, i) {
-                      final tx = _txs[i];
-                      final isIn = tx.type == 'in';
-                      return ListTile(
-                        dense: true,
-                        leading: Icon(isIn ? Icons.arrow_downward : Icons.arrow_upward,
-                          color: isIn ? Colors.green : Colors.red, size: 18),
-                        title: Text('${isIn ? '+' : '-'}${tx.quantity}${item.unit != null ? ' ${item.unit}' : ''}${tx.reason != null ? ' — ${tx.reason}' : ''}'),
-                        subtitle: Text('${tx.byUsername ?? '?'} · ${tx.createdAt.substring(0, 16)}', style: const TextStyle(fontSize: 11)),
-                      );
-                    },
-                  ),
-      ),
-    ]);
+        ),
+        if (_showTx)
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _txs.isEmpty
+                    ? Padding(padding: const EdgeInsets.all(16), child: Text(l10n.warehouseNoTransactions, style: const TextStyle(color: AppColors.inkSoft)))
+                    : ListView.separated(
+                        controller: ctrl,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        itemCount: _txs.length,
+                        separatorBuilder: (_, __) => const Divider(height: 1),
+                        itemBuilder: (_, i) {
+                          final tx = _txs[i];
+                          final isIn = tx.type == 'in';
+                          return ListTile(
+                            dense: true,
+                            leading: Icon(isIn ? Icons.arrow_downward : Icons.arrow_upward, color: isIn ? Colors.green : Colors.red, size: 18),
+                            title: Text('${isIn ? '+' : '-'}${tx.quantity}${item.unit != null ? ' ${item.unit}' : ''}${tx.reason != null ? ' — ${tx.reason}' : ''}'),
+                            subtitle: Text('${tx.byUsername ?? '?'} · ${tx.createdAt.substring(0, 16)}', style: const TextStyle(fontSize: 11)),
+                          );
+                        },
+                      ),
+          ),
+      ]),
+    );
   }
 }
 
-class _StatBox extends StatelessWidget {
-  const _StatBox({required this.label, required this.value, this.color});
-  final String label;
-  final String value;
-  final Color? color;
-
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-    decoration: BoxDecoration(color: (color ?? AppColors.primary).withOpacity(0.10), borderRadius: BorderRadius.circular(8)),
-    child: Column(children: [
-      Text(value, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: color ?? AppColors.primary)),
-      Text(label, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Row(children: [
+      Icon(icon, size: 16, color: AppColors.inkSoft),
+      const SizedBox(width: 8),
+      Expanded(child: Text(text, style: const TextStyle(fontSize: 13))),
     ]),
   );
 }
 
+// ─── Category chip ────────────────────────────────────────────────────────────
+
 class _CatChip extends StatelessWidget {
   const _CatChip({required this.label, required this.selected, required this.onTap});
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-
+  final String label; final bool selected; final VoidCallback onTap;
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(right: 6),
@@ -397,4 +522,29 @@ class _CatChip extends StatelessWidget {
   );
 }
 
-// ── Warehouse screen end ──────────────────────────────────────────────────────
+// ─── Barcode visual (CSS-like bars) ──────────────────────────────────────────
+
+class _BarcodeVisual extends StatelessWidget {
+  const _BarcodeVisual({required this.data});
+  final String data;
+  @override
+  Widget build(BuildContext context) {
+    // Simple deterministic pattern from data characters for visual hint
+    final pattern = data.runes.expand((r) {
+      final bits = r.toRadixString(2).padLeft(8, '0');
+      return bits.split('').map((b) => b == '1');
+    }).toList();
+    return SizedBox(
+      height: 36, width: 160,
+      child: Row(
+        children: List.generate(40, (i) {
+          final isBar = pattern[i % pattern.length];
+          return Expanded(child: Container(
+            color: isBar ? Colors.black : Colors.white,
+            height: 36,
+          ));
+        }),
+      ),
+    );
+  }
+}

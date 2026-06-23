@@ -149,7 +149,7 @@
       }
     }
   },
-  "phoneBookTitle": "Телефонная книга",
+  "phoneBookTitle": "Контакты",
   "phoneBookClients": "Клиенты",
   "phoneBookTechnicians": "Техники",
   "phoneBookSuppliers": "Поставщики",
@@ -210,7 +210,7 @@
   "calendarTechnicalRequirementsHint": "Добавить технические требования…",
   "calendarRequiredEquipment": "Необходимое оборудование",
   "calendarRequiredEquipmentHint": "Добавить необходимое оборудование…",
-  "managementTitle": "Управление",
+  "managementTitle": "Управл.",
   "fleetTitle": "Автопарк",
   "fleetNoVehicles": "Нет зарегистрированных автомобилей",
   "fleetRemindersTitle": "Предстоящие проверки",
@@ -261,5 +261,6 @@
   "scannerHidWaiting": "Готово — отсканируйте аппаратным сканером",
   "scannerHidHint": "USB, Bluetooth или встроенный лазерный сканер\n(режим HID клавиатуры)",
   "scannerScanAgain": "Сканировать снова",
-  "scannerUse": "Использовать код"
+  "scannerUse": "Использовать код",
+  "warehouseHistory": "История движений"
 }

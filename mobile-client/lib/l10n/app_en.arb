@@ -149,7 +149,7 @@
       }
     }
   },
-  "phoneBookTitle": "Phone book",
+  "phoneBookTitle": "Contacts",
   "phoneBookClients": "Clients",
   "phoneBookTechnicians": "Technicians",
   "phoneBookSuppliers": "Suppliers",
@@ -210,7 +210,7 @@
   "calendarTechnicalRequirementsHint": "Add technical requirements…",
   "calendarRequiredEquipment": "Required equipment",
   "calendarRequiredEquipmentHint": "Add required equipment…",
-  "managementTitle": "Management",
+  "managementTitle": "Manage",
   "fleetTitle": "Fleet",
   "fleetNoVehicles": "No vehicles registered",
   "fleetRemindersTitle": "Upcoming inspections / tests",
@@ -261,5 +261,6 @@
   "scannerHidWaiting": "Ready — scan with your hardware scanner",
   "scannerHidHint": "USB, Bluetooth or built-in laser scanner\n(HID keyboard mode)",
   "scannerScanAgain": "Scan again",
-  "scannerUse": "Use this code"
+  "scannerUse": "Use this code",
+  "warehouseHistory": "Movement history"
 }

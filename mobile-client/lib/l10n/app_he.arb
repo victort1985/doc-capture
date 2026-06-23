@@ -149,7 +149,7 @@
       }
     }
   },
-  "phoneBookTitle": "פנקס טלפונים",
+  "phoneBookTitle": "אנשי קשר",
   "phoneBookClients": "לקוחות",
   "phoneBookTechnicians": "טכנאים",
   "phoneBookSuppliers": "ספקים",
@@ -261,5 +261,6 @@
   "scannerHidWaiting": "מוכן — סרוק עם הסורק החיצוני שלך",
   "scannerHidHint": "USB, Bluetooth או סורק לייזר מובנה\n(מצב מקלדת HID)",
   "scannerScanAgain": "סרוק שוב",
-  "scannerUse": "השתמש בקוד זה"
+  "scannerUse": "השתמש בקוד זה",
+  "warehouseHistory": "היסטוריית תנועות"
 }
