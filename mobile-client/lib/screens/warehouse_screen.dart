@@ -1,7 +1,6 @@
 import 'dart:typed_data';
-import 'package:barcode_widget/barcode_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -73,21 +72,6 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
     await Printing.layoutPdf(onLayout: (_) => pdf.save());
   }
 
-  void _scanBarcode() async {
-    final l10n = AppLocalizations.of(context)!;
-    final barcode = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const _BarcodeScannerScreen()),
-    );
-    if (barcode == null || !mounted) return;
-    final item = await _svc.findByBarcode(barcode);
-    if (!mounted) return;
-    if (item != null) {
-      _showItemDetail(item);
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.warehouseNotFound)));
-    }
-  }
-
   void _showItemDetail(WarehouseItem item) async {
     final l10n = AppLocalizations.of(context)!;
     await showModalBottomSheet(
@@ -111,8 +95,21 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => AlertDialog(
         title: Text(l10n.warehouseAddItem),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Barcode preview
-          BarcodeWidget(barcode: Barcode.code128(), data: barcode, width: 180, height: 60, drawText: true),
+          // Barcode display (text, copyable)
+          GestureDetector(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: barcode));
+              ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Barcode copied')));
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
+              child: Column(children: [
+                Text(barcode, style: const TextStyle(fontFamily: 'monospace', fontSize: 14, fontWeight: FontWeight.w700, letterSpacing: 2)),
+                const Text('tap to copy', style: TextStyle(fontSize: 10, color: AppColors.inkSoft)),
+              ]),
+            ),
+          ),
           const SizedBox(height: 12),
           TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.warehouseName)),
           TextField(controller: descCtrl, decoration: InputDecoration(labelText: l10n.warehouseDescription)),
@@ -169,7 +166,6 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
               ),
             ),
             const SizedBox(width: 8),
-            IconButton.outlined(onPressed: _scanBarcode, icon: const Icon(Icons.qr_code_scanner), tooltip: l10n.warehouseScan),
             IconButton.outlined(onPressed: () => _printPdf(), icon: const Icon(Icons.picture_as_pdf_outlined), tooltip: l10n.warehousePrint),
           ]),
         ),
@@ -291,8 +287,12 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
             Text(item.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
             if (item.category != null) Text(item.category!.name, style: const TextStyle(color: AppColors.inkSoft, fontSize: 13)),
           ])),
-          // Barcode
-          BarcodeWidget(barcode: Barcode.code128(), data: item.barcode, width: 110, height: 50, drawText: true),
+          // Barcode text
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6)),
+            child: Text(item.barcode, style: const TextStyle(fontFamily: 'monospace', fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
+          ),
         ]),
       ),
       // Stock info
@@ -380,23 +380,4 @@ class _CatChip extends StatelessWidget {
   );
 }
 
-// ── Barcode scanner ───────────────────────────────────────────────────────────
-
-class _BarcodeScannerScreen extends StatelessWidget {
-  const _BarcodeScannerScreen();
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.warehouseScan)),
-      body: MobileScanner(
-        onDetect: (capture) {
-          final code = capture.barcodes.firstOrNull?.rawValue;
-          if (code != null && context.mounted) {
-            Navigator.of(context).pop(code);
-          }
-        },
-      ),
-    );
-  }
-}
+// ── Warehouse screen end ──────────────────────────────────────────────────────
