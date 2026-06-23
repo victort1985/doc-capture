@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall, Building2, Contact, Car, Package } from 'lucide-react';
+import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall, Building2, Contact, Car, Package, BarChart2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import StampMark from './StampMark';
 import CopyrightFooter from './CopyrightFooter';
@@ -9,6 +9,7 @@ const BASE_NAV = [
   { to: '/users', label: 'Users', icon: Users },
   { to: '/phonebook', label: 'Phone book', icon: Contact },
   { to: '/locations', label: 'Locations', icon: MapPin },
+  { to: '/stats', label: 'Statistics', icon: BarChart2 },
   { to: '/fleet', label: 'Fleet', icon: Car },
   { to: '/warehouse', label: 'Warehouse', icon: Package },
   { to: '/storage', label: 'Storage connections', icon: HardDrive },

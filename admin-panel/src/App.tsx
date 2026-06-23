@@ -14,6 +14,7 @@ import OrganizationsPage from './pages/OrganizationsPage';
 import PhoneBookPage from './pages/PhoneBookPage';
 import FleetPage from './pages/FleetPage';
 import WarehousePage from './pages/WarehousePage';
+import StatsPage from './pages/StatsPage';
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/phonebook" element={<PhoneBookPage />} />
           <Route path="/fleet" element={<FleetPage />} />
           <Route path="/warehouse" element={<WarehousePage />} />
+          <Route path="/stats" element={<StatsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />

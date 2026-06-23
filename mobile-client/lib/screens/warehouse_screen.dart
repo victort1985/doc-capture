@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -70,6 +71,21 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
       ]),
     ));
     await Printing.layoutPdf(onLayout: (_) => pdf.save());
+  }
+
+  void _scanBarcode() async {
+    final l10n = AppLocalizations.of(context)!;
+    final barcode = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const _BarcodeScannerScreen()),
+    );
+    if (barcode == null || !mounted) return;
+    final item = await _svc.findByBarcode(barcode);
+    if (!mounted) return;
+    if (item != null) {
+      _showItemDetail(item);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.warehouseNotFound)));
+    }
   }
 
   void _showItemDetail(WarehouseItem item) async {
@@ -166,6 +182,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
               ),
             ),
             const SizedBox(width: 8),
+            IconButton.outlined(onPressed: _scanBarcode, icon: const Icon(Icons.qr_code_scanner), tooltip: l10n.warehouseScan),
             IconButton.outlined(onPressed: () => _printPdf(), icon: const Icon(Icons.picture_as_pdf_outlined), tooltip: l10n.warehousePrint),
           ]),
         ),
@@ -378,6 +395,27 @@ class _CatChip extends StatelessWidget {
     padding: const EdgeInsets.only(right: 6),
     child: FilterChip(label: Text(label, style: const TextStyle(fontSize: 12)), selected: selected, onSelected: (_) => onTap()),
   );
+}
+
+// ── Barcode scanner ───────────────────────────────────────────────────────────
+
+class _BarcodeScannerScreen extends StatelessWidget {
+  const _BarcodeScannerScreen();
+  @override
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.warehouseScan)),
+      body: MobileScanner(
+        onDetect: (capture) {
+          final code = capture.barcodes.firstOrNull?.rawValue;
+          if (code != null && context.mounted) {
+            Navigator.of(context).pop(code);
+          }
+        },
+      ),
+    );
+  }
 }
 
 // ── Warehouse screen end ──────────────────────────────────────────────────────
