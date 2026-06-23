@@ -1,4 +1,6 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { Response } from 'express';
 import { FleetService } from './fleet.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -59,5 +61,35 @@ export class FleetController {
   @Roles(UserRole.ADMIN)
   removeRefuel(@Param('id', ParseIntPipe) id: number) {
     return this.fleetService.removeRefuel(id);
+  }
+
+  @Get('vehicles/:id/documents')
+  findDocuments(@Param('id', ParseIntPipe) id: number) {
+    return this.fleetService.findDocuments(id);
+  }
+
+  @Post('vehicles/:id/documents')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
+  addDocument(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: { originalname: string; buffer: Buffer; mimetype: string },
+    @CurrentUser() user: RequestUser,
+    @Body('description') description?: string,
+  ) {
+    return this.fleetService.addDocument(id, user.id, file, description);
+  }
+
+  @Get('documents/:id/download')
+  async downloadDocument(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
+    const file = await this.fleetService.downloadDocument(id);
+    res.set({ 'Content-Type': file.mimetype, 'Content-Disposition': `inline; filename="${file.originalName.replace(/"/g, '')}"` });
+    res.send(file.buffer);
+  }
+
+  @Delete('documents/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  removeDocument(@Param('id', ParseIntPipe) id: number) {
+    return this.fleetService.removeDocument(id);
   }
 }

@@ -37,6 +37,11 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  /** Per-user permission overrides. Keys are feature names, values are
+   * true (granted), false (denied), or absent (inherit from role). */
+  @Column({ type: 'jsonb', default: {} })
+  permissions: Record<string, boolean>;
+
   // Default language is Hebrew per spec; client falls back to this on login.
   @Column({ default: 'he' })
   language: string;

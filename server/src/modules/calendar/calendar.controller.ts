@@ -21,7 +21,7 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
-type RequestUser = { id: number; organizationId: number | null };
+type RequestUser = { id: number; organizationId: number | null; role: string; isGlobal: boolean };
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 @Controller('calendar')
@@ -29,19 +29,25 @@ const MAX_FILE_SIZE = 20 * 1024 * 1024;
 export class CalendarController {
   constructor(private readonly calendarService: CalendarService) {}
 
-  // GET /calendar/events?from=ISO&to=ISO
+  @Get('organizations')
+  listOrgsWithCalendars(@CurrentUser() user: RequestUser) {
+    const privileged = user.organizationId == null || user.isGlobal || user.role === 'admin';
+    if (!privileged) return [];
+    return this.calendarService.listOrgsWithCalendars();
+  }
+
+  // GET /calendar/events?from=ISO&to=ISO[&organizationId=N]
   @Get('events')
   listEvents(
     @CurrentUser() user: RequestUser,
     @Query('from') from: string,
     @Query('to') to: string,
+    @Query('organizationId') orgIdParam?: string,
   ) {
-    if (user.organizationId == null) return [];
-    return this.calendarService.listEvents(
-      user.organizationId,
-      new Date(from),
-      new Date(to),
-    );
+    const privileged = user.organizationId == null || user.isGlobal || user.role === 'admin';
+    const targetOrgId = (privileged && orgIdParam) ? parseInt(orgIdParam) : user.organizationId;
+    if (targetOrgId == null) return [];
+    return this.calendarService.listEvents(targetOrgId, new Date(from), new Date(to));
   }
 
   @Post('events')

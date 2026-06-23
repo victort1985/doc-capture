@@ -24,6 +24,9 @@ export class Vehicle {
   @Column({ nullable: true })
   vin?: string;
 
+  @Column({ default: 0 })
+  currentMileage: number; // текущий километраж
+
   @Column({ nullable: true })
   notes?: string;
 

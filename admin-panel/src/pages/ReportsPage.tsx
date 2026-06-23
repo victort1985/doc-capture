@@ -1,0 +1,201 @@
+import { useEffect, useState } from 'react';
+import { apiFetch } from '../services/api';
+
+type Period = 'day' | 'week' | 'month' | 'year' | 'all';
+
+interface User { id: number; username: string; }
+interface Vehicle { id: number; make: string; model: string; licensePlate: string; }
+
+interface WorkReport {
+  totals: Record<string, number>;
+  byUser: { userId: number; username: string; callsWorked: number; totalSeconds: number; callsClosed: number }[];
+  byDay: { day: string; count: number }[];
+}
+
+interface FuelReport {
+  rows: any[];
+  summary: { vehicleId: number; make: string; model: string; licensePlate: string; refuelCount: number; totalLiters: string; totalCost: string }[];
+}
+
+function fmt(sec: number) {
+  if (!sec) return '—';
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
+  return h > 0 ? `${h}h ${m}m` : `${m}m`;
+}
+
+export default function ReportsPage() {
+  const [tab, setTab] = useState<'work' | 'fuel'>('work');
+  const [period, setPeriod] = useState<Period>('month');
+  const [users, setUsers] = useState<User[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [selUser, setSelUser] = useState('');
+  const [selVehicle, setSelVehicle] = useState('');
+  const [workData, setWorkData] = useState<WorkReport | null>(null);
+  const [fuelData, setFuelData] = useState<FuelReport | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    apiFetch<User[]>('/users').then(setUsers).catch(() => {});
+    apiFetch<Vehicle[]>('/fleet/vehicles').then(setVehicles).catch(() => {});
+  }, []);
+
+  async function load() {
+    setLoading(true);
+    try {
+      if (tab === 'work') {
+        const q = new URLSearchParams({ period });
+        if (selUser) q.set('userId', selUser);
+        setWorkData(await apiFetch(`/reports/work?${q}`));
+      } else {
+        const q = new URLSearchParams({ period });
+        if (selVehicle) q.set('vehicleId', selVehicle);
+        if (selUser) q.set('userId', selUser);
+        setFuelData(await apiFetch(`/reports/fuel?${q}`));
+      }
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { load(); }, [tab, period, selUser, selVehicle]);
+
+  const periods: Period[] = ['day', 'week', 'month', 'year', 'all'];
+  const periodLabel: Record<Period, string> = { day: 'Day', week: 'Week', month: 'Month', year: 'Year', all: 'All time' };
+
+  return (
+    <div>
+      <div className="topbar">
+        <div><span className="eyebrow">Admin</span><h1 className="page-title">Reports</h1></div>
+      </div>
+
+      {/* Tab + Filters */}
+      <div className="card" style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: 0 }}>
+          {(['work', 'fuel'] as const).map(t => (
+            <button key={t} onClick={() => setTab(t)}
+              style={{ padding: '7px 18px', background: tab === t ? 'var(--primary)' : 'var(--surface-muted)', color: tab === t ? '#fff' : 'var(--ink)', border: 'none', cursor: 'pointer', borderRadius: t === 'work' ? '6px 0 0 6px' : '0 6px 6px 0' }}>
+              {t === 'work' ? 'Work report' : 'Fuel report'}
+            </button>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', gap: 6 }}>
+          {periods.map(p => (
+            <button key={p} className={period === p ? '' : 'ghost'} onClick={() => setPeriod(p)}
+              style={{ padding: '5px 12px', fontSize: 12 }}>{periodLabel[p]}</button>
+          ))}
+        </div>
+
+        <select value={selUser} onChange={e => setSelUser(e.target.value)} style={{ minWidth: 140 }}>
+          <option value="">All users</option>
+          {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+        </select>
+
+        {tab === 'fuel' && (
+          <select value={selVehicle} onChange={e => setSelVehicle(e.target.value)} style={{ minWidth: 160 }}>
+            <option value="">All vehicles</option>
+            {vehicles.map(v => <option key={v.id} value={v.id}>{v.make} {v.model} ({v.licensePlate})</option>)}
+          </select>
+        )}
+      </div>
+
+      {loading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink-soft)' }}>Loading…</div>}
+
+      {/* Work Report */}
+      {tab === 'work' && workData && !loading && (
+        <>
+          <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+            {[['Total', Object.values(workData.totals).reduce((a, b) => a + b, 0)],
+              ['Open', workData.totals['open'] ?? 0],
+              ['In Progress', workData.totals['in_progress'] ?? 0],
+              ['Closed', workData.totals['closed'] ?? 0]].map(([l, v]) => (
+              <div key={l} className="card" style={{ flex: 1, textAlign: 'center', padding: '12px 8px' }}>
+                <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary)' }}>{v}</div>
+                <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{l}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="card" style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: '0 0 12px' }}>By technician</h3>
+            <table>
+              <thead><tr><th>Technician</th><th>Calls worked</th><th>Calls closed</th><th>Total time</th></tr></thead>
+              <tbody>
+                {workData.byUser.map(u => (
+                  <tr key={u.userId}>
+                    <td>{u.username}</td>
+                    <td>{u.callsWorked}</td>
+                    <td>{u.callsClosed}</td>
+                    <td>{fmt(u.totalSeconds)}</td>
+                  </tr>
+                ))}
+                {workData.byUser.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data for this period</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          {workData.byDay.length > 0 && (
+            <div className="card">
+              <h3 style={{ margin: '0 0 12px' }}>Calls per day</h3>
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
+                {workData.byDay.map((d, i) => {
+                  const max = Math.max(...workData.byDay.map(x => x.count), 1);
+                  const h = (d.count / max) * 72;
+                  return (
+                    <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                      <div title={`${d.count}`} style={{ width: '100%', height: h, background: 'var(--primary)', opacity: 0.75, borderRadius: '2px 2px 0 0', minHeight: 2 }} />
+                      <span style={{ fontSize: 9, color: 'var(--ink-soft)' }}>{d.day.slice(8, 10)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Fuel Report */}
+      {tab === 'fuel' && fuelData && !loading && (
+        <>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: '0 0 12px' }}>Summary by vehicle</h3>
+            <table>
+              <thead><tr><th>Vehicle</th><th>License plate</th><th>Refuels</th><th>Total liters</th><th>Total cost (₪)</th></tr></thead>
+              <tbody>
+                {fuelData.summary.map(s => (
+                  <tr key={s.vehicleId}>
+                    <td>{s.make} {s.model}</td>
+                    <td className="mono">{s.licensePlate}</td>
+                    <td>{s.refuelCount}</td>
+                    <td>{parseFloat(s.totalLiters).toFixed(1)} L</td>
+                    <td>{s.totalCost ? `₪${parseFloat(s.totalCost).toFixed(0)}` : '—'}</td>
+                  </tr>
+                ))}
+                {fuelData.summary.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data</td></tr>}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="card">
+            <h3 style={{ margin: '0 0 12px' }}>All refuels</h3>
+            <table>
+              <thead><tr><th>Date</th><th>Vehicle</th><th>Liters</th><th>Cost</th><th>Odometer</th><th>Station</th><th>Registered by</th></tr></thead>
+              <tbody>
+                {fuelData.rows.map((r, i) => (
+                  <tr key={i}>
+                    <td>{r.date}</td>
+                    <td>{r.make} {r.model} ({r.licensePlate})</td>
+                    <td>{parseFloat(r.liters).toFixed(1)} L</td>
+                    <td>{r.cost ? `₪${parseFloat(r.cost).toFixed(0)}` : '—'}</td>
+                    <td>{r.odometer ? `${r.odometer} km` : '—'}</td>
+                    <td>{r.station ?? '—'}</td>
+                    <td>{r.registeredBy ?? '—'}</td>
+                  </tr>
+                ))}
+                {fuelData.rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}

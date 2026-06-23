@@ -21,6 +21,10 @@ export class CalendarService {
 
   // ----- Calendar (one shared per organization) -----
 
+  async listOrgsWithCalendars(): Promise<Calendar[]> {
+    return this.calendarsRepo.find({ relations: ['organization'], order: { id: 'ASC' } });
+  }
+
   async getOrCreateOrgCalendar(organizationId: number, userId: number): Promise<Calendar> {
     let calendar = await this.calendarsRepo.findOne({
       where: { organization: { id: organizationId } },
