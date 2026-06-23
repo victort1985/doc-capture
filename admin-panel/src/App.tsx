@@ -12,6 +12,8 @@ import LocationsPage from './pages/LocationsPage';
 import CallsPage from './pages/CallsPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import PhoneBookPage from './pages/PhoneBookPage';
+import FleetPage from './pages/FleetPage';
+import WarehousePage from './pages/WarehousePage';
 
 export default function App() {
   return (
@@ -28,6 +30,8 @@ export default function App() {
           <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/calls" element={<CallsPage />} />
           <Route path="/phonebook" element={<PhoneBookPage />} />
+          <Route path="/fleet" element={<FleetPage />} />
+          <Route path="/warehouse" element={<WarehousePage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />

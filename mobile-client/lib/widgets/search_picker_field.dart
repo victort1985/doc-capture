@@ -11,7 +11,13 @@ import '../app/theme.dart';
 /// Flutter's built-in Autocomplete widget, which only supports
 /// synchronous option lookups (this needs a debounced server search).
 class SearchPickerField<T> extends StatefulWidget {
-  const SearchPickerField({
+  // Note: NOT a const constructor — Flutter 3.44+ enforces that every
+  // final field in a const constructor has an initializer in the
+  // declaration itself (not via 'this.listLabel' in the parameter list),
+  // which would force us to drop the nullable Function type or add a
+  // late keyword. Removing const is cleaner and has no real downside
+  // here since SearchPickerField is always rebuilt with fresh data anyway.
+  SearchPickerField({
     super.key,
     required this.search,
     required this.displayString,
