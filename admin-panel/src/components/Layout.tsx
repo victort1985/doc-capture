@@ -9,7 +9,6 @@ const BASE_NAV = [
   { to: '/users', label: 'Users', icon: Users },
   { to: '/phonebook', label: 'Phone book', icon: Contact },
   { to: '/locations', label: 'Locations', icon: MapPin },
-  { to: '/stats', label: 'Statistics', icon: BarChart2 },
   { to: '/fleet', label: 'Fleet', icon: Car },
   { to: '/warehouse', label: 'Warehouse', icon: Package },
   { to: '/reports', label: 'Reports', icon: BarChart2 },

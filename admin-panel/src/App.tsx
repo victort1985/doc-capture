@@ -16,7 +16,6 @@ import FleetPage from './pages/FleetPage';
 import WarehousePage from './pages/WarehousePage';
 import ReportsPage from './pages/ReportsPage';
 import PermissionsPage from './pages/PermissionsPage';
-import StatsPage from './pages/StatsPage';
 
 export default function App() {
   return (
@@ -37,7 +36,6 @@ export default function App() {
           <Route path="/warehouse" element={<WarehousePage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/permissions" element={<PermissionsPage />} />
-          <Route path="/stats" element={<StatsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />
