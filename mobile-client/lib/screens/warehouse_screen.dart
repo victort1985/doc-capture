@@ -102,7 +102,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
       build: (c) => pw.Column(
         mainAxisAlignment: pw.MainAxisAlignment.center,
         children: [
-          pw.Barcode.widget(data: code, barcode: pw.Barcode.code128(), height: 15 * PdfPageFormat.mm),
+          pw.BarcodeWidget(data: code, barcode: pw.Barcode.code128(), height: 15 * PdfPageFormat.mm),
           pw.SizedBox(height: 2 * PdfPageFormat.mm),
           pw.Text(code, style: const pw.TextStyle(fontSize: 8)),
         ],
