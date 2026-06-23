@@ -255,5 +255,11 @@
   "statsClosed": "Closed",
   "statsAvgResolution": "Avg. resolution time",
   "statsByDay": "Calls per day",
-  "statsByUser": "By technician"
+  "statsByUser": "By technician",
+  "scannerCamera": "Camera",
+  "scannerHid": "Scanner",
+  "scannerHidWaiting": "Ready — scan with your hardware scanner",
+  "scannerHidHint": "USB, Bluetooth or built-in laser scanner\n(HID keyboard mode)",
+  "scannerScanAgain": "Scan again",
+  "scannerUse": "Use this code"
 }

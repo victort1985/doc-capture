@@ -255,5 +255,11 @@
   "statsClosed": "Закрыто",
   "statsAvgResolution": "Среднее время закрытия",
   "statsByDay": "Вызовы по дням",
-  "statsByUser": "По технику"
+  "statsByUser": "По технику",
+  "scannerCamera": "Камера",
+  "scannerHid": "Сканер",
+  "scannerHidWaiting": "Готово — отсканируйте аппаратным сканером",
+  "scannerHidHint": "USB, Bluetooth или встроенный лазерный сканер\n(режим HID клавиатуры)",
+  "scannerScanAgain": "Сканировать снова",
+  "scannerUse": "Использовать код"
 }

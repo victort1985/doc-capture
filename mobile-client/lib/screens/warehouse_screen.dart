@@ -9,6 +9,7 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/management_services.dart';
+import 'barcode_scanner_screen.dart';
 
 class WarehouseScreen extends StatefulWidget {
   const WarehouseScreen({super.key});
@@ -74,34 +75,8 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
 
   void _scanBarcode() async {
     final l10n = AppLocalizations.of(context)!;
-    // Native barcode scanner packages conflict with firebase_messaging on iOS
-    // (GoogleMLKit vs GoogleDataTransport version conflict) and with NDK 28
-    // on Android (C++ stdlib issue in ZXing FFI). Using a manual input dialog
-    // instead — works reliably on all platforms. Physical barcode scanners
-    // connected via Bluetooth keyboard mode also work fine with this input.
-    final ctrl = TextEditingController();
-    final code = await showDialog<String>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(l10n.warehouseScan),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.qr_code_scanner, size: 48, color: AppColors.inkSoft),
-          const SizedBox(height: 12),
-          TextField(
-            controller: ctrl,
-            autofocus: true,
-            decoration: InputDecoration(
-              labelText: l10n.warehouseBarcode,
-              hintText: 'DC00000001',
-            ),
-            onSubmitted: (v) => Navigator.pop(context, v),
-          ),
-        ]),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
-          FilledButton(onPressed: () => Navigator.pop(context, ctrl.text.trim()), child: Text(l10n.warehouseSearch)),
-        ],
-      ),
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
     );
     if (code == null || code.isEmpty || !mounted) return;
     final item = await _svc.findByBarcode(code);

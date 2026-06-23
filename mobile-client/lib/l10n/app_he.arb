@@ -255,5 +255,11 @@
   "statsClosed": "סגור",
   "statsAvgResolution": "זמן טיפול ממוצע",
   "statsByDay": "קריאות ליום",
-  "statsByUser": "לפי טכנאי"
+  "statsByUser": "לפי טכנאי",
+  "scannerCamera": "מצלמה",
+  "scannerHid": "סורק",
+  "scannerHidWaiting": "מוכן — סרוק עם הסורק החיצוני שלך",
+  "scannerHidHint": "USB, Bluetooth או סורק לייזר מובנה\n(מצב מקלדת HID)",
+  "scannerScanAgain": "סרוק שוב",
+  "scannerUse": "השתמש בקוד זה"
 }
