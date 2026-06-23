@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:flutter_zxing/flutter_zxing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -406,11 +406,10 @@ class _BarcodeScannerScreen extends StatelessWidget {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(title: Text(l10n.warehouseScan)),
-      body: MobileScanner(
-        onDetect: (capture) {
-          final code = capture.barcodes.firstOrNull?.rawValue;
-          if (code != null && context.mounted) {
-            Navigator.of(context).pop(code);
+      body: ReaderWidget(
+        onScan: (result) {
+          if (result.isValid && result.text != null && context.mounted) {
+            Navigator.of(context).pop(result.text);
           }
         },
       ),

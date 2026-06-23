@@ -63,7 +63,9 @@ dependencies:
   # Management tab: PDF export for inventory + barcode scanner
   pdf: ^3.10.8
   printing: ^5.13.2
-  mobile_scanner: ^5.2.3
+  # flutter_zxing uses ZXing (C++ port via FFI) — no Google MLKit dependency,
+  # so no GoogleDataTransport version conflict with firebase_messaging
+  flutter_zxing: ^1.7.0
 
 dev_dependencies:
   flutter_test:
