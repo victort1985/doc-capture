@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -71,12 +72,12 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
     if (!_scanning || !mounted) return;
     setState(() { _result = code; _scanning = false; });
     _hidCtrl.clear();
-    _cameraCtrl.stop();
+    unawaited(_cameraCtrl.stop());
   }
 
   void _reset() {
     setState(() { _result = null; _scanning = true; });
-    if (_mode == _ScanMode.camera) _cameraCtrl.start();
+    if (_mode == _ScanMode.camera) unawaited(_cameraCtrl.start());
     if (_mode == _ScanMode.hid) _hidFocus.requestFocus();
   }
 
@@ -88,10 +89,10 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
   }
 
   @override
-  void dispose() {
-    _cameraCtrl.dispose();
+  Future<void> dispose() async {
     _hidCtrl.dispose();
     _hidFocus.dispose();
+    await _cameraCtrl.dispose();
     super.dispose();
   }
 
@@ -117,9 +118,9 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
             onSelectionChanged: (s) {
               setState(() { _mode = s.first; _result = null; _scanning = true; });
               if (_mode == _ScanMode.camera) {
-                _cameraCtrl.start();
+                unawaited(_cameraCtrl.start());
               } else {
-                _cameraCtrl.stop();
+                unawaited(_cameraCtrl.stop());
                 _hidFocus.requestFocus();
               }
             },
@@ -136,21 +137,17 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
               final code = capture.barcodes.firstOrNull?.rawValue;
               if (code != null) _handleResult(code);
             },
-            overlay: Container(
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white30, width: 0.5),
-              ),
-              child: Stack(children: [
-                // Scan line animation hint
+            overlayBuilder: (context, constraints) {
+              return Stack(children: [
+                // Scan line hint
                 Align(
                   alignment: Alignment.center,
-                  child: Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 40),
-                    height: 2,
-                    color: AppColors.primary.withOpacity(0.7),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Container(height: 2, color: AppColors.primary.withOpacity(0.7)),
                   ),
                 ),
-                // Scan window indicator
+                // Targeting box
                 Align(
                   alignment: Alignment.center,
                   child: Container(
@@ -161,8 +158,8 @@ class _BarcodeScannerScreenState extends State<BarcodeScannerScreen> {
                     ),
                   ),
                 ),
-              ]),
-            ),
+              ]);
+            },
           ),
 
         // ── HID mode UI ─────────────────────────────────────────────────
