@@ -1,7 +1,6 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_zxing/flutter_zxing.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -75,11 +74,37 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
 
   void _scanBarcode() async {
     final l10n = AppLocalizations.of(context)!;
-    final barcode = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => const _BarcodeScannerScreen()),
+    // Native barcode scanner packages conflict with firebase_messaging on iOS
+    // (GoogleMLKit vs GoogleDataTransport version conflict) and with NDK 28
+    // on Android (C++ stdlib issue in ZXing FFI). Using a manual input dialog
+    // instead — works reliably on all platforms. Physical barcode scanners
+    // connected via Bluetooth keyboard mode also work fine with this input.
+    final ctrl = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(l10n.warehouseScan),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Icon(Icons.qr_code_scanner, size: 48, color: AppColors.inkSoft),
+          const SizedBox(height: 12),
+          TextField(
+            controller: ctrl,
+            autofocus: true,
+            decoration: InputDecoration(
+              labelText: l10n.warehouseBarcode,
+              hintText: 'DC00000001',
+            ),
+            onSubmitted: (v) => Navigator.pop(context, v),
+          ),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+          FilledButton(onPressed: () => Navigator.pop(context, ctrl.text.trim()), child: Text(l10n.warehouseSearch)),
+        ],
+      ),
     );
-    if (barcode == null || !mounted) return;
-    final item = await _svc.findByBarcode(barcode);
+    if (code == null || code.isEmpty || !mounted) return;
+    final item = await _svc.findByBarcode(code);
     if (!mounted) return;
     if (item != null) {
       _showItemDetail(item);
@@ -395,26 +420,6 @@ class _CatChip extends StatelessWidget {
     padding: const EdgeInsets.only(right: 6),
     child: FilterChip(label: Text(label, style: const TextStyle(fontSize: 12)), selected: selected, onSelected: (_) => onTap()),
   );
-}
-
-// ── Barcode scanner ───────────────────────────────────────────────────────────
-
-class _BarcodeScannerScreen extends StatelessWidget {
-  const _BarcodeScannerScreen();
-  @override
-  Widget build(BuildContext context) {
-    final l10n = AppLocalizations.of(context)!;
-    return Scaffold(
-      appBar: AppBar(title: Text(l10n.warehouseScan)),
-      body: ReaderWidget(
-        onScan: (result) {
-          if (result.isValid && result.text != null && context.mounted) {
-            Navigator.of(context).pop(result.text);
-          }
-        },
-      ),
-    );
-  }
 }
 
 // ── Warehouse screen end ──────────────────────────────────────────────────────
