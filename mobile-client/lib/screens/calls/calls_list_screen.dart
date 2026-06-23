@@ -8,6 +8,7 @@ import '../../services/calls_service.dart';
 import '../../widgets/elapsed_timer_text.dart';
 import 'create_call_screen.dart';
 import 'call_detail_screen.dart';
+import '../calls_stats_screen.dart';
 
 class CallsListScreen extends StatefulWidget {
   const CallsListScreen({super.key});
@@ -90,7 +91,16 @@ class CallsListScreenState extends State<CallsListScreen> {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       backgroundColor: Colors.transparent,
-      appBar: AppBar(title: Text(l10n.callsTitle)),
+      appBar: AppBar(
+        title: Text(l10n.callsTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.bar_chart_outlined),
+            tooltip: l10n.statsTitle,
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const CallsStatsScreen())),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final created = await Navigator.of(context).push<bool>(

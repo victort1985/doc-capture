@@ -254,11 +254,11 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
         _field(_descCtrl, l10n.calendarDescriptionHint, maxLines: 3),
 
         // ── Technical fields ──────────────────────────────────────────────
-        _label('מפרט טכני'),
-        _field(_techCtrl, 'הוסף מפרט טכני…', maxLines: 3),
+        _label(l10n.calendarTechnicalRequirements),
+        _field(_techCtrl, l10n.calendarTechnicalRequirementsHint, maxLines: 3),
 
-        _label('ציוד נדרש'),
-        _field(_equipCtrl, 'הוסף ציוד נדרש…', maxLines: 3),
+        _label(l10n.calendarRequiredEquipment),
+        _field(_equipCtrl, l10n.calendarRequiredEquipmentHint, maxLines: 3),
 
         _label(l10n.calendarLocation),
         TextField(

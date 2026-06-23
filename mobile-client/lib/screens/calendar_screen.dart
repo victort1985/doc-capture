@@ -5,6 +5,7 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../models/calendar_event.dart';
 import '../services/calendar_service.dart';
+import '../store/app_state.dart';
 import 'calendar_event_screen.dart';
 
 enum _View { month, week, day }
@@ -79,6 +80,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final langCode = context.watch<AppState>().languageCode;
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
@@ -108,11 +110,11 @@ class _CalendarScreenState extends State<CalendarScreen> {
         onPressed: () => _openCreate(_selectedDay),
         child: const Icon(Icons.add),
       ),
-      body: SafeArea(child: _body(l10n)),
+      body: SafeArea(child: _body(l10n, langCode)),
     );
   }
 
-  Widget _body(AppLocalizations l10n) {
+  Widget _body(AppLocalizations l10n, String langCode) {
     if (_loading) return const Center(child: CircularProgressIndicator());
 
     if (_view == _View.month) return _MonthView(
@@ -120,6 +122,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       selectedDay: _selectedDay,
       eventsForDay: _eventsForDay,
       eventColor: _eventColor,
+      locale: langCode,
       onDaySelected: (s, f) => setState(() { _selectedDay = s; _focusedDay = f; }),
       onPageChanged: (f) { _focusedDay = f; _load(); },
       onEventTap: _openEdit,
@@ -154,6 +157,7 @@ class _MonthView extends StatelessWidget {
     required this.selectedDay,
     required this.eventsForDay,
     required this.eventColor,
+    required this.locale,
     required this.onDaySelected,
     required this.onPageChanged,
     required this.onEventTap,
@@ -165,6 +169,7 @@ class _MonthView extends StatelessWidget {
   final DateTime selectedDay;
   final List<CalendarEvent> Function(DateTime) eventsForDay;
   final Color Function(CalendarEvent) eventColor;
+  final String locale;
   final void Function(DateTime, DateTime) onDaySelected;
   final void Function(DateTime) onPageChanged;
   final void Function(CalendarEvent) onEventTap;
@@ -183,21 +188,25 @@ class _MonthView extends StatelessWidget {
           firstDay: DateTime(2020),
           lastDay: DateTime(2030),
           focusedDay: focusedDay,
+          locale: locale,
           selectedDayPredicate: (d) => isSameDay(d, selectedDay),
           calendarFormat: CalendarFormat.month,
           availableCalendarFormats: const {CalendarFormat.month: 'Month'},
           eventLoader: eventsForDay,
           onDaySelected: onDaySelected,
           onPageChanged: onPageChanged,
+          daysOfWeekHeight: 20,
+          rowHeight: 42,
           daysOfWeekStyle: const DaysOfWeekStyle(
-            weekdayStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-            weekendStyle: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            weekdayStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+            weekendStyle: TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
           ),
-          calendarStyle: CalendarStyle(
-            tablePadding: const EdgeInsets.symmetric(horizontal: 6),
-            todayDecoration: BoxDecoration(color: AppColors.primary.withOpacity(0.35), shape: BoxShape.circle),
-            selectedDecoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+          calendarStyle: const CalendarStyle(
+            tablePadding: EdgeInsets.symmetric(horizontal: 4),
+            todayDecoration: BoxDecoration(color: Color(0x594A90E2), shape: BoxShape.circle),
+            selectedDecoration: BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
             outsideDaysVisible: false,
+            cellMargin: EdgeInsets.all(4),
           ),
           calendarBuilders: CalendarBuilders(
             markerBuilder: (ctx, day, events) {

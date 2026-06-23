@@ -18,6 +18,9 @@ import { PhoneBookModule } from './modules/phonebook/phonebook.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { PushModule } from './modules/push/push.module';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { StatsModule } from './modules/stats/stats.module';
+import { FleetModule } from './modules/fleet/fleet.module';
+import { WarehouseModule } from './modules/warehouse/warehouse.module';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -53,6 +56,9 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     OrganizationsModule,
     PushModule,
     CalendarModule,
+    StatsModule,
+    FleetModule,
+    WarehouseModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
