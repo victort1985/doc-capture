@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { Organization } from '../../organizations/entities/organization.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('vehicles')
 export class Vehicle {
@@ -7,7 +8,7 @@ export class Vehicle {
   id: number;
 
   @Column()
-  make: string; // Toyota, Ford…
+  make: string;
 
   @Column()
   model: string;
@@ -25,16 +26,14 @@ export class Vehicle {
   vin?: string;
 
   @Column({ default: 0 })
-  currentMileage: number; // текущий километраж
+  currentMileage: number;
 
   @Column({ nullable: true })
   notes?: string;
 
-  // Annual inspection (ביקורת שנתית)
   @Column({ type: 'date', nullable: true })
   lastInspectionDate?: string;
 
-  // Annual test (טסט שנתי)
   @Column({ type: 'date', nullable: true })
   lastTestDate?: string;
 
@@ -43,6 +42,10 @@ export class Vehicle {
 
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   organization?: Organization;
+
+  /** User currently assigned/using this vehicle */
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  assignedUser?: User;
 
   @CreateDateColumn()
   createdAt: Date;

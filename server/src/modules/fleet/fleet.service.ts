@@ -19,42 +19,47 @@ export class FleetService {
 
   // ── Vehicles ──────────────────────────────────────────────────────
 
-  findAllVehicles(organizationId: number | null): Promise<Vehicle[]> {
+  findAllVehicles(organizationId: number | null, isPrivileged = false): Promise<Vehicle[]> {
     return this.vehiclesRepo.find({
-      where: organizationId != null ? { organization: { id: organizationId } } : {},
+      where: (organizationId != null && !isPrivileged) ? { organization: { id: organizationId } } : {},
+      relations: ['organization', 'assignedUser'],
       order: { make: 'ASC', model: 'ASC' },
     });
   }
 
-  async findVehicle(id: number, organizationId: number | null): Promise<Vehicle> {
-    const v = await this.vehiclesRepo.findOne({ where: { id }, relations: ['organization'] });
+  async findVehicle(id: number, organizationId: number | null, isPrivileged = false): Promise<Vehicle> {
+    const v = await this.vehiclesRepo.findOne({ where: { id }, relations: ['organization', 'assignedUser'] });
     if (!v) throw new NotFoundException('Vehicle not found');
-    if (organizationId != null && v.organization?.id !== organizationId) throw new NotFoundException('Vehicle not found');
+    if (!isPrivileged && organizationId != null && v.organization?.id !== organizationId) throw new NotFoundException('Vehicle not found');
     return v;
   }
 
-  async createVehicle(dto: Partial<Vehicle>, organizationId: number | null): Promise<Vehicle> {
+  async createVehicle(dto: Partial<Vehicle> & { assignedUserId?: number }, organizationId: number | null): Promise<Vehicle> {
     const vehicle = this.vehiclesRepo.create({
       ...dto,
       organization: organizationId ? ({ id: organizationId } as any) : undefined,
+      assignedUser: dto.assignedUserId ? ({ id: dto.assignedUserId } as any) : undefined,
     });
     return this.vehiclesRepo.save(vehicle);
   }
 
-  async updateVehicle(id: number, organizationId: number | null, dto: Partial<Vehicle>): Promise<Vehicle> {
-    const v = await this.findVehicle(id, organizationId);
-    Object.assign(v, dto);
+  async updateVehicle(id: number, organizationId: number | null, dto: Partial<Vehicle> & { assignedUserId?: number }, isPrivileged = false): Promise<Vehicle> {
+    const v = await this.findVehicle(id, organizationId, isPrivileged);
+    Object.assign(v, {
+      ...dto,
+      assignedUser: dto.assignedUserId !== undefined ? (dto.assignedUserId ? ({ id: dto.assignedUserId } as any) : null) : v.assignedUser,
+    });
     return this.vehiclesRepo.save(v);
   }
 
-  async removeVehicle(id: number, organizationId: number | null): Promise<void> {
-    const v = await this.findVehicle(id, organizationId);
+  async removeVehicle(id: number, organizationId: number | null, isPrivileged = false): Promise<void> {
+    const v = await this.findVehicle(id, organizationId, isPrivileged);
     await this.vehiclesRepo.remove(v);
   }
 
   /** Vehicles with upcoming or overdue inspection/test (within next 30 days or past due). */
-  async reminders(organizationId: number | null): Promise<{ vehicle: Vehicle; type: string; dueDate: string }[]> {
-    const vehicles = await this.findAllVehicles(organizationId);
+  async reminders(organizationId: number | null, isPrivileged = false): Promise<{ vehicle: Vehicle; type: string; dueDate: string }[]> {
+    const vehicles = await this.findAllVehicles(organizationId, isPrivileged);
     const today = new Date().toISOString().slice(0, 10);
     const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
 

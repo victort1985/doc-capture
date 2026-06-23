@@ -8,21 +8,25 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
 
-type RequestUser = { id: number; organizationId: number | null };
+type RequestUser = { id: number; organizationId: number | null; role: string; isGlobal: boolean };
 
 @Controller('fleet')
 @UseGuards(JwtAuthGuard)
 export class FleetController {
   constructor(private readonly fleetService: FleetService) {}
 
+  private privileged(u: RequestUser) {
+    return u.organizationId == null || u.isGlobal || u.role === 'admin';
+  }
+
   @Get('vehicles')
   findAll(@CurrentUser() user: RequestUser) {
-    return this.fleetService.findAllVehicles(user.organizationId);
+    return this.fleetService.findAllVehicles(user.organizationId, this.privileged(user));
   }
 
   @Get('reminders')
   reminders(@CurrentUser() user: RequestUser) {
-    return this.fleetService.reminders(user.organizationId);
+    return this.fleetService.reminders(user.organizationId, this.privileged(user));
   }
 
   @Post('vehicles')
@@ -34,16 +38,21 @@ export class FleetController {
 
   @Patch('vehicles/:id')
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
+  @Roles(UserRole.ADMIN, UserRole.USER)
   update(@Param('id', ParseIntPipe) id: number, @Body() dto: any, @CurrentUser() user: RequestUser) {
-    return this.fleetService.updateVehicle(id, user.organizationId, dto);
+    const priv = this.privileged(user);
+    if (user.role === UserRole.USER && !user.isGlobal) {
+      // Regular users can only update mileage
+      dto = { currentMileage: dto.currentMileage };
+    }
+    return this.fleetService.updateVehicle(id, user.organizationId, dto, priv);
   }
 
   @Delete('vehicles/:id')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
-    return this.fleetService.removeVehicle(id, user.organizationId);
+    return this.fleetService.removeVehicle(id, user.organizationId, this.privileged(user));
   }
 
   @Get('vehicles/:id/refuels')
