@@ -31,7 +31,7 @@ export default function LoginPage() {
     <div className="login-screen">
       <div className="login-card">
         <StampMark size={40} animated />
-        <div className="wordmark">Doc Capture</div>
+        <div className="wordmark">Operix ERP</div>
         <p className="tagline">Sign in to the admin console.</p>
 
         {error && (

@@ -175,7 +175,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 scale: _stampScale.value,
                                 child: Transform.rotate(angle: _stampRotation.value, child: child),
                               ),
-                              child: const StampMark(size: 46),
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(16),
+                                child: Image.asset('assets/icons/app_icon.png', width: 72, height: 72),
+                              ),
                             ),
                           ),
                           const SizedBox(height: 14),

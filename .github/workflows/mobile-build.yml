@@ -63,6 +63,9 @@ jobs:
 
       - run: flutter pub get
 
+      - name: Generate Operix app icons
+        run: dart run flutter_launcher_icons
+
       - name: Bump file_picker's own compileSdk to 36
         run: python3 ../.github/scripts/patch_file_picker_sdk_version.py
 
@@ -152,6 +155,9 @@ jobs:
         run: sed -i '' "s#https://app.doc-capture.app/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
 
       - run: flutter pub get
+
+      - name: Generate Operix app icons
+        run: dart run flutter_launcher_icons
 
       # Unsigned archive — no Apple Developer account is assumed here.
       # Sign it afterwards via Xcode Organizer or a resign service, exactly

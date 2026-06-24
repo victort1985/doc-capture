@@ -36,7 +36,7 @@ export default function Layout() {
         <div className="sidebar-brand">
           <StampMark size={30} />
           <div className="wordmark">
-            Doc Capture
+            Operix ERP
             <small>admin console</small>
           </div>
         </div>

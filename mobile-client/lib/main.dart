@@ -89,7 +89,7 @@ class _AppRootState extends State<_AppRoot> {
     final appState = context.watch<AppState>();
 
     return MaterialApp(
-      title: 'Doc Capture',
+      title: 'Operix ERP',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
 

@@ -1,5 +1,5 @@
 name: doc_capture
-description: Document & photo capture client (camera/file picker -> server upload).
+description: Operix ERP — Field Service Management Platform
 publish_to: 'none'
 version: 0.1.0
 
@@ -69,10 +69,21 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.3
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#121C42"
+  adaptive_icon_foreground: "assets/icons/app_icon.png"
 
 flutter:
   uses-material-design: true
   generate: true # enables flutter gen-l10n from l10n.yaml
+  assets:
+    - assets/icons/
   # Flutter 3.44+ defaults to Swift Package Manager for iOS, but
   # flutter_secure_storage doesn't support it yet — caused a real CI
   # failure ("requires a selected Development Team") even with
