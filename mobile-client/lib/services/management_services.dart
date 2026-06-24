@@ -218,4 +218,11 @@ class WarehouseService {
     final data = await _api.get('/warehouse/items/$itemId/transactions') as List? ?? [];
     return data.map((j) => WarehouseTransaction.fromJson(j as Map<String, dynamic>)).toList();
   }
+
+  Future<Map<String, dynamic>> getOrgSettings() async {
+    try {
+      final j = await _api.get('/delivery-note-settings');
+      return (j as Map<String, dynamic>?) ?? {};
+    } catch (_) { return {}; }
+  }
 }

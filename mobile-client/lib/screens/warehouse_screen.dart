@@ -10,6 +10,7 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/management_services.dart';
+import '../services/pdf_helpers.dart';
 import 'barcode_scanner_screen.dart';
 
 // ─── Barcode generator (client-side, random) ──────────────────────────────────
@@ -225,25 +226,85 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   Future<void> _printAllPdf() async {
     final l10n = AppLocalizations.of(context)!;
     final rows = _selectedCategoryId != null ? _items : await _svc.listItems();
+
+    final fontR = await PdfGoogleFonts.notoSansHebrewRegular();
+    final fontB = await PdfGoogleFonts.notoSansHebrewBold();
+
+    // Try to get org settings for logo/company name
+    String companyName = 'Vixor ERP';
+    pw.ImageProvider? logoImg;
+    try {
+      final settings = await _svc.getOrgSettings();
+      if (settings['companyName'] != null) companyName = settings['companyName'] as String;
+      final logoBytes = decodeLogoBytes(settings['logoBase64'] as String?);
+      if (logoBytes != null) logoImg = pw.MemoryImage(logoBytes);
+    } catch (_) {}
+
     final pdf = pw.Document();
-    pdf.addPage(pw.Page(
+    pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
-      build: (c) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-        pw.Text(l10n.warehouseInventoryReport, style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
-        pw.SizedBox(height: 8),
-        pw.Text(DateTime.now().toLocal().toString().substring(0, 16), style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600)),
-        pw.SizedBox(height: 14),
-        pw.Table.fromTextArray(
-          headers: ['#', 'Name', 'Barcode', 'Category', 'Qty', 'Unit', 'Location'],
-          data: rows.asMap().entries.map((e) => [
-            '${e.key + 1}', e.value.name, e.value.barcode,
-            e.value.category?.name ?? '—', '${e.value.quantity}',
-            e.value.unit ?? '—', e.value.location ?? '—',
-          ]).toList(),
-          headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 9),
-          cellStyle: const pw.TextStyle(fontSize: 9),
+      margin: const pw.EdgeInsets.all(24),
+      // Logo + company on every page
+      header: (ctx) => pw.Container(
+        padding: const pw.EdgeInsets.only(bottom: 6),
+        decoration: const pw.BoxDecoration(
+          border: pw.Border(bottom: pw.BorderSide(width: 0.5, color: PdfColors.grey400))),
+        child: pw.Row(
+          mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            pw.Text(companyName, style: pw.TextStyle(font: fontB, fontSize: 11),
+              textDirection: pw.TextDirection.rtl),
+            if (logoImg != null)
+              pw.Image(logoImg, height: 30, fit: pw.BoxFit.contain),
+          ],
         ),
-      ]),
+      ),
+      build: (c) => [
+        pw.SizedBox(height: 8),
+        pw.Text(l10n.warehouseInventoryReport,
+          style: pw.TextStyle(font: fontB, fontSize: 16),
+          textDirection: pw.TextDirection.rtl),
+        pw.SizedBox(height: 4),
+        pw.Text(DateTime.now().toLocal().toString().substring(0, 16),
+          style: pw.TextStyle(font: fontR, fontSize: 9, color: PdfColors.grey600)),
+        pw.SizedBox(height: 12),
+        pw.Table(
+          border: pw.TableBorder.all(width: 0.5),
+          columnWidths: {
+            0: const pw.FixedColumnWidth(28),
+            1: const pw.FlexColumnWidth(3),
+            2: const pw.FlexColumnWidth(2),
+            3: const pw.FlexColumnWidth(2),
+            4: const pw.FixedColumnWidth(30),
+            5: const pw.FixedColumnWidth(30),
+            6: const pw.FlexColumnWidth(2),
+          },
+          children: [
+            pw.TableRow(
+              decoration: const pw.BoxDecoration(color: PdfColors.grey200),
+              children: ['#', 'Name', 'Barcode', 'Category', 'Qty', 'Unit', 'Location']
+                .map((h) => pw.Padding(
+                  padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+                  child: pw.Text(h, style: pw.TextStyle(font: fontB, fontSize: 8)),
+                )).toList(),
+            ),
+            ...rows.asMap().entries.map((e) => pw.TableRow(children: [
+              '${e.key + 1}', e.value.name, e.value.barcode,
+              e.value.category?.name ?? '—', '${e.value.quantity}',
+              e.value.unit ?? '—', e.value.location ?? '—',
+            ].map((text) => pw.Padding(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+              child: pw.Text(text,
+                style: pw.TextStyle(font: fontR, fontSize: 8),
+                textDirection: pw.TextDirection.rtl),
+            )).toList())),
+          ],
+        ),
+        pw.SizedBox(height: 8),
+        pw.Text('${l10n.warehouseInventoryReport} — ${rows.length} items',
+          style: pw.TextStyle(font: fontR, fontSize: 9, color: PdfColors.grey600)),
+      ],
     ));
     await Printing.layoutPdf(onLayout: (_) => pdf.save());
   }

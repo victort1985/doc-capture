@@ -7,6 +7,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import '../app/theme.dart';
 import '../services/delivery_notes_service.dart';
+import '../services/pdf_helpers.dart';
 
 class DeliveryNoteFormScreen extends StatefulWidget {
   const DeliveryNoteFormScreen({super.key, required this.svc, this.noteId});
@@ -180,142 +181,224 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
 
   Future<pw.Document> _buildPdf() async {
     final pdf = pw.Document();
-    // Decode signatures if present
-    pw.MemoryImage? lessorImg;
-    pw.MemoryImage? lesseeImg;
-    if (_lessorSig != null) lessorImg = pw.MemoryImage(base64Decode(_lessorSig!));
-    if (_lesseeSig != null) lesseeImg = pw.MemoryImage(base64Decode(_lesseeSig!));
 
+    // ── Fonts ───────────────────────────────────────────────────────────────
     final fontR = await PdfGoogleFonts.notoSansHebrewRegular();
     final fontB = await PdfGoogleFonts.notoSansHebrewBold();
+    final fontS = fontR; // small/terms — same as regular
 
-    pdf.addPage(pw.Page(
+    // ── Logo ────────────────────────────────────────────────────────────────
+    final logoBytes = decodeLogoBytes(_settings.logoBase64);
+    pw.ImageProvider? logoImg;
+    if (logoBytes != null) {
+      try { logoImg = pw.MemoryImage(logoBytes); } catch (_) {}
+    }
+
+    // ── Signature images ────────────────────────────────────────────────────
+    pw.ImageProvider? lessorImg;
+    pw.ImageProvider? lesseeImg;
+    if (_lessorSig != null) {
+      try { lessorImg = pw.MemoryImage(base64Decode(_lessorSig!)); } catch (_) {}
+    }
+    if (_lesseeSig != null) {
+      try { lesseeImg = pw.MemoryImage(base64Decode(_lesseeSig!)); } catch (_) {}
+    }
+
+    final companyName = _settings.companyName ?? 'אם.סי. אילת מיוזיק בע"מ';
+    final companyAddr = _settings.companyAddress ?? 'נחל חיון 3/3, אילת, מיקוד 8813501';
+    final companyPhone = _settings.companyPhone ?? '08-6315342';
+    final companyFax = _settings.companyFax ?? '08-6318461';
+    final companyMobile = _settings.companyMobile ?? '052-4702008/1';
+    final noteNum = _note?.noteNumber ?? '';
+
+    // ── Terms text ──────────────────────────────────────────────────────────
+    final termsText = _settings.termsText ??
+        '''תנאים:
+השוכר מצהיר כי קיבל את הציוד במצב תקין וראוי לעבודה לאחר שבדקו.''';
+
+    // Helper: RTL text
+    pw.Widget t(String text, {pw.Font? font, double size = 9, PdfColor color = PdfColors.black, pw.TextAlign? align}) =>
+      pw.Text(text,
+        textDirection: pw.TextDirection.rtl,
+        textAlign: align,
+        style: pw.TextStyle(font: font ?? fontR, fontSize: size, color: color));
+
+    // Helper: field row (label: underline value) – RTL
+    pw.Widget fieldRow(String label, String value, {int flex = 1}) =>
+      pw.Expanded(flex: flex, child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+        pw.Expanded(child: pw.Container(
+          decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 0.5))),
+          padding: const pw.EdgeInsets.only(bottom: 2),
+          child: t(value, size: 10),
+        )),
+        pw.SizedBox(width: 4),
+        t('$label:', font: fontB, size: 9),
+      ]));
+
+    // Helper: table cell RTL
+    pw.Widget cell(String text, {bool bold = false, pw.TextAlign? align}) =>
+      pw.Padding(
+        padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        child: t(text, font: bold ? fontB : fontR, size: 9, align: align));
+
+    // ── Empty table rows ────────────────────────────────────────────────────
+    final filledRows = _items.where((r) => r.nameCtrl.text.isNotEmpty).length;
+    final emptyCount = (12 - filledRows).clamp(0, 12);
+
+    pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
-      margin: const pw.EdgeInsets.all(24),
-      build: (c) => pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.stretch, children: [
-        // Header
-        pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+      margin: const pw.EdgeInsets.fromLTRB(20, 20, 20, 20),
+      // ── Page header (every page) ─────────────────────────────────────────
+      header: (ctx) => pw.Container(
+        padding: const pw.EdgeInsets.only(bottom: 6),
+        decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 0.5, color: PdfColors.grey400))),
+        child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
+          // Left: logo + company info
           pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-            if (_settings.logoBase64 != null)
-              pw.Image(pw.MemoryImage(_decodeLogoBytes()!), width: 60, height: 40, fit: pw.BoxFit.contain),
-            pw.Text(_settings.companyName ?? 'אם.סי. אילת מיוזיק בע"מ', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontB, fontSize: 13)),
-            if (_settings.companySubtitle != null)
-              pw.Text(_settings.companySubtitle!, style: pw.TextStyle(font: fontR, fontSize: 8)),
-            pw.SizedBox(height: 3),
-            pw.Text(_settings.companyAddress ?? 'נחל חיון 3/3, אילת | 08-6315342', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 8)),
-            if (_settings.companyPhone != null)
-              pw.Text('${_settings.companyPhone}${_settings.companyFax != null ? " | ${_settings.companyFax}" : ""}', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 8)),
+            if (logoImg != null)
+              pw.Image(logoImg, height: 40, fit: pw.BoxFit.contain),
+            t(companyName, font: fontB, size: 12),
+            t(companyAddr, size: 8, color: PdfColors.grey700),
+            t('טל: $companyPhone | פקס: $companyFax | נייד: $companyMobile', size: 7, color: PdfColors.grey700),
           ])),
+          pw.SizedBox(width: 12),
+          // Right: document title + number
           pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-            pw.Text('תעודת משלוח/ו/אי', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontB, fontSize: 13)),
-            pw.Text('הסכם שכירות ו/או ביצוע עבודה', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 9)),
-            pw.Text('מס׳ ${_note?.noteNumber ?? ''}', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontB, fontSize: 14)),
+            t('תעודת משלוח/ו/אי', font: fontB, size: 16),
+            t('הסכם שכירות ו/או ביצוע עבודה', size: 10),
+            pw.SizedBox(height: 4),
+            pw.Row(children: [
+              t(noteNum, font: fontB, size: 18),
+              pw.SizedBox(width: 6),
+              t('מס׳', font: fontB, size: 11),
+            ]),
           ]),
         ]),
-        pw.Divider(),
-        pw.SizedBox(height: 6),
+      ),
+      build: (ctx) => [
+        pw.SizedBox(height: 8),
 
-        // Client info
+        // ── Date + Name ─────────────────────────────────────────────────────
         pw.Row(children: [
-          _pdfField('תאריך', _dateCtrl.text, fontR: fontR, fontB: fontB),
-          pw.SizedBox(width: 20),
-          _pdfField('שם', _clientNameCtrl.text, flex: 3, fontR: fontR, fontB: fontB),
+          fieldRow('תאריך', _dateCtrl.text),
+          pw.SizedBox(width: 12),
+          fieldRow('שם', _clientNameCtrl.text, flex: 3),
         ]),
-        pw.SizedBox(height: 6),
+        pw.SizedBox(height: 8),
+
+        // ── Address + Delivered to ──────────────────────────────────────────
         pw.Row(children: [
-          _pdfField('כתובת', _clientAddrCtrl.text, flex: 3, fontR: fontR, fontB: fontB),
-          pw.SizedBox(width: 20),
-          _pdfField('נמסר לידי', _deliveredToCtrl.text, flex: 2, fontR: fontR, fontB: fontB),
+          fieldRow('כתובת העסק', _clientAddrCtrl.text, flex: 3),
+          pw.SizedBox(width: 12),
+          fieldRow('נמסר לידי', _deliveredToCtrl.text, flex: 2),
         ]),
-        pw.SizedBox(height: 6),
+        pw.SizedBox(height: 8),
+
+        // ── Role + ID ────────────────────────────────────────────────────────
         pw.Row(children: [
-          _pdfField('תפקיד', _roleCtrl.text, fontR: fontR, fontB: fontB),
-          pw.SizedBox(width: 20),
-          _pdfField('מס׳ ת.ז.', _idNumCtrl.text, fontR: fontR, fontB: fontB),
+          fieldRow('תפקיד', _roleCtrl.text),
+          pw.SizedBox(width: 12),
+          fieldRow('מס׳ ת.ז.', _idNumCtrl.text),
+          pw.SizedBox(width: 12),
+          fieldRow('מקור', ''),
         ]),
         pw.SizedBox(height: 12),
 
-        // Items table
+        // ── Equipment table ─────────────────────────────────────────────────
         pw.Table(
-          border: pw.TableBorder.all(width: 0.5),
+          border: pw.TableBorder.all(width: 0.5, color: PdfColors.grey600),
           columnWidths: {
-            0: const pw.FixedColumnWidth(50),
+            0: const pw.FixedColumnWidth(40),
             1: const pw.FlexColumnWidth(4),
             2: const pw.FlexColumnWidth(2),
           },
           children: [
+            // Header
             pw.TableRow(
               decoration: const pw.BoxDecoration(color: PdfColors.grey200),
               children: [
-                _pdfCell('כמות', bold: true, fontR: fontR, fontB: fontB),
-                _pdfCell('שמות הפריטים', bold: true, fontR: fontR, fontB: fontB),
-                _pdfCell('הערות', bold: true, fontR: fontR, fontB: fontB),
+                cell('כמות', bold: true),
+                cell('שמות הפריטים', bold: true),
+                cell('הערות', bold: true),
               ],
             ),
+            // Filled rows
             ..._items.where((r) => r.nameCtrl.text.isNotEmpty).map((r) => pw.TableRow(children: [
-              _pdfCell(r.qtyCtrl.text.isEmpty ? '1' : r.qtyCtrl.text, fontR: fontR, fontB: fontB),
-              _pdfCell(r.nameCtrl.text, fontR: fontR, fontB: fontB),
-              _pdfCell(r.notesCtrl.text, fontR: fontR, fontB: fontB),
+              cell(r.qtyCtrl.text.isEmpty ? '1' : r.qtyCtrl.text),
+              cell(r.nameCtrl.text),
+              cell(r.notesCtrl.text),
             ])),
-            // Empty rows to match original
-            ...List.generate(
-              (_items.where((r) => r.nameCtrl.text.isNotEmpty).length < 8
-                  ? 8 - _items.where((r) => r.nameCtrl.text.isNotEmpty).length
-                  : 2),
-              (_) => pw.TableRow(children: [_pdfCell('', fontR: fontR, fontB: fontB), _pdfCell('', fontR: fontR, fontB: fontB), _pdfCell('', fontR: fontR, fontB: fontB)]),
-            ),
+            // Empty rows
+            ...List.generate(emptyCount, (_) => pw.TableRow(
+              children: [
+                pw.SizedBox(height: 16),
+                pw.SizedBox(height: 16),
+                pw.SizedBox(height: 16),
+              ],
+            )),
           ],
         ),
 
+        // ── Remarks ─────────────────────────────────────────────────────────
         if (_remarksCtrl.text.isNotEmpty) ...[
           pw.SizedBox(height: 8),
-          pw.Text('הערות: ${_remarksCtrl.text}', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 9)),
+          pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
+            pw.Expanded(child: t(_remarksCtrl.text, size: 9)),
+            pw.SizedBox(width: 4),
+            t('הערות:', font: fontB, size: 9),
+          ]),
         ],
 
-        pw.Spacer(),
+        pw.SizedBox(height: 16),
 
-        // Signatures
+        // ── Terms ────────────────────────────────────────────────────────────
+        pw.Container(
+          padding: const pw.EdgeInsets.all(8),
+          decoration: pw.BoxDecoration(border: pw.Border.all(width: 0.5, color: PdfColors.grey400)),
+          child: t(termsText, size: 7, color: PdfColors.grey800),
+        ),
+
+        pw.SizedBox(height: 16),
+
+        // ── Signatures ───────────────────────────────────────────────────────
         pw.Row(mainAxisAlignment: pw.MainAxisAlignment.spaceBetween, children: [
-          pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
-            if (lessorImg != null)
-              pw.Image(lessorImg, width: 100, height: 50, fit: pw.BoxFit.contain),
-            pw.Container(width: 120, height: 0.5, color: PdfColors.black),
-            pw.SizedBox(height: 4),
-            pw.Text('חתימת המשכיר', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 9)),
-          ]),
+          // Lessee (client) signature — left
           pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
             if (lesseeImg != null)
-              pw.Image(lesseeImg, width: 100, height: 50, fit: pw.BoxFit.contain),
-            pw.Container(width: 120, height: 0.5, color: PdfColors.black),
+              pw.Container(height: 50, width: 130, child: pw.Image(lesseeImg, fit: pw.BoxFit.contain)),
+            pw.Container(width: 130, height: 0.5, color: PdfColors.black),
             pw.SizedBox(height: 4),
-            pw.Text('חתימת השוכר', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 9)),
+            t('חתימת השוכר', font: fontR, size: 9),
             if (_lesseeIdCtrl.text.isNotEmpty)
-              pw.Text('מסי ת.ז. ${_lesseeIdCtrl.text}', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 8)),
+              t('מסי ת.ז. ${_lesseeIdCtrl.text}', size: 8, color: PdfColors.grey700),
+          ]),
+          // Lessor (company) signature — right
+          pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.center, children: [
+            if (lessorImg != null)
+              pw.Container(height: 50, width: 130, child: pw.Image(lessorImg, fit: pw.BoxFit.contain)),
+            pw.Container(width: 130, height: 0.5, color: PdfColors.black),
+            pw.SizedBox(height: 4),
+            t('חתימת המשכיר', font: fontR, size: 9),
           ]),
         ]),
-      ]),
+
+        // ── Bottom remarks line ─────────────────────────────────────────────
+        pw.SizedBox(height: 10),
+        pw.Row(children: [
+          pw.Expanded(child: pw.Container(height: 0.5, color: PdfColors.grey400)),
+          pw.SizedBox(width: 4),
+          t('הערות:', font: fontB, size: 9),
+        ]),
+        pw.SizedBox(height: 4),
+        pw.Row(children: [
+          pw.Expanded(child: pw.Container(height: 0.5, color: PdfColors.grey400)),
+          pw.SizedBox(width: 4),
+          t('חתימה:', font: fontB, size: 9),
+        ]),
+      ],
     ));
     return pdf;
   }
-
-  pw.Widget _pdfField(String label, String value, {int flex = 1, pw.Font? fontR, pw.Font? fontB}) =>
-    pw.Expanded(flex: flex, child: pw.Directionality(
-      textDirection: pw.TextDirection.rtl,
-      child: pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-        pw.Expanded(child: pw.Container(
-          decoration: const pw.BoxDecoration(border: pw.Border(bottom: pw.BorderSide(width: 0.5))),
-          child: pw.Text(value, textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 10)),
-        )),
-        pw.SizedBox(width: 4),
-        pw.Text('$label:', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontB, fontSize: 9)),
-      ]),
-    ));
-
-  pw.Widget _pdfCell(String text, {bool bold = false, pw.Font? fontR, pw.Font? fontB}) =>
-    pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      child: pw.Text(text, textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: bold ? fontB : fontR, fontSize: 9)),
-    );
 
   Widget _suggestionList(List<String> suggestions, TextEditingController ctrl, VoidCallback onPick) {
     if (suggestions.isEmpty) return const SizedBox.shrink();
