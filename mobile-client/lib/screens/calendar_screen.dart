@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../models/calendar_event.dart';
@@ -134,6 +135,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       selectedDay: _selectedDay,
       eventsForDay: _eventsForDay,
       eventColor: _eventColor,
+      locale: langCode,
       onDaySelected: (d) => setState(() { _selectedDay = d; _focusedDay = d; }),
       onSlotTap: (d, t) => _openCreate(d, time: t),
       onEventTap: _openEdit,
@@ -268,7 +270,7 @@ class _MonthView extends StatelessWidget {
 // ─── Day timeline view ────────────────────────────────────────────────────────
 
 const double _hourH = 60.0; // px per hour
-const double _labelW = 48.0;
+const double _labelW = 56.0;
 
 class _DayTimelineView extends StatefulWidget {
   const _DayTimelineView({
@@ -350,6 +352,8 @@ class _DayTimelineViewState extends State<_DayTimelineView> {
                 '${h.toString().padLeft(2, '0')}:00',
                 textAlign: TextAlign.right,
                 style: const TextStyle(fontSize: 11, color: AppColors.inkSoft),
+                softWrap: false,
+                overflow: TextOverflow.visible,
               ),
             ),
           ),
@@ -418,6 +422,7 @@ class _WeekTimelineView extends StatefulWidget {
     required this.selectedDay,
     required this.eventsForDay,
     required this.eventColor,
+    required this.locale,
     required this.onDaySelected,
     required this.onSlotTap,
     required this.onEventTap,
@@ -425,6 +430,7 @@ class _WeekTimelineView extends StatefulWidget {
   final DateTime selectedDay;
   final List<CalendarEvent> Function(DateTime) eventsForDay;
   final Color Function(CalendarEvent) eventColor;
+  final String locale;
   final void Function(DateTime) onDaySelected;
   final void Function(DateTime, TimeOfDay) onSlotTap;
   final void Function(CalendarEvent) onEventTap;
@@ -477,7 +483,7 @@ class _WeekTimelineViewState extends State<_WeekTimelineView> {
                       : null,
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Text(
-                      ['Su','Mo','Tu','We','Th','Fr','Sa'][d.weekday % 7],
+                      DateFormat('E', widget.locale).format(d).substring(0, 2),
                       style: TextStyle(fontSize: 10, color: isToday ? AppColors.primary : AppColors.inkSoft),
                     ),
                     const SizedBox(height: 2),

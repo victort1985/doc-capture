@@ -143,28 +143,13 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
     final locCtrl  = TextEditingController();
     final qtyCtrl  = TextEditingController(text: '0');
     int? catId;
-    final barcode  = prefilledBarcode ?? generateLocalBarcode();
+    String barcode = prefilledBarcode ?? generateLocalBarcode();
 
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => AlertDialog(
         title: Text(l10n.warehouseAddItem),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Barcode display
-          GestureDetector(
-            onTap: () { Clipboard.setData(ClipboardData(text: barcode)); ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Copied'))); },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6), color: Colors.grey.shade50),
-              child: Column(children: [
-                _BarcodeVisual(data: barcode),
-                const SizedBox(height: 4),
-                Text(barcode, style: const TextStyle(fontFamily: 'Courier', fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1.5)),
-                const Text('tap to copy', style: TextStyle(fontSize: 10, color: AppColors.inkSoft)),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 10),
           TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.warehouseName)),
           TextField(controller: descCtrl, decoration: InputDecoration(labelText: l10n.warehouseDescription)),
           DropdownButtonFormField<int>(
@@ -176,6 +161,33 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
           TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.warehouseQty)),
           TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.warehouseUnit)),
           TextField(controller: locCtrl, decoration: InputDecoration(labelText: l10n.warehouseLocation)),
+          const SizedBox(height: 8),
+          // Barcode row — shows current code + scan button
+          Row(children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () { Clipboard.setData(ClipboardData(text: barcode)); ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Barcode copied'))); },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6), color: Colors.grey.shade50),
+                  child: Text(barcode, style: const TextStyle(fontFamily: 'Courier', fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1), overflow: TextOverflow.ellipsis),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: const Icon(Icons.qr_code_scanner),
+              tooltip: l10n.warehouseScan,
+              onPressed: () async {
+                final scanned = await Navigator.of(ctx).push<String>(
+                  MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+                );
+                if (scanned != null && scanned.isNotEmpty) {
+                  setSt(() => barcode = scanned);
+                }
+              },
+            ),
+          ]),
         ])),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
@@ -349,16 +361,24 @@ class _ItemDetailSheet extends StatefulWidget {
 }
 
 class _ItemDetailSheetState extends State<_ItemDetailSheet> {
-  List<WarehouseTransaction> _txs = [];
+  List<WarehouseItem> _sameNameItems = [];
   bool _loading = true;
-  bool _showTx = false;
 
   @override
   void initState() {
     super.initState();
-    widget.svc.listTransactions(widget.item.id).then((txs) {
-      if (mounted) setState(() { _txs = txs; _loading = false; });
-    });
+    _loadSameNameItems();
+  }
+
+  Future<void> _loadSameNameItems() async {
+    setState(() => _loading = true);
+    try {
+      final all = await widget.svc.listItems();
+      final same = all.where((i) => i.name.toLowerCase() == widget.item.name.toLowerCase()).toList();
+      if (mounted) setState(() { _sameNameItems = same; _loading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   Future<void> _addTx(String type) async {
@@ -381,8 +401,6 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
               if (qty == null || qty <= 0) return;
               await widget.svc.addTransaction(widget.item.id, type, qty, reason: reasonCtrl.text.isNotEmpty ? reasonCtrl.text : null);
               if (context.mounted) Navigator.pop(context);
-              final txs = await widget.svc.listTransactions(widget.item.id);
-              if (mounted) setState(() { _txs = txs; });
               widget.onRefresh();
             },
             child: Text(l10n.calendarSave),
@@ -455,41 +473,57 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
         ),
         const Divider(height: 24),
 
-        // History toggle
-        GestureDetector(
-          onTap: () => setState(() => _showTx = !_showTx),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(children: [
-              Text(l10n.warehouseHistory, style: const TextStyle(fontWeight: FontWeight.w600)),
-              const Spacer(),
-              Icon(_showTx ? Icons.expand_less : Icons.expand_more),
-            ]),
-          ),
+        // Same-name items list
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(children: [
+            Text('${item.name} — all units', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            const Spacer(),
+            if (_loading) const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
+          ]),
         ),
-        if (_showTx)
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _txs.isEmpty
-                    ? Padding(padding: const EdgeInsets.all(16), child: Text(l10n.warehouseNoTransactions, style: const TextStyle(color: AppColors.inkSoft)))
-                    : ListView.separated(
-                        controller: ctrl,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        itemCount: _txs.length,
-                        separatorBuilder: (_, __) => const Divider(height: 1),
-                        itemBuilder: (_, i) {
-                          final tx = _txs[i];
-                          final isIn = tx.type == 'in';
-                          return ListTile(
-                            dense: true,
-                            leading: Icon(isIn ? Icons.arrow_downward : Icons.arrow_upward, color: isIn ? Colors.green : Colors.red, size: 18),
-                            title: Text('${isIn ? '+' : '-'}${tx.quantity}${item.unit != null ? ' ${item.unit}' : ''}${tx.reason != null ? ' — ${tx.reason}' : ''}'),
-                            subtitle: Text('${tx.byUsername ?? '?'} · ${tx.createdAt.substring(0, 16)}', style: const TextStyle(fontSize: 11)),
-                          );
-                        },
+        const SizedBox(height: 6),
+        Expanded(
+          child: _sameNameItems.isEmpty
+              ? const SizedBox()
+              : ListView.separated(
+                  controller: ctrl,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  itemCount: _sameNameItems.length,
+                  separatorBuilder: (_, __) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final si = _sameNameItems[i];
+                    final isCurrent = si.id == item.id;
+                    return ListTile(
+                      dense: true,
+                      tileColor: isCurrent ? AppColors.primary.withOpacity(0.06) : null,
+                      leading: Icon(
+                        Icons.qr_code_2,
+                        size: 18,
+                        color: isCurrent ? AppColors.primary : AppColors.inkSoft,
                       ),
-          ),
+                      title: Text(
+                        si.barcode,
+                        style: TextStyle(
+                          fontFamily: 'Courier',
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isCurrent ? AppColors.primary : AppColors.inkSoft,
+                        ),
+                      ),
+                      subtitle: si.location != null ? Text(si.location!, style: const TextStyle(fontSize: 11)) : null,
+                      trailing: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Text('${si.quantity}', style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 18,
+                          color: si.quantity == 0 ? Colors.red : Colors.green,
+                        )),
+                        if (si.unit != null) Text(si.unit!, style: const TextStyle(fontSize: 9, color: AppColors.inkSoft)),
+                      ]),
+                    );
+                  },
+                ),
+        ),
       ]),
     );
   }
