@@ -78,7 +78,7 @@ class _RootScreenState extends State<RootScreen> {
             const PhoneBookScreen(),
             const CalendarScreen(),
             const ManagementScreen(),
-            DeliveryNotesScreen(svc: context.read<DeliveryNotesService>()),
+            DeliveryNotesScreen(),
           ],
         ),
       ),
