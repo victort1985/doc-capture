@@ -262,5 +262,6 @@
   "scannerHidHint": "USB, Bluetooth or built-in laser scanner\n(HID keyboard mode)",
   "scannerScanAgain": "Scan again",
   "scannerUse": "Use this code",
-  "warehouseHistory": "Movement history"
+  "warehouseHistory": "Movement history",
+  "deliveryNotesTitle": "Docs"
 }

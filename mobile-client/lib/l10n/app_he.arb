@@ -262,5 +262,6 @@
   "scannerHidHint": "USB, Bluetooth או סורק לייזר מובנה\n(מצב מקלדת HID)",
   "scannerScanAgain": "סרוק שוב",
   "scannerUse": "השתמש בקוד זה",
-  "warehouseHistory": "היסטוריית תנועות"
+  "warehouseHistory": "היסטוריית תנועות",
+  "deliveryNotesTitle": "מסמכים"
 }

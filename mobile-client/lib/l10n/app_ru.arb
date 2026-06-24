@@ -262,5 +262,6 @@
   "scannerHidHint": "USB, Bluetooth или встроенный лазерный сканер\n(режим HID клавиатуры)",
   "scannerScanAgain": "Сканировать снова",
   "scannerUse": "Использовать код",
-  "warehouseHistory": "История движений"
+  "warehouseHistory": "История движений",
+  "deliveryNotesTitle": "Накл."
 }

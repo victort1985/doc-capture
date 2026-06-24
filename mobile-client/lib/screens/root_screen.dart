@@ -7,6 +7,8 @@ import 'calls/calls_list_screen.dart';
 import 'phonebook_screen.dart';
 import 'calendar_screen.dart';
 import 'management_screen.dart';
+import 'delivery_notes_screen.dart';
+import '../services/delivery_notes_service.dart';
 import 'calls_stats_screen.dart';
 import '../widgets/organization_logo_background.dart';
 
@@ -76,6 +78,7 @@ class _RootScreenState extends State<RootScreen> {
             const PhoneBookScreen(),
             const CalendarScreen(),
             const ManagementScreen(),
+            DeliveryNotesScreen(svc: context.read<DeliveryNotesService>()),
           ],
         ),
       ),
@@ -107,6 +110,11 @@ class _RootScreenState extends State<RootScreen> {
             icon: const Icon(Icons.build_outlined),
             selectedIcon: const Icon(Icons.build),
             label: l10n.managementTitle,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.assignment_outlined),
+            selectedIcon: const Icon(Icons.assignment),
+            label: l10n.deliveryNotesTitle,
           ),
         ],
       ),

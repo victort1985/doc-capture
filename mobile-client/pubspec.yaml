@@ -65,6 +65,9 @@ dependencies:
   printing: ^5.13.2
   mobile_scanner: ^7.0.1   # requires Flutter ≥3.29 — CI now runs 3.44.2 ✓
 
+  # Delivery notes: digital signature capture
+  signature: ^5.5.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

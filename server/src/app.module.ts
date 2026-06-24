@@ -22,6 +22,7 @@ import { StatsModule } from './modules/stats/stats.module';
 import { FleetModule } from './modules/fleet/fleet.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { ReportsModule } from './modules/reports/reports.module';
+import { DeliveryNotesModule } from './modules/delivery-notes/delivery-notes.module';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -61,6 +62,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     FleetModule,
     WarehouseModule,
     ReportsModule,
+    DeliveryNotesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
