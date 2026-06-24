@@ -1,9 +1,9 @@
 import {
   Body, Controller, Get, Param, ParseIntPipe,
-  Post, Put, Res, UploadedFile, UseGuards, UseInterceptors,
+  Post, Put, UploadedFile, UseGuards, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
+import { memoryStorage } from 'multer';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DeliveryNoteSettings } from './delivery-note-settings.entity';
@@ -48,7 +48,10 @@ export class DeliveryNoteSettingsController {
 
   /** Upload logo for an org's delivery note template */
   @Post(':orgId/logo')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
+  @UseInterceptors(FileInterceptor('file', {
+    storage: memoryStorage(),
+    limits: { fileSize: 2 * 1024 * 1024 },
+  }))
   async uploadLogo(
     @Param('orgId', ParseIntPipe) orgId: number,
     @UploadedFile() file: { buffer: Buffer; mimetype: string },

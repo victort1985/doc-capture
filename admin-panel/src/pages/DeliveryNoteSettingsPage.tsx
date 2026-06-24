@@ -65,7 +65,6 @@ export default function DeliveryNoteSettingsPage() {
       const updated = await apiFetch<Settings>(`/delivery-note-settings/${selOrgId}/logo`, {
         method: 'POST',
         body: fd,
-        headers: {}, // let browser set content-type with boundary
       });
       setSettings(s => ({ ...s, logoBase64: updated.logoBase64 }));
     } catch (e) { setError(e instanceof Error ? e.message : 'Upload failed'); }
