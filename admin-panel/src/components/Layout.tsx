@@ -36,7 +36,8 @@ export default function Layout() {
         <div className="sidebar-brand">
           <StampMark size={30} />
           <div className="wordmark">
-            Operix ERP
+            <span style={{ fontWeight: 800, letterSpacing: '0.12em' }}>VIXOR</span>
+            <span style={{ fontWeight: 300, color: '#F2701C', letterSpacing: '0.08em' }}> ERP</span>
             <small>admin console</small>
           </div>
         </div>

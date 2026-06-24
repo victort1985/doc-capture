@@ -176,15 +176,32 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                                 child: Transform.rotate(angle: _stampRotation.value, child: child),
                               ),
                               child: ClipRRect(
-                                borderRadius: BorderRadius.circular(16),
-                                child: Image.asset('assets/icons/app_icon.png', width: 72, height: 72),
+                                borderRadius: BorderRadius.circular(18),
+                                child: Image.asset('assets/icons/app_icon.png', width: 76, height: 76),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 14),
-                          Text(l10n.appTitle,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.headlineSmall),
+                          const SizedBox(height: 12),
+                          // Styled wordmark
+                          RichText(
+                            textAlign: TextAlign.center,
+                            text: TextSpan(
+                              children: [
+                                TextSpan(text: 'VIXOR', style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 26,
+                                  letterSpacing: 4,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                )),
+                                TextSpan(text: ' ERP', style: TextStyle(
+                                  fontWeight: FontWeight.w300,
+                                  fontSize: 22,
+                                  letterSpacing: 2,
+                                  color: const Color(0xFFF2701C),
+                                )),
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           Text(l10n.loginTitle,
                               textAlign: TextAlign.center,

@@ -63,8 +63,8 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Generate Operix app icons
-        run: dart run flutter_launcher_icons
+      - name: Generate Vixor app icons (Android)
+        run: pip install Pillow --break-system-packages -q && python3 ../.github/scripts/patch_android_icon.py
 
       - name: Bump file_picker's own compileSdk to 36
         run: python3 ../.github/scripts/patch_file_picker_sdk_version.py
@@ -156,7 +156,7 @@ jobs:
 
       - run: flutter pub get
 
-      - name: Generate Operix app icons
+      - name: Generate Vixor app icons
         run: dart run flutter_launcher_icons
 
       # Unsigned archive — no Apple Developer account is assumed here.

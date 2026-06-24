@@ -31,7 +31,10 @@ export default function LoginPage() {
     <div className="login-screen">
       <div className="login-card">
         <StampMark size={40} animated />
-        <div className="wordmark">Operix ERP</div>
+        <div className="wordmark">
+          <span style={{ fontWeight: 800, letterSpacing: '0.15em' }}>VIXOR</span>
+          <span style={{ fontWeight: 300, color: '#F2701C', letterSpacing: '0.1em' }}> ERP</span>
+        </div>
         <p className="tagline">Sign in to the admin console.</p>
 
         {error && (
