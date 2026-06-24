@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+import 'package:dio/dio.dart';
+import 'package:http_parser/http_parser.dart';
 import '../services/api_service.dart';
 
 // ── Vehicle ───────────────────────────────────────────────────────────────────
@@ -13,8 +16,15 @@ class Vehicle {
   final String? lastInspectionDate;
   final String? lastTestDate;
   final bool isActive;
+  final int currentMileage;
+  final String? assignedUserName;
 
-  Vehicle({required this.id, required this.make, required this.model, this.year, required this.licensePlate, this.color, this.notes, this.lastInspectionDate, this.lastTestDate, required this.isActive});
+  Vehicle({
+    required this.id, required this.make, required this.model,
+    this.year, required this.licensePlate, this.color, this.notes,
+    this.lastInspectionDate, this.lastTestDate, required this.isActive,
+    this.currentMileage = 0, this.assignedUserName,
+  });
 
   factory Vehicle.fromJson(Map<String, dynamic> j) => Vehicle(
     id: j['id'], make: j['make'] ?? '', model: j['model'] ?? '',
@@ -22,6 +32,27 @@ class Vehicle {
     color: j['color'], notes: j['notes'],
     lastInspectionDate: j['lastInspectionDate'], lastTestDate: j['lastTestDate'],
     isActive: j['isActive'] ?? true,
+    currentMileage: j['currentMileage'] ?? 0,
+    assignedUserName: j['assignedUser']?['username'],
+  );
+}
+
+class VehicleDocument {
+  final int id;
+  final String originalName;
+  final String? description;
+  final String? mimetype;
+  final String createdAt;
+
+  VehicleDocument({required this.id, required this.originalName, this.description, this.mimetype, required this.createdAt});
+
+  bool get isImage => mimetype?.startsWith('image/') == true;
+  bool get isPdf => mimetype == 'application/pdf';
+
+  factory VehicleDocument.fromJson(Map<String, dynamic> j) => VehicleDocument(
+    id: j['id'], originalName: j['originalName'] ?? '',
+    description: j['description'], mimetype: j['mimetype'],
+    createdAt: j['createdAt'] ?? '',
   );
 }
 
@@ -66,6 +97,27 @@ class FleetService {
 
   Future<void> addRefuel(int vehicleId, Map<String, dynamic> fields) =>
       _api.post('/fleet/vehicles/$vehicleId/refuels', fields);
+
+  Future<void> updateMileage(int vehicleId, int mileage) =>
+      _api.patch('/fleet/vehicles/$vehicleId', {'currentMileage': mileage});
+
+  Future<List<VehicleDocument>> listDocuments(int vehicleId) async {
+    final data = await _api.get('/fleet/vehicles/$vehicleId/documents') as List? ?? [];
+    return data.map((j) => VehicleDocument.fromJson(j as Map<String, dynamic>)).toList();
+  }
+
+  Future<void> uploadDocument(int vehicleId, String filePath, String filename, String mimetype, {String? description}) async {
+    await _api.postFormData('/fleet/vehicles/$vehicleId/documents', {
+      'file': await MultipartFile.fromFile(filePath, filename: filename, contentType: MediaType.parse(mimetype)),
+      if (description != null) 'description': description,
+    });
+  }
+
+  Future<Uint8List> downloadDocument(int docId) =>
+      _api.getBytes('/fleet/documents/$docId/download');
+
+  Future<void> deleteDocument(int docId) =>
+      _api.delete('/fleet/documents/$docId');
 }
 
 // ── Warehouse ─────────────────────────────────────────────────────────────────
