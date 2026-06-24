@@ -1,3 +1,4 @@
+import os
 """Copies the Vixor ERP icon to iOS Assets.xcassets/AppIcon.appiconset
 at all required sizes and writes the Contents.json manifest.
 """
@@ -5,7 +6,7 @@ at all required sizes and writes the Contents.json manifest.
 import json, os
 from PIL import Image
 
-SRC = '../assets/icons/app_icon.png'
+SRC = os.path.join(os.path.dirname(__file__), '../../mobile-client/assets/icons/app_icon.png')
 DEST = 'ios/Runner/Assets.xcassets/AppIcon.appiconset'
 
 # Required iOS icon sizes (size_pt, scale)

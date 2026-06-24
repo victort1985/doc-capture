@@ -1,3 +1,4 @@
+import os
 """Copies the Vixor ERP app icon PNG to all required Android mipmap
 directories. Replaces flutter_launcher_icons which had dependency
 conflicts — using Pillow directly is simpler and fully reliable.
@@ -10,7 +11,7 @@ solid navy background (#121C42) defined in the res/mipmap-anydpi-v26 XML.
 import shutil, os
 from PIL import Image
 
-SRC = '../assets/icons/app_icon.png'
+SRC = os.path.join(os.path.dirname(__file__), '../../mobile-client/assets/icons/app_icon.png')
 SIZES = {
     'mipmap-mdpi':    48,
     'mipmap-hdpi':    72,
