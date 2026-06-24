@@ -6,6 +6,7 @@ class NoteSettings {
   final String? companyAddress;
   final String? companyPhone;
   final String? companyFax;
+  final String? companyMobile;
   final String? logoBase64;
   final String? notePrefix;
   final int startingNumber;
@@ -17,6 +18,7 @@ class NoteSettings {
     this.companyAddress,
     this.companyPhone,
     this.companyFax,
+    this.companyMobile,
     this.logoBase64,
     this.notePrefix,
     this.startingNumber = 10000,
@@ -29,6 +31,7 @@ class NoteSettings {
     companyAddress: j['companyAddress'],
     companyPhone: j['companyPhone'],
     companyFax: j['companyFax'],
+    companyMobile: j['companyMobile'],
     logoBase64: j['logoBase64'],
     notePrefix: j['notePrefix'],
     startingNumber: j['startingNumber'] ?? 10000,
