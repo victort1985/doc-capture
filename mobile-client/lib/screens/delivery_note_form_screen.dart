@@ -393,7 +393,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: AppColors.primary.withOpacity(0.2)),
               ),
-              child: const Column(children: [
+              child: Column(children: [
                 if (_settings.logoBase64 != null)
                 Image.memory(_decodeLogoBytes()!, height: 36, fit: BoxFit.contain),
               Text(_settings.companyName ?? 'Vixor ERP', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
