@@ -7,6 +7,7 @@ import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/management_services.dart';
+import '../store/app_state.dart';
 
 class FleetScreen extends StatefulWidget {
   const FleetScreen({super.key});

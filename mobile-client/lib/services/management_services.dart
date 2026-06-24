@@ -107,10 +107,11 @@ class FleetService {
   }
 
   Future<void> uploadDocument(int vehicleId, String filePath, String filename, String mimetype, {String? description}) async {
-    await _api.postFormData('/fleet/vehicles/$vehicleId/documents', {
+    final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(filePath, filename: filename, contentType: MediaType.parse(mimetype)),
       if (description != null) 'description': description,
     });
+    await _api.postFormData('/fleet/vehicles/$vehicleId/documents', formData);
   }
 
   Future<Uint8List> downloadDocument(int docId) =>
