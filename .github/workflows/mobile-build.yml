@@ -157,7 +157,7 @@ jobs:
       - run: flutter pub get
 
       - name: Generate Vixor app icons
-        run: pip install Pillow --break-system-packages -q && python3 ../.github/scripts/patch_ios_icon.py
+        run: python3 -m pip install Pillow --break-system-packages -q 2>/dev/null || pip3 install Pillow -q && python3 ../.github/scripts/patch_ios_icon.py
 
       # Unsigned archive — no Apple Developer account is assumed here.
       # Sign it afterwards via Xcode Organizer or a resign service, exactly
