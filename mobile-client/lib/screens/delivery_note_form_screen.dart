@@ -2,11 +2,9 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:signature/signature.dart';
 import '../app/theme.dart';
 import '../services/delivery_notes_service.dart';
 
@@ -131,32 +129,15 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   }
 
   Future<void> _captureSignature({required bool isLessor}) async {
-    final ctrl = SignatureController(penStrokeWidth: 2, penColor: Colors.black, exportBackgroundColor: Colors.white);
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(isLessor ? 'Lessor signature' : 'Lessee signature'),
-        content: SizedBox(
-          width: 300, height: 180,
-          child: Signature(controller: ctrl, backgroundColor: Colors.grey.shade100),
-        ),
-        actions: [
-          TextButton(onPressed: () { ctrl.clear(); }, child: const Text('Clear')),
-          TextButton(onPressed: () => Navigator.pop(_, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(_, true), child: const Text('Confirm')),
-        ],
-      ),
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => _SignaturePadScreen(title: isLessor ? 'Lessor signature' : 'Lessee signature')),
     );
-    if (ok == true && ctrl.isNotEmpty) {
-      final img = await ctrl.toImage(pixelRatio: 2);
-      final bytes = await img!.toByteData(format: ui.ImageByteFormat.png);
-      final b64 = base64Encode(bytes!.buffer.asUint8List());
+    if (result != null) {
       setState(() {
-        if (isLessor) _lessorSig = b64;
-        else _lesseeSig = b64;
+        if (isLessor) _lessorSig = result;
+        else _lesseeSig = result;
       });
     }
-    ctrl.dispose();
   }
 
   Future<void> _generateAndSendPdf() async {
@@ -546,4 +527,124 @@ class _SigBox extends StatelessWidget {
 
 extension _StringSlice on String {
   String slice(int start, int end) => substring(start, end < length ? end : length);
+}
+
+// ─── Native signature pad (no external package needed) ────────────────────────
+
+class _SignaturePadScreen extends StatefulWidget {
+  const _SignaturePadScreen({required this.title});
+  final String title;
+  @override
+  State<_SignaturePadScreen> createState() => _SignaturePadScreenState();
+}
+
+class _SignaturePadScreenState extends State<_SignaturePadScreen> {
+  final List<List<Offset>> _strokes = [];
+  List<Offset> _current = [];
+  bool _hasStrokes = false;
+
+  void _onPanStart(DragStartDetails d) {
+    _current = [d.localPosition];
+    setState(() => _hasStrokes = true);
+  }
+
+  void _onPanUpdate(DragUpdateDetails d) {
+    setState(() => _current.add(d.localPosition));
+  }
+
+  void _onPanEnd(DragEndDetails d) {
+    _strokes.add(List.from(_current));
+    _current = [];
+  }
+
+  Future<void> _confirm() async {
+    if (_strokes.isEmpty && _current.isEmpty) return;
+    // Render to image
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder, const Rect.fromLTWH(0, 0, 300, 180));
+    canvas.drawColor(Colors.white, BlendMode.src);
+    final paint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    for (final stroke in [..._strokes, if (_current.isNotEmpty) _current]) {
+      if (stroke.length < 2) continue;
+      final path = Path()..moveTo(stroke[0].dx, stroke[0].dy);
+      for (int i = 1; i < stroke.length; i++) {
+        path.lineTo(stroke[i].dx, stroke[i].dy);
+      }
+      canvas.drawPath(path, paint);
+    }
+    final picture = recorder.endRecording();
+    final img = await picture.toImage(300, 180);
+    final bytes = await img.toByteData(format: ui.ImageByteFormat.png);
+    final b64 = base64Encode(bytes!.buffer.asUint8List());
+    if (mounted) Navigator.of(context).pop(b64);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.title),
+        actions: [
+          TextButton(onPressed: () => setState(() { _strokes.clear(); _current = []; _hasStrokes = false; }), child: const Text('Clear')),
+          FilledButton(onPressed: _hasStrokes ? _confirm : null, child: const Text('Confirm')),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(
+        child: Column(children: [
+          Container(
+            margin: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.shade400),
+              borderRadius: BorderRadius.circular(12),
+              color: Colors.white,
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: GestureDetector(
+                onPanStart: _onPanStart,
+                onPanUpdate: _onPanUpdate,
+                onPanEnd: _onPanEnd,
+                child: CustomPaint(
+                  painter: _SignaturePainter(strokes: _strokes, current: _current),
+                  size: const Size(double.infinity, 260),
+                ),
+              ),
+            ),
+          ),
+          const Text('Sign above with your finger', style: TextStyle(color: AppColors.inkSoft, fontSize: 13)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _SignaturePainter extends CustomPainter {
+  const _SignaturePainter({required this.strokes, required this.current});
+  final List<List<Offset>> strokes;
+  final List<Offset> current;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.black
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+    for (final stroke in [...strokes, current]) {
+      if (stroke.length < 2) continue;
+      final path = Path()..moveTo(stroke[0].dx, stroke[0].dy);
+      for (int i = 1; i < stroke.length; i++) {
+        path.lineTo(stroke[i].dx, stroke[i].dy);
+      }
+      canvas.drawPath(path, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_SignaturePainter old) => true;
 }
