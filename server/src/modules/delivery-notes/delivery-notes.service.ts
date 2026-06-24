@@ -2,12 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import { DeliveryNote, DeliveryNoteStatus, NoteItem } from './delivery-note.entity';
+import { DeliveryNoteSettings } from './delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class DeliveryNotesService {
   constructor(
     @InjectRepository(DeliveryNote) private readonly repo: Repository<DeliveryNote>,
+    @InjectRepository(DeliveryNoteSettings) private readonly settingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
   ) {}
 
@@ -29,9 +31,13 @@ export class DeliveryNotesService {
   }
 
   async create(organizationId: number | null, userId: number, dto: Partial<DeliveryNote>): Promise<DeliveryNote> {
-    // Auto-assign note number if not provided
     const count = await this.repo.count({ where: organizationId != null ? { organization: { id: organizationId } } : {} });
-    const noteNumber = dto.noteNumber ?? String(10000 + count + 1);
+    const orgSettings = organizationId
+      ? await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } })
+      : null;
+    const startNum = orgSettings?.startingNumber ?? 10000;
+    const prefix = orgSettings?.notePrefix ?? '';
+    const noteNumber = dto.noteNumber ?? `${prefix}${startNum + count}`;
     const note = this.repo.create({
       ...dto,
       noteNumber,
