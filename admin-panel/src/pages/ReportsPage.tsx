@@ -24,7 +24,7 @@ function fmt(sec: number) {
 }
 
 export default function ReportsPage() {
-  const [tab, setTab] = useState<'work' | 'fuel'>('work');
+  const [tab, setTab] = useState<'work' | 'fuel' | 'warehouse'>('work');
   const [period, setPeriod] = useState<Period>('month');
   const [users, setUsers] = useState<User[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
@@ -32,6 +32,7 @@ export default function ReportsPage() {
   const [selVehicle, setSelVehicle] = useState('');
   const [workData, setWorkData] = useState<WorkReport | null>(null);
   const [fuelData, setFuelData] = useState<FuelReport | null>(null);
+  const [warehouseData, setWarehouseData] = useState<{rows: any[]; summary: any[]} | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -46,11 +47,14 @@ export default function ReportsPage() {
         const q = new URLSearchParams({ period });
         if (selUser) q.set('userId', selUser);
         setWorkData(await apiFetch(`/reports/work?${q}`));
-      } else {
+      } else if (tab === 'fuel') {
         const q = new URLSearchParams({ period });
         if (selVehicle) q.set('vehicleId', selVehicle);
         if (selUser) q.set('userId', selUser);
         setFuelData(await apiFetch(`/reports/fuel?${q}`));
+      } else {
+        const q = new URLSearchParams({ period });
+        setWarehouseData(await apiFetch(`/reports/warehouse?${q}`));
       }
     } finally { setLoading(false); }
   }
@@ -69,10 +73,11 @@ export default function ReportsPage() {
       {/* Tab + Filters */}
       <div className="card" style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 0 }}>
-          {(['work', 'fuel'] as const).map(t => (
+          {(['work', 'fuel', 'warehouse'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              style={{ padding: '7px 18px', background: tab === t ? 'var(--primary)' : 'var(--surface-muted)', color: tab === t ? '#fff' : 'var(--ink)', border: 'none', cursor: 'pointer', borderRadius: t === 'work' ? '6px 0 0 6px' : '0 6px 6px 0' }}>
-              {t === 'work' ? 'Work report' : 'Fuel report'}
+              style={{ padding: '7px 18px', background: tab === t ? 'var(--primary)' : 'var(--surface-muted)', color: tab === t ? '#fff' : 'var(--ink)', border: 'none', cursor: 'pointer',
+                borderRadius: t === 'work' ? '6px 0 0 6px' : t === 'warehouse' ? '0 6px 6px 0' : '0' }}>
+              {t === 'work' ? 'Work report' : t === 'fuel' ? 'Fuel report' : 'Warehouse'}
             </button>
           ))}
         </div>
@@ -191,6 +196,49 @@ export default function ReportsPage() {
                   </tr>
                 ))}
                 {fuelData.rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+      {/* Warehouse Report */}
+      {tab === 'warehouse' && warehouseData && !loading && (
+        <>
+          <div className="card" style={{ marginBottom: 16 }}>
+            <h3 style={{ margin: '0 0 12px' }}>Movement summary by item</h3>
+            <table>
+              <thead><tr><th>Item</th><th>Barcode</th><th>In</th><th>Out</th><th>Transactions</th></tr></thead>
+              <tbody>
+                {warehouseData.summary.map((s: any, i: number) => (
+                  <tr key={i}>
+                    <td>{s.itemName}</td>
+                    <td className="mono" style={{ fontSize: 12 }}>{s.barcode}</td>
+                    <td style={{ color: 'green', fontWeight: 600 }}>+{s.totalIn}</td>
+                    <td style={{ color: 'red', fontWeight: 600 }}>-{s.totalOut}</td>
+                    <td>{s.txCount}</td>
+                  </tr>
+                ))}
+                {warehouseData.summary.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data</td></tr>}
+              </tbody>
+            </table>
+          </div>
+          <div className="card">
+            <h3 style={{ margin: '0 0 12px' }}>All movements</h3>
+            <table>
+              <thead><tr><th>Date</th><th>Item</th><th>Barcode</th><th>Type</th><th>Qty</th><th>Reason</th><th>By</th></tr></thead>
+              <tbody>
+                {warehouseData.rows.map((r: any, i: number) => (
+                  <tr key={i}>
+                    <td style={{ fontSize: 12 }}>{r.createdAt?.substring(0, 16)}</td>
+                    <td>{r.itemName}</td>
+                    <td className="mono" style={{ fontSize: 11 }}>{r.barcode}</td>
+                    <td><span style={{ color: r.type === 'in' ? 'green' : 'red', fontWeight: 600 }}>{r.type === 'in' ? '▼ In' : '▲ Out'}</span></td>
+                    <td style={{ fontWeight: 700 }}>{r.quantity}</td>
+                    <td>{r.reason ?? '—'}</td>
+                    <td>{r.byUser ?? '—'}</td>
+                  </tr>
+                ))}
+                {warehouseData.rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data</td></tr>}
               </tbody>
             </table>
           </div>

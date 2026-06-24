@@ -1,5 +1,43 @@
 import '../services/api_service.dart';
 
+class NoteSettings {
+  final String? companyName;
+  final String? companySubtitle;
+  final String? companyAddress;
+  final String? companyPhone;
+  final String? companyFax;
+  final String? logoBase64;
+  final String? notePrefix;
+  final int startingNumber;
+  final String? termsText;
+
+  NoteSettings({
+    this.companyName,
+    this.companySubtitle,
+    this.companyAddress,
+    this.companyPhone,
+    this.companyFax,
+    this.logoBase64,
+    this.notePrefix,
+    this.startingNumber = 10000,
+    this.termsText,
+  });
+
+  factory NoteSettings.fromJson(Map<String, dynamic> j) => NoteSettings(
+    companyName: j['companyName'],
+    companySubtitle: j['companySubtitle'],
+    companyAddress: j['companyAddress'],
+    companyPhone: j['companyPhone'],
+    companyFax: j['companyFax'],
+    logoBase64: j['logoBase64'],
+    notePrefix: j['notePrefix'],
+    startingNumber: j['startingNumber'] ?? 10000,
+    termsText: j['termsText'],
+  );
+
+  static NoteSettings get empty => NoteSettings();
+}
+
 class NoteItem {
   final int quantity;
   final String name;
@@ -124,5 +162,15 @@ class DeliveryNotesService {
   Future<String> storePdf(int id, String base64Pdf) async {
     final j = await _api.post('/delivery-notes/$id/pdf', {'pdf': base64Pdf});
     return (j as Map<String, dynamic>)['path'] as String;
+  }
+
+  Future<NoteSettings> getSettings() async {
+    try {
+      final j = await _api.get('/delivery-note-settings');
+      if (j == null) return NoteSettings.empty;
+      return NoteSettings.fromJson(j as Map<String, dynamic>);
+    } catch (_) {
+      return NoteSettings.empty;
+    }
   }
 }

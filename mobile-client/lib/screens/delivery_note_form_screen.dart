@@ -19,6 +19,7 @@ class DeliveryNoteFormScreen extends StatefulWidget {
 
 class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   DeliveryNote? _note;
+  NoteSettings _settings = NoteSettings.empty;
   bool _loading = true;
   bool _saving = false;
 
@@ -51,17 +52,23 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
       _loadExisting();
     } else {
       _dateCtrl.text = DateTime.now().toIso8601String().slice(0, 10);
-      setState(() => _loading = false);
+      _loadSettings();
     }
+  }
+
+  Future<void> _loadSettings() async {
+    final s = await widget.svc.getSettings();
+    if (mounted) setState(() { _settings = s; _loading = false; });
   }
 
   Future<void> _loadExisting() async {
     try {
       final note = await widget.svc.getOne(widget.noteId!);
+      final settings = await widget.svc.getSettings();
       _fillFrom(note);
-      setState(() { _note = note; _loading = false; });
+      if (mounted) setState(() { _note = note; _settings = settings; _loading = false; });
     } catch (_) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -79,6 +86,17 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
         : [_ItemRow()];
     _lessorSig = n.lessorSignature;
     _lesseeSig = n.lesseeSignature;
+  }
+
+  /// Decodes the base64 logo from settings (data:image/...;base64,... format)
+  Uint8List? _decodeLogoBytes() {
+    final logo = _settings.logoBase64;
+    if (logo == null) return null;
+    try {
+      final comma = logo.indexOf(',');
+      final data = comma >= 0 ? logo.substring(comma + 1) : logo;
+      return base64Decode(data);
+    } catch (_) { return null; }
   }
 
   Future<void> _autocompleteClient(String q) async {
@@ -178,10 +196,15 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
         // Header
         pw.Row(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
           pw.Expanded(child: pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.start, children: [
-            pw.Text('אם.סי. אילת מיוזיק בע"מ', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontB, fontSize: 13)),
-            pw.Text('THE MUSICAL CONNECTION', style: pw.TextStyle(font: fontR, fontSize: 8)),
+            if (_settings.logoBase64 != null)
+              pw.Image(pw.MemoryImage(_decodeLogoBytes()!), width: 60, height: 40, fit: pw.BoxFit.contain),
+            pw.Text(_settings.companyName ?? 'אם.סי. אילת מיוזיק בע"מ', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontB, fontSize: 13)),
+            if (_settings.companySubtitle != null)
+              pw.Text(_settings.companySubtitle!, style: pw.TextStyle(font: fontR, fontSize: 8)),
             pw.SizedBox(height: 3),
-            pw.Text('נחל חיון 3/3, אילת | 08-6315342', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 8)),
+            pw.Text(_settings.companyAddress ?? 'נחל חיון 3/3, אילת | 08-6315342', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 8)),
+            if (_settings.companyPhone != null)
+              pw.Text('${_settings.companyPhone}${_settings.companyFax != null ? " | ${_settings.companyFax}" : ""}', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontR, fontSize: 8)),
           ])),
           pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
             pw.Text('תעודת משלוח/ו/אי', textDirection: pw.TextDirection.rtl, style: pw.TextStyle(font: fontB, fontSize: 13)),
@@ -371,8 +394,10 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 border: Border.all(color: AppColors.primary.withOpacity(0.2)),
               ),
               child: const Column(children: [
-                Text('אם.סי. אילת מיוזיק בע"מ', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                Text('תעודת משלוח / הסכם שכירות', style: TextStyle(fontSize: 13, color: AppColors.inkSoft)),
+                if (_settings.logoBase64 != null)
+                Image.memory(_decodeLogoBytes()!, height: 36, fit: BoxFit.contain),
+              Text(_settings.companyName ?? 'Vixor ERP', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              Text('תעודת משלוח / הסכם שכירות', style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
               ]),
             ),
             const SizedBox(height: 16),

@@ -122,4 +122,43 @@ export class ReportsController {
 
     return { period, from, to, rows, summary };
   }
+
+  @Get('warehouse')
+  async warehouseReport(
+    @CurrentUser() user: ReqUser,
+    @Query('period') period = 'month',
+    @Query('itemId') itemId?: string,
+  ) {
+    const { from, to } = this.range(period);
+    const params: any[] = [from, to];
+    const extra = itemId ? `AND t."itemId" = ${parseInt(itemId)}` : '';
+
+    const rows = await this.callsRepo.query(`
+      SELECT
+        t.id, t.type, t.quantity, t.reason, t."createdAt",
+        i.name AS "itemName", i.barcode,
+        u.username AS "byUser"
+      FROM warehouse_transactions t
+      JOIN warehouse_items i ON i.id = t."itemId"
+      LEFT JOIN users u ON u.id = t."userId"
+      WHERE t."createdAt" >= $1 AND t."createdAt" <= $2 ${extra}
+      ORDER BY t."createdAt" DESC
+      LIMIT 500
+    `, params).catch(() => []);
+
+    const summary = await this.callsRepo.query(`
+      SELECT
+        i.id, i.name, i.barcode,
+        SUM(CASE WHEN t.type='in' THEN t.quantity ELSE 0 END)::int AS "totalIn",
+        SUM(CASE WHEN t.type='out' THEN t.quantity ELSE 0 END)::int AS "totalOut",
+        COUNT(t.id)::int AS "txCount"
+      FROM warehouse_transactions t
+      JOIN warehouse_items i ON i.id = t."itemId"
+      WHERE t."createdAt" >= $1 AND t."createdAt" <= $2 ${extra}
+      GROUP BY i.id, i.name, i.barcode
+      ORDER BY "txCount" DESC
+    `, params).catch(() => []);
+
+    return { period, from, to, rows, summary };
+  }
 }
