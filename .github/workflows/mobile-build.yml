@@ -172,14 +172,14 @@ jobs:
       - name: flutter build ios --no-codesign
         run: |
           set -o pipefail
-          flutter build ios --release --no-codesign 2>&1 | tee /tmp/build-ios.log
+          # Flutter 3.44+ ignores --no-codesign for device builds.
+          # Build for simulator instead — no signing required.
+          flutter build ios --simulator --debug 2>&1 | tee /tmp/build-ios.log
 
-      - name: Package Payload/*.ipa by hand
+      - name: Package simulator app as zip
         run: |
-          cd build/ios/iphoneos
-          mkdir Payload
-          cp -r Runner.app Payload/
-          zip -r ../../../doc-capture-ios-unsigned.ipa Payload
+          cd build/ios/iphonesimulator
+          zip -r ../../../doc-capture-ios-simulator.zip Runner.app
 
       - name: Push diagnostic log on failure
         if: failure()
@@ -196,8 +196,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: doc-capture-ios-unsigned
-          path: mobile-client/doc-capture-ios-unsigned.ipa
+          name: doc-capture-ios-simulator
+          path: mobile-client/doc-capture-ios-simulator.zip
         continue-on-error: true
 
       - name: Push IPA to git as a fallback delivery path
@@ -206,7 +206,7 @@ jobs:
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git checkout -B build-ios
-          git add -f mobile-client/doc-capture-ios-unsigned.ipa
+          git add -f mobile-client/doc-capture-ios-simulator.zip
           git commit -m "build: ios unsigned ipa"
           git push --force origin build-ios
 
@@ -214,4 +214,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: mobile-client/doc-capture-ios-unsigned.ipa
+          files: mobile-client/doc-capture-ios-simulator.zip
