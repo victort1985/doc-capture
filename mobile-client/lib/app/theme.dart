@@ -98,9 +98,16 @@ ThemeData buildAppTheme() {
       backgroundColor: AppColors.surface,
       indicatorColor: AppColors.primaryWash,
       elevation: 0,
-      labelTextStyle: MaterialStateProperty.all(
-        const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-      ),
+      // Font size 10 + no wrap ensures all 6 labels fit on one line
+      // even on iPhone SE (375pt wide → ~62pt per tab)
+      labelTextStyle: WidgetStateProperty.resolveWith((states) => TextStyle(
+        fontSize: 10,
+        fontWeight: states.contains(WidgetState.selected)
+            ? FontWeight.w700
+            : FontWeight.w500,
+        overflow: TextOverflow.ellipsis,
+        height: 1.0,
+      )),
     ),
     cardTheme: CardThemeData(
       color: AppColors.surface,

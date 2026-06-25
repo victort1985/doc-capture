@@ -149,7 +149,7 @@
       }
     }
   },
-  "phoneBookTitle": "Contacts",
+  "phoneBookTitle": "Phone",
   "phoneBookClients": "Clients",
   "phoneBookTechnicians": "Technicians",
   "phoneBookSuppliers": "Suppliers",
@@ -179,7 +179,7 @@
   "callPopupView": "View",
   "rememberMe": "Remember me",
   "loginWithBiometrics": "Sign in with biometrics",
-  "calendarTitle": "Calendar",
+  "calendarTitle": "Cal.",
   "calendarNewEvent": "New event",
   "calendarEditEvent": "Edit event",
   "calendarSave": "Save",

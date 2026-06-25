@@ -149,7 +149,7 @@
       }
     }
   },
-  "phoneBookTitle": "Контакты",
+  "phoneBookTitle": "Тел.",
   "phoneBookClients": "Клиенты",
   "phoneBookTechnicians": "Техники",
   "phoneBookSuppliers": "Поставщики",
@@ -210,7 +210,7 @@
   "calendarTechnicalRequirementsHint": "Добавить технические требования…",
   "calendarRequiredEquipment": "Необходимое оборудование",
   "calendarRequiredEquipmentHint": "Добавить необходимое оборудование…",
-  "managementTitle": "Управл.",
+  "managementTitle": "Упр.",
   "fleetTitle": "Автопарк",
   "fleetNoVehicles": "Нет зарегистрированных автомобилей",
   "fleetRemindersTitle": "Предстоящие проверки",
