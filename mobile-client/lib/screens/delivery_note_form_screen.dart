@@ -59,8 +59,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     if (widget.noteId != null) {
       _loadExisting();
     } else {
-      _dateCtrl.text = DateTime.now().toIso8601String().slice(0, 10);
-      _loadSettings();
+      _dateCtrl.text = DateTime.now().toIso8601String().slice(0, 10);      _loadSettings();
     }
   }
 
@@ -93,6 +92,16 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     } finally {
       if (mounted) setState(() => _sendingLink = false);
     }
+  }
+
+
+  /// Converts ISO date 2026-06-26 → DD/MM/YYYY (26/06/2026)
+  String _fmtDate(String iso) {
+    if (iso.length == 10 && iso.contains('-')) {
+      final p = iso.split('-');
+      if (p.length == 3) return '\${p[2]}/\${p[1]}/\${p[0]}';
+    }
+    return iso;
   }
 
   Future<void> _loadSettings() async {    final s = await widget.svc.getSettings();
@@ -333,7 +342,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
 
         // ── Date + Name ─────────────────────────────────────────────────────
         pw.Row(children: [
-          fieldRow('תאריך', _dateCtrl.text),
+          fieldRow('תאריך', _fmtDate(_dateCtrl.text)),
           pw.SizedBox(width: 12),
           fieldRow('שם', _clientNameCtrl.text, flex: 3),
         ]),
@@ -560,7 +569,36 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
             const SizedBox(height: 12),
 
             Row(children: [
-              Expanded(child: _field('Date', _dateCtrl, keyboardType: TextInputType.datetime)),
+              Expanded(child: GestureDetector(
+                onTap: () async {
+                  final now = DateTime.now();
+                  DateTime initial = now;
+                  try {
+                    if (_dateCtrl.text.length == 10) {
+                      initial = DateTime.parse(_dateCtrl.text);
+                    }
+                  } catch (_) {}
+                  final picked = await showDatePicker(
+                    context: context,
+                    initialDate: initial,
+                    firstDate: DateTime(2020),
+                    lastDate: DateTime(2030),
+                  );
+                  if (picked != null) {
+                    setState(() => _dateCtrl.text = picked.toIso8601String().substring(0, 10));
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                  decoration: BoxDecoration(border: Border(bottom: BorderSide(color: Colors.grey.shade400))),
+                  child: Row(children: [
+                    const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.inkSoft),
+                    const SizedBox(width: 8),
+                    Text(_dateCtrl.text.isEmpty ? 'Date' : _fmtDate(_dateCtrl.text),
+                      style: TextStyle(fontSize: 15, color: _dateCtrl.text.isEmpty ? AppColors.inkSoft : null)),
+                  ]),
+                ),
+              )),
               const SizedBox(width: 12),
               if (_note != null)
                 Padding(padding: const EdgeInsets.only(top: 4), child: Text('№ ${_note!.noteNumber ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),

@@ -32,6 +32,33 @@ export class DeliveryNotesController {
     return this.svc.autocompleteField(field, q, user.organizationId);
   }
 
+  // ── Remote signing — PUBLIC (must be declared BEFORE :id to avoid route shadowing) ──
+
+  /** GET /delivery-notes/sign/:token — no auth — returns note data for signer */
+  @Get('sign/:token')
+  async getForSigning(@Param('token') token: string) {
+    return this.svc.getNoteForSigning(token);
+  }
+
+  /** POST /delivery-notes/sign/:token — no auth — submit name + signature */
+  @Post('sign/:token')
+  async submitSignature(
+    @Param('token') token: string,
+    @Body() body: { signerName: string; signerRole?: string; signature: string },
+  ) {
+    return this.svc.submitRemoteSignature(token, body.signerName, body.signerRole, body.signature);
+  }
+
+  /** POST /delivery-notes/:id/signing-link — authenticated — generate signing token */
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/signing-link')
+  async createSigningLink(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: ReqUser,
+  ) {
+    return this.svc.createSigningLink(id, user.organizationId);
+  }
+
   @UseGuards(JwtAuthGuard)
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
@@ -77,30 +104,4 @@ export class DeliveryNotesController {
     res.send(buffer);
   }
 
-  // ── Remote signing ─────────────────────────────────────────────────────
-
-  /** POST /delivery-notes/:id/signing-link — generate a one-time signing token */
-  @UseGuards(JwtAuthGuard)
-  @Post(':id/signing-link')
-  async createSigningLink(
-    @Param('id', ParseIntPipe) id: number,
-    @CurrentUser() user: ReqUser,
-  ) {
-    return this.svc.createSigningLink(id, user.organizationId);
-  }
-
-  /** GET /delivery-notes/sign/:token — PUBLIC — returns note data in Hebrew for the signer */
-  @Get('sign/:token')
-  async getForSigning(@Param('token') token: string) {
-    return this.svc.getNoteForSigning(token);
-  }
-
-  /** POST /delivery-notes/sign/:token — PUBLIC — submit signer info + signature */
-  @Post('sign/:token')
-  async submitSignature(
-    @Param('token') token: string,
-    @Body() body: { signerName: string; signerRole?: string; signature: string },
-  ) {
-    return this.svc.submitRemoteSignature(token, body.signerName, body.signerRole, body.signature);
-  }
 }
