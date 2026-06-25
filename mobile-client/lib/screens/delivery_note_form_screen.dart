@@ -471,7 +471,6 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
             icon: const Icon(Icons.share_outlined),
             onPressed: _sharePdf,
             tooltip: 'Share (WhatsApp / Email)',
-            tooltip: 'Generate & send PDF',
           ),
         ],
       ),
