@@ -263,5 +263,11 @@
   "scannerScanAgain": "סרוק שוב",
   "scannerUse": "השתמש בקוד זה",
   "warehouseHistory": "היסטוריית תנועות",
-  "deliveryNotesTitle": "מסמכים"
+  "deliveryNotesTitle": "מסמכים",
+  "warehouseInRepair": "בתיקון",
+  "warehouseSendToRepair": "שלח לתיקון",
+  "warehouseSupplier": "ספק",
+  "warehouseSupplierPhone": "טלפון ספק",
+  "warehouseSupplierEmail": "מייל ספק",
+  "warehouseSentAt": "נשלח"
 }

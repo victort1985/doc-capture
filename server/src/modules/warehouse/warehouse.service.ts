@@ -4,6 +4,7 @@ import { Repository, IsNull } from 'typeorm';
 import { WarehouseCategory } from './entities/warehouse-category.entity';
 import { WarehouseItem } from './entities/warehouse-item.entity';
 import { WarehouseTransaction, TransactionType } from './entities/warehouse-transaction.entity';
+import { WarehouseRepair } from './entities/warehouse-repair.entity';
 
 @Injectable()
 export class WarehouseService {
@@ -11,6 +12,7 @@ export class WarehouseService {
     @InjectRepository(WarehouseCategory) private readonly catsRepo: Repository<WarehouseCategory>,
     @InjectRepository(WarehouseItem) private readonly itemsRepo: Repository<WarehouseItem>,
     @InjectRepository(WarehouseTransaction) private readonly txRepo: Repository<WarehouseTransaction>,
+    @InjectRepository(WarehouseRepair) private readonly repairsRepo: Repository<WarehouseRepair>,
   ) {}
 
   // ── Barcode generation ─────────────────────────────────────────────
@@ -127,5 +129,50 @@ export class WarehouseService {
       referenceCallId,
       registeredBy: { id: userId } as any,
     }));
+  }
+
+  // ── Repair methods ──────────────────────────────────────────────────────
+
+  async sendToRepair(itemId: number, dto: {
+    supplierName?: string; supplierPhone?: string; supplierEmail?: string;
+    reason?: string; barcode?: string; notes?: string;
+  }) {
+    const item = await this.itemsRepo.findOneBy({ id: itemId });
+    if (!item) throw new NotFoundException('Item not found');
+
+    await this.itemsRepo.update(itemId, { repairStatus: 'in_repair' });
+    return this.repairsRepo.save(this.repairsRepo.create({
+      item: { id: itemId } as any,
+      itemId,
+      ...dto,
+    }));
+  }
+
+  async returnFromRepair(repairId: number, notes?: string) {
+    const repair = await this.repairsRepo.findOneBy({ id: repairId });
+    if (!repair) throw new NotFoundException('Repair record not found');
+    repair.returnedAt = new Date();
+    if (notes) repair.notes = notes;
+    await this.repairsRepo.save(repair);
+    await this.itemsRepo.update(repair.itemId, { repairStatus: 'returned' });
+    return repair;
+  }
+
+  async listRepairs(organizationId: number) {
+    return this.repairsRepo
+      .createQueryBuilder('r')
+      .innerJoin('r.item', 'i')
+      .where('i.organizationId = :organizationId', { organizationId })
+      .andWhere('r.returnedAt IS NULL')
+      .select(['r', 'i.id', 'i.name', 'i.barcode', 'i.location'])
+      .orderBy('r.sentAt', 'DESC')
+      .getMany();
+  }
+
+  async getItemRepairs(itemId: number) {
+    return this.repairsRepo.find({
+      where: { itemId },
+      order: { sentAt: 'DESC' },
+    });
   }
 }

@@ -11,6 +11,8 @@ import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/management_services.dart';
 import '../services/pdf_helpers.dart';
+import '../services/field_cache_service.dart';
+import '../widgets/phone_book_search_field.dart';
 import 'barcode_scanner_screen.dart';
 
 // ─── Barcode generator (client-side, random) ──────────────────────────────────
@@ -554,11 +556,108 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
     );
   }
 
+  Future<void> _showRepairDialog(BuildContext context, AppLocalizations l10n) async {
+    final supplierCtrl = TextEditingController();
+    final phoneCtrl    = TextEditingController();
+    final emailCtrl    = TextEditingController();
+    final reasonCtrl   = TextEditingController();
+    String barcode = widget.item.barcode;
+    bool scanning = false;
+
+    await showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => AlertDialog(
+        title: Row(children: [
+          const Icon(Icons.build_outlined, size: 20),
+          const SizedBox(width: 8),
+          Text(l10n.warehouseSendToRepair),
+        ]),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+
+          // Supplier — phone book search
+          PhoneBookSearchField(
+            fieldKey: 'repair.supplier',
+            controller: supplierCtrl,
+            label: l10n.warehouseSupplier,
+            contactFilter: 'supplier',
+            onContactSelected: (c) {
+              if (c.phone != null) phoneCtrl.text = c.phone!;
+              if (c.email != null) emailCtrl.text = c.email!;
+            },
+          ),
+          const SizedBox(height: 8),
+          TextField(controller: phoneCtrl, keyboardType: TextInputType.phone,
+              decoration: InputDecoration(labelText: l10n.warehouseSupplierPhone)),
+          const SizedBox(height: 8),
+          TextField(controller: emailCtrl, keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(labelText: l10n.warehouseSupplierEmail)),
+          const SizedBox(height: 8),
+          TextField(controller: reasonCtrl, maxLines: 2,
+              decoration: InputDecoration(labelText: l10n.warehouseReason)),
+          const SizedBox(height: 12),
+
+          // Barcode row with scanner
+          Row(children: [
+            Expanded(child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey.shade300),
+                borderRadius: BorderRadius.circular(6),
+                color: Colors.grey.shade50,
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('Barcode', style: TextStyle(fontSize: 10, color: AppColors.inkSoft)),
+                Text(barcode, style: const TextStyle(fontFamily: 'Courier', fontSize: 12, fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis),
+              ]),
+            )),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: scanning
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.qr_code_scanner),
+              onPressed: scanning ? null : () async {
+                setSt(() => scanning = true);
+                try {
+                  final scanned = await Navigator.of(ctx).push<String>(
+                    MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+                  );
+                  if (scanned != null && scanned.isNotEmpty) setSt(() => barcode = scanned);
+                } finally {
+                  if (ctx.mounted) setSt(() => scanning = false);
+                }
+              },
+            ),
+          ]),
+        ])),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
+          FilledButton.icon(
+            icon: const Icon(Icons.build, size: 16),
+            label: Text(l10n.warehouseSendToRepair),
+            onPressed: () async {
+              // Save supplier to cache
+              if (supplierCtrl.text.isNotEmpty) FieldCacheService.instance.save('repair.supplier', supplierCtrl.text);
+              await widget.svc.sendToRepair(
+                widget.item.id,
+                supplierName:  supplierCtrl.text.isNotEmpty ? supplierCtrl.text : null,
+                supplierPhone: phoneCtrl.text.isNotEmpty   ? phoneCtrl.text   : null,
+                supplierEmail: emailCtrl.text.isNotEmpty   ? emailCtrl.text   : null,
+                reason:        reasonCtrl.text.isNotEmpty  ? reasonCtrl.text  : null,
+                barcode:       barcode,
+              );
+              if (ctx.mounted) Navigator.pop(ctx);
+              widget.onRefresh();
+            },
+          ),
+        ],
+      )),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final item = widget.item;
-
     return DraggableScrollableSheet(
       initialChildSize: 0.65,
       maxChildSize: 0.95,
@@ -615,6 +714,64 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
             )),
           ]),
         ),
+        const SizedBox(height: 8),
+
+        // Repair button
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: OutlinedButton.icon(
+            onPressed: () => _showRepairDialog(context, l10n),
+            icon: const Icon(Icons.build_outlined, size: 18),
+            label: Text(item.repairStatus == 'in_repair' ? '🔧 ${l10n.warehouseInRepair}' : l10n.warehouseSendToRepair),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: item.repairStatus == 'in_repair' ? Colors.orange : AppColors.primary,
+              minimumSize: const Size(double.infinity, 40),
+            ),
+          ),
+        ),
+
+        // Active repair info banner
+        if (item.repairStatus == 'in_repair')
+          FutureBuilder<List<Map<String, dynamic>>>(
+            future: widget.svc.getItemRepairs(item.id),
+            builder: (_, snap) {
+              if (!snap.hasData || snap.data!.isEmpty) return const SizedBox();
+              final repair = snap.data!.first;
+              return Container(
+                margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.withOpacity(0.4)),
+                ),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Row(children: [
+                    const Icon(Icons.build_circle_outlined, size: 16, color: Colors.orange),
+                    const SizedBox(width: 6),
+                    Text(l10n.warehouseInRepair, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.orange, fontSize: 13)),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () async {
+                        await widget.svc.returnFromRepair(repair['id'] as int);
+                        widget.onRefresh();
+                        if (context.mounted) Navigator.pop(context);
+                      },
+                      style: TextButton.styleFrom(foregroundColor: Colors.green, padding: EdgeInsets.zero),
+                      child: const Text('✓ Returned', style: TextStyle(fontSize: 12)),
+                    ),
+                  ]),
+                  if (repair['supplierName'] != null)
+                    Text('${l10n.warehouseSupplier}: ${repair['supplierName']}', style: const TextStyle(fontSize: 12)),
+                  if (repair['reason'] != null)
+                    Text('${l10n.warehouseReason}: ${repair['reason']}', style: const TextStyle(fontSize: 12)),
+                  if (repair['sentAt'] != null)
+                    Text('${l10n.warehouseSentAt}: ${(repair['sentAt'] as String).substring(0, 10)}', style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+                ]),
+              );
+            },
+          ),
+
         const Divider(height: 24),
 
         // Same-name items list

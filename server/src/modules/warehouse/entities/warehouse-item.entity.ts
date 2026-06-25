@@ -34,6 +34,10 @@ export class WarehouseItem {
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   organization?: Organization;
 
+  /** 'none' | 'in_repair' | 'returned' */
+  @Column({ default: 'none' })
+  repairStatus: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

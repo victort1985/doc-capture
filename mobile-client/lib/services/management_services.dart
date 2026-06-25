@@ -140,8 +140,9 @@ class WarehouseItem {
   final String? unit;
   final String? location;
   final String? notes;
+  final String repairStatus; // 'none' | 'in_repair' | 'returned'
 
-  WarehouseItem({required this.id, required this.name, required this.barcode, this.description, this.category, required this.quantity, this.unit, this.location, this.notes});
+  WarehouseItem({required this.id, required this.name, required this.barcode, this.description, this.category, required this.quantity, this.unit, this.location, this.notes, this.repairStatus = 'none'});
 
   factory WarehouseItem.fromJson(Map<String, dynamic> j) => WarehouseItem(
     id: j['id'], name: j['name'] ?? '', barcode: j['barcode'] ?? '',
@@ -149,6 +150,7 @@ class WarehouseItem {
     category: j['category'] != null ? WarehouseCategory.fromJson(j['category']) : null,
     quantity: j['quantity'] ?? 0,
     unit: j['unit'], location: j['location'], notes: j['notes'],
+    repairStatus: j['repairStatus'] ?? 'none',
   );
 }
 
@@ -225,4 +227,31 @@ class WarehouseService {
       return (j as Map<String, dynamic>?) ?? {};
     } catch (_) { return {}; }
   }
+
+  // ── Repair ─────────────────────────────────────────────────────────────────
+
+  Future<void> sendToRepair(int itemId, {
+    String? supplierName, String? supplierPhone, String? supplierEmail,
+    String? reason, String? barcode, String? notes,
+  }) => _api.post('/warehouse/items/$itemId/repair', {
+    if (supplierName != null) 'supplierName': supplierName,
+    if (supplierPhone != null) 'supplierPhone': supplierPhone,
+    if (supplierEmail != null) 'supplierEmail': supplierEmail,
+    if (reason != null) 'reason': reason,
+    if (barcode != null) 'barcode': barcode,
+    if (notes != null) 'notes': notes,
+  });
+
+  Future<List<Map<String, dynamic>>> listRepairs() async {
+    final data = await _api.get('/warehouse/repairs') as List? ?? [];
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<List<Map<String, dynamic>>> getItemRepairs(int itemId) async {
+    final data = await _api.get('/warehouse/items/$itemId/repairs') as List? ?? [];
+    return data.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> returnFromRepair(int repairId, {String? notes}) =>
+      _api.post('/warehouse/repairs/$repairId/return', { if (notes != null) 'notes': notes });
 }

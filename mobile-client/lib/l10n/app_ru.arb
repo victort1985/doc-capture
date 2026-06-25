@@ -263,5 +263,11 @@
   "scannerScanAgain": "Сканировать снова",
   "scannerUse": "Использовать код",
   "warehouseHistory": "История движений",
-  "deliveryNotesTitle": "Накл."
+  "deliveryNotesTitle": "Накл.",
+  "warehouseInRepair": "В ремонте",
+  "warehouseSendToRepair": "Отправить в ремонт",
+  "warehouseSupplier": "Поставщик",
+  "warehouseSupplierPhone": "Телефон поставщика",
+  "warehouseSupplierEmail": "Email поставщика",
+  "warehouseSentAt": "Отправлено"
 }

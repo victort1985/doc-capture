@@ -40,6 +40,19 @@ export class PhoneBookController {
   // super-admin; only writes are additionally admin-restricted (spec
   // item 5).
 
+  /** GET /phonebook/search?q=...&type=supplier|client — quick search, max 10 results */
+  @Get('search')
+  search(
+    @CurrentUser() user: RequestUser,
+    @Query('q') q: string,
+    @Query('type') type?: string,
+  ) {
+    const category = type === 'supplier' ? ContactCategory.SUPPLIER
+      : type === 'client' ? ContactCategory.CLIENT
+      : undefined;
+    return this.phoneBookService.findAll({ q, category, tenantId: user.organizationId });
+  }
+
   @Get()
   findAll(
     @CurrentUser() user: RequestUser,

@@ -87,4 +87,37 @@ export class WarehouseController {
   ) {
     return this.warehouseService.addTransaction(id, dto.type, dto.quantity, dto.reason, dto.referenceCallId, user.id);
   }
+
+  // ── Repairs ────────────────────────────────────────────────────────
+
+  /** Send item to repair — sets repairStatus = 'in_repair', creates repair record */
+  @Post('items/:id/repair')
+  sendToRepair(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: { supplierName?: string; supplierPhone?: string; supplierEmail?: string; reason?: string; barcode?: string; notes?: string },
+  ) {
+    return this.warehouseService.sendToRepair(id, dto);
+  }
+
+  /** Mark item as returned from repair */
+  @Post('repairs/:repairId/return')
+  returnFromRepair(
+    @Param('repairId', ParseIntPipe) repairId: number,
+    @Body() dto: { notes?: string },
+  ) {
+    return this.warehouseService.returnFromRepair(repairId, dto.notes);
+  }
+
+  /** List all active repairs for the org */
+  @Get('repairs')
+  listRepairs(@CurrentUser() user: RequestUser) {
+    if (!user.organizationId) return [];
+    return this.warehouseService.listRepairs(user.organizationId);
+  }
+
+  /** Get repair history for a specific item */
+  @Get('items/:id/repairs')
+  getItemRepairs(@Param('id', ParseIntPipe) id: number) {
+    return this.warehouseService.getItemRepairs(id);
+  }
 }

@@ -5,9 +5,14 @@ import 'package:flutter/material.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:path_provider/path_provider.dart';
+import 'dart:io';
 import '../app/theme.dart';
 import '../services/delivery_notes_service.dart';
 import '../services/pdf_helpers.dart';
+import '../services/field_cache_service.dart';
+import '../widgets/phone_book_search_field.dart';
 
 class DeliveryNoteFormScreen extends StatefulWidget {
   const DeliveryNoteFormScreen({super.key, required this.svc, this.noteId});
@@ -27,6 +32,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   // Form controllers
   final _clientNameCtrl  = TextEditingController();
   final _clientAddrCtrl  = TextEditingController();
+  final _clientPhoneCtrl = TextEditingController(); // auto-filled from phone book
   final _deliveredToCtrl = TextEditingController();
   final _roleCtrl        = TextEditingController();
   final _idNumCtrl       = TextEditingController();
@@ -179,7 +185,28 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF saved to server')));
   }
 
-  Future<pw.Document> _buildPdf() async {
+  /// Share the PDF via email, WhatsApp, etc.
+  Future<void> _sharePdf() async {
+    if (_note == null) {
+      await _save();
+      if (_note == null) return;
+    }
+    await _save();
+
+    final pdf = await _buildPdf();
+    final bytes = await pdf.save();
+
+    // Write to temp file
+    final dir = await getTemporaryDirectory();
+    final noteNum = _note?.noteNumber ?? 'note';
+    final file = File('${dir.path}/delivery_note_$noteNum.pdf');
+    await file.writeAsBytes(bytes);
+
+    await Share.shareXFiles(
+      [XFile(file.path, mimeType: 'application/pdf')],
+      subject: 'Delivery Note #$noteNum',
+    );
+  }
     final pdf = pw.Document();
 
     // ── Fonts ───────────────────────────────────────────────────────────────
@@ -420,28 +447,34 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
 
   Widget _field(String label, TextEditingController ctrl, {
     TextInputType? keyboardType,
-    String? field, // for autocomplete
+    String? cacheKey,
     bool required = false,
     int maxLines = 1,
+    bool isNameField = false,
+    String? contactFilter,
+    void Function(PhoneContact)? onContactSelected,
   }) {
+    final key = cacheKey ?? label.toLowerCase().replaceAll(' ', '_');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(label.toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.inkSoft)),
         const SizedBox(height: 4),
-        TextField(
-          controller: ctrl,
-          keyboardType: keyboardType,
-          maxLines: maxLines,
-          onChanged: (v) {
-            if (field == 'clientName') _autocompleteClient(v);
-            else if (field != null) _autocompleteField(field, v);
-          },
-        ),
-        if (field == 'clientName' && _clientSuggestions.isNotEmpty)
-          _suggestionList(_clientSuggestions, ctrl, () => setState(() => _clientSuggestions = [])),
-        if (field != null && field != 'clientName' && _activeSuggestionField == field && _fieldSuggestions.isNotEmpty)
-          _suggestionList(_fieldSuggestions, ctrl, () => setState(() { _fieldSuggestions = []; _activeSuggestionField = null; })),
+        if (isNameField)
+          PhoneBookSearchField(
+            fieldKey: 'dn.\$key',
+            controller: ctrl,
+            label: label,
+            contactFilter: contactFilter,
+            onContactSelected: onContactSelected,
+          )
+        else
+          _CachedTextField(
+            cacheKey: 'dn.\$key',
+            controller: ctrl,
+            keyboardType: keyboardType,
+            maxLines: maxLines,
+          ),
       ]),
     );
   }
@@ -460,6 +493,12 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined),
             onPressed: _generateAndSendPdf,
+            tooltip: 'Print / PDF',
+          ),
+          IconButton(
+            icon: const Icon(Icons.share_outlined),
+            onPressed: _sharePdf,
+            tooltip: 'Share (WhatsApp / Email)',
             tooltip: 'Generate & send PDF',
           ),
         ],
@@ -492,13 +531,13 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 Padding(padding: const EdgeInsets.only(top: 4), child: Text('№ ${_note!.noteNumber ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
             ]),
 
-            _field('Client name', _clientNameCtrl, field: 'clientName', required: true),
-            _field('Client address', _clientAddrCtrl, field: 'clientAddress'),
-            _field('Delivered to', _deliveredToCtrl, field: 'deliveredTo'),
+            _field('Client name', _clientNameCtrl, isNameField: true, contactFilter: 'client', onContactSelected: (contact) { setState(() { if (contact.phone != null) _clientPhoneCtrl?.text = contact.phone!; }); }),
+            _field('Client address', _clientAddrCtrl, cacheKey: 'clientAddress'),
+            _field('Delivered to', _deliveredToCtrl, isNameField: true),
             Row(children: [
-              Expanded(child: _field('Role', _roleCtrl, field: 'recipientRole')),
+              Expanded(child: _field('Role', _roleCtrl, cacheKey: 'role')),
               const SizedBox(width: 12),
-              Expanded(child: _field('ID number', _idNumCtrl, field: 'lesseeIdNumber', keyboardType: TextInputType.number)),
+              Expanded(child: _field('ID number', _idNumCtrl, cacheKey: 'idNumber', keyboardType: TextInputType.number)),
             ]),
 
             const SizedBox(height: 6),
@@ -758,4 +797,95 @@ class _SignaturePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_SignaturePainter old) => true;
+}
+
+/// Simple TextField that saves value to FieldCache on blur.
+class _CachedTextField extends StatefulWidget {
+  const _CachedTextField({
+    required this.cacheKey,
+    required this.controller,
+    this.keyboardType,
+    this.maxLines = 1,
+    this.label,
+  });
+  final String cacheKey;
+  final TextEditingController controller;
+  final TextInputType? keyboardType;
+  final int maxLines;
+  final String? label;
+  @override
+  State<_CachedTextField> createState() => _CachedTextFieldState();
+}
+
+class _CachedTextFieldState extends State<_CachedTextField> {
+  final _focus = FocusNode();
+  List<String> _recent = [];
+  final _layerLink = LayerLink();
+  OverlayEntry? _overlay;
+
+  @override
+  void initState() {
+    super.initState();
+    FieldCacheService.instance.recent(widget.cacheKey).then((r) {
+      if (mounted) setState(() => _recent = r);
+    });
+    _focus.addListener(() {
+      if (!_focus.hasFocus) {
+        final v = widget.controller.text;
+        if (v.trim().isNotEmpty) FieldCacheService.instance.save(widget.cacheKey, v);
+        Future.delayed(const Duration(milliseconds: 150), _removeOverlay);
+      } else if (widget.controller.text.isEmpty && _recent.isNotEmpty) {
+        _showSuggestions();
+      }
+    });
+  }
+
+  @override
+  void dispose() { _removeOverlay(); _focus.dispose(); super.dispose(); }
+
+  void _showSuggestions() {
+    _removeOverlay();
+    if (_recent.isEmpty) return;
+    _overlay = OverlayEntry(builder: (_) => Positioned(
+      width: 280,
+      child: CompositedTransformFollower(
+        link: _layerLink,
+        showWhenUnlinked: false,
+        offset: const Offset(0, 52),
+        child: Material(
+          elevation: 4,
+          borderRadius: BorderRadius.circular(8),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 160),
+            child: ListView(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              children: _recent.map((v) => ListTile(
+                dense: true,
+                leading: const Icon(Icons.history, size: 15),
+                title: Text(v, style: const TextStyle(fontSize: 13)),
+                onTap: () { widget.controller.text = v; _removeOverlay(); },
+              )).toList(),
+            ),
+          ),
+        ),
+      ),
+    ));
+    Overlay.of(context).insert(_overlay!);
+  }
+
+  void _removeOverlay() { _overlay?.remove(); _overlay = null; }
+
+  @override
+  Widget build(BuildContext context) {
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: TextField(
+        controller: widget.controller,
+        focusNode: _focus,
+        keyboardType: widget.keyboardType,
+        maxLines: widget.maxLines,
+      ),
+    );
+  }
 }

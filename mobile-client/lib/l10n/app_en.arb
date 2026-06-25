@@ -263,5 +263,11 @@
   "scannerScanAgain": "Scan again",
   "scannerUse": "Use this code",
   "warehouseHistory": "Movement history",
-  "deliveryNotesTitle": "Docs"
+  "deliveryNotesTitle": "Docs",
+  "warehouseInRepair": "In repair",
+  "warehouseSendToRepair": "Send to repair",
+  "warehouseSupplier": "Supplier",
+  "warehouseSupplierPhone": "Supplier phone",
+  "warehouseSupplierEmail": "Supplier email",
+  "warehouseSentAt": "Sent"
 }
