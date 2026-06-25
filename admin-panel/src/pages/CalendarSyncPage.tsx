@@ -1,32 +1,22 @@
-import { useEffect, useState } from 'react';
-import { Calendar, RefreshCw, Copy, Check, ExternalLink } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Calendar, RefreshCw, Copy, Check, ExternalLink, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
 interface IcsData { token: string | null; url: string | null; }
-interface Org { id: number; name: string; }
-
-const GOOGLE_HELP = 'https://support.google.com/calendar/answer/37100';
-const APPLE_HELP  = 'https://support.apple.com/guide/calendar/subscribe-to-calendars-icl1022/mac';
+interface ImportResult { imported: number; skipped: number; errors: string[]; }
 
 export default function CalendarSyncPage() {
   const [data, setData] = useState<IcsData | null>(null);
-  const [orgs, setOrgs] = useState<Org[]>([]);
-  const [selOrg, setSelOrg] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   const [rotating, setRotating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const baseUrl = window.location.origin;
 
-  useEffect(() => {
-    apiFetch<Org[]>('/organizations').then(os => {
-      setOrgs(os);
-      if (os.length) setSelOrg(os[0].id);
-    }).catch(() => {});
-    load();
-  }, []);
-
-  useEffect(() => { if (selOrg) load(); }, [selOrg]);
+  useEffect(() => { load(); }, []);
 
   async function load() {
     try {
@@ -37,8 +27,7 @@ export default function CalendarSyncPage() {
   }
 
   function fullUrl() {
-    if (!data?.url) return '';
-    return `${baseUrl}${data.url}`;
+    return data?.url ? `${baseUrl}${data.url}` : '';
   }
 
   async function copy() {
@@ -56,132 +45,193 @@ export default function CalendarSyncPage() {
     } finally { setRotating(false); }
   }
 
+  async function importFile(file: File) {
+    if (!file.name.endsWith('.ics')) {
+      setError('Please select an .ics file exported from Google Calendar.');
+      return;
+    }
+    setImporting(true); setImportResult(null); setError(null);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const result = await apiFetch<ImportResult>('/calendar/import-ics', { method: 'POST', body: fd });
+      setImportResult(result);
+    } catch (e) { setError(e instanceof Error ? e.message : 'Import failed'); }
+    finally { setImporting(false); }
+  }
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (f) importFile(f);
+    e.target.value = '';
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault(); setDragOver(false);
+    const f = e.dataTransfer.files[0];
+    if (f) importFile(f);
+  }
+
   return (
     <div>
       <div className="topbar">
+        <div><span className="eyebrow">Calendar</span><h1 className="page-title">Calendar sync</h1></div>
+      </div>
+
+      {error && <div className="error-banner"><AlertCircle size={15} /> {error}</div>}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' }}>
+
+        {/* ── LEFT: Export (subscribe) ──────────────────────────────────── */}
         <div>
-          <span className="eyebrow">Calendar</span>
-          <h1 className="page-title">Calendar sync</h1>
-        </div>
-      </div>
-
-      {error && <div className="error-banner">{error}</div>}
-
-      {/* Explanation */}
-      <div className="card" style={{ marginBottom: 16, background: 'var(--surface-muted)' }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
-          <Calendar size={24} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 2 }} />
-          <div>
-            <div style={{ fontWeight: 700, marginBottom: 4 }}>ICS Calendar feed</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
-              Subscribe to the Vixor ERP calendar from any calendar app — Google Calendar, Apple Calendar, Outlook.
-              The secret URL is unique per organization and refreshes automatically every few minutes.
-              No Google API key required.
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+              <Calendar size={20} style={{ color: 'var(--primary)' }} />
+              <h3 style={{ margin: 0 }}>Subscribe to Vixor calendar</h3>
             </div>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 0 }}>
+              Add this URL in Google Calendar / Apple Calendar / Outlook.
+              Events update automatically. Read-only from external apps.
+            </p>
+
+            {data?.url ? (
+              <>
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  <input readOnly value={fullUrl()} style={{ flex: 1, fontFamily: 'monospace', fontSize: 11, background: 'var(--surface-muted)' }} onClick={e => (e.target as HTMLInputElement).select()} />
+                  <button onClick={copy}>{copied ? <Check size={15} /> : <Copy size={15} />} {copied ? 'Copied' : 'Copy'}</button>
+                </div>
+                <button className="ghost" onClick={rotate} disabled={rotating} style={{ fontSize: 12, color: 'var(--danger)' }}>
+                  <RefreshCw size={12} /> {rotating ? 'Rotating…' : 'Rotate token'}
+                </button>
+              </>
+            ) : <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Loading…</div>}
+          </div>
+
+          {/* How-to cards */}
+          {[
+            { name: 'Google Calendar', icon: '🗓️', link: 'https://support.google.com/calendar/answer/37100',
+              steps: ['Open Google Calendar on desktop', 'Click "+" next to "Other calendars"', 'Choose "From URL"', 'Paste the URL above → Add calendar'] },
+            { name: 'Apple Calendar', icon: '🍎', link: 'https://support.apple.com/guide/calendar/subscribe-to-calendars-icl1022/mac',
+              steps: ['File → New Calendar Subscription…', 'Paste the URL above', 'Set auto-refresh to "Every hour"', 'Click OK'] },
+            { name: 'Outlook', icon: '📧', link: '#',
+              steps: ['Calendar → Add calendar → Subscribe from web', 'Paste the URL above', 'Click Import'] },
+          ].map(app => (
+            <div key={app.name} className="card" style={{ marginBottom: 10 }}>
+              <div style={{ fontWeight: 700, display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+                {app.icon} {app.name}
+                <a href={app.link} target="_blank" rel="noreferrer" style={{ color: 'var(--ink-soft)', marginLeft: 'auto' }}><ExternalLink size={12} /></a>
+              </div>
+              <ol style={{ margin: 0, paddingLeft: 18 }}>
+                {app.steps.map((s, i) => <li key={i} style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 3 }}>{s}</li>)}
+              </ol>
+            </div>
+          ))}
+        </div>
+
+        {/* ── RIGHT: Import from Google Calendar ────────────────────────── */}
+        <div>
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+              <Upload size={20} style={{ color: 'var(--primary)' }} />
+              <h3 style={{ margin: 0 }}>Import from Google Calendar</h3>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 0, lineHeight: 1.6 }}>
+              Export your Google Calendar as an <strong>.ics file</strong> and upload it here.
+              All events will be imported into Vixor. Duplicates are automatically skipped.
+            </p>
+
+            {/* Step-by-step export guide */}
+            <div style={{ background: 'var(--surface-muted)', borderRadius: 8, padding: 14, marginBottom: 16 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10 }}>How to export from Google Calendar:</div>
+              <ol style={{ margin: 0, paddingLeft: 18 }}>
+                {[
+                  'Open Google Calendar on desktop (calendar.google.com)',
+                  'Click the ⚙️ gear icon → Settings',
+                  'In the left sidebar click "Import & Export"',
+                  'Click "Export" — downloads a .zip file',
+                  'Extract the .zip — find the .ics file for the calendar you want',
+                  'Upload the .ics file below ↓',
+                ].map((s, i) => (
+                  <li key={i} style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 5 }}>
+                    {i === 1 ? <><span dangerouslySetInnerHTML={{__html: s}} /></> : s}
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            {/* Drop zone */}
+            <div
+              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={onDrop}
+              onClick={() => fileRef.current?.click()}
+              style={{
+                border: `2px dashed ${dragOver ? 'var(--primary)' : 'var(--border)'}`,
+                borderRadius: 10,
+                padding: '32px 20px',
+                textAlign: 'center',
+                cursor: 'pointer',
+                background: dragOver ? 'var(--primary-pale, rgba(44,62,112,0.06))' : 'transparent',
+                transition: 'all 0.15s',
+              }}
+            >
+              {importing ? (
+                <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>
+                  <RefreshCw size={24} style={{ animation: 'spin 1s linear infinite', marginBottom: 8 }} />
+                  <div>Importing events…</div>
+                </div>
+              ) : (
+                <>
+                  <Upload size={32} style={{ color: 'var(--ink-soft)', marginBottom: 8 }} />
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>Drop .ics file here</div>
+                  <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>or click to browse</div>
+                </>
+              )}
+            </div>
+            <input ref={fileRef} type="file" accept=".ics,text/calendar" style={{ display: 'none' }} onChange={onFileChange} />
+          </div>
+
+          {/* Import result */}
+          {importResult && (
+            <div className="card" style={{ borderLeft: `4px solid ${importResult.errors.length > 0 ? 'var(--warning, orange)' : 'green'}` }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+                <CheckCircle2 size={20} color="green" />
+                <span style={{ fontWeight: 700, fontSize: 15 }}>Import complete</span>
+              </div>
+              <div style={{ display: 'flex', gap: 20, marginBottom: importResult.errors.length > 0 ? 12 : 0 }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontWeight: 800, fontSize: 28, color: 'green' }}>{importResult.imported}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>Imported</div>
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontWeight: 800, fontSize: 28, color: 'var(--ink-soft)' }}>{importResult.skipped}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>Skipped</div>
+                </div>
+                {importResult.errors.length > 0 && (
+                  <div style={{ textAlign: 'center' }}>
+                    <div style={{ fontWeight: 800, fontSize: 28, color: 'orange' }}>{importResult.errors.length}</div>
+                    <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>Errors</div>
+                  </div>
+                )}
+              </div>
+              {importResult.errors.length > 0 && (
+                <div style={{ background: 'var(--surface-muted)', borderRadius: 6, padding: 10, fontSize: 11 }}>
+                  {importResult.errors.slice(0, 5).map((e, i) => <div key={i} style={{ color: 'red', marginBottom: 2 }}>⚠ {e}</div>)}
+                  {importResult.errors.length > 5 && <div style={{ color: 'var(--ink-soft)' }}>…and {importResult.errors.length - 5} more</div>}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Note */}
+          <div className="card" style={{ marginTop: 14, borderLeft: '3px solid var(--primary)', fontSize: 12, color: 'var(--ink-soft)', lineHeight: 1.6 }}>
+            <strong>Notes:</strong> Events already in Vixor (same UID) are automatically skipped to avoid duplicates.
+            You can re-import the same file safely. Recurring events are imported as individual occurrences.
           </div>
         </div>
       </div>
 
-      {/* URL card */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <h3 style={{ margin: '0 0 12px' }}>Your calendar subscription URL</h3>
-
-        {data?.url ? (
-          <>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-              <input
-                readOnly
-                value={fullUrl()}
-                style={{ flex: 1, fontFamily: 'monospace', fontSize: 12, background: 'var(--surface-muted)' }}
-                onClick={e => (e.target as HTMLInputElement).select()}
-              />
-              <button onClick={copy} title="Copy URL">
-                {copied ? <Check size={16} /> : <Copy size={16} />}
-                {copied ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                onClick={rotate}
-                disabled={rotating}
-                className="ghost"
-                style={{ fontSize: 12, color: 'var(--danger)' }}
-              >
-                <RefreshCw size={13} /> {rotating ? 'Rotating…' : 'Rotate token (invalidates existing)'}
-              </button>
-            </div>
-          </>
-        ) : (
-          <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Loading…</div>
-        )}
-      </div>
-
-      {/* How to subscribe */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-        {[
-          {
-            name: 'Google Calendar',
-            icon: '🗓️',
-            steps: [
-              'Open Google Calendar on desktop',
-              'Click "+" next to "Other calendars"',
-              'Choose "From URL"',
-              'Paste the URL above',
-              'Click "Add calendar"',
-            ],
-            link: GOOGLE_HELP,
-          },
-          {
-            name: 'Apple Calendar',
-            icon: '🍎',
-            steps: [
-              'Open Calendar on Mac or iPhone',
-              'File → New Calendar Subscription…',
-              'Paste the URL above',
-              'Set auto-refresh to "Every hour"',
-              'Click OK',
-            ],
-            link: APPLE_HELP,
-          },
-          {
-            name: 'Outlook',
-            icon: '📧',
-            steps: [
-              'Open Outlook Calendar',
-              'Add calendar → Subscribe from web',
-              'Paste the URL above',
-              'Click Import',
-              'Events sync every few hours',
-            ],
-            link: 'https://support.microsoft.com/office/import-or-subscribe-to-a-calendar-cff1429c-5af6-41ec-a5b4-74f2c278e98c',
-          },
-        ].map(app => (
-          <div key={app.name} className="card">
-            <div style={{ fontSize: 24, marginBottom: 6 }}>{app.icon}</div>
-            <div style={{ fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-              {app.name}
-              <a href={app.link} target="_blank" rel="noreferrer" style={{ color: 'var(--ink-soft)' }}>
-                <ExternalLink size={12} />
-              </a>
-            </div>
-            <ol style={{ paddingLeft: 16, margin: 0 }}>
-              {app.steps.map((s, i) => (
-                <li key={i} style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 5 }}>{s}</li>
-              ))}
-            </ol>
-          </div>
-        ))}
-      </div>
-
-      {/* Mobile app note */}
-      <div className="card" style={{ marginTop: 16, borderLeft: '3px solid var(--primary)' }}>
-        <div style={{ fontWeight: 600, marginBottom: 4 }}>📱 Mobile app</div>
-        <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-          The Vixor ERP mobile app has a built-in calendar that shows and creates events directly.
-          ICS sync is for viewing Vixor events in external calendar apps (Google Calendar, Apple Calendar, Outlook).
-          The ICS feed is read-only — changes must be made in the Vixor app.
-        </div>
-      </div>
+      <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

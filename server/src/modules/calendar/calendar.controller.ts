@@ -14,6 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { Response } from 'express';
 import { CalendarService } from './calendar.service';
 import { CreateEventDto } from './dto/create-event.dto';
@@ -99,6 +100,34 @@ export class CalendarController {
   removeAttachment(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     if (user.organizationId == null) return null;
     return this.calendarService.removeAttachment(id, user.organizationId);
+  }
+
+  /** POST /calendar/import-ics — upload an ICS file and import events */
+  @Post('import-ics')
+  @UseInterceptors(FileInterceptor('file', {
+    storage: memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  }))
+  async importIcs(
+    @UploadedFile() file: { buffer: Buffer; mimetype: string; originalname: string },
+    @CurrentUser() user: RequestUser,
+  ) {
+    if (user.organizationId == null) return { imported: 0, skipped: 0, errors: ['No organization'] };
+    const content = file.buffer.toString('utf-8');
+    return this.calendarService.importIcs(user.organizationId, user.id, content);
+  }
+
+  /** POST /calendar/import-ics-text — same but body.ics is a string (for admin global) */
+  @Post('import-ics-text')
+  async importIcsText(
+    @Body() body: { icsContent: string; organizationId?: number },
+    @CurrentUser() user: RequestUser,
+  ) {
+    const orgId = (user.organizationId == null && body.organizationId)
+      ? body.organizationId
+      : user.organizationId;
+    if (orgId == null) return { imported: 0, skipped: 0, errors: ['No organization'] };
+    return this.calendarService.importIcs(orgId, user.id, body.icsContent);
   }
 
   /** GET /calendar/ics-token — returns token and URL for calendar subscription */

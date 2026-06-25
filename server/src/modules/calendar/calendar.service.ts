@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { Calendar } from './entities/calendar.entity';
-import { CalendarEvent } from './entities/calendar-event.entity';
+import { CalendarEvent, CalendarEventType } from './entities/calendar-event.entity';
 import { CalendarAttachment } from './entities/calendar-attachment.entity';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
@@ -51,6 +51,120 @@ export class CalendarService {
     cal.icsToken = require('crypto').randomBytes(24).toString('hex');
     await this.calendarsRepo.save(cal);
     return cal.icsToken!;
+  }
+
+  /**
+   * Parses an ICS file and bulk-imports VEVENT records into the org's calendar.
+   * Deduplicates by UID — events already present (same UID) are skipped.
+   * Returns a summary of { imported, skipped, errors }.
+   */
+  async importIcs(
+    organizationId: number,
+    userId: number,
+    icsContent: string,
+  ): Promise<{ imported: number; skipped: number; errors: string[] }> {
+    const calendar = await this.getOrCreateOrgCalendar(organizationId, userId);
+    const errors: string[] = [];
+    let imported = 0;
+    let skipped = 0;
+
+    // Parse ICS blocks
+    const events = this.parseIcsEvents(icsContent);
+
+    for (const ev of events) {
+      if (!ev.summary || !ev.startAt) {
+        skipped++;
+        continue;
+      }
+
+      // Dedup by external UID stored in technicalRequirements field
+      if (ev.uid) {
+        const exists = await this.eventsRepo.findOne({
+          where: { calendar: { id: calendar.id }, technicalRequirements: `ics-uid:${ev.uid}` },
+        });
+        if (exists) { skipped++; continue; }
+      }
+
+      try {
+        await this.eventsRepo.save(this.eventsRepo.create({
+          calendar,
+          type: CalendarEventType.EVENT,
+          title: ev.summary,
+          description: ev.description,
+          location: ev.location,
+          startAt: ev.startAt,
+          endAt: ev.endAt ?? new Date(ev.startAt.getTime() + 3600000),
+          allDay: ev.allDay ?? false,
+          technicalRequirements: ev.uid ? `ics-uid:${ev.uid}` : undefined,
+          createdBy: { id: userId } as any,
+        }));
+        imported++;
+      } catch (e: any) {
+        errors.push(`${ev.summary}: ${e.message}`);
+      }
+    }
+
+    return { imported, skipped, errors };
+  }
+
+  private parseIcsEvents(ics: string): Array<{
+    uid?: string; summary?: string; description?: string;
+    location?: string; startAt?: Date; endAt?: Date; allDay?: boolean;
+  }> {
+    const events: ReturnType<typeof this.parseIcsEvents> = [];
+    const blocks = ics.split('BEGIN:VEVENT');
+    for (const block of blocks.slice(1)) {
+      const end = block.indexOf('END:VEVENT');
+      if (end < 0) continue;
+      const raw = block.substring(0, end);
+
+      // Unfold long lines (RFC 5545 line folding: \r\n + space/tab)
+      const unfolded = raw.replace(/\r?\n[ \t]/g, '');
+      const lines = unfolded.split(/\r?\n/);
+
+      const get = (key: string): string | undefined => {
+        const line = lines.find(l => l.startsWith(key + ':') || l.startsWith(key + ';'));
+        if (!line) return undefined;
+        const val = line.substring(line.indexOf(':') + 1);
+        return val
+          .replace(/\\n/g, '\n').replace(/\\,/g, ',')
+          .replace(/\\;/g, ';').replace(/\\\\/g, '\\');
+      };
+
+      const parseDate = (raw?: string): Date | undefined => {
+        if (!raw) return undefined;
+        try {
+          // DATE-TIME: 20240101T090000Z or 20240101T090000
+          // DATE-only: 20240101
+          const s = raw.replace(/[TZ]/g, ' ').trim();
+          if (s.length === 8) {
+            // All-day: YYYYMMDD
+            return new Date(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`);
+          }
+          return new Date(raw.replace(
+            /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/,
+            '$1-$2-$3T$4:$5:$6$7'
+          ));
+        } catch { return undefined; }
+      };
+
+      const dtStartLine = lines.find(l => l.startsWith('DTSTART'));
+      const dtEndLine   = lines.find(l => l.startsWith('DTEND'));
+      const dtStartRaw  = dtStartLine?.substring(dtStartLine.indexOf(':') + 1);
+      const dtEndRaw    = dtEndLine?.substring(dtEndLine.indexOf(':') + 1);
+      const allDay = dtStartLine?.includes('VALUE=DATE') || (dtStartRaw?.length === 8);
+
+      events.push({
+        uid:         get('UID'),
+        summary:     get('SUMMARY'),
+        description: get('DESCRIPTION'),
+        location:    get('LOCATION'),
+        startAt:     parseDate(dtStartRaw),
+        endAt:       parseDate(dtEndRaw),
+        allDay,
+      });
+    }
+    return events;
   }
 
   async getOrCreateOrgCalendar(organizationId: number, userId: number): Promise<Calendar> {
