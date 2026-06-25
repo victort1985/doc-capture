@@ -4,6 +4,7 @@ import { apiFetch } from '../services/api';
 
 interface IcsData { token: string | null; url: string | null; }
 interface ImportResult { imported: number; skipped: number; errors: string[]; }
+interface Org { id: number; name: string; }
 
 export default function CalendarSyncPage() {
   const [data, setData] = useState<IcsData | null>(null);
@@ -13,10 +14,17 @@ export default function CalendarSyncPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importing, setImporting] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [selOrgId, setSelOrgId] = useState<number | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const baseUrl = window.location.origin;
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    apiFetch<Org[]>('/organizations')
+      .then(os => { setOrgs(os); if (os.length) setSelOrgId(os[0].id); })
+      .catch(() => {});
+  }, []);
 
   async function load() {
     try {
@@ -50,11 +58,16 @@ export default function CalendarSyncPage() {
       setError('Please select an .ics file exported from Google Calendar.');
       return;
     }
+    if (!selOrgId) {
+      setError('Please select an organization first.');
+      return;
+    }
     setImporting(true); setImportResult(null); setError(null);
     try {
       const fd = new FormData();
       fd.append('file', file);
-      const result = await apiFetch<ImportResult>('/calendar/import-ics', { method: 'POST', body: fd });
+      fd.append('organizationId', String(selOrgId));
+      const result = await apiFetch<ImportResult>(`/calendar/import-ics?organizationId=${selOrgId}`, { method: 'POST', body: fd });
       setImportResult(result);
     } catch (e) { setError(e instanceof Error ? e.message : 'Import failed'); }
     finally { setImporting(false); }
@@ -158,6 +171,29 @@ export default function CalendarSyncPage() {
                 ))}
               </ol>
             </div>
+
+            {/* Organization selector */}
+            {orgs.length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+                  Import into organization
+                </label>
+                <select
+                  value={selOrgId ?? ''}
+                  onChange={e => setSelOrgId(Number(e.target.value))}
+                  style={{ width: '100%' }}
+                >
+                  {orgs.map(o => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+                {selOrgId && (
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 4 }}>
+                    Events will be added to <strong>{orgs.find(o => o.id === selOrgId)?.name}</strong>'s calendar
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Drop zone */}
             <div

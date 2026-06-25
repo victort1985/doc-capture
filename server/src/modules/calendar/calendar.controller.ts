@@ -106,15 +106,20 @@ export class CalendarController {
   @Post('import-ics')
   @UseInterceptors(FileInterceptor('file', {
     storage: memoryStorage(),
-    limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+    limits: { fileSize: 10 * 1024 * 1024 },
   }))
   async importIcs(
     @UploadedFile() file: { buffer: Buffer; mimetype: string; originalname: string },
     @CurrentUser() user: RequestUser,
+    @Query('organizationId') orgIdQuery?: string,
   ) {
-    if (user.organizationId == null) return { imported: 0, skipped: 0, errors: ['No organization'] };
+    // Super-admin (no org) can specify target org via query param
+    const orgId = (user.organizationId == null && orgIdQuery)
+      ? parseInt(orgIdQuery)
+      : user.organizationId;
+    if (orgId == null) return { imported: 0, skipped: 0, errors: ['No organization'] };
     const content = file.buffer.toString('utf-8');
-    return this.calendarService.importIcs(user.organizationId, user.id, content);
+    return this.calendarService.importIcs(orgId, user.id, content);
   }
 
   /** POST /calendar/import-ics-text — same but body.ics is a string (for admin global) */
