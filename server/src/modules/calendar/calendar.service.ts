@@ -113,55 +113,93 @@ export class CalendarService {
   }> {
     const events: ReturnType<typeof this.parseIcsEvents> = [];
     const blocks = ics.split('BEGIN:VEVENT');
+
     for (const block of blocks.slice(1)) {
       const end = block.indexOf('END:VEVENT');
       if (end < 0) continue;
       const raw = block.substring(0, end);
 
-      // Unfold long lines (RFC 5545 line folding: \r\n + space/tab)
+      // RFC 5545 line unfolding: \r\n followed by space or tab
       const unfolded = raw.replace(/\r?\n[ \t]/g, '');
-      const lines = unfolded.split(/\r?\n/);
+      const lines = unfolded.split(/\r?\n/).filter(Boolean);
 
-      const get = (key: string): string | undefined => {
-        const line = lines.find(l => l.startsWith(key + ':') || l.startsWith(key + ';'));
+      // Get value by property name (handles both PROP:val and PROP;PARAM=x:val)
+      const getPropValue = (name: string): string | undefined => {
+        const line = lines.find(l =>
+          l.toUpperCase().startsWith(name.toUpperCase() + ':') ||
+          l.toUpperCase().startsWith(name.toUpperCase() + ';')
+        );
         if (!line) return undefined;
-        const val = line.substring(line.indexOf(':') + 1);
+        const colonIdx = line.indexOf(':');
+        const val = line.substring(colonIdx + 1);
         return val
-          .replace(/\\n/g, '\n').replace(/\\,/g, ',')
-          .replace(/\\;/g, ';').replace(/\\\\/g, '\\');
+          .replace(/\\n/g, '\n').replace(/\\N/g, '\n')
+          .replace(/\\,/g, ',').replace(/\\;/g, ';')
+          .replace(/\\\\/g, '\\');
       };
 
-      const parseDate = (raw?: string): Date | undefined => {
-        if (!raw) return undefined;
-        try {
-          // DATE-TIME: 20240101T090000Z or 20240101T090000
-          // DATE-only: 20240101
-          const s = raw.replace(/[TZ]/g, ' ').trim();
-          if (s.length === 8) {
-            // All-day: YYYYMMDD
-            return new Date(`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`);
-          }
-          return new Date(raw.replace(
-            /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})(Z?)$/,
-            '$1-$2-$3T$4:$5:$6$7'
-          ));
-        } catch { return undefined; }
+      // Get full property line (including params like TZID)
+      const getPropLine = (name: string): string | undefined =>
+        lines.find(l =>
+          l.toUpperCase().startsWith(name.toUpperCase() + ':') ||
+          l.toUpperCase().startsWith(name.toUpperCase() + ';')
+        );
+
+      /**
+       * Parse ICS datetime string into a Date.
+       * Handles:
+       *   - 20240101T090000Z      → UTC
+       *   - 20240101T090000       → treat as local (Israel = UTC+3, add offset)
+       *   - 20240101              → all-day, use noon UTC to avoid date boundary shift
+       * TZID parameter is extracted from the property line for context but we
+       * approximate non-UTC times as UTC+0 (server side); the calendar
+       * displays in server timezone anyway.
+       */
+      const parseIcsDt = (propLine?: string): { date: Date; allDay: boolean } | undefined => {
+        if (!propLine) return undefined;
+        const colonIdx = propLine.indexOf(':');
+        const params = propLine.substring(0, colonIdx).toUpperCase();
+        const value  = propLine.substring(colonIdx + 1).trim();
+
+        // All-day: VALUE=DATE or 8-char date-only value
+        if (params.includes('VALUE=DATE') || /^\d{8}$/.test(value)) {
+          const y = value.slice(0, 4), m = value.slice(4, 6), d = value.slice(6, 8);
+          // Use noon UTC so the date is correct in any timezone (UTC±12)
+          return { date: new Date(`${y}-${m}-${d}T12:00:00.000Z`), allDay: true };
+        }
+
+        // Date-time with Z suffix → UTC
+        if (value.endsWith('Z')) {
+          const iso = value.replace(
+            /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z$/,
+            '$1-$2-$3T$4:$5:$6.000Z'
+          );
+          return { date: new Date(iso), allDay: false };
+        }
+
+        // Date-time without Z (floating or TZID-qualified)
+        // We treat it as UTC — good enough for display purposes
+        const iso = value.replace(
+          /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})$/,
+          '$1-$2-$3T$4:$5:$6.000Z'
+        );
+        return { date: new Date(iso), allDay: false };
       };
 
-      const dtStartLine = lines.find(l => l.startsWith('DTSTART'));
-      const dtEndLine   = lines.find(l => l.startsWith('DTEND'));
-      const dtStartRaw  = dtStartLine?.substring(dtStartLine.indexOf(':') + 1);
-      const dtEndRaw    = dtEndLine?.substring(dtEndLine.indexOf(':') + 1);
-      const allDay = dtStartLine?.includes('VALUE=DATE') || (dtStartRaw?.length === 8);
+      const startProp = parseIcsDt(getPropLine('DTSTART'));
+      const endProp   = parseIcsDt(getPropLine('DTEND')) ??
+                        parseIcsDt(getPropLine('DURATION')); // fallback
+
+      if (!startProp) continue;
 
       events.push({
-        uid:         get('UID'),
-        summary:     get('SUMMARY'),
-        description: get('DESCRIPTION'),
-        location:    get('LOCATION'),
-        startAt:     parseDate(dtStartRaw),
-        endAt:       parseDate(dtEndRaw),
-        allDay,
+        uid:         getPropValue('UID'),
+        summary:     getPropValue('SUMMARY'),
+        description: getPropValue('DESCRIPTION'),
+        location:    getPropValue('LOCATION'),
+        startAt:     startProp.date,
+        endAt:       endProp?.date ?? new Date(startProp.date.getTime() + 3600000),
+        allDay:      startProp.allDay,
       });
     }
     return events;

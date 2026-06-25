@@ -444,30 +444,113 @@ class _ItemDetailSheetState extends State<_ItemDetailSheet> {
 
   Future<void> _addTx(String type) async {
     final l10n = AppLocalizations.of(context)!;
-    final qtyCtrl = TextEditingController(text: '1');
+    final qtyCtrl    = TextEditingController(text: '1');
     final reasonCtrl = TextEditingController();
+    // Barcode: pre-filled with current item's barcode, can be changed by scanning
+    String barcode = widget.item.barcode;
+    bool _scanning = false;
+
     await showDialog(
       context: context,
-      builder: (_) => AlertDialog(
+      builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => AlertDialog(
         title: Text(type == 'in' ? l10n.warehouseIn : l10n.warehouseOut),
-        content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.warehouseQty)),
-          TextField(controller: reasonCtrl, decoration: InputDecoration(labelText: l10n.warehouseReason)),
-        ]),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
+          // Barcode row with scan button
+          Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  Clipboard.setData(ClipboardData(text: barcode));
+                  ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Barcode copied'), duration: Duration(seconds: 1)));
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.grey.shade50,
+                  ),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('Barcode', style: TextStyle(fontSize: 10, color: AppColors.inkSoft)),
+                    Text(barcode, style: const TextStyle(fontFamily: 'Courier', fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1), overflow: TextOverflow.ellipsis),
+                  ]),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton(
+              icon: _scanning
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.qr_code_scanner),
+              tooltip: l10n.warehouseScan,
+              onPressed: _scanning ? null : () async {
+                setSt(() => _scanning = true);
+                try {
+                  final scanned = await Navigator.of(ctx).push<String>(
+                    MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+                  );
+                  if (scanned != null && scanned.isNotEmpty) {
+                    setSt(() => barcode = scanned);
+                    // If scanned barcode belongs to different item — show info
+                    final found = await widget.svc.findByBarcode(scanned);
+                    if (found != null && found.id != widget.item.id && ctx.mounted) {
+                      ScaffoldMessenger.of(ctx).showSnackBar(
+                        SnackBar(content: Text('Barcode linked to: ${found.name}'), duration: const Duration(seconds: 2)),
+                      );
+                    }
+                  }
+                } finally {
+                  if (ctx.mounted) setSt(() => _scanning = false);
+                }
+              },
+            ),
+          ]),
+          const SizedBox(height: 8),
+          TextField(
+            controller: qtyCtrl,
+            keyboardType: TextInputType.number,
+            autofocus: true,
+            decoration: InputDecoration(labelText: l10n.warehouseQty),
+          ),
+          TextField(
+            controller: reasonCtrl,
+            decoration: InputDecoration(labelText: l10n.warehouseReason),
+          ),
+        ])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text(l10n.cancel)),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
           FilledButton(
             onPressed: () async {
               final qty = int.tryParse(qtyCtrl.text);
               if (qty == null || qty <= 0) return;
-              await widget.svc.addTransaction(widget.item.id, type, qty, reason: reasonCtrl.text.isNotEmpty ? reasonCtrl.text : null);
-              if (context.mounted) Navigator.pop(context);
+              // If barcode changed from original, link new barcode to this item name
+              WarehouseItem targetItem = widget.item;
+              if (barcode != widget.item.barcode && type == 'in') {
+                // Try to find existing item with this barcode
+                final found = await widget.svc.findByBarcode(barcode);
+                if (found != null) {
+                  targetItem = found;
+                } else {
+                  // Create new item with same name but new barcode
+                  final created = await widget.svc.createItem({
+                    'name': widget.item.name,
+                    'barcode': barcode,
+                    'quantity': 0,
+                    if (widget.item.category != null) 'categoryId': widget.item.category!.id,
+                    if (widget.item.unit != null) 'unit': widget.item.unit,
+                    if (widget.item.location != null) 'location': widget.item.location,
+                  });
+                  targetItem = created;
+                }
+              }
+              await widget.svc.addTransaction(targetItem.id, type, qty, reason: reasonCtrl.text.isNotEmpty ? reasonCtrl.text : null);
+              if (ctx.mounted) Navigator.pop(ctx);
               widget.onRefresh();
             },
             child: Text(l10n.calendarSave),
           ),
         ],
-      ),
+      )),
     );
   }
 

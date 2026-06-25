@@ -45,6 +45,12 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, httpsOptions ? { httpsOptions } : undefined);
 
+  // Increase body size limit to 5 MB — needed for base64-encoded logos
+  // in delivery note settings (default Express limit is 100 KB).
+  const express = await import('express');
+  app.use(express.json({ limit: '5mb' }));
+  app.use(express.urlencoded({ limit: '5mb', extended: true }));
+
   app.getHttpAdapter().getInstance().disable('x-powered-by');
 
   app.use(
