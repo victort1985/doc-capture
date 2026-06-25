@@ -100,4 +100,20 @@ export class CalendarController {
     if (user.organizationId == null) return null;
     return this.calendarService.removeAttachment(id, user.organizationId);
   }
+
+  /** GET /calendar/ics-token — returns token and URL for calendar subscription */
+  @Get('ics-token')
+  async getIcsToken(@CurrentUser() user: RequestUser) {
+    if (user.organizationId == null) return { token: null, url: null };
+    const token = await this.calendarService.getIcsToken(user.organizationId);
+    return { token, url: `/api/ics/${token}` };
+  }
+
+  /** POST /calendar/ics-token/rotate — invalidates old subscription URLs */
+  @Post('ics-token/rotate')
+  async rotateIcsToken(@CurrentUser() user: RequestUser) {
+    if (user.organizationId == null) return { token: null };
+    const token = await this.calendarService.rotateIcsToken(user.organizationId);
+    return { token, url: `/api/ics/${token}` };
+  }
 }

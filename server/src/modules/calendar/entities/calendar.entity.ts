@@ -29,6 +29,12 @@ export class Calendar {
   @Column({ nullable: true })
   googleCalendarId?: string;
 
+  /** Secret token for the public ICS feed URL.
+   *  Generated once, used to authenticate calendar subscriptions
+   *  from Google Calendar / Apple Calendar / Outlook without login. */
+  @Column({ nullable: true, unique: true })
+  icsToken?: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

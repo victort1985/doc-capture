@@ -25,6 +25,34 @@ export class CalendarService {
     return this.calendarsRepo.find({ relations: ['organization'], order: { id: 'ASC' } });
   }
 
+  /** Returns (and creates if needed) the ICS secret token for an org's calendar. */
+  async getIcsToken(organizationId: number): Promise<string> {
+    let cal = await this.calendarsRepo.findOne({ where: { organization: { id: organizationId } } });
+    if (!cal) cal = await this.getOrCreateOrgCalendar(organizationId, 0);
+    if (!cal.icsToken) {
+      cal.icsToken = require('crypto').randomBytes(24).toString('hex');
+      await this.calendarsRepo.save(cal);
+    }
+    return cal.icsToken!;
+  }
+
+  /** Finds the calendar by its ICS token (public, no auth required). */
+  async findByIcsToken(token: string): Promise<Calendar | null> {
+    return this.calendarsRepo.findOne({
+      where: { icsToken: token },
+      relations: ['organization'],
+    });
+  }
+
+  /** Rotates the ICS token (invalidates old subscription URLs). */
+  async rotateIcsToken(organizationId: number): Promise<string> {
+    const cal = await this.calendarsRepo.findOne({ where: { organization: { id: organizationId } } });
+    if (!cal) throw new Error('Calendar not found');
+    cal.icsToken = require('crypto').randomBytes(24).toString('hex');
+    await this.calendarsRepo.save(cal);
+    return cal.icsToken!;
+  }
+
   async getOrCreateOrgCalendar(organizationId: number, userId: number): Promise<Calendar> {
     let calendar = await this.calendarsRepo.findOne({
       where: { organization: { id: organizationId } },

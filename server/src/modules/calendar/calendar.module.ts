@@ -5,11 +5,12 @@ import { CalendarEvent } from './entities/calendar-event.entity';
 import { CalendarAttachment } from './entities/calendar-attachment.entity';
 import { CalendarService } from './calendar.service';
 import { CalendarController } from './calendar.controller';
+import { IcsController } from './ics.controller';
 import { StorageModule } from '../storage/storage.module';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Calendar, CalendarEvent, CalendarAttachment]), StorageModule],
-  controllers: [CalendarController],
+  controllers: [CalendarController, IcsController],
   providers: [CalendarService],
   exports: [CalendarService],
 })
