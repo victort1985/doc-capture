@@ -80,6 +80,27 @@ export class DeliveryNote {
   @Column({ nullable: true })
   pdfPath?: string;
 
+  /** Document type shown as large title on the form */
+  @Column({ default: 'תעודת משלוח' })
+  documentType: string;
+
+  // ── Remote signing via secure link ──────────────────────────────────────
+  /** One-time-use token embedded in the signing URL */
+  @Column({ nullable: true, unique: true })
+  signingToken?: string;
+
+  /** When the remote lessee signed */
+  @Column({ type: 'timestamptz', nullable: true })
+  lesseeSignedAt?: Date;
+
+  /** Name entered by the remote signer (fills deliveredTo) */
+  @Column({ nullable: true })
+  lesseeSignerName?: string;
+
+  /** Role entered by the remote signer (fills role) */
+  @Column({ nullable: true })
+  lesseeSignerRole?: string;
+
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   organization?: Organization;
 

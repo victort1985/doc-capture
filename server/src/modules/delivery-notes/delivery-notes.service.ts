@@ -115,4 +115,61 @@ export class DeliveryNotesService {
     const buffer = await adapter.read(note.pdfPath);
     return { buffer, filename: `note_${note.noteNumber}.pdf` };
   }
+
+  // ── Remote signing ────────────────────────────────────────────────────────
+
+  async createSigningLink(id: number, organizationId: number | null): Promise<{ token: string; url: string }> {
+    const note = await this.repo.findOne({ where: { id } });
+    if (!note) throw new NotFoundException('Note not found');
+    if (!note.signingToken) {
+      note.signingToken = require('crypto').randomBytes(24).toString('hex');
+      await this.repo.save(note);
+    }
+    const url = `${process.env.APP_BASE_URL || 'https://app.doc-capture.app'}/sign/${note.signingToken}`;
+    return { token: note.signingToken!, url };
+  }
+
+  async getNoteForSigning(token: string) {
+    const note = await this.repo.findOne({
+      where: { signingToken: token },
+      relations: ['organization'],
+    });
+    if (!note) throw new NotFoundException('Link not found or expired');
+    if (note.status === 'signed') return { alreadySigned: true, signedAt: note.lesseeSignedAt };
+
+    // Return only data needed for signing page (Hebrew labels handled on client)
+    return {
+      alreadySigned: false,
+      noteNumber: note.noteNumber,
+      documentType: note.documentType,
+      date: note.date,
+      clientName: note.clientName,
+      clientAddress: note.clientAddress,
+      items: note.items,
+      remarks: note.remarks,
+      companyName: note.organization?.name,
+      lessorSignature: note.lessorSignature, // pre-filled company sig
+    };
+  }
+
+  async submitRemoteSignature(
+    token: string,
+    signerName: string,
+    signerRole: string | undefined,
+    signature: string,
+  ) {
+    const note = await this.repo.findOne({ where: { signingToken: token } });
+    if (!note) throw new NotFoundException('Link not found');
+    if (note.status === 'signed') return { ok: true, alreadySigned: true };
+
+    note.deliveredTo      = signerName;
+    note.recipientRole    = signerRole ?? note.recipientRole;
+    note.lesseeSignature  = signature;
+    note.lesseeSignedAt   = new Date();
+    note.lesseeSignerName = signerName;
+    note.lesseeSignerRole = signerRole;
+    note.status           = 'signed' as any;
+    await this.repo.save(note);
+    return { ok: true };
+  }
 }

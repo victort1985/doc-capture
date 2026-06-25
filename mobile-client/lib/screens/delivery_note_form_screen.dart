@@ -32,10 +32,12 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   // Form controllers
   final _clientNameCtrl  = TextEditingController();
   final _clientAddrCtrl  = TextEditingController();
-  final _clientPhoneCtrl = TextEditingController(); // auto-filled from phone book
+  final _clientPhoneCtrl = TextEditingController();
   final _deliveredToCtrl = TextEditingController();
   final _roleCtrl        = TextEditingController();
   final _idNumCtrl       = TextEditingController();
+  String _documentType   = 'תעודת משלוח';
+  bool   _sendingLink    = false;
   final _dateCtrl        = TextEditingController();
   final _remarksCtrl     = TextEditingController();
   final _lesseeIdCtrl    = TextEditingController();
@@ -60,8 +62,38 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     }
   }
 
-  Future<void> _loadSettings() async {
-    final s = await widget.svc.getSettings();
+  static const _docTypes = [
+    'תעודת משלוח',
+    'הסכם שכירות',
+    'ביצוע עבודה',
+    'תעודת משלוח / הסכם שכירות',
+    'תעודת משלוח / ביצוע עבודה',
+  ];
+
+  Future<void> _sendSigningLink() async {
+    if (_note == null) {
+      await _save();
+      if (_note == null) return;
+    }
+    setState(() => _sendingLink = true);
+    try {
+      final api = context.read<ApiService>();
+      final data = await api.post('/delivery-notes/${_note!.id}/signing-link', {}) as Map<String, dynamic>;
+      final url = data['url'] as String? ?? '';
+      final noteNum = _note?.noteNumber ?? '';
+      final shareText = 'לחתימה על תעודה מס׳ $noteNum:\n$url';
+
+      if (!mounted) return;
+      // Show share sheet
+      await Share.share(shareText, subject: 'תעודה מספר $noteNum לחתימה');
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+    } finally {
+      if (mounted) setState(() => _sendingLink = false);
+    }
+  }
+
+  Future<void> _loadSettings() async {    final s = await widget.svc.getSettings();
     if (mounted) setState(() { _settings = s; _loading = false; });
   }
 
@@ -280,8 +312,11 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
           pw.SizedBox(width: 12),
           // Right: document title + number
           pw.Column(crossAxisAlignment: pw.CrossAxisAlignment.end, children: [
-            t('תעודת משלוח/ו/אי', font: fontB, size: 16),
-            t('הסכם שכירות ו/או ביצוע עבודה', size: 10),
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: pw.BoxDecoration(border: pw.Border.all(width: 1.5), borderRadius: const pw.BorderRadius.all(pw.Radius.circular(6))),
+              child: t(_documentType, font: fontB, size: 16),
+            ),
             pw.SizedBox(height: 4),
             pw.Row(children: [
               t(noteNum, font: fontB, size: 18),
@@ -472,6 +507,13 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
             onPressed: _sharePdf,
             tooltip: 'Share (WhatsApp / Email)',
           ),
+          IconButton(
+            icon: _sendingLink
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                : const Icon(Icons.draw_outlined),
+            onPressed: _sendingLink ? null : _sendSigningLink,
+            tooltip: 'שלח לחתימה (WhatsApp / SMS)',
+          ),
         ],
       ),
       body: SafeArea(
@@ -494,6 +536,26 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
               ]),
             ),
             const SizedBox(height: 16),
+
+            // ── Document type selector ─────────────────────────────────────
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('DOCUMENT TYPE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.inkSoft)),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _documentType,
+                    isExpanded: true,
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Color(0xFF0E1642), fontFamily: 'NotoSansHebrew'),
+                    items: _docTypes.map((t) => DropdownMenuItem(value: t, child: Text(t, textDirection: TextDirection.rtl))).toList(),
+                    onChanged: (v) { if (v != null) setState(() => _documentType = v); },
+                  ),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 12),
 
             Row(children: [
               Expanded(child: _field('Date', _dateCtrl, keyboardType: TextInputType.datetime)),

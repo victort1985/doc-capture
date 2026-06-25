@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>חתימה על תעודה</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, Arial, sans-serif; background: #f5f5f5; direction: rtl; }
+  .container { max-width: 600px; margin: 0 auto; padding: 16px; }
+  .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  h1 { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 4px; }
+  h2 { font-size: 15px; color: #555; font-weight: 400; margin-bottom: 16px; }
+  .doctype { font-size: 20px; font-weight: 800; color: #0e1642; border: 2px solid #0e1642; border-radius: 8px;
+    display: inline-block; padding: 4px 14px; margin-bottom: 12px; }
+  .field-row { display: flex; gap: 8px; margin-bottom: 8px; }
+  .field { flex: 1; }
+  label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 3px; }
+  input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; direction: rtl; }
+  input:focus { outline: none; border-color: #0e1642; }
+  .required input:focus, .required input:valid { border-color: #0e1642; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: #f0f0f0; padding: 6px 8px; text-align: right; font-weight: 700; border: 1px solid #ddd; }
+  td { padding: 6px 8px; border: 1px solid #ddd; text-align: right; }
+  td:first-child { text-align: center; width: 50px; }
+  th:first-child { text-align: center; width: 50px; }
+  .sig-area { border: 2px dashed #ccc; border-radius: 10px; background: #fafafa; cursor: crosshair; touch-action: none; display: block; }
+  .btn { display: block; width: 100%; padding: 14px; background: #0e1642; color: white; border: none; border-radius: 10px;
+    font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 12px; }
+  .btn:disabled { background: #999; }
+  .btn-clear { background: none; color: #888; border: 1px solid #ddd; padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; cursor: pointer; margin-top: 8px; }
+  .info-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
+  .info-label { color: #888; font-weight: 600; }
+  .success { text-align: center; padding: 40px 20px; }
+  .success-icon { font-size: 60px; margin-bottom: 16px; }
+  .success h2 { font-size: 22px; color: #1a1a2e; font-weight: 800; }
+  .already { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; text-align: center; }
+  .step { display: none; }
+  .step.active { display: block; }
+  .step-indicator { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
+  .dot { width: 28px; height: 28px; border-radius: 50%; background: #ddd; display: flex; align-items: center;
+    justify-content: center; font-size: 13px; font-weight: 700; color: white; }
+  .dot.active { background: #0e1642; }
+  .dot.done { background: #22c55e; }
+  .sep { flex: 1; height: 2px; background: #ddd; }
+  .sep.done { background: #22c55e; }
+  .step-label { font-size: 11px; color: #888; text-align: center; }
+  .note-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .company-name { font-size: 16px; font-weight: 800; }
+  .company-sub { font-size: 11px; color: #666; }
+  .note-num { font-size: 22px; font-weight: 900; color: #0e1642; }
+  .note-num-label { font-size: 11px; color: #888; text-align: left; }
+  .msg { font-size: 13px; color: #555; margin-top: 8px; line-height: 1.5; }
+  .error { background: #fee; border: 1px solid #f88; border-radius: 8px; padding: 12px; color: #c00; font-size: 14px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- Loading -->
+<div id="loading" class="card" style="text-align:center;padding:40px">
+  <div style="font-size:28px;margin-bottom:12px">⏳</div>
+  <div>טוען את התעודה...</div>
+</div>
+
+<!-- Already signed -->
+<div id="already-signed" class="card success" style="display:none">
+  <div class="success-icon">✅</div>
+  <h2>התעודה כבר נחתמה</h2>
+  <p class="msg" id="signed-at"></p>
+</div>
+
+<!-- Not found -->
+<div id="not-found" class="card success" style="display:none">
+  <div class="success-icon">❌</div>
+  <h2>הקישור לא נמצא</h2>
+  <p class="msg">הקישור אינו תקין או שפג תוקפו.</p>
+</div>
+
+<!-- Main form — step 1: identity -->
+<div id="step1" class="step">
+  <div class="card">
+    <div class="step-indicator">
+      <div class="dot active" id="d1">1</div>
+      <div class="sep" id="s1"></div>
+      <div class="dot" id="d2">2</div>
+      <div class="sep" id="s2"></div>
+      <div class="dot" id="d3">3</div>
+    </div>
+
+    <h1>חתימה על תעודה</h1>
+    <h2 id="doc-type-header">תעודת משלוח</h2>
+
+    <p class="msg" style="margin-bottom:16px">
+      אנא מלא את פרטיך. לאחר מכן תוצג התעודה לחתימה.
+    </p>
+
+    <div id="step1-error" class="error" style="display:none"></div>
+
+    <div class="field required" style="margin-bottom:12px">
+      <label>שם מלא *</label>
+      <input id="signer-name" type="text" placeholder="ישראל ישראלי" required autocomplete="name">
+    </div>
+    <div class="field" style="margin-bottom:16px">
+      <label>תפקיד</label>
+      <input id="signer-role" type="text" placeholder="מנהל / טכנאי / לקוח">
+    </div>
+
+    <button class="btn" onclick="goStep2()">המשך לתעודה ←</button>
+  </div>
+</div>
+
+<!-- Step 2: view note -->
+<div id="step2" class="step">
+  <div class="card">
+    <div class="step-indicator">
+      <div class="dot done" id="d1b">✓</div>
+      <div class="sep done" id="s1b"></div>
+      <div class="dot active" id="d2b">2</div>
+      <div class="sep" id="s2b"></div>
+      <div class="dot" id="d3b">3</div>
+    </div>
+
+    <!-- Note header -->
+    <div class="note-header">
+      <div>
+        <div class="company-name" id="company-name">החברה</div>
+        <div class="company-sub" id="company-sub"></div>
+      </div>
+      <div style="text-align:left">
+        <div class="note-num" id="note-num"></div>
+        <div class="note-num-label">מספר תעודה</div>
+      </div>
+    </div>
+
+    <div style="border-bottom:1px solid #ddd;margin-bottom:12px"></div>
+    <div style="text-align:center;margin-bottom:12px">
+      <span class="doctype" id="doctype-display"></span>
+    </div>
+
+    <!-- Note fields -->
+    <div class="info-row"><span class="info-label">תאריך:</span><span id="note-date"></span></div>
+    <div class="info-row"><span class="info-label">שם:</span><span id="note-client"></span></div>
+    <div class="info-row"><span class="info-label">נמסר לידי:</span><span id="note-delivered-to"></span></div>
+    <div class="info-row" id="note-role-row" style="display:none"><span class="info-label">תפקיד:</span><span id="note-role"></span></div>
+
+    <div style="margin-top:12px">
+      <table>
+        <thead>
+          <tr><th>כמות</th><th>שמות הפריטים</th><th>הערות</th></tr>
+        </thead>
+        <tbody id="items-body"></tbody>
+      </table>
+    </div>
+
+    <div id="remarks-row" style="display:none;margin-top:8px;font-size:13px">
+      <span class="info-label">הערות:</span> <span id="note-remarks"></span>
+    </div>
+
+    <button class="btn" style="margin-top:16px" onclick="goStep3()">
+      עבור לחתימה ←
+    </button>
+  </div>
+</div>
+
+<!-- Step 3: signature -->
+<div id="step3" class="step">
+  <div class="card">
+    <div class="step-indicator">
+      <div class="dot done">✓</div>
+      <div class="sep done"></div>
+      <div class="dot done">✓</div>
+      <div class="sep done"></div>
+      <div class="dot active">3</div>
+    </div>
+
+    <h1>חתימה</h1>
+    <p class="msg" style="margin-bottom:16px">
+      חתום/י כאן עם האצבע.
+    </p>
+
+    <canvas id="sig-canvas" class="sig-area" width="540" height="200"></canvas>
+    <button class="btn-clear" onclick="clearSig()">נקה חתימה</button>
+
+    <div id="step3-error" class="error" style="display:none"></div>
+
+    <button class="btn" id="submit-btn" onclick="submitSignature()">
+      אשר וחתום על התעודה ✓
+    </button>
+    <button class="btn-clear" style="margin-top:8px;width:100%" onclick="goStep2()">← חזרה לתעודה</button>
+  </div>
+</div>
+
+<!-- Success -->
+<div id="success" class="step">
+  <div class="card success">
+    <div class="success-icon">✅</div>
+    <h2>תודה! התעודה נחתמה בהצלחה</h2>
+    <p class="msg" id="success-msg" style="margin-top:8px"></p>
+  </div>
+</div>
+
+</div><!-- /container -->
+
+<script>
+const token = location.pathname.split('/').pop();
+const API = '/api/delivery-notes/sign/' + token;
+let noteData = null;
+let isDrawing = false;
+let lastX = 0, lastY = 0;
+
+// ── Load note ──────────────────────────────────────────────────────────────
+async function loadNote() {
+  try {
+    const r = await fetch(API);
+    if (!r.ok) { show('not-found'); hide('loading'); return; }
+    const data = await r.json();
+    hide('loading');
+
+    if (data.alreadySigned) {
+      document.getElementById('signed-at').textContent =
+        data.signedAt ? 'נחתמה ב: ' + new Date(data.signedAt).toLocaleDateString('he-IL') : '';
+      show('already-signed');
+      return;
+    }
+
+    noteData = data;
+    fillNote(data);
+    show('step1');
+  } catch(e) {
+    hide('loading');
+    show('not-found');
+  }
+}
+
+function fillNote(d) {
+  document.getElementById('doc-type-header').textContent = d.documentType || 'תעודת משלוח';
+  document.getElementById('doctype-display').textContent = d.documentType || 'תעודת משלוח';
+  document.getElementById('company-name').textContent = d.companyName || '';
+  document.getElementById('note-num').textContent = 'DN' + (d.noteNumber || '');
+  document.getElementById('note-date').textContent = d.date || '';
+  document.getElementById('note-client').textContent = d.clientName || '';
+
+  // Items
+  const tbody = document.getElementById('items-body');
+  tbody.innerHTML = '';
+  (d.items || []).forEach(item => {
+    if (!item.name) return;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${item.qty||1}</td><td>${item.name||''}</td><td>${item.notes||''}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  if (d.remarks) {
+    document.getElementById('remarks-row').style.display = '';
+    document.getElementById('note-remarks').textContent = d.remarks;
+  }
+}
+
+function updateDeliveredTo() {
+  const name = document.getElementById('signer-name').value.trim();
+  const role = document.getElementById('signer-role').value.trim();
+  document.getElementById('note-delivered-to').textContent = name;
+  if (role) {
+    document.getElementById('note-role-row').style.display = '';
+    document.getElementById('note-role').textContent = role;
+  }
+}
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function goStep2() {
+  const name = document.getElementById('signer-name').value.trim();
+  if (!name) {
+    const el = document.getElementById('step1-error');
+    el.textContent = 'יש להזין שם מלא';
+    el.style.display = '';
+    return;
+  }
+  document.getElementById('step1-error').style.display = 'none';
+  updateDeliveredTo();
+  hide('step1'); show('step2');
+  window.scrollTo(0,0);
+}
+
+function goStep3() {
+  hide('step2'); show('step3');
+  setTimeout(() => initCanvas(), 100);
+  window.scrollTo(0,0);
+}
+
+// ── Signature canvas ───────────────────────────────────────────────────────
+function initCanvas() {
+  const canvas = document.getElementById('sig-canvas');
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width - 40;
+  canvas.height = 180;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const getPos = (e) => {
+    const r = canvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  };
+
+  canvas.onmousedown = canvas.ontouchstart = (e) => {
+    e.preventDefault();
+    isDrawing = true;
+    const pos = getPos(e);
+    lastX = pos.x; lastY = pos.y;
+  };
+  canvas.onmousemove = canvas.ontouchmove = (e) => {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(lastX, lastY);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+    lastX = pos.x; lastY = pos.y;
+  };
+  canvas.onmouseup = canvas.onmouseleave = canvas.ontouchend = () => { isDrawing = false; };
+}
+
+function clearSig() {
+  const canvas = document.getElementById('sig-canvas');
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+}
+
+function isSigEmpty() {
+  const canvas = document.getElementById('sig-canvas');
+  const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  return !data.some(v => v !== 0);
+}
+
+// ── Submit ─────────────────────────────────────────────────────────────────
+async function submitSignature() {
+  const errEl = document.getElementById('step3-error');
+  if (isSigEmpty()) {
+    errEl.textContent = 'יש לחתום לפני האישור';
+    errEl.style.display = '';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'שולח...';
+
+  const canvas = document.getElementById('sig-canvas');
+  const signature = canvas.toDataURL('image/png');
+  const signerName = document.getElementById('signer-name').value.trim();
+  const signerRole = document.getElementById('signer-role').value.trim();
+
+  try {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ signerName, signerRole, signature }),
+    });
+    if (!r.ok) throw new Error('שגיאה בשרת');
+    hide('step3');
+    document.getElementById('success-msg').textContent =
+      `${signerName} — חתמת על התעודה בהצלחה.`;
+    show('success');
+    window.scrollTo(0,0);
+  } catch(e) {
+    errEl.textContent = e.message || 'שגיאה. נסה שוב.';
+    errEl.style.display = '';
+    btn.disabled = false;
+    btn.textContent = 'אשר וחתום על התעודה ✓';
+  }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function show(id) { const el = document.getElementById(id); if(el) el.style.display = ''; }
+function hide(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
+
+loadNote();
+</script>
+</body>
+</html>
