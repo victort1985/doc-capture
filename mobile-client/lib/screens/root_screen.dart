@@ -86,6 +86,7 @@ class _RootScreenState extends State<RootScreen> {
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        height: 70,
         destinations: [
           NavigationDestination(
             icon: const Icon(Icons.inventory_2_outlined),

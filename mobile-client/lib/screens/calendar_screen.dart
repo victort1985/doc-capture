@@ -255,7 +255,7 @@ class _MonthView extends StatelessWidget {
       const Divider(height: 1),
       Expanded(
         child: dayEvents.isEmpty
-            ? Center(child: Text('No events', style: const TextStyle(color: AppColors.inkSoft)))
+            ? Center(child: Text(AppLocalizations.of(context)?.calendarNoEvents ?? 'No events', style: const TextStyle(color: AppColors.inkSoft)))
             : ListView.separated(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 80),
                 itemCount: dayEvents.length,
@@ -442,6 +442,23 @@ class _WeekTimelineViewState extends State<_WeekTimelineView> {
   late final ScrollController _vScroll;
   late DateTime _weekStart;
 
+  /// Returns a 2-char day abbreviation correct for the given locale.
+  /// For Hebrew we manually map weekday → letter (א–ו + שב) because
+  /// DateFormat('E','he') returns "יום א׳" — all starting with "יו" —
+  /// so .substring(0,2) would show the same string for every day.
+  String _weekDayAbbr(DateTime d, String locale) {
+    if (locale == 'he') {
+      // Dart weekday: Mon=1, Tue=2, Wed=3, Thu=4, Fri=5, Sat=6, Sun=7
+      // Hebrew week starts Sunday = א (aleph)
+      const heMap = {1: 'ב', 2: 'ג', 3: 'ד', 4: 'ה', 5: 'ו', 6: 'שב', 7: 'א'};
+      return heMap[d.weekday] ?? '';
+    }
+    final full = DateFormat('E', locale).format(d);
+    // Take first 2 characters, handling multi-byte correctly
+    final runes = full.runes.toList();
+    return String.fromCharCodes(runes.take(2));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -483,7 +500,7 @@ class _WeekTimelineViewState extends State<_WeekTimelineView> {
                       : null,
                   child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                     Text(
-                      DateFormat('E', widget.locale).format(d).substring(0, 2),
+                      _weekDayAbbr(d, widget.locale),
                       style: TextStyle(fontSize: 10, color: isToday ? AppColors.primary : AppColors.inkSoft),
                     ),
                     const SizedBox(height: 2),
