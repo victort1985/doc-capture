@@ -159,27 +159,46 @@ jobs:
       - name: Generate Vixor app icons
         run: python3 -m pip install Pillow --break-system-packages -q 2>/dev/null || pip3 install Pillow -q && python3 ../.github/scripts/patch_ios_icon.py
 
-      # Unsigned archive — no Apple Developer account is assumed here.
-      # Sign it afterwards via Xcode Organizer or a resign service, exactly
-      # as documented in installation-guide.md section 4.4.
-      # `flutter build ipa --no-codesign` can produce an unsigned
-      # .xcarchive, but the final archive -> .ipa export step always calls
-      # Xcode's own `xcodebuild -exportArchive`, which requires a signing
-      # team regardless of --no-codesign (see flutter/flutter#101765) — it
-      # fails with "Development Team... Provisioning Profile" even here.
-      # The standard workaround: build just the .app bundle and pack the
-      # IPA's Payload/ folder by hand, skipping the export step entirely.
-      - name: flutter build ios --no-codesign
+      # Patch Xcode project to remove code-signing requirements so that
+      # `flutter build ios --no-codesign` actually works in Flutter 3.44+.
+      # Flutter's --no-codesign flag is supposed to do this, but a regression
+      # (flutter/flutter#101765) means xcodebuild still looks for a team.
+      # We clear DEVELOPMENT_TEAM and disable CODE_SIGNING_REQUIRED in the
+      # pbxproj file before building, then pack the resulting .app into an
+      # unsigned IPA (Payload/Runner.app zipped).  The IPA can be side-loaded
+      # with AltStore / SideStore, or resigned with a paid Apple Developer
+      # certificate before submission.
+      - name: Patch Xcode project — disable code signing
+        run: |
+          PROJ=ios/Runner.xcodeproj/project.pbxproj
+          # Clear development team
+          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' "$PROJ" || \
+          sed -i    's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' "$PROJ"
+          # Set empty code-sign identity
+          sed -i '' 's/CODE_SIGN_IDENTITY = ".*";/CODE_SIGN_IDENTITY = "";/g' "$PROJ" || \
+          sed -i    's/CODE_SIGN_IDENTITY = ".*";/CODE_SIGN_IDENTITY = "";/g' "$PROJ"
+          # Disable provisioning profile
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PROJ" || \
+          sed -i    's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PROJ"
+          echo "Patched: $(grep -c 'DEVELOPMENT_TEAM = ""' $PROJ) team entries cleared"
+
+      - name: Build iOS app (unsigned .app bundle)
         run: |
           set -o pipefail
-          # Flutter 3.44+ ignores --no-codesign for device builds.
-          # Build for simulator instead — no signing required.
-          flutter build ios --simulator --debug 2>&1 | tee /tmp/build-ios.log
+          flutter build ios \
+            --release \
+            --no-codesign \
+            2>&1 | tee /tmp/build-ios.log
 
-      - name: Package simulator app as zip
+      - name: Package unsigned IPA (Payload/Runner.app → .ipa)
         run: |
-          cd build/ios/iphonesimulator
-          zip -r ../../../doc-capture-ios-simulator.zip Runner.app
+          set -e
+          APP_DIR=build/ios/iphoneos
+          mkdir -p "$APP_DIR/Payload"
+          cp -r "$APP_DIR/Runner.app" "$APP_DIR/Payload/"
+          cd "$APP_DIR"
+          zip -r ../../../vixor-erp-ios-unsigned.ipa Payload
+          echo "IPA size: $(du -sh ../../../vixor-erp-ios-unsigned.ipa | cut -f1)"
 
       - name: Push diagnostic log on failure
         if: failure()
@@ -196,8 +215,8 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: doc-capture-ios-simulator
-          path: mobile-client/doc-capture-ios-simulator.zip
+          name: vixor-erp-ios-unsigned
+          path: mobile-client/vixor-erp-ios-unsigned.ipa
         continue-on-error: true
 
       - name: Push IPA to git as a fallback delivery path
@@ -206,7 +225,7 @@ jobs:
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git checkout -B build-ios
-          git add -f mobile-client/doc-capture-ios-simulator.zip
+          git add -f mobile-client/vixor-erp-ios-unsigned.ipa
           git commit -m "build: ios unsigned ipa"
           git push --force origin build-ios
 
@@ -214,4 +233,4 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: mobile-client/doc-capture-ios-simulator.zip
+          files: mobile-client/vixor-erp-ios-unsigned.ipa
