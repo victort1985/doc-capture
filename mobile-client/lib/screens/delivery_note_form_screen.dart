@@ -48,9 +48,6 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   String? _lesseeSig;
 
   // Autocomplete suggestions
-  List<String> _clientSuggestions = [];
-  List<String> _fieldSuggestions = [];
-  String? _activeSuggestionField;
 
   @override
   void initState() {
@@ -106,17 +103,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     } catch (_) { return null; }
   }
 
-  Future<void> _autocompleteClient(String q) async {
-    if (q.length < 2) { setState(() => _clientSuggestions = []); return; }
-    final s = await widget.svc.autocompleteClients(q);
-    if (mounted) setState(() => _clientSuggestions = s);
-  }
 
-  Future<void> _autocompleteField(String field, String q) async {
-    if (q.length < 2) { setState(() { _fieldSuggestions = []; _activeSuggestionField = null; }); return; }
-    final s = await widget.svc.autocompleteField(field, q);
-    if (mounted) setState(() { _fieldSuggestions = s; _activeSuggestionField = field; });
-  }
 
   Map<String, dynamic> _toDto() => {
     'clientName': _clientNameCtrl.text,
@@ -207,6 +194,8 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
       subject: 'Delivery Note #$noteNum',
     );
   }
+
+  Future<pw.Document> _buildPdf() async {
     final pdf = pw.Document();
 
     // ── Fonts ───────────────────────────────────────────────────────────────
@@ -427,23 +416,6 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     return pdf;
   }
 
-  Widget _suggestionList(List<String> suggestions, TextEditingController ctrl, VoidCallback onPick) {
-    if (suggestions.isEmpty) return const SizedBox.shrink();
-    return Material(
-      elevation: 4,
-      borderRadius: BorderRadius.circular(8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: suggestions.map((s) => InkWell(
-          onTap: () { ctrl.text = s; onPick(); },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            child: Text(s, style: const TextStyle(fontSize: 13)),
-          ),
-        )).toList(),
-      ),
-    );
-  }
 
   Widget _field(String label, TextEditingController ctrl, {
     TextInputType? keyboardType,
@@ -531,7 +503,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 Padding(padding: const EdgeInsets.only(top: 4), child: Text('№ ${_note!.noteNumber ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
             ]),
 
-            _field('Client name', _clientNameCtrl, isNameField: true, contactFilter: 'client', onContactSelected: (contact) { setState(() { if (contact.phone != null) _clientPhoneCtrl?.text = contact.phone!; }); }),
+            _field('Client name', _clientNameCtrl, isNameField: true, contactFilter: 'client', onContactSelected: (contact) { setState(() { if (contact.phone != null) _clientPhoneCtrl.text = contact.phone!; }); }),
             _field('Client address', _clientAddrCtrl, cacheKey: 'clientAddress'),
             _field('Delivered to', _deliveredToCtrl, isNameField: true),
             Row(children: [
