@@ -68,57 +68,85 @@ class _RootScreenState extends State<RootScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
+
+    final screens = [
+      const InventoryScreen(),
+      CallsListScreen(key: _callsListKey),
+      const PhoneBookScreen(),
+      const CalendarScreen(),
+      const ManagementScreen(),
+      DeliveryNotesScreen(),
+    ];
+
+    final destinations = [
+      (Icons.inventory_2_outlined, Icons.inventory_2, l10n.inventoryTitle),
+      (Icons.support_agent_outlined, Icons.support_agent, l10n.callsTitle),
+      (Icons.contacts_outlined, Icons.contacts, l10n.phoneBookTitle),
+      (Icons.calendar_month_outlined, Icons.calendar_month, l10n.calendarTitle),
+      (Icons.build_outlined, Icons.build, l10n.managementTitle),
+      (Icons.assignment_outlined, Icons.assignment, l10n.deliveryNotesTitle),
+    ];
+
+    if (isDesktop) {
+      // ── Desktop layout: NavigationRail sidebar + content ──────────────────
+      return Scaffold(
+        body: OrganizationLogoBackground(
+          child: Row(children: [
+            NavigationRail(
+              extended: MediaQuery.of(context).size.width >= 1200,
+              selectedIndex: _index,
+              onDestinationSelected: (i) => setState(() => _index = i),
+              backgroundColor: const Color(0xFF0E1642),
+              selectedIconTheme: const IconThemeData(color: Color(0xFFF2701C)),
+              unselectedIconTheme: const IconThemeData(color: Colors.white54),
+              selectedLabelTextStyle: const TextStyle(color: Color(0xFFF2701C), fontWeight: FontWeight.w700, fontSize: 13),
+              unselectedLabelTextStyle: const TextStyle(color: Colors.white54, fontSize: 12),
+              leading: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Column(children: [
+                  Container(
+                    width: 40, height: 40,
+                    decoration: BoxDecoration(color: const Color(0xFFF2701C), borderRadius: BorderRadius.circular(10)),
+                    child: const Center(child: Text('V', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22))),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text('VIXOR', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 2)),
+                ]),
+              ),
+              destinations: destinations.map((d) => NavigationRailDestination(
+                icon: Icon(d.$1),
+                selectedIcon: Icon(d.$2),
+                label: Text(d.$3),
+              )).toList(),
+            ),
+            const VerticalDivider(width: 1, thickness: 1, color: Color(0x22FFFFFF)),
+            Expanded(
+              child: IndexedStack(index: _index, children: screens),
+            ),
+          ]),
+        ),
+      );
+    }
+
+    // ── Mobile layout: bottom NavigationBar ───────────────────────────────────
     return Scaffold(
       body: OrganizationLogoBackground(
         child: IndexedStack(
           index: _index,
-          children: [
-            const InventoryScreen(),
-            CallsListScreen(key: _callsListKey),
-            const PhoneBookScreen(),
-            const CalendarScreen(),
-            const ManagementScreen(),
-            DeliveryNotesScreen(),
-          ],
+          children: screens,
         ),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        height: 64,   // компактнее: иконка 24 + отступы + метка 10pt = ~64
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.inventory_2_outlined),
-            selectedIcon: const Icon(Icons.inventory_2),
-            label: l10n.inventoryTitle,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.support_agent_outlined),
-            selectedIcon: const Icon(Icons.support_agent),
-            label: l10n.callsTitle,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.contacts_outlined),
-            selectedIcon: const Icon(Icons.contacts),
-            label: l10n.phoneBookTitle,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.calendar_month_outlined),
-            selectedIcon: const Icon(Icons.calendar_month),
-            label: l10n.calendarTitle,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.build_outlined),
-            selectedIcon: const Icon(Icons.build),
-            label: l10n.managementTitle,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.assignment_outlined),
-            selectedIcon: const Icon(Icons.assignment),
-            label: l10n.deliveryNotesTitle,
-          ),
-        ],
+        height: 64,
+        destinations: destinations.map((d) => NavigationDestination(
+          icon: Icon(d.$1),
+          selectedIcon: Icon(d.$2),
+          label: d.$3,
+        )).toList(),
       ),
     );
   }
