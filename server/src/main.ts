@@ -45,18 +45,32 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, httpsOptions ? { httpsOptions } : undefined);
 
-  // ── Signing page — serve for /sign/* ─────────────────────────────────────
-  const express = await import('express');
+  // ── Signing page — server-side data injection ────────────────────────────
+  // Data is injected into HTML at serve time so the browser makes NO extra
+  // API calls — this bypasses Cloudflare Access on /api/* completely.
+  const express  = await import('express');
   const nodePath = await import('path');
-  const signPageDir = nodePath.resolve(process.cwd(), 'public-sign');
+  const signPageDir  = nodePath.resolve(process.cwd(), 'public-sign');
   const signPageFile = nodePath.join(signPageDir, 'index.html');
 
-  // Serve static assets from public-sign/
   app.use('/sign', express.static(signPageDir));
 
-  // Any /sign/:token → return the HTML shell
-  app.getHttpAdapter().getInstance().get('/sign/*', (_req: any, res: any) => {
-    res.sendFile(signPageFile);
+  app.getHttpAdapter().getInstance().get('/sign/:token', async (req: any, res: any) => {
+    const token: string = req.params.token;
+    let noteData: any = null;
+    try {
+      const { DeliveryNotesService } = await import('./modules/delivery-notes/delivery-notes.service');
+      const svc = app.get(DeliveryNotesService);
+      noteData = await svc.getNoteForSigning(token);
+    } catch (_) {}
+
+    const html     = fs.readFileSync(signPageFile, 'utf-8');
+    const injected = html.replace(
+      '</head>',
+      `<script>window.__NOTE_DATA__=${JSON.stringify(noteData)};window.__TOKEN__=${JSON.stringify(token)};</script>\n</head>`
+    );
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(injected);
   });
 
   // Increase body size limit to 5 MB for base64 logos and signatures

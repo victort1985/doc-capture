@@ -205,43 +205,33 @@
 </div><!-- /container -->
 
 <script>
-const token = location.pathname.split('/').pop();
+// Data injected server-side — no extra API call needed (avoids Cloudflare Access on /api/*)
+const token = window.__TOKEN__ || location.pathname.split('/').pop();
 const API = '/api/delivery-notes/sign/' + token;
 let noteData = null;
 let isDrawing = false;
 let lastX = 0, lastY = 0;
 
 // ── Load note ──────────────────────────────────────────────────────────────
-async function loadNote() {
-  try {
-    const r = await fetch(API);
-    if (!r.ok) {
-      console.error('API error:', r.status, r.statusText);
-      hide('loading');
-      show('not-found');
-      return;
-    }
-    const data = await r.json();
-    hide('loading');
+function loadNote() {
+  hide('loading');
+  const data = window.__NOTE_DATA__;
 
-    if (data.alreadySigned) {
-      document.getElementById('signed-at').textContent =
-        data.signedAt ? 'נחתמה ב: ' + new Date(data.signedAt).toLocaleDateString('he-IL') : '';
-      show('already-signed');
-      return;
-    }
-
-    noteData = data;
-    fillNote(data);
-    show('step1');
-  } catch(e) {
-    console.error('Network error:', e);
-    hide('loading');
-    // Show error details for debugging
-    document.getElementById('loading').innerHTML = '<div style="color:red;padding:20px;direction:ltr;font-size:12px">Error loading note.<br>Check console for details.<br>' + String(e) + '</div>';
-    document.getElementById('loading').style.display = '';
+  if (!data) {
     show('not-found');
+    return;
   }
+
+  if (data.alreadySigned) {
+    document.getElementById('signed-at').textContent =
+      data.signedAt ? 'נחתמה ב: ' + new Date(data.signedAt).toLocaleDateString('he-IL') : '';
+    show('already-signed');
+    return;
+  }
+
+  noteData = data;
+  fillNote(data);
+  show('step1');
 }
 
 function fillNote(d) {
@@ -367,7 +357,8 @@ async function submitSignature() {
   const signerRole = document.getElementById('signer-role').value.trim();
 
   try {
-    const r = await fetch(API, {
+    const submitUrl = '/api/delivery-notes/sign/' + token;
+    const r = await fetch(submitUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ signerName, signerRole, signature }),
