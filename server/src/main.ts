@@ -119,6 +119,8 @@ async function bootstrap() {
           // 'unsafe-inline' — script-src stays locked down).
           'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           'font-src': ["'self'", 'https://fonts.gstatic.com'],
+          // Signing page injects window.__NOTE_DATA__ inline — needs unsafe-inline
+          'script-src': ["'self'", "'unsafe-inline'"],
         },
       },
     }),
