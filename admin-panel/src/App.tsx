@@ -17,6 +17,7 @@ import WarehousePage from './pages/WarehousePage';
 import ReportsPage from './pages/ReportsPage';
 import PermissionsPage from './pages/PermissionsPage';
 import DeliveryNoteSettingsPage from './pages/DeliveryNoteSettingsPage';
+import DeliveryNotesPage from './pages/DeliveryNotesPage';
 import CalendarSyncPage from './pages/CalendarSyncPage';
 
 export default function App() {
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/permissions" element={<PermissionsPage />} />
           <Route path="/delivery-settings" element={<DeliveryNoteSettingsPage />} />
+          <Route path="/delivery-notes" element={<DeliveryNotesPage />} />
           <Route path="/calendar-sync" element={<CalendarSyncPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />

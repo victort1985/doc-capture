@@ -56,7 +56,7 @@ export default function FleetPage() {
 
   async function remove(id: number) {
     if (!confirm('Delete this vehicle?')) return;
-    await apiFetch(`/fleet/vehicles/${id}`, { method: 'DELETE' }); load();
+    await apiFetch(`/fleet/vehicles/${id}`, { method: 'DELETE' }); setVehicles(prev => prev.filter((v: any) => v.id !== id));
   }
 
   const f = (field: keyof Vehicle, type = 'text') => (

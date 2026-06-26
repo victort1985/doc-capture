@@ -46,7 +46,7 @@ export default function TemplatesPage() {
   async function removeTemplate(id: number) {
     if (!confirm('Delete this template?')) return;
     await apiFetch(`/templates/${id}`, { method: 'DELETE' });
-    load();
+    setTemplates((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
 
   return (

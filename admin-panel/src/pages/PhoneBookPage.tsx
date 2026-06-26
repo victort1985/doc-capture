@@ -107,7 +107,7 @@ export default function PhoneBookPage() {
   async function removeContact(id: number) {
     if (!confirm('Delete this contact?')) return;
     await apiFetch(`/phonebook/${id}`, { method: 'DELETE' });
-    load();
+    setContacts((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
 
   return (

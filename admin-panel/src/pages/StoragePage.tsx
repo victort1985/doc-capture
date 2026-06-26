@@ -94,7 +94,7 @@ export default function StoragePage() {
   async function removeConnection(id: number) {
     if (!confirm('Delete this storage connection?')) return;
     await apiFetch(`/storage/connections/${id}`, { method: 'DELETE' });
-    load();
+    setConnections((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
 
   async function testConnection(id: number) {

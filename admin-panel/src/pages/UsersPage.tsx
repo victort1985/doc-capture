@@ -144,7 +144,7 @@ export default function UsersPage() {
   async function removeUser(id: number) {
     if (!confirm('Delete this user? This cannot be undone.')) return;
     await apiFetch(`/users/${id}`, { method: 'DELETE' });
-    load();
+    setUsers((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
 
   return (

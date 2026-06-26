@@ -74,7 +74,7 @@ export default function OrganizationsPage() {
   async function removeOrg(id: number) {
     if (!confirm('Delete this organization? Users in it keep their accounts but lose their organization assignment.')) return;
     await apiFetch(`/organizations/${id}`, { method: 'DELETE' });
-    load();
+    setOrgs((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
 
   async function uploadLogo(id: number, file: File) {

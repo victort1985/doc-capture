@@ -42,7 +42,7 @@ export default function WarehousePage() {
 
   async function removeCategory(id: number) {
     if (!confirm('Delete category?')) return;
-    await apiFetch(`/warehouse/categories/${id}`, { method: 'DELETE' }); load();
+    await apiFetch(`/warehouse/categories/${id}`, { method: 'DELETE' }); setCategories((prev: any[]) => prev.filter(x => x.id !== id));
   }
 
   async function generateBarcode() {

@@ -92,7 +92,7 @@ export default function LocationsPage() {
     if (!confirm('Delete this region? Cities assigned to it must be removed first.')) return;
     try {
       await apiFetch(`/locations/regions/${id}`, { method: 'DELETE' });
-      load();
+      setCities((prev: any[]) => prev.filter((x: any) => x.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete region');
     }
@@ -102,7 +102,7 @@ export default function LocationsPage() {
     if (!confirm('Delete this city? Locations assigned to it must be removed first.')) return;
     try {
       await apiFetch(`/locations/cities/${id}`, { method: 'DELETE' });
-      load();
+      setCities((prev: any[]) => prev.filter((x: any) => x.id !== id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete city');
     }
@@ -111,7 +111,7 @@ export default function LocationsPage() {
   async function removeLocation(id: number) {
     if (!confirm('Delete this location?')) return;
     await apiFetch(`/locations/${id}`, { method: 'DELETE' });
-    load();
+    setCities((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
 
   return (

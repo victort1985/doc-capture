@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom';
-import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall, Building2, Contact, Car, Package, BarChart2, ShieldCheck, FileSignature, CalendarDays } from 'lucide-react';
+import { Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall, Building2, Contact, Car, Package, BarChart2, ShieldCheck, FileSignature, FileText, CalendarDays } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import StampMark from './StampMark';
 import CopyrightFooter from './CopyrightFooter';
@@ -13,6 +13,7 @@ const BASE_NAV = [
   { to: '/warehouse', label: 'Warehouse', icon: Package },
   { to: '/reports', label: 'Reports', icon: BarChart2 },
   { to: '/permissions', label: 'Permissions', icon: ShieldCheck },
+  { to: '/delivery-notes',   label: 'Delivery notes',  icon: FileText },
   { to: '/delivery-settings', label: 'Note settings', icon: FileSignature },
   { to: '/calendar-sync', label: 'Calendar sync', icon: CalendarDays },
   { to: '/storage', label: 'Storage connections', icon: HardDrive },
