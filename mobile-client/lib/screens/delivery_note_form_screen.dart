@@ -85,8 +85,20 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
       final shareText = 'לחתימה על תעודה מס׳ $noteNum:\n$url';
 
       if (!mounted) return;
-      // Show share sheet
-      await Share.share(shareText, subject: 'תעודה מספר $noteNum לחתימה');
+
+      // On iOS, Share popover requires the source button's position.
+      // Get it from the AppBar's share icon via its GlobalKey,
+      // or fall back to screen centre if unavailable.
+      final box = context.findRenderObject() as RenderBox?;
+      final rect = box != null
+          ? box.localToGlobal(Offset.zero) & box.size
+          : const Rect.fromLTWH(0, 0, 100, 100);
+
+      await Share.share(
+        shareText,
+        subject: 'תעודה מספר $noteNum לחתימה',
+        sharePositionOrigin: rect,
+      );
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
@@ -99,7 +111,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   String _fmtDate(String iso) {
     if (iso.length == 10 && iso.contains('-')) {
       final p = iso.split('-');
-      if (p.length == 3) return '\${p[2]}/\${p[1]}/\${p[0]}';
+      if (p.length == 3) return '${p[2]}/${p[1]}/${p[0]}';
     }
     return iso;
   }
@@ -234,9 +246,16 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     final file = File('${dir.path}/delivery_note_$noteNum.pdf');
     await file.writeAsBytes(bytes);
 
+    // iOS requires sharePositionOrigin for the popover anchor
+    final box = context.findRenderObject() as RenderBox?;
+    final rect = box != null
+        ? box.localToGlobal(Offset.zero) & box.size
+        : const Rect.fromLTWH(0, 0, 100, 100);
+
     await Share.shareXFiles(
       [XFile(file.path, mimeType: 'application/pdf')],
       subject: 'Delivery Note #$noteNum',
+      sharePositionOrigin: rect,
     );
   }
 
