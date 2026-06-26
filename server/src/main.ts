@@ -78,14 +78,43 @@ async function bootstrap() {
   const signPageFile = nodePath.join(signPageDir, 'index.html');
   const xApp = app.getHttpAdapter().getInstance();
 
-  // GET /:token on sign.doc-capture.app subdomain (no CF Access)
-  xApp.get('/:token([a-f0-9]{40,})', async (req: any, res: any) => {
-    const host: string = req.headers.host || '';
-    if (!host.startsWith('sign.')) return req.next ? req.next() : res.status(404).end();
-    return handleSignPage(req, res, app, signPageFile, DeliveryNotesService);
+  // ── Intercept ALL requests to sign.doc-capture.app BEFORE static files ──
+  // Must be registered early so it runs before admin panel static middleware.
+  xApp.use((req: any, res: any, next: any) => {
+    const host: string = (req.headers.host || '').toLowerCase();
+    if (host.startsWith('sign.')) {
+      // Extract token from path: /TOKEN or /TOKEN/submit
+      const parts = req.path.replace(/^\//, '').split('/');
+      req.params = req.params || {};
+      req.params.token = parts[0];
+
+      if (req.method === 'POST' && parts[1] === 'submit') {
+        // Collect body and handle submit
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk; });
+        req.on('end', async () => {
+          try {
+            req.body = JSON.parse(body);
+            const svc = app.get(DeliveryNotesService);
+            const { signerName, signerRole, signature } = req.body;
+            const result = await svc.submitRemoteSignature(parts[0], signerName, signerRole, signature);
+            res.setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify(result));
+          } catch(e) {
+            res.status(400).setHeader('Content-Type', 'application/json');
+            return res.end(JSON.stringify({ error: String(e) }));
+          }
+        });
+        return;
+      }
+
+      // GET — serve signing page
+      return handleSignPage(req, res, app, signPageFile, DeliveryNotesService);
+    }
+    next();
   });
 
-  // GET /sign/:token — inject note data server-side, no browser API call
+  // GET /sign/:token — same for app.doc-capture.app/sign/TOKEN
   xApp.get('/sign/:token', async (req: any, res: any) => {
     return handleSignPage(req, res, app, signPageFile, DeliveryNotesService);
   });
