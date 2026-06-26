@@ -365,7 +365,10 @@ async function submitSignature() {
   const signerRole = document.getElementById('signer-role').value.trim();
 
   try {
-    const submitUrl = '/sign/' + token + '/submit';
+    // On sign.doc-capture.app → /TOKEN/submit
+    // On app.doc-capture.app  → /sign/TOKEN/submit
+    const isSignDomain = location.hostname.startsWith('sign.');
+    const submitUrl = isSignDomain ? '/' + token + '/submit' : '/sign/' + token + '/submit';
     const r = await fetch(submitUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

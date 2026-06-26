@@ -85,20 +85,30 @@ async function bootstrap() {
       req.params = req.params || {};
       req.params.token = parts[0];
 
-      if (req.method === 'POST' && parts[1] === 'submit') {
-        // Collect body and handle submit
+      // Handle both /TOKEN/submit and /sign/TOKEN/submit
+      let actualToken = parts[0];
+      let isSubmit = parts[1] === 'submit';
+      if (parts[0] === 'sign' && parts.length >= 3) {
+        actualToken = parts[1];
+        isSubmit = parts[2] === 'submit';
+      }
+
+      if (req.method === 'POST' && isSubmit) {
         let body = '';
-        req.on('data', (chunk: any) => { body += chunk; });
+        req.on('data', (chunk: any) => { body += chunk.toString(); });
         req.on('end', async () => {
           try {
-            req.body = JSON.parse(body);
+            const parsed = JSON.parse(body);
             const svc = app.get(DeliveryNotesService);
-            const { signerName, signerRole, signature } = req.body;
-            const result = await svc.submitRemoteSignature(parts[0], signerName, signerRole, signature);
+            const result = await svc.submitRemoteSignature(
+              actualToken, parsed.signerName, parsed.signerRole, parsed.signature
+            );
             res.setHeader('Content-Type', 'application/json');
             return res.end(JSON.stringify(result));
           } catch(e) {
-            res.status(400).setHeader('Content-Type', 'application/json');
+            console.error('[sign submit]', e);
+            res.statusCode = 400;
+            res.setHeader('Content-Type', 'application/json');
             return res.end(JSON.stringify({ error: String(e) }));
           }
         });
