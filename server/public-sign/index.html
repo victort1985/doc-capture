@@ -215,7 +215,12 @@ let lastX = 0, lastY = 0;
 async function loadNote() {
   try {
     const r = await fetch(API);
-    if (!r.ok) { show('not-found'); hide('loading'); return; }
+    if (!r.ok) {
+      console.error('API error:', r.status, r.statusText);
+      hide('loading');
+      show('not-found');
+      return;
+    }
     const data = await r.json();
     hide('loading');
 
@@ -230,7 +235,11 @@ async function loadNote() {
     fillNote(data);
     show('step1');
   } catch(e) {
+    console.error('Network error:', e);
     hide('loading');
+    // Show error details for debugging
+    document.getElementById('loading').innerHTML = '<div style="color:red;padding:20px;direction:ltr;font-size:12px">Error loading note.<br>Check console for details.<br>' + String(e) + '</div>';
+    document.getElementById('loading').style.display = '';
     show('not-found');
   }
 }

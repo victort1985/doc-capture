@@ -45,12 +45,18 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, httpsOptions ? { httpsOptions } : undefined);
 
-  // ── Signing page — serve for /sign/:token ────────────────────────────────
+  // ── Signing page — serve for /sign/* ─────────────────────────────────────
   const express = await import('express');
-  const path = await import('path');
-  app.use(express.static(path.join(process.cwd(), 'public-sign')));
-  app.getHttpAdapter().getInstance().get('/sign/:token', (_req: any, res: any) => {
-    res.sendFile(path.join(process.cwd(), 'public-sign', 'index.html'));
+  const nodePath = await import('path');
+  const signPageDir = nodePath.resolve(process.cwd(), 'public-sign');
+  const signPageFile = nodePath.join(signPageDir, 'index.html');
+
+  // Serve static assets from public-sign/
+  app.use('/sign', express.static(signPageDir));
+
+  // Any /sign/:token → return the HTML shell
+  app.getHttpAdapter().getInstance().get('/sign/*', (_req: any, res: any) => {
+    res.sendFile(signPageFile);
   });
 
   // Increase body size limit to 5 MB for base64 logos and signatures
