@@ -234,12 +234,20 @@ function loadNote() {
   show('step1');
 }
 
+function fmtDate(iso) {
+  if (iso && iso.length === 10 && iso.includes('-')) {
+    const p = iso.split('-');
+    return p[2] + '/' + p[1] + '/' + p[0];
+  }
+  return iso;
+}
+
 function fillNote(d) {
   document.getElementById('doc-type-header').textContent = d.documentType || 'תעודת משלוח';
   document.getElementById('doctype-display').textContent = d.documentType || 'תעודת משלוח';
   document.getElementById('company-name').textContent = d.companyName || '';
   document.getElementById('note-num').textContent = 'DN' + (d.noteNumber || '');
-  document.getElementById('note-date').textContent = d.date || '';
+  document.getElementById('note-date').textContent = fmtDate(d.date || '');
   document.getElementById('note-client').textContent = d.clientName || '';
 
   // Items
@@ -248,7 +256,7 @@ function fillNote(d) {
   (d.items || []).forEach(item => {
     if (!item.name) return;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${item.qty||1}</td><td>${item.name||''}</td><td>${item.notes||''}</td>`;
+    tr.innerHTML = `<td>${item.quantity||1}</td><td>${item.name||''}</td><td>${item.notes||''}</td>`;
     tbody.appendChild(tr);
   });
 
@@ -378,7 +386,7 @@ async function submitSignature() {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
-function show(id) { const el = document.getElementById(id); if(el) el.style.display = ''; }
+function show(id) { const el = document.getElementById(id); if(el) el.style.display = 'block'; }
 function hide(id) { const el = document.getElementById(id); if(el) el.style.display = 'none'; }
 
 loadNote();
