@@ -78,11 +78,3 @@ flutter:
   generate: true # enables flutter gen-l10n from l10n.yaml
   assets:
     - assets/icons/
-  # Flutter 3.44+ defaults to Swift Package Manager for iOS, but
-  # flutter_secure_storage doesn't support it yet — caused a real CI
-  # failure ("requires a selected Development Team") even with
-  # --no-codesign, since SPM dependency resolution needs a signing
-  # context that pure CocoaPods doesn't. Forcing CocoaPods (the
-  # previously-working setup) until plugins catch up.
-  config:
-    enable-swift-package-manager: false
