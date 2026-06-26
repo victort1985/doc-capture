@@ -25,10 +25,17 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Pre-download Electron binary
+        run: npx @electron/get --version=31.0.0
+        env:
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+          
       - name: Build Windows installer
         run: npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
+          USE_SYSTEM_FPM: true
 
       - uses: actions/upload-artifact@v4
         with:
@@ -77,6 +84,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
 
       - uses: actions/upload-artifact@v4
         with:
@@ -114,6 +122,7 @@ jobs:
         run: npm run build:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
 
       - uses: actions/upload-artifact@v4
         with:
