@@ -12,10 +12,9 @@ async function handleSignPage(req: any, res: any, app: any, signPageFile: string
     try { noteData = await svc.getNoteForSigning(token); } catch (_) {}
 
     let html = require('fs').readFileSync(signPageFile, 'utf-8');
-    // Base64-encode data to avoid </script> injection that breaks the page
-    const payload = Buffer.from(JSON.stringify(noteData)).toString('base64');
-    const tokenB64 = Buffer.from(JSON.stringify(token)).toString('base64');
-    const script = '<script>window.__NOTE_DATA__=JSON.parse(atob("' + payload + '"));window.__TOKEN__=JSON.parse(atob("' + tokenB64 + '"));</script>';
+    // JSON-encode safely: escape </script> to prevent HTML injection
+    const payload = JSON.stringify(noteData).replace(/<\/script>/gi, '<\\/script>');
+    const script = '<script>window.__NOTE_DATA__=' + payload + ';window.__TOKEN__=' + JSON.stringify(token) + ';</script>';
     html = html.includes('</head>') ? html.replace('</head>', script + '</head>') : script + html;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
