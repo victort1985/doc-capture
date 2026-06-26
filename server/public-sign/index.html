@@ -357,7 +357,7 @@ async function submitSignature() {
   const signerRole = document.getElementById('signer-role').value.trim();
 
   try {
-    const submitUrl = '/api/delivery-notes/sign/' + token;
+    const submitUrl = '/sign/' + token + '/submit';
     const r = await fetch(submitUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

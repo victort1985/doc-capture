@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import { DeliveryNotesService } from './modules/delivery-notes/delivery-notes.service';
 import * as path from 'path';
 import { loadEnvFile, ensureJwtSecret, ensureEncryptionKey } from './config/bootstrap-env';
 
@@ -45,32 +46,44 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, httpsOptions ? { httpsOptions } : undefined);
 
-  // ── Signing page — server-side data injection ────────────────────────────
-  // Data is injected into HTML at serve time so the browser makes NO extra
-  // API calls — this bypasses Cloudflare Access on /api/* completely.
+  // ── Signing page — all under /sign/* which is Cloudflare-bypassed ──────────
   const express  = await import('express');
   const nodePath = await import('path');
   const signPageDir  = nodePath.resolve(process.cwd(), 'public-sign');
   const signPageFile = nodePath.join(signPageDir, 'index.html');
+  const xApp = app.getHttpAdapter().getInstance();
 
-  app.use('/sign', express.static(signPageDir));
-
-  app.getHttpAdapter().getInstance().get('/sign/:token', async (req: any, res: any) => {
-    const token: string = req.params.token;
-    let noteData: any = null;
+  // GET /sign/:token — inject note data server-side, no browser API call
+  xApp.get('/sign/:token', async (req: any, res: any) => {
     try {
-      const { DeliveryNotesService } = await import('./modules/delivery-notes/delivery-notes.service');
+      const token: string = req.params.token;
+      // Static import used at top of file — works in production dist
       const svc = app.get(DeliveryNotesService);
-      noteData = await svc.getNoteForSigning(token);
-    } catch (_) {}
+      let noteData: any = null;
+      try { noteData = await svc.getNoteForSigning(token); } catch (_) {}
 
-    const html     = fs.readFileSync(signPageFile, 'utf-8');
-    const injected = html.replace(
-      '</head>',
-      `<script>window.__NOTE_DATA__=${JSON.stringify(noteData)};window.__TOKEN__=${JSON.stringify(token)};</script>\n</head>`
-    );
-    res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    res.send(injected);
+      let html = fs.readFileSync(signPageFile, 'utf-8');
+      const script = `<script>window.__NOTE_DATA__=${JSON.stringify(noteData)};window.__TOKEN__=${JSON.stringify(token)};</script>`;
+      html = html.replace('</head>', script + '</head>');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      res.setHeader('Cache-Control', 'no-store');
+      return res.send(html);
+    } catch (e) {
+      return res.status(500).send('<h2 dir="ltr">Server error: ' + String(e) + '</h2>');
+    }
+  });
+
+  // POST /sign/:token/submit — signature submission, also under /sign/* bypass
+  xApp.post('/sign/:token/submit', express.json({ limit: '5mb' }), async (req: any, res: any) => {
+    try {
+      const token: string = req.params.token;
+      const svc = app.get(DeliveryNotesService);
+      const { signerName, signerRole, signature } = req.body;
+      const result = await svc.submitRemoteSignature(token, signerName, signerRole, signature);
+      return res.json(result);
+    } catch (e) {
+      return res.status(400).json({ error: String(e) });
+    }
   });
 
   // Increase body size limit to 5 MB for base64 logos and signatures
