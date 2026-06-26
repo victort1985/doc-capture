@@ -3,6 +3,31 @@ import { DeliveryNotesService } from './modules/delivery-notes/delivery-notes.se
 import * as path from 'path';
 import { loadEnvFile, ensureJwtSecret, ensureEncryptionKey } from './config/bootstrap-env';
 
+
+async function handleSignPage(req: any, res: any, app: any, signPageFile: string, SvcClass: any) {
+  try {
+    const token: string = req.params.token || req.params[0];
+    const svc = app.get(SvcClass);
+    let noteData: any = null;
+    try { noteData = await svc.getNoteForSigning(token); } catch (_) {}
+
+    let html = require('fs').readFileSync(signPageFile, 'utf-8');
+    const payload = JSON.stringify(noteData);
+    // Safety check — if payload > 50KB something is wrong
+    if (payload.length > 50000) {
+      console.error('[sign] noteData too large:', payload.length, 'bytes');
+    }
+    const script = '<script>window.__NOTE_DATA__=' + payload + ';window.__TOKEN__=' + JSON.stringify(token) + ';</script>';
+    html = html.replace('</head>', script + '</head>');
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
+    return res.send(html);
+  } catch (e) {
+    console.error('[sign] error:', e);
+    return res.status(500).send('<h2>Error: ' + String(e) + '</h2>');
+  }
+}
+
 // Must run before AppModule is loaded — see bootstrap-env.ts for why.
 const ENV_PATH = path.join(process.cwd(), '.env');
 loadEnvFile(ENV_PATH);
@@ -53,24 +78,16 @@ async function bootstrap() {
   const signPageFile = nodePath.join(signPageDir, 'index.html');
   const xApp = app.getHttpAdapter().getInstance();
 
+  // GET /:token on sign.doc-capture.app subdomain (no CF Access)
+  xApp.get('/:token([a-f0-9]{40,})', async (req: any, res: any) => {
+    const host: string = req.headers.host || '';
+    if (!host.startsWith('sign.')) return req.next ? req.next() : res.status(404).end();
+    return handleSignPage(req, res, app, signPageFile, DeliveryNotesService);
+  });
+
   // GET /sign/:token — inject note data server-side, no browser API call
   xApp.get('/sign/:token', async (req: any, res: any) => {
-    try {
-      const token: string = req.params.token;
-      // Static import used at top of file — works in production dist
-      const svc = app.get(DeliveryNotesService);
-      let noteData: any = null;
-      try { noteData = await svc.getNoteForSigning(token); } catch (_) {}
-
-      let html = fs.readFileSync(signPageFile, 'utf-8');
-      const script = `<script>window.__NOTE_DATA__=${JSON.stringify(noteData)};window.__TOKEN__=${JSON.stringify(token)};</script>`;
-      html = html.replace('</head>', script + '</head>');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-store');
-      return res.send(html);
-    } catch (e) {
-      return res.status(500).send('<h2 dir="ltr">Server error: ' + String(e) + '</h2>');
-    }
+    return handleSignPage(req, res, app, signPageFile, DeliveryNotesService);
   });
 
   // POST /sign/:token/submit — signature submission, also under /sign/* bypass

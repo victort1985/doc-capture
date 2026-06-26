@@ -156,8 +156,8 @@ export class DeliveryNotesService {
       companyAddress: orgSettings?.companyAddress,
       companyPhone: orgSettings?.companyPhone,
       companyFax: orgSettings?.companyFax,
-      logoBase64: orgSettings?.logoBase64,
-      lessorSignature: note.lessorSignature,
+      // logoBase64 and lessorSignature intentionally omitted —
+      // they can be 200–500 KB in base64 and break WhatsApp's in-app browser.
     };
   }
 
