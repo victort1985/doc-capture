@@ -12,13 +12,11 @@ async function handleSignPage(req: any, res: any, app: any, signPageFile: string
     try { noteData = await svc.getNoteForSigning(token); } catch (_) {}
 
     let html = require('fs').readFileSync(signPageFile, 'utf-8');
-    const payload = JSON.stringify(noteData);
-    // Safety check — if payload > 50KB something is wrong
-    if (payload.length > 50000) {
-      console.error('[sign] noteData too large:', payload.length, 'bytes');
-    }
-    const script = '<script>window.__NOTE_DATA__=' + payload + ';window.__TOKEN__=' + JSON.stringify(token) + ';</script>';
-    html = html.replace('</head>', script + '</head>');
+    // Base64-encode data to avoid </script> injection that breaks the page
+    const payload = Buffer.from(JSON.stringify(noteData)).toString('base64');
+    const tokenB64 = Buffer.from(JSON.stringify(token)).toString('base64');
+    const script = '<script>window.__NOTE_DATA__=JSON.parse(atob("' + payload + '"));window.__TOKEN__=JSON.parse(atob("' + tokenB64 + '"));</script>';
+    html = html.includes('</head>') ? html.replace('</head>', script + '</head>') : script + html;
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-store');
     return res.send(html);
