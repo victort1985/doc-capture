@@ -25,7 +25,21 @@ function fmtDate(iso?: string) {
   return `${day}/${m}/${y}`;
 }
 
-function DeleteModal({ note, onConfirm, onCancel }: { note: DeliveryNote; onConfirm: () => void; onCancel: () => void }) {
+function DeleteModal({ note, onConfirm, onCancel }: { note: DeliveryNote; onConfirm: () => Promise<void>; onCancel: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleClick() {
+    setLoading(true);
+    setError('');
+    try {
+      await onConfirm();
+    } catch (e: any) {
+      setError(e?.message || 'Delete failed');
+      setLoading(false);
+    }
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div className="card" style={{ width: 360, padding: 28 }}>
@@ -36,11 +50,16 @@ function DeleteModal({ note, onConfirm, onCancel }: { note: DeliveryNote; onConf
             Note #{note.noteNumber} — {note.clientName}<br />
             <strong style={{ color: 'var(--danger, #e53e3e)' }}>This action cannot be undone.</strong>
           </p>
+          {error && <p style={{ color: 'red', fontSize: 13, marginTop: 8 }}>{error}</p>}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onCancel} style={{ flex: 1 }}>Cancel</button>
-          <button onClick={onConfirm} style={{ flex: 1, background: 'var(--danger, #e53e3e)', color: 'white', border: 'none', borderRadius: 8, padding: '10px', cursor: 'pointer', fontWeight: 700 }}>
-            Delete
+          <button onClick={onCancel} disabled={loading} style={{ flex: 1 }}>Cancel</button>
+          <button
+            onClick={handleClick}
+            disabled={loading}
+            style={{ flex: 1, background: 'var(--danger, #e53e3e)', color: 'white', border: 'none', borderRadius: 8, padding: '10px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, opacity: loading ? 0.7 : 1 }}
+          >
+            {loading ? 'Deleting…' : 'Delete'}
           </button>
         </div>
       </div>
