@@ -69,6 +69,7 @@ enum DeliveryNoteStatus { draft, signed, cancelled }
 class DeliveryNote {
   final int id;
   final String? noteNumber;
+  final String? documentType;
   final String? date;
   final String? clientName;
   final String? clientAddress;
@@ -88,6 +89,7 @@ class DeliveryNote {
   DeliveryNote({
     required this.id,
     this.noteNumber,
+    this.documentType,
     this.date,
     this.clientName,
     this.clientAddress,
@@ -108,6 +110,7 @@ class DeliveryNote {
   factory DeliveryNote.fromJson(Map<String, dynamic> j) => DeliveryNote(
     id: j['id'],
     noteNumber: j['noteNumber'],
+    documentType: j['documentType'],
     date: j['date'],
     clientName: j['clientName'],
     clientAddress: j['clientAddress'],

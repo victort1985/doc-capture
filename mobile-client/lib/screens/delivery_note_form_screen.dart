@@ -126,6 +126,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     _roleCtrl.text        = n.recipientRole ?? '';
     _idNumCtrl.text       = n.recipientIdNumber ?? '';
     _dateCtrl.text        = n.date ?? '';
+    if (n.documentType != null) _documentType = n.documentType!;
     _remarksCtrl.text     = n.remarks ?? '';
     _lesseeIdCtrl.text    = n.lesseeIdNumber ?? '';
     _items = n.items.isNotEmpty
@@ -149,6 +150,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
 
 
   Map<String, dynamic> _toDto() => {
+    'documentType': _documentType,
     'clientName': _clientNameCtrl.text,
     'clientAddress': _clientAddrCtrl.text,
     'deliveredTo': _deliveredToCtrl.text,

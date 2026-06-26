@@ -137,7 +137,11 @@ export class DeliveryNotesService {
     if (!note) throw new NotFoundException('Link not found or expired');
     if (note.status === 'signed') return { alreadySigned: true, signedAt: note.lesseeSignedAt };
 
-    // Return only data needed for signing page (Hebrew labels handled on client)
+    // Load org settings for company info on the signing page
+    const orgSettings = note.organization?.id
+      ? await this.settingsRepo.findOne({ where: { organization: { id: note.organization.id } } })
+      : null;
+
     return {
       alreadySigned: false,
       noteNumber: note.noteNumber,
@@ -147,8 +151,13 @@ export class DeliveryNotesService {
       clientAddress: note.clientAddress,
       items: note.items,
       remarks: note.remarks,
-      companyName: note.organization?.name,
-      lessorSignature: note.lessorSignature, // pre-filled company sig
+      termsText: orgSettings?.termsText,
+      companyName: orgSettings?.companyName ?? note.organization?.name,
+      companyAddress: orgSettings?.companyAddress,
+      companyPhone: orgSettings?.companyPhone,
+      companyFax: orgSettings?.companyFax,
+      logoBase64: orgSettings?.logoBase64,
+      lessorSignature: note.lessorSignature,
     };
   }
 
