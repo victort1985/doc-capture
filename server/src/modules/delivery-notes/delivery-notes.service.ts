@@ -125,7 +125,7 @@ export class DeliveryNotesService {
       note.signingToken = require('crypto').randomBytes(24).toString('hex');
       await this.repo.save(note);
     }
-    const url = `${process.env.APP_BASE_URL || 'https://app.doc-capture.app'}/sign/${note.signingToken}`;
+    const url = `https://sign.doc-capture.app/${note.signingToken}`;
     return { token: note.signingToken!, url };
   }
 
