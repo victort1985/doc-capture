@@ -278,10 +278,10 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     pw.ImageProvider? lessorImg;
     pw.ImageProvider? lesseeImg;
     if (_lessorSig != null) {
-      try { lessorImg = pw.MemoryImage(base64Decode(_lessorSig!)); } catch (_) {}
+      try { lessorImg = pw.MemoryImage(_decodeSig(_lessorSig!)); } catch (_) {}
     }
     if (_lesseeSig != null) {
-      try { lesseeImg = pw.MemoryImage(base64Decode(_lesseeSig!)); } catch (_) {}
+      try { lesseeImg = pw.MemoryImage(_decodeSig(_lesseeSig!)); } catch (_) {}
     }
 
     final companyName = _settings.companyName ?? 'אם.סי. אילת מיוזיק בע"מ';
@@ -736,6 +736,15 @@ class _ItemRowWidget extends StatelessWidget {
 
 // ─── Signature box ────────────────────────────────────────────────────────────
 
+
+/// Decodes a signature that may be either:
+///  - a plain base64 string (from in-app pad)
+///  - a data URL  "data:image/png;base64,..."  (from the web signing page)
+Uint8List _decodeSig(String sig) {
+  final s = sig.contains(',') ? sig.split(',').last : sig;
+  return base64Decode(s.replaceAll(RegExp(r'\s'), ''));
+}
+
 class _SigBox extends StatelessWidget {
   const _SigBox({required this.label, this.sig, required this.onTap});
   final String label;
@@ -755,7 +764,7 @@ class _SigBox extends StatelessWidget {
         ),
         child: sig != null
             ? Column(children: [
-                Expanded(child: Image.memory(base64Decode(sig!), fit: BoxFit.contain)),
+                Expanded(child: Image.memory(_decodeSig(sig!), fit: BoxFit.contain)),
                 Text(label, style: const TextStyle(fontSize: 10, color: AppColors.inkSoft)),
                 const SizedBox(height: 4),
               ])

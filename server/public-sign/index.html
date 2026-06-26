@@ -181,7 +181,7 @@
       חתום/י כאן עם האצבע.
     </p>
 
-    <canvas id="sig-canvas" class="sig-area" width="540" height="200"></canvas>
+    <canvas id="sig-canvas" class="sig-area" style="width:100%;height:180px"></canvas>
     <button class="btn-clear" onclick="clearSig()">נקה חתימה</button>
 
     <div id="step3-error" class="error" style="display:none"></div>
@@ -300,9 +300,10 @@ function goStep3() {
 // ── Signature canvas ───────────────────────────────────────────────────────
 function initCanvas() {
   const canvas = document.getElementById('sig-canvas');
-  const rect = canvas.parentElement.getBoundingClientRect();
-  canvas.width = rect.width - 40;
-  canvas.height = 180;
+  // Set actual pixel size from CSS layout size to avoid blurry canvas
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = Math.floor(rect.width);
+  canvas.height = Math.floor(rect.height) || 180;
   const ctx = canvas.getContext('2d');
   ctx.strokeStyle = '#1a1a2e';
   ctx.lineWidth = 2.5;
