@@ -1,0 +1,132 @@
+name: Desktop Build
+
+on:
+  push:
+    tags: ['v*']
+
+defaults:
+  run:
+    working-directory: desktop-client
+
+jobs:
+  # ── Windows installer ───────────────────────────────────────────────────────
+  build-windows:
+    name: Windows NSIS installer
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: desktop-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Windows installer
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vixor-erp-windows
+          path: desktop-client/dist/*.exe
+          retention-days: 30
+
+      - name: Push installer to git branch
+        working-directory: ${{ github.workspace }}
+        shell: bash
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B build-desktop-win
+          find desktop-client/dist -name "*.exe" -exec git add -f {} \;
+          git commit -m "build: windows installer" || true
+          git push --force origin build-desktop-win
+
+  # ── macOS DMG ───────────────────────────────────────────────────────────────
+  build-mac:
+    name: macOS DMG
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: desktop-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Create icns from png
+        run: |
+          mkdir -p VixorERP.iconset
+          for sz in 16 32 128 256 512; do
+            cp assets/icon_${sz}.png VixorERP.iconset/icon_${sz}x${sz}.png
+          done
+          iconutil -c icns VixorERP.iconset -o assets/icon.icns 2>/dev/null || \
+            sips -s format icns assets/icon.png --out assets/icon.icns || true
+
+      - name: Build macOS DMG
+        run: npm run build:mac
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vixor-erp-macos
+          path: desktop-client/dist/*.dmg
+          retention-days: 30
+
+      - name: Push DMG to git branch
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B build-desktop-mac
+          find desktop-client/dist -name "*.dmg" -exec git add -f {} \;
+          git commit -m "build: macos dmg" || true
+          git push --force origin build-desktop-mac
+
+  # ── Linux AppImage ───────────────────────────────────────────────────────────
+  build-linux:
+    name: Linux AppImage
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: desktop-client/package-lock.json
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build Linux AppImage
+        run: npm run build:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vixor-erp-linux
+          path: desktop-client/dist/*.AppImage
+          retention-days: 30
+
+      - name: Push AppImage to git branch
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B build-desktop-linux
+          find desktop-client/dist -name "*.AppImage" -exec git add -f {} \;
+          git commit -m "build: linux appimage" || true
+          git push --force origin build-desktop-linux
