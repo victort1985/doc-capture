@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, Param, ParseIntPipe,
+  Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe,
   Patch, Post, Query, Res, SetMetadata, UseGuards,
 } from '@nestjs/common';
 import { Response } from 'express';
@@ -78,6 +78,7 @@ export class DeliveryNotesController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @HttpCode(204)
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
     return this.svc.remove(id, user.organizationId);

@@ -50,7 +50,15 @@ export async function apiFetch<T>(
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json();
+
+  // Handle 200 with empty body (some DELETE endpoints return 200 + no body)
+  const text = await res.text();
+  if (!text) return undefined as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return undefined as T;
+  }
 }
 
 /** Authenticated binary fetch — plain <img src> can't send an Authorization
