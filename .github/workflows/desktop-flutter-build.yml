@@ -203,7 +203,7 @@ jobs:
           python3 -c "
           import re
           c = open('pubspec.yaml').read()
-          for p in ['mobile_scanner','local_auth','http_parser','geolocator','flutter_secure_storage','firebase_messaging','firebase_core']:
+          for p in ['mobile_scanner','local_auth','http_parser','geolocator','flutter_secure_storage','firebase_messaging','firebase_core','permission_handler']:
               c = re.sub(rf'^  {p}:.*$','',c,flags=re.MULTILINE)
           c = re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies:|\Z)','',c,flags=re.DOTALL)
           open('pubspec.yaml','w').write(c)
