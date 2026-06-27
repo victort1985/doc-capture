@@ -154,16 +154,17 @@ jobs:
           echo "Size: $(du -sh /tmp/vixor-erp-linux-desktop.tar.gz)"
 
       - name: Push bundle to git (no Azure)
+        working-directory: ${{ github.workspace }}
         run: |
-          cp /tmp/vixor-erp-linux-desktop.tar.gz vixor-erp-linux-desktop.tar.gz
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          cp /tmp/vixor-erp-linux-desktop.tar.gz vixor-erp-linux-desktop.tar.gz
+          echo "File size: $(du -sh vixor-erp-linux-desktop.tar.gz)"
           git checkout -B build-desktop-linux-flutter
           git add -f vixor-erp-linux-desktop.tar.gz
           git commit -m "build: linux desktop ${{ github.ref_name }}"
-          git push --force origin build-desktop-linux-flutter
-          echo "Done"
+          git push --force https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git build-desktop-linux-flutter
+          echo "✅ Pushed"
 
   build-windows:
     name: Windows Desktop
