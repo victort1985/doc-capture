@@ -11,56 +11,120 @@ jobs:
     defaults:
       run:
         working-directory: mobile-client
+
     steps:
       - uses: actions/checkout@v4
 
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.44.2'
-          channel: 'stable'
-          cache: true
+      - name: Install Flutter (no snap, no cache)
+        run: |
+          cd ~
+          wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.4-stable.tar.xz
+          tar xf flutter_linux_3.44.4-stable.tar.xz
+          echo "$HOME/flutter/bin" >> $GITHUB_PATH
 
-      - name: Install Linux dependencies
+      - name: Install Linux build deps
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev libstdc++-12-dev
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev \
+            libgcrypt20-dev liblz4-dev libgpg-error-dev
 
-      - name: Enable Linux desktop
-        run: flutter config --enable-linux-desktop
+      - name: Flutter config
+        run: |
+          flutter config --enable-linux-desktop --no-analytics
+          flutter create --platforms=linux . 2>/dev/null || true
 
-      - name: Create Linux platform files
-        run: flutter create --platforms=linux . 2>/dev/null || true
+      - name: Remove mobile-only packages
+        run: |
+          sed -i '/^  mobile_scanner:/d' pubspec.yaml
+          sed -i '/^  local_auth:/d' pubspec.yaml
+          sed -i '/http_parser:/d' pubspec.yaml
+          # Remove swift package manager config block
+          python3 -c "
+          import re, sys
+          c = open('pubspec.yaml').read()
+          c = re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies|\Z)', '', c, flags=re.DOTALL)
+          open('pubspec.yaml','w').write(c)
+          print('pubspec cleaned')
+          "
 
-      - name: flutter pub get
+      - name: Create desktop stubs
+        run: |
+          cat > lib/services/biometric_service.dart << 'DART'
+          import 'package:shared_preferences/shared_preferences.dart';
+          class BiometricService {
+            Future<bool> isAvailable() async => false;
+            Future<bool> isEnabled() async => false;
+            Future<void> setEnabled(bool v) async {}
+            Future<bool> authenticate() async => true;
+          }
+          DART
+
+          cat > lib/screens/barcode_scanner_screen.dart << 'DART'
+          import 'package:flutter/material.dart';
+          class BarcodeScannerScreen extends StatefulWidget {
+            const BarcodeScannerScreen({super.key});
+            @override State<BarcodeScannerScreen> createState() => _S();
+          }
+          class _S extends State<BarcodeScannerScreen> {
+            final _c = TextEditingController();
+            @override Widget build(BuildContext ctx) => Scaffold(
+              appBar: AppBar(title: const Text('Enter barcode')),
+              body: Padding(padding: const EdgeInsets.all(24), child: Column(
+                mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.qr_code, size: 64, color: Colors.grey),
+                  const SizedBox(height: 12),
+                  TextField(controller: _c, autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Barcode', border: OutlineInputBorder()),
+                    onSubmitted: (v) => Navigator.pop(ctx, v)),
+                  const SizedBox(height: 12),
+                  FilledButton(onPressed: () => Navigator.pop(ctx, _c.text), child: const Text('OK')),
+                ],
+              )),
+            );
+          }
+          DART
+
+          # Remove sharePositionOrigin (iOS only, crashes on desktop)
+          find lib -name '*.dart' -exec sed -i \
+            's/,\s*sharePositionOrigin:[^,)]*//g' {} \;
+
+      - name: Flutter pub get
         run: flutter pub get
 
-      - name: Patch mobile-only imports for desktop
-        run: python3 ../.github/scripts/patch_desktop.py
-
-      - name: Build Linux desktop
-        run: flutter build linux --release 2>&1 | tee /tmp/build-linux-desktop.log
+      - name: Build Linux
+        run: flutter build linux --release 2>&1 | tee /tmp/build.log
 
       - name: Package
         run: |
           cd build/linux/x64/release/bundle
-          tar -czf ../../../../vixor-erp-linux-desktop.tar.gz .
-          echo "Size: $(du -sh ../../../../vixor-erp-linux-desktop.tar.gz)"
+          tar -czf $GITHUB_WORKSPACE/mobile-client/vixor-erp-linux-desktop.tar.gz .
+          echo "✅ Size: $(du -sh $GITHUB_WORKSPACE/mobile-client/vixor-erp-linux-desktop.tar.gz)"
 
       - uses: actions/upload-artifact@v4
         with:
           name: vixor-erp-linux-desktop
-          path: mobile-client/build/vixor-erp-linux-desktop.tar.gz
+          path: mobile-client/vixor-erp-linux-desktop.tar.gz
+          retention-days: 30
 
-      - name: Push to git branch
+      - name: Push to build branch
+        if: success()
         working-directory: ${{ github.workspace }}
         run: |
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git checkout -B build-desktop-linux-flutter
-          git add -f mobile-client/build/vixor-erp-linux-desktop.tar.gz
-          git commit -m "build: linux desktop flutter"
+          git add -f mobile-client/vixor-erp-linux-desktop.tar.gz
+          git commit -m "build: linux desktop flutter app"
           git push --force origin build-desktop-linux-flutter
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: /tmp/build.log
 
   build-windows:
     name: Windows Desktop
@@ -73,32 +137,78 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.2'
+          flutter-version: '3.44.4'
           channel: 'stable'
-          cache: true
 
-      - name: Enable Windows desktop
-        run: flutter config --enable-windows-desktop
+      - name: Flutter config
+        run: |
+          flutter config --enable-windows-desktop --no-analytics
+          flutter create --platforms=windows . 2>&1 | Out-Null
 
-      - name: Create Windows platform files
-        run: flutter create --platforms=windows . 2>&1 | Out-Null
+      - name: Remove mobile-only packages
+        shell: python
+        run: |
+          import re
+          c = open('pubspec.yaml').read()
+          for pkg in ['mobile_scanner', 'local_auth', 'http_parser']:
+              c = re.sub(rf'^  {pkg}:.*$', '', c, flags=re.MULTILINE)
+          c = re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies|\Z)', '', c, flags=re.DOTALL)
+          open('pubspec.yaml','w').write(c)
+          print('pubspec cleaned')
 
-      - name: flutter pub get
+      - name: Create desktop stubs
+        shell: bash
+        run: |
+          cat > lib/services/biometric_service.dart << 'DART'
+          import 'package:shared_preferences/shared_preferences.dart';
+          class BiometricService {
+            Future<bool> isAvailable() async => false;
+            Future<bool> isEnabled() async => false;
+            Future<void> setEnabled(bool v) async {}
+            Future<bool> authenticate() async => true;
+          }
+          DART
+          cat > lib/screens/barcode_scanner_screen.dart << 'DART'
+          import 'package:flutter/material.dart';
+          class BarcodeScannerScreen extends StatefulWidget {
+            const BarcodeScannerScreen({super.key});
+            @override State<BarcodeScannerScreen> createState() => _S();
+          }
+          class _S extends State<BarcodeScannerScreen> {
+            final _c = TextEditingController();
+            @override Widget build(BuildContext ctx) => Scaffold(
+              appBar: AppBar(title: const Text('Enter barcode')),
+              body: Padding(padding: const EdgeInsets.all(24), child: Column(
+                mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.qr_code, size: 64, color: Colors.grey),
+                  const SizedBox(height: 12),
+                  TextField(controller: _c, autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Barcode', border: OutlineInputBorder()),
+                    onSubmitted: (v) => Navigator.pop(ctx, v)),
+                  const SizedBox(height: 12),
+                  FilledButton(onPressed: () => Navigator.pop(ctx, _c.text), child: const Text('OK')),
+                ],
+              )),
+            );
+          }
+          DART
+          find lib -name '*.dart' -exec sed -i 's/,\s*sharePositionOrigin:[^,)]*//' {} \;
+
+      - name: Flutter pub get
         run: flutter pub get
 
-      - name: Patch mobile-only imports for desktop
-        run: python3 ../.github/scripts/patch_desktop.py
-
-      - name: Build Windows desktop
+      - name: Build Windows
         run: flutter build windows --release
 
       - name: Package
+        shell: powershell
         run: |
           Compress-Archive -Path build/windows/x64/runner/Release/* `
-            -DestinationPath build/vixor-erp-windows-desktop.zip
-        shell: powershell
+            -DestinationPath vixor-erp-windows-desktop.zip -Force
+          Write-Host "Size: $((Get-Item vixor-erp-windows-desktop.zip).Length / 1MB) MB"
 
       - uses: actions/upload-artifact@v4
         with:
           name: vixor-erp-windows-desktop
-          path: mobile-client/build/vixor-erp-windows-desktop.zip
+          path: mobile-client/vixor-erp-windows-desktop.zip
+          retention-days: 30
