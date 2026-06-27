@@ -75,6 +75,59 @@ jobs:
             );
           }
           DART
+
+          # Replace auth_service — flutter_secure_storage_windows fails on CI
+          cat > lib/services/auth_service.dart << 'DART'
+          import 'package:dio/dio.dart';
+          import 'package:shared_preferences/shared_preferences.dart';
+          import 'api_service.dart';
+
+          class AuthUser {
+            final int id; final String username; final String language; final String role;
+            AuthUser({required this.id, required this.username, required this.language, required this.role});
+            factory AuthUser.fromJson(Map<String, dynamic> j) => AuthUser(
+              id: j['id'] as int, username: j['username'] as String,
+              language: j['language'] as String? ?? 'he', role: j['role'] as String? ?? 'user');
+          }
+
+          class AuthService {
+            AuthService(this._api);
+            final ApiService _api;
+            Future<SharedPreferences> get _p => SharedPreferences.getInstance();
+
+            Future<AuthUser> login(String u, String p) async {
+              final r = await _api.post('/auth/login', {'username': u, 'password': p});
+              final token = r['token'] as String? ?? r['access_token'] as String;
+              (await _p).setString('auth_token', token); _api.setToken(token);
+              return AuthUser.fromJson(r['user'] as Map<String, dynamic>);
+            }
+            Future<void> saveCredentials(String u, String pw) async {
+              final p = await _p; p.setString('su', u); p.setString('sp', pw);
+            }
+            Future<(String, String)?> loadSavedCredentials() async {
+              final p = await _p;
+              final u = p.getString('su'); final pw = p.getString('sp');
+              if (u == null || pw == null) return null; return (u, pw);
+            }
+            Future<void> clearSavedCredentials() async {
+              final p = await _p; p.remove('su'); p.remove('sp');
+            }
+            Future<String?> restoreToken() async {
+              final token = (await _p).getString('auth_token');
+              if (token != null) _api.setToken(token); return token;
+            }
+            Future<AuthUser?> fetchCurrentUser() async {
+              if (_api.token == null) return null;
+              try {
+                final r = await _api.get('/auth/me');
+                return AuthUser.fromJson(r as Map<String, dynamic>);
+              } on DioException catch (e) {
+                if (e.response?.statusCode == 401) await logout(); return null;
+              } catch (_) { return null; }
+            }
+            Future<void> logout() async { (await _p).remove('auth_token'); _api.setToken(null); }
+          }
+          DART
           find lib -name '*.dart' -exec sed -i 's/,\s*sharePositionOrigin:[^,)]*//' {} \;
 
       - name: pub get
@@ -100,22 +153,17 @@ jobs:
           tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" .
           echo "Size: $(du -sh /tmp/vixor-erp-linux-desktop.tar.gz)"
 
-      - name: Upload via GitHub API (no Azure)
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push bundle to git (no Azure)
         run: |
-          # Upload as release asset using gh CLI (goes via api.github.com, not Azure)
-          TAG="${{ github.ref_name }}"
-          
-          # Create release if not exists
-          gh release create "$TAG" --title "Vixor ERP $TAG" --notes "Auto build" 2>/dev/null || true
-          
-          # Upload Linux desktop bundle
-          gh release upload "$TAG" /tmp/vixor-erp-linux-desktop.tar.gz \
-            --clobber \
-            --repo ${{ github.repository }}
-          
-          echo "✅ Uploaded to release $TAG"
+          cp /tmp/vixor-erp-linux-desktop.tar.gz vixor-erp-linux-desktop.tar.gz
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git checkout -B build-desktop-linux-flutter
+          git add -f vixor-erp-linux-desktop.tar.gz
+          git commit -m "build: linux desktop ${{ github.ref_name }}"
+          git push --force origin build-desktop-linux-flutter
+          echo "Done"
 
   build-windows:
     name: Windows Desktop
@@ -186,6 +234,59 @@ jobs:
                 ],
               )),
             );
+          }
+          DART
+
+          # Replace auth_service — flutter_secure_storage_windows fails on CI
+          cat > lib/services/auth_service.dart << 'DART'
+          import 'package:dio/dio.dart';
+          import 'package:shared_preferences/shared_preferences.dart';
+          import 'api_service.dart';
+
+          class AuthUser {
+            final int id; final String username; final String language; final String role;
+            AuthUser({required this.id, required this.username, required this.language, required this.role});
+            factory AuthUser.fromJson(Map<String, dynamic> j) => AuthUser(
+              id: j['id'] as int, username: j['username'] as String,
+              language: j['language'] as String? ?? 'he', role: j['role'] as String? ?? 'user');
+          }
+
+          class AuthService {
+            AuthService(this._api);
+            final ApiService _api;
+            Future<SharedPreferences> get _p => SharedPreferences.getInstance();
+
+            Future<AuthUser> login(String u, String p) async {
+              final r = await _api.post('/auth/login', {'username': u, 'password': p});
+              final token = r['token'] as String? ?? r['access_token'] as String;
+              (await _p).setString('auth_token', token); _api.setToken(token);
+              return AuthUser.fromJson(r['user'] as Map<String, dynamic>);
+            }
+            Future<void> saveCredentials(String u, String pw) async {
+              final p = await _p; p.setString('su', u); p.setString('sp', pw);
+            }
+            Future<(String, String)?> loadSavedCredentials() async {
+              final p = await _p;
+              final u = p.getString('su'); final pw = p.getString('sp');
+              if (u == null || pw == null) return null; return (u, pw);
+            }
+            Future<void> clearSavedCredentials() async {
+              final p = await _p; p.remove('su'); p.remove('sp');
+            }
+            Future<String?> restoreToken() async {
+              final token = (await _p).getString('auth_token');
+              if (token != null) _api.setToken(token); return token;
+            }
+            Future<AuthUser?> fetchCurrentUser() async {
+              if (_api.token == null) return null;
+              try {
+                final r = await _api.get('/auth/me');
+                return AuthUser.fromJson(r as Map<String, dynamic>);
+              } on DioException catch (e) {
+                if (e.response?.statusCode == 401) await logout(); return null;
+              } catch (_) { return null; }
+            }
+            Future<void> logout() async { (await _p).remove('auth_token'); _api.setToken(null); }
           }
           DART
           find lib -name '*.dart' -exec sed -i 's/,\s*sharePositionOrigin:[^,)]*//' {} \;
