@@ -107,7 +107,7 @@ class _RootScreenState extends State<RootScreen> {
                 child: Column(children: [
                   Container(
                     width: 40, height: 40,
-                    decoration: BoxDecoration(color: const Color(0xFFF2701C), borderRadius: BorderRadius.circular(10)),
+                    
                     child: const Center(child: Text('V', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22))),
                   ),
                   const SizedBox(height: 4),
