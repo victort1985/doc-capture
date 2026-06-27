@@ -338,14 +338,27 @@ jobs:
           gh release create $tag --title "Vixor ERP $tag" --notes "Auto build" 2>$null
           gh release upload $tag $zip --clobber --repo "${{ github.repository }}"
           Write-Host "✅ Uploaded to release $tag"
-          # Stub geolocator imports
-          grep -rl "geolocator" lib/ | while read f; do
-            sed -i "s|import 'package:geolocator/geolocator.dart';||g" "$f"
-          done
+          # Full stub for push_notifications_service.dart (uses firebase)
+          cat > lib/services/push_notifications_service.dart << 'DART'
+          import '../services/api_service.dart';
+          class PushNotificationsService {
+            PushNotificationsService(ApiService api);
+            Future<void> initAndRegister() async {}
+            Future<void> unregister() async {}
+          }
+          DART
 
-          # Stub firebase imports  
-          grep -rl "firebase_messaging" lib/ | while read f; do
-            sed -i "s|import 'package:firebase_messaging/.*';||g" "$f"
-          done
+          # Remove geolocator import from create_call_screen.dart and stub usage
+          sed -i "s|import 'package:geolocator/geolocator.dart';||g" lib/screens/calls/create_call_screen.dart
+          # Replace Geolocator calls with null/default values
+          sed -i "s|await Geolocator.checkPermission()|LocationPermission.whileInUse|g" lib/screens/calls/create_call_screen.dart
+          sed -i "s|await Geolocator.requestPermission()|LocationPermission.whileInUse|g" lib/screens/calls/create_call_screen.dart
+          sed -i "s|await Geolocator.getCurrentPosition(.*)|null|g" lib/screens/calls/create_call_screen.dart
+          sed -i "s|LocationPermission\.denied\b/LocationPermission.denied/g" lib/screens/calls/create_call_screen.dart || true
+          
+          # Remove firebase imports from main.dart and app_state.dart
+          sed -i "s|import 'package:firebase_core/firebase_core.dart';||g" lib/main.dart lib/store/app_state.dart 2>/dev/null || true
+          sed -i "s|import 'package:firebase_messaging/firebase_messaging.dart';||g" lib/main.dart lib/store/app_state.dart 2>/dev/null || true
+          sed -i "s|await Firebase.initializeApp();//||g" lib/main.dart lib/store/app_state.dart 2>/dev/null || true
 
 
