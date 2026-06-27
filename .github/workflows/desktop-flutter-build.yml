@@ -7,52 +7,46 @@ on:
 jobs:
   build-linux:
     name: Linux Desktop
-    runs-on: [self-hosted, linux, desktop]
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: mobile-client
-
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
 
-      - name: Setup Flutter
+      - name: Install system deps
         run: |
-          # Use pre-installed Flutter on self-hosted runner
-          export PATH="$HOME/flutter/bin:/usr/local/flutter/bin:$PATH"
-          echo "$HOME/flutter/bin" >> $GITHUB_PATH
-          echo "/usr/local/flutter/bin" >> $GITHUB_PATH
-          flutter --version
+          sudo apt-get update -q
+          sudo apt-get install -y -q clang cmake ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev xz-utils libgcrypt20-dev \
+            liblz4-dev libgpg-error-dev libsecret-1-dev libjsoncpp-dev
 
-      - name: Install Linux build deps
+      - name: Download Flutter from Google
         run: |
-          sudo apt-get install -y -q \
-            clang cmake ninja-build pkg-config \
-            libgtk-3-dev liblzma-dev \
-            libgcrypt20-dev liblz4-dev libgpg-error-dev || true
+          curl -sL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.4-stable.tar.xz \
+            -o /tmp/flutter.tar.xz
+          tar xf /tmp/flutter.tar.xz -C /tmp
+          echo "/tmp/flutter/bin" >> $GITHUB_PATH
 
-      - name: Flutter config
+      - name: Flutter setup
         run: |
           flutter config --enable-linux-desktop --no-analytics
           flutter create --platforms=linux . 2>/dev/null || true
 
-      - name: Remove mobile-only packages
+      - name: Patch pubspec & create stubs
         run: |
-          sed -i '/^  mobile_scanner:/d' pubspec.yaml
-          sed -i '/^  local_auth:/d' pubspec.yaml
-          sed -i '/http_parser:/d' pubspec.yaml
-          # Remove swift package manager config block
           python3 -c "
-          import re, sys
+          import re
           c = open('pubspec.yaml').read()
-          c = re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies|\Z)', '', c, flags=re.DOTALL)
+          for p in ['mobile_scanner','local_auth','http_parser']:
+              c = re.sub(rf'^  {p}:.*$','',c,flags=re.MULTILINE)
+          c = re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies:|\Z)','',c,flags=re.DOTALL)
           open('pubspec.yaml','w').write(c)
-          print('pubspec cleaned')
           "
 
-      - name: Create desktop stubs
-        run: |
           cat > lib/services/biometric_service.dart << 'DART'
-          import 'package:shared_preferences/shared_preferences.dart';
           class BiometricService {
             Future<bool> isAvailable() async => false;
             Future<bool> isEnabled() async => false;
@@ -71,66 +65,42 @@ jobs:
             final _c = TextEditingController();
             @override Widget build(BuildContext ctx) => Scaffold(
               appBar: AppBar(title: const Text('Enter barcode')),
-              body: Padding(padding: const EdgeInsets.all(24), child: Column(
-                mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.qr_code, size: 64, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  TextField(controller: _c, autofocus: true,
-                    decoration: const InputDecoration(labelText: 'Barcode', border: OutlineInputBorder()),
-                    onSubmitted: (v) => Navigator.pop(ctx, v)),
-                  const SizedBox(height: 12),
-                  FilledButton(onPressed: () => Navigator.pop(ctx, _c.text), child: const Text('OK')),
+              body: Padding(padding: const EdgeInsets.all(24),child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,children: [
+                  const Icon(Icons.qr_code,size:64,color:Colors.grey),
+                  const SizedBox(height:12),
+                  TextField(controller:_c,autofocus:true,
+                    decoration:const InputDecoration(labelText:'Barcode',border:OutlineInputBorder()),
+                    onSubmitted:(v)=>Navigator.pop(ctx,v)),
+                  const SizedBox(height:12),
+                  FilledButton(onPressed:()=>Navigator.pop(ctx,_c.text),child:const Text('OK')),
                 ],
               )),
             );
           }
           DART
 
-          # Remove sharePositionOrigin (iOS only, crashes on desktop)
-          find lib -name '*.dart' -exec sed -i \
-            's/,\s*sharePositionOrigin:[^,)]*//g' {} \;
+          find lib -name '*.dart' -exec sed -i 's/,\s*sharePositionOrigin:[^,)]*//' {} \;
 
-      - name: Flutter pub get
+      - name: pub get
         run: flutter pub get
 
-      - name: Build Linux
-        run: flutter build linux --release 2>&1 | tee /tmp/build.log
-
-      - name: Package
+      - name: Build
         run: |
-          # Find the bundle directory
-          BUNDLE=$(find build/linux -name "*.so" -path "*/bundle/*" 2>/dev/null | head -1 | xargs dirname 2>/dev/null || echo "")
-          if [ -z "$BUNDLE" ]; then
-            BUNDLE=$(find build/linux -type d -name "bundle" 2>/dev/null | head -1)
-          fi
-          echo "Bundle dir: $BUNDLE"
-          ls "$BUNDLE" 2>/dev/null || (echo "Build output:" && find build/linux -type f | head -20)
+          export CXX=/usr/bin/clang++
+          export CC=/usr/bin/clang
+          flutter build linux --release
+
+      - name: Package & push to git
+        run: |
+          BUNDLE=$(find build/linux -type d -name bundle | head -1)
           tar -czf vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" .
-          echo "✅ Size: $(du -sh vixor-erp-linux-desktop.tar.gz)"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: vixor-erp-linux-desktop
-          path: mobile-client/vixor-erp-linux-desktop.tar.gz
-          retention-days: 30
-
-      - name: Push to build branch
-        if: success()
-        working-directory: ${{ github.workspace }}
-        run: |
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git checkout -B build-desktop-linux-flutter
-          git add -f mobile-client/vixor-erp-linux-desktop.tar.gz
-          git commit -m "build: linux desktop flutter app"
+          git add -f vixor-erp-linux-desktop.tar.gz
+          git commit -m "build: linux desktop"
           git push --force origin build-desktop-linux-flutter
-
-      - name: Upload build log on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-log
-          path: /tmp/build.log
 
   build-windows:
     name: Windows Desktop
@@ -140,33 +110,34 @@ jobs:
         working-directory: mobile-client
     steps:
       - uses: actions/checkout@v4
-
-      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.44.4'
-          channel: 'stable'
+          persist-credentials: true
 
-      - name: Flutter config
+      - name: Download Flutter from Google
+        shell: pwsh
+        run: |
+          $url="https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.4-stable.zip"
+          Invoke-WebRequest $url -OutFile "$env:TEMP\flutter.zip"
+          Expand-Archive "$env:TEMP\flutter.zip" -DestinationPath "C:\flutter-sdk"
+          echo "C:\flutter-sdk\flutter\bin" | Out-File -Append $env:GITHUB_PATH
+
+      - name: Flutter setup
         run: |
           flutter config --enable-windows-desktop --no-analytics
           flutter create --platforms=windows . 2>&1 | Out-Null
 
-      - name: Remove mobile-only packages
-        shell: python
-        run: |
-          import re
-          c = open('pubspec.yaml').read()
-          for pkg in ['mobile_scanner', 'local_auth', 'http_parser']:
-              c = re.sub(rf'^  {pkg}:.*$', '', c, flags=re.MULTILINE)
-          c = re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies|\Z)', '', c, flags=re.DOTALL)
-          open('pubspec.yaml','w').write(c)
-          print('pubspec cleaned')
-
-      - name: Create desktop stubs
+      - name: Patch pubspec & stubs
         shell: bash
         run: |
+          python3 -c "
+          import re
+          c=open('pubspec.yaml').read()
+          for p in ['mobile_scanner','local_auth','http_parser']:
+              c=re.sub(rf'^  {p}:.*$','',c,flags=re.MULTILINE)
+          c=re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies:|\Z)','',c,flags=re.DOTALL)
+          open('pubspec.yaml','w').write(c)
+          "
           cat > lib/services/biometric_service.dart << 'DART'
-          import 'package:shared_preferences/shared_preferences.dart';
           class BiometricService {
             Future<bool> isAvailable() async => false;
             Future<bool> isEnabled() async => false;
@@ -184,15 +155,15 @@ jobs:
             final _c = TextEditingController();
             @override Widget build(BuildContext ctx) => Scaffold(
               appBar: AppBar(title: const Text('Enter barcode')),
-              body: Padding(padding: const EdgeInsets.all(24), child: Column(
-                mainAxisAlignment: MainAxisAlignment.center, children: [
-                  const Icon(Icons.qr_code, size: 64, color: Colors.grey),
-                  const SizedBox(height: 12),
-                  TextField(controller: _c, autofocus: true,
-                    decoration: const InputDecoration(labelText: 'Barcode', border: OutlineInputBorder()),
-                    onSubmitted: (v) => Navigator.pop(ctx, v)),
-                  const SizedBox(height: 12),
-                  FilledButton(onPressed: () => Navigator.pop(ctx, _c.text), child: const Text('OK')),
+              body: Padding(padding: const EdgeInsets.all(24),child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,children: [
+                  const Icon(Icons.qr_code,size:64,color:Colors.grey),
+                  const SizedBox(height:12),
+                  TextField(controller:_c,autofocus:true,
+                    decoration:const InputDecoration(labelText:'Barcode',border:OutlineInputBorder()),
+                    onSubmitted:(v)=>Navigator.pop(ctx,v)),
+                  const SizedBox(height:12),
+                  FilledButton(onPressed:()=>Navigator.pop(ctx,_c.text),child:const Text('OK')),
                 ],
               )),
             );
@@ -200,21 +171,19 @@ jobs:
           DART
           find lib -name '*.dart' -exec sed -i 's/,\s*sharePositionOrigin:[^,)]*//' {} \;
 
-      - name: Flutter pub get
+      - name: pub get
         run: flutter pub get
 
-      - name: Build Windows
+      - name: Build
         run: flutter build windows --release
 
-      - name: Package
-        shell: powershell
+      - name: Package & push to git
+        shell: pwsh
         run: |
-          Compress-Archive -Path build/windows/x64/runner/Release/* `
-            -DestinationPath vixor-erp-windows-desktop.zip -Force
-          Write-Host "Size: $((Get-Item vixor-erp-windows-desktop.zip).Length / 1MB) MB"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: vixor-erp-windows-desktop
-          path: mobile-client/vixor-erp-windows-desktop.zip
-          retention-days: 30
+          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath vixor-erp-windows-desktop.zip -Force
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B build-desktop-windows-flutter
+          git add -f vixor-erp-windows-desktop.zip
+          git commit -m "build: windows desktop"
+          git push --force origin build-desktop-windows-flutter
