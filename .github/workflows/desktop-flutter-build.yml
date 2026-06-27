@@ -300,7 +300,28 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows
-        run: flutter build windows --release
+        shell: pwsh
+        run: |
+          # Show what packages remain
+          Write-Host "=== pubspec dependencies ==="
+          Get-Content pubspec.yaml | Select-String "^  \w"
+          
+          # Show what files might cause issues
+          Write-Host "=== checking dart files for mobile imports ==="
+          Get-ChildItem -Path lib -Filter "*.dart" -Recurse | ForEach-Object {
+            $content = Get-Content $_.FullName -Raw
+            if ($content -match "geolocator|firebase|local_auth|mobile_scanner|secure_storage") {
+              Write-Host "WARN: $($_.FullName)"
+              Select-String -Path $_.FullName -Pattern "geolocator|firebase|local_auth|mobile_scanner|secure_storage"
+            }
+          }
+          
+          Write-Host "=== Starting flutter build ==="
+          flutter build windows --release 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host "BUILD FAILED with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
 
       - name: Package & upload via GitHub API
         shell: pwsh
