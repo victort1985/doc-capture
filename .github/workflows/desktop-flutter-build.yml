@@ -317,10 +317,21 @@ jobs:
           }
           
           Write-Host "=== Starting flutter build ==="
-          flutter build windows --release 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "BUILD FAILED with exit code $LASTEXITCODE"
-            exit $LASTEXITCODE
+          $buildOutput = flutter build windows --release 2>&1
+          $exitCode = $LASTEXITCODE
+          $buildOutput | Write-Host
+          
+          if ($exitCode -ne 0) {
+            Write-Host "BUILD FAILED - saving errors to git"
+            $buildOutput | Out-File -FilePath "windows-build-errors.txt" -Encoding utf8
+            git config user.email "ci@doccapture.local"
+            git config user.name "CI Bot"
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git checkout -B debug-windows-build
+            git add -f windows-build-errors.txt
+            git commit -m "debug: windows build errors v${{ github.ref_name }}"
+            git push --force origin debug-windows-build
+            exit $exitCode
           }
 
       - name: Package & upload via GitHub API
