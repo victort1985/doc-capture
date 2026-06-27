@@ -18,10 +18,12 @@ import ReportsPage from './pages/ReportsPage';
 import PermissionsPage from './pages/PermissionsPage';
 import DeliveryNoteSettingsPage from './pages/DeliveryNoteSettingsPage';
 import DeliveryNotesPage from './pages/DeliveryNotesPage';
+import ErrorBoundary from './components/ErrorBoundary';
 import CalendarSyncPage from './pages/CalendarSyncPage';
 
 export default function App() {
   return (
+    <ErrorBoundary>
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -52,5 +54,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/users" replace />} />
       </Routes>
     </AuthProvider>
+    </ErrorBoundary>
   );
 }

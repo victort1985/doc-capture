@@ -126,13 +126,40 @@ async function bootstrap() {
     return handleSignPage(req, res, app, signPageFile, DeliveryNotesService);
   });
 
+  // Rate limit map for signing submissions (prevent brute-force)
+  const _signRateLimit = new Map<string, { count: number; resetAt: number }>();
+
   // POST /sign/:token/submit — signature submission, also under /sign/* bypass
   xApp.post('/sign/:token/submit', express.json({ limit: '5mb' }), async (req: any, res: any) => {
     try {
+      // Rate limit: 10 attempts per IP per 15 minutes
+      const ip: string = req.ip || req.socket?.remoteAddress || 'unknown';
+      const now = Date.now();
+      const rl = _signRateLimit.get(ip);
+      if (rl && now < rl.resetAt) {
+        if (rl.count >= 10) return res.status(429).json({ error: 'Too many attempts. Try again later.' });
+        rl.count++;
+      } else {
+        _signRateLimit.set(ip, { count: 1, resetAt: now + 15 * 60 * 1000 });
+      }
+
       const token: string = req.params.token;
-      const svc = app.get(DeliveryNotesService);
+
+      // Input validation
       const { signerName, signerRole, signature } = req.body;
-      const result = await svc.submitRemoteSignature(token, signerName, signerRole, signature);
+      if (!signerName || typeof signerName !== 'string' || signerName.trim().length < 2) {
+        return res.status(400).json({ error: 'Invalid signer name' });
+      }
+      if (!signature || typeof signature !== 'string' || signature.length < 100) {
+        return res.status(400).json({ error: 'Invalid signature data' });
+      }
+      // Token must be hex string
+      if (!/^[a-f0-9]{40,}$/.test(token)) {
+        return res.status(400).json({ error: 'Invalid token' });
+      }
+
+      const svc = app.get(DeliveryNotesService);
+      const result = await svc.submitRemoteSignature(token, signerName.trim(), signerRole?.trim(), signature);
       return res.json(result);
     } catch (e) {
       return res.status(400).json({ error: String(e) });
@@ -155,8 +182,10 @@ async function bootstrap() {
           // 'unsafe-inline' — script-src stays locked down).
           'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           'font-src': ["'self'", 'https://fonts.gstatic.com'],
-          // Signing page injects window.__NOTE_DATA__ inline — needs unsafe-inline
+          // script-src: unsafe-inline needed for signing page (server-injected data script)
           'script-src': ["'self'", "'unsafe-inline'"],
+          // Prevent clickjacking attacks
+          'frame-ancestors': ["'none'"],
         },
       },
     }),

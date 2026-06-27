@@ -5,54 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <title>חתימה על תעודה</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, Arial, sans-serif; background: #f5f5f5; direction: rtl; }
-  .container { max-width: 600px; margin: 0 auto; padding: 16px; }
-  .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-  h1 { font-size: 22px; font-weight: 800; color: #1a1a2e; margin-bottom: 4px; }
-  h2 { font-size: 15px; color: #555; font-weight: 400; margin-bottom: 16px; }
-  .doctype { font-size: 20px; font-weight: 800; color: #0e1642; border: 2px solid #0e1642; border-radius: 8px;
-    display: inline-block; padding: 4px 14px; margin-bottom: 12px; }
-  .field-row { display: flex; gap: 8px; margin-bottom: 8px; }
-  .field { flex: 1; }
-  label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 3px; }
-  input { width: 100%; padding: 10px 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 15px; direction: rtl; }
-  input:focus { outline: none; border-color: #0e1642; }
-  .required input:focus, .required input:valid { border-color: #0e1642; }
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th { background: #f0f0f0; padding: 6px 8px; text-align: right; font-weight: 700; border: 1px solid #ddd; }
-  td { padding: 6px 8px; border: 1px solid #ddd; text-align: right; }
-  td:first-child { text-align: center; width: 50px; }
-  th:first-child { text-align: center; width: 50px; }
-  .sig-area { border: 2px dashed #ccc; border-radius: 10px; background: #fafafa; cursor: crosshair; touch-action: none; display: block; }
-  .btn { display: block; width: 100%; padding: 14px; background: #0e1642; color: white; border: none; border-radius: 10px;
-    font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 12px; }
-  .btn:disabled { background: #999; }
-  .btn-clear { background: none; color: #888; border: 1px solid #ddd; padding: 8px 16px; border-radius: 8px;
-    font-size: 13px; cursor: pointer; margin-top: 8px; }
-  .info-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; }
-  .info-label { color: #888; font-weight: 600; }
-  .success { text-align: center; padding: 40px 20px; }
-  .success-icon { font-size: 60px; margin-bottom: 16px; }
-  .success h2 { font-size: 22px; color: #1a1a2e; font-weight: 800; }
-  .already { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 16px; text-align: center; }
-  .step { display: none; }
-  .step.active { display: block; }
-  .step-indicator { display: flex; gap: 8px; margin-bottom: 16px; align-items: center; }
-  .dot { width: 28px; height: 28px; border-radius: 50%; background: #ddd; display: flex; align-items: center;
-    justify-content: center; font-size: 13px; font-weight: 700; color: white; }
-  .dot.active { background: #0e1642; }
-  .dot.done { background: #22c55e; }
-  .sep { flex: 1; height: 2px; background: #ddd; }
-  .sep.done { background: #22c55e; }
-  .step-label { font-size: 11px; color: #888; text-align: center; }
-  .note-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-  .company-name { font-size: 16px; font-weight: 800; }
-  .company-sub { font-size: 11px; color: #666; }
-  .note-num { font-size: 22px; font-weight: 900; color: #0e1642; }
-  .note-num-label { font-size: 11px; color: #888; text-align: left; }
-  .msg { font-size: 13px; color: #555; margin-top: 8px; line-height: 1.5; }
-  .error { background: #fee; border: 1px solid #f88; border-radius: 8px; padding: 12px; color: #c00; font-size: 14px; margin-bottom: 12px; }
+  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@400;600;700;800&display=swap');
+  :root { --navy:#0E1642; --orange:#F2701C; --bg:#F4F6FA; --card:#FFFFFF; --border:#E0E4ED; --text:#1A1D2E; --muted:#6B7280; --green:#10B981; --radius:14px; --shadow:0 2px 12px rgba(14,22,66,0.08); }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:'Heebo',-apple-system,Arial,sans-serif; background:var(--bg); color:var(--text); direction:rtl; min-height:100vh; }
+  .brand-bar { background:var(--navy); padding:12px 20px; display:flex; align-items:center; gap:10px; }
+  .brand-logo { width:32px; height:32px; background:var(--orange); border-radius:8px; display:flex; align-items:center; justify-content:center; font-weight:900; color:white; font-size:18px; }
+  .brand-name { color:white; font-weight:800; font-size:15px; letter-spacing:1px; }
+  .brand-sub  { color:rgba(255,255,255,0.5); font-size:11px; }
+  .container { max-width:520px; margin:0 auto; padding:20px 16px 40px; }
+  .card { background:var(--card); border-radius:var(--radius); padding:22px; margin-bottom:14px; box-shadow:var(--shadow); border:1px solid var(--border); }
+  .progress { display:flex; align-items:center; gap:6px; margin-bottom:24px; }
+  .dot { width:30px; height:30px; border-radius:50%; background:var(--border); color:var(--muted); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; flex-shrink:0; transition:all 0.2s; }
+  .dot.active { background:var(--navy); color:white; }
+  .dot.done   { background:var(--green); color:white; }
+  .line { flex:1; height:2px; background:var(--border); }
+  .line.done  { background:var(--green); }
+  .note-type { font-size:18px; font-weight:800; color:var(--navy); display:inline-block; padding:4px 16px; border:2px solid var(--navy); border-radius:6px; margin-bottom:6px; }
+  .note-meta { font-size:13px; color:var(--muted); }
+  .note-company { font-weight:700; font-size:15px; margin-bottom:2px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin:12px 0; }
+  th { background:var(--bg); padding:8px 10px; text-align:right; font-weight:700; border-bottom:2px solid var(--border); color:var(--muted); font-size:11px; text-transform:uppercase; }
+  td { padding:8px 10px; border-bottom:1px solid var(--border); }
+  tr:last-child td { border-bottom:none; }
+  .field { margin-bottom:16px; }
+  label { display:block; margin-bottom:5px; font-size:13px; color:var(--muted); font-weight:600; }
+  input[type=text] { width:100%; padding:13px 14px; border:1.5px solid var(--border); border-radius:10px; font-size:15px; direction:rtl; font-family:'Heebo',sans-serif; transition:border-color 0.15s; background:var(--card); }
+  input[type=text]:focus { outline:none; border-color:var(--navy); box-shadow:0 0 0 3px rgba(14,22,66,0.08); }
+  .sig-area { border:2px dashed var(--border); border-radius:12px; background:#FAFBFC; cursor:crosshair; touch-action:none; display:block; width:100%; height:180px; }
+  .btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:15px; background:var(--navy); color:white; border:none; border-radius:12px; font-size:16px; font-weight:700; cursor:pointer; margin-top:14px; font-family:'Heebo',sans-serif; transition:background 0.15s; }
+  .btn:hover:not(:disabled) { background:#1a2b6d; }
+  .btn:disabled { background:#C5CAD6; cursor:not-allowed; }
+  .btn-secondary { background:var(--card); color:var(--text); border:1.5px solid var(--border); font-size:14px; padding:11px; }
+  .btn-clear { background:none; color:var(--muted); border:1.5px solid var(--border); padding:8px 16px; border-radius:8px; font-size:13px; cursor:pointer; margin-top:8px; font-family:'Heebo',sans-serif; }
+  .step { display:none; }
+  .already { background:#FFFBEB; border:1.5px solid #F59E0B; border-radius:var(--radius); padding:20px; text-align:center; }
+  .success { background:#ECFDF5; border:1.5px solid var(--green); border-radius:var(--radius); padding:32px; text-align:center; }
+  .not-found { text-align:center; padding:60px 20px; }
+  .error-msg { color:#EF4444; font-size:13px; margin-top:8px; padding:10px; background:#FEF2F2; border-radius:8px; }
+  #loading { text-align:center; padding:60px; color:var(--muted); }
+  .spinner { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--navy); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .terms { font-size:12px; color:var(--muted); background:var(--bg); border-radius:8px; padding:10px 12px; max-height:100px; overflow-y:auto; border:1px solid var(--border); }
 </style>
 </head>
 <body>
@@ -213,6 +207,12 @@ let isDrawing = false;
 let lastX = 0, lastY = 0;
 
 // ── Load note ──────────────────────────────────────────────────────────────
+function sanitize(str) {
+  return String(str || '').replace(/[<>&"']/g, function(c) {
+    return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
 function loadNote() {
   hide('loading');
   const data = window.__NOTE_DATA__;
@@ -245,7 +245,7 @@ function fmtDate(iso) {
 function fillNote(d) {
   document.getElementById('doc-type-header').textContent = d.documentType || 'תעודת משלוח';
   document.getElementById('doctype-display').textContent = d.documentType || 'תעודת משלוח';
-  document.getElementById('company-name').textContent = d.companyName || '';
+  document.getElementById('company-name').textContent = sanitize(d.companyName || '');
   document.getElementById('note-num').textContent = 'DN' + (d.noteNumber || '');
   document.getElementById('note-date').textContent = fmtDate(d.date || '');
   document.getElementById('note-client').textContent = d.clientName || '';
