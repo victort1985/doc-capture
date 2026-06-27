@@ -51,7 +51,7 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       appBar: AppBar(
-        title: const Text('Delivery Notes'),
+        title: Text(AppLocalizations.of(context)?.deliveryNotesTitle ?? 'Delivery Notes'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
