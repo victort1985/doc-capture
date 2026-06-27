@@ -7,7 +7,7 @@ on:
 jobs:
   build-linux:
     name: Linux Desktop
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, linux, desktop]
     defaults:
       run:
         working-directory: mobile-client
@@ -15,20 +15,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Flutter (no snap, no cache)
+      - name: Setup Flutter
         run: |
-          cd ~
-          wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.4-stable.tar.xz
-          tar xf flutter_linux_3.44.4-stable.tar.xz
+          # Use pre-installed Flutter on self-hosted runner
+          export PATH="$HOME/flutter/bin:/usr/local/flutter/bin:$PATH"
           echo "$HOME/flutter/bin" >> $GITHUB_PATH
+          echo "/usr/local/flutter/bin" >> $GITHUB_PATH
+          flutter --version
 
       - name: Install Linux build deps
         run: |
-          sudo apt-get update -q
-          sudo apt-get install -y \
+          sudo apt-get install -y -q \
             clang cmake ninja-build pkg-config \
             libgtk-3-dev liblzma-dev \
-            libgcrypt20-dev liblz4-dev libgpg-error-dev
+            libgcrypt20-dev liblz4-dev libgpg-error-dev || true
 
       - name: Flutter config
         run: |
