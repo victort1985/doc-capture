@@ -20,6 +20,8 @@ import 'services/delivery_notes_service.dart';
 import 'store/app_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/root_screen.dart';
+import 'screens/eula_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(const DocCaptureApp());
@@ -112,9 +114,51 @@ class _AppRootState extends State<_AppRoot> {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
           final loggedIn = appState.currentUser != null;
-          return loggedIn ? const RootScreen() : const LoginScreen();
+          // Show EULA before login — once accepted it's stored in SharedPreferences
+          return _EulaGate(
+            languageCode: appState.languageCode,
+            child: loggedIn ? const RootScreen() : const LoginScreen(),
+          );
         },
       ),
     );
+  }
+}
+
+// ── EULA Gate — shows EULA before login if not yet accepted ─────────────────
+class _EulaGate extends StatefulWidget {
+  final Widget child;
+  final String languageCode;
+  const _EulaGate({required this.child, required this.languageCode});
+  @override State<_EulaGate> createState() => _EulaGateState();
+}
+
+class _EulaGateState extends State<_EulaGate> {
+  bool? _accepted;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkEula();
+  }
+
+  Future<void> _checkEula() async {
+    final prefs = await SharedPreferences.getInstance();
+    final accepted = prefs.getBool('eula_accepted_v1') ?? false;
+    if (mounted) setState(() => _accepted = accepted);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_accepted == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (!_accepted!) {
+      return EulaScreen(
+        languageCode: widget.languageCode,
+        onAccepted: () => setState(() => _accepted = true),
+      );
+    }
+    return widget.child;
   }
 }
