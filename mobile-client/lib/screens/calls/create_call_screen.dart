@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../../app/theme.dart';
 import '../../l10n/app_localizations.dart';
@@ -37,24 +36,8 @@ class _CreateCallScreenState extends State<CreateCallScreen> {
   loc.Location? _selectedLocation;
 
   Future<void> _getLocation() async {
-    setState(() { _locating = true; _error = null; });
-    try {
-      final permission = await Geolocator.checkPermission();
-      var granted = permission;
-      if (granted == LocationPermission.denied) {
-        granted = await Geolocator.requestPermission();
-      }
-      if (granted == LocationPermission.denied || granted == LocationPermission.deniedForever) {
-        throw Exception('permission denied');
-      }
-      final pos = await Geolocator.getCurrentPosition();
-      setState(() { _lat = pos.latitude; _lng = pos.longitude; });
-    } catch (_) {
-      final l10n = AppLocalizations.of(context)!;
-      setState(() => _error = l10n.callLocationError);
-    } finally {
-      setState(() => _locating = false);
-    }
+    // Geolocator not available on desktop — location disabled
+    setState(() { _locating = false; });
   }
 
   Future<void> _submit() async {
