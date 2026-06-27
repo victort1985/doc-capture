@@ -209,11 +209,26 @@ class _EulaScreenState extends State<EulaScreen> {
   }
 
   void _showDeclineDialog(BuildContext ctx) {
-    final (title, msg, cancel, exit_) = switch (widget.languageCode) {
-      'he' => ('יציאה מהאפליקציה', 'אם לא תסכים/י לתנאים, לא ניתן להשתמש בתוכנה.', 'חזרה', 'יציאה'),
-      'ru' => ('Выход из приложения', 'Без принятия условий использование программы невозможно.', 'Назад', 'Выйти'),
-      _   => ('Exit Application', 'You cannot use Vixor ERP without accepting the terms.', 'Back', 'Exit'),
-    };
+    final String title, msg, cancel, exit_;
+    switch (widget.languageCode) {
+      case 'he':
+        title = 'יציאה מהאפליקציה';
+        msg = 'אם לא תסכים/י לתנאים, לא ניתן להשתמש בתוכנה.';
+        cancel = 'חזרה';
+        exit_ = 'יציאה';
+        break;
+      case 'ru':
+        title = 'Выход из приложения';
+        msg = 'Без принятия условий использование программы невозможно.';
+        cancel = 'Назад';
+        exit_ = 'Выйти';
+        break;
+      default:
+        title = 'Exit Application';
+        msg = 'You cannot use Vixor ERP without accepting the terms.';
+        cancel = 'Back';
+        exit_ = 'Exit';
+    }
     showDialog(
       context: ctx,
       builder: (_) => AlertDialog(
@@ -232,15 +247,7 @@ class _EulaScreenState extends State<EulaScreen> {
   }
 
   void _exitApp() {
-    // Platform exit
-    try {
-      // ignore: deprecated_member_use
-      WidgetsBinding.instance.window.physicalGeometry;
-    } catch (_) {}
-    Future.delayed(Duration.zero, () {
-      // ignore: deprecated_member_use
-      SystemNavigator.pop();
-    });
+    SystemNavigator.pop();
   }
 }
 
