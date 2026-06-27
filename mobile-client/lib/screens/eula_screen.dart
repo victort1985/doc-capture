@@ -209,7 +209,7 @@ class _EulaScreenState extends State<EulaScreen> {
   }
 
   void _showDeclineDialog(BuildContext ctx) {
-    final String title, msg, cancel, exit_;
+    late final String title, msg, cancel, exit_;
     switch (widget.languageCode) {
       case 'he':
         title = 'יציאה מהאפליקציה';

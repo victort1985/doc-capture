@@ -13,8 +13,6 @@ jobs:
         working-directory: mobile-client
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
       - name: Install system deps
         run: |
@@ -23,7 +21,7 @@ jobs:
             libgtk-3-dev liblzma-dev xz-utils libgcrypt20-dev \
             liblz4-dev libgpg-error-dev libsecret-1-dev libjsoncpp-dev
 
-      - name: Download Flutter from Google
+      - name: Download Flutter from Google (no Azure)
         run: |
           curl -sL https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.44.4-stable.tar.xz \
             -o /tmp/flutter.tar.xz
@@ -35,7 +33,7 @@ jobs:
           flutter config --enable-linux-desktop --no-analytics
           flutter create --platforms=linux . 2>/dev/null || true
 
-      - name: Patch pubspec & create stubs
+      - name: Patch pubspec & stubs
         run: |
           python3 -c "
           import re
@@ -45,7 +43,6 @@ jobs:
           c = re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies:|\Z)','',c,flags=re.DOTALL)
           open('pubspec.yaml','w').write(c)
           "
-
           cat > lib/services/biometric_service.dart << 'DART'
           class BiometricService {
             Future<bool> isAvailable() async => false;
@@ -54,7 +51,6 @@ jobs:
             Future<bool> authenticate() async => true;
           }
           DART
-
           cat > lib/screens/barcode_scanner_screen.dart << 'DART'
           import 'package:flutter/material.dart';
           class BarcodeScannerScreen extends StatefulWidget {
@@ -65,42 +61,61 @@ jobs:
             final _c = TextEditingController();
             @override Widget build(BuildContext ctx) => Scaffold(
               appBar: AppBar(title: const Text('Enter barcode')),
-              body: Padding(padding: const EdgeInsets.all(24),child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,children: [
-                  const Icon(Icons.qr_code,size:64,color:Colors.grey),
-                  const SizedBox(height:12),
-                  TextField(controller:_c,autofocus:true,
-                    decoration:const InputDecoration(labelText:'Barcode',border:OutlineInputBorder()),
-                    onSubmitted:(v)=>Navigator.pop(ctx,v)),
-                  const SizedBox(height:12),
-                  FilledButton(onPressed:()=>Navigator.pop(ctx,_c.text),child:const Text('OK')),
+              body: Padding(padding: const EdgeInsets.all(24), child: Column(
+                mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.qr_code, size: 64, color: Colors.grey),
+                  const SizedBox(height: 12),
+                  TextField(controller: _c, autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Barcode', border: OutlineInputBorder()),
+                    onSubmitted: (v) => Navigator.pop(ctx, v)),
+                  const SizedBox(height: 12),
+                  FilledButton(onPressed: () => Navigator.pop(ctx, _c.text), child: const Text('OK')),
                 ],
               )),
             );
           }
           DART
-
           find lib -name '*.dart' -exec sed -i 's/,\s*sharePositionOrigin:[^,)]*//' {} \;
 
       - name: pub get
         run: flutter pub get
 
-      - name: Build
+      - name: Build Linux
         run: |
           export CXX=/usr/bin/clang++
           export CC=/usr/bin/clang
-          flutter build linux --release
+          flutter build linux --release 2>&1 | tee /tmp/build.log
+          echo "Build exit: $?"
 
-      - name: Package & push to git
+      - name: Package bundle
         run: |
-          BUNDLE=$(find build/linux -type d -name bundle | head -1)
-          tar -czf vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" .
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git checkout -B build-desktop-linux-flutter
-          git add -f vixor-erp-linux-desktop.tar.gz
-          git commit -m "build: linux desktop"
-          git push --force origin build-desktop-linux-flutter
+          BUNDLE=$(find build/linux -type d -name bundle 2>/dev/null | head -1)
+          if [ -z "$BUNDLE" ]; then
+            echo "Bundle not found! Build output:"
+            find build/linux -type f | head -20
+            exit 1
+          fi
+          echo "Bundle: $BUNDLE"
+          ls "$BUNDLE"
+          tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" .
+          echo "Size: $(du -sh /tmp/vixor-erp-linux-desktop.tar.gz)"
+
+      - name: Upload via GitHub API (no Azure)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Upload as release asset using gh CLI (goes via api.github.com, not Azure)
+          TAG="${{ github.ref_name }}"
+          
+          # Create release if not exists
+          gh release create "$TAG" --title "Vixor ERP $TAG" --notes "Auto build" 2>/dev/null || true
+          
+          # Upload Linux desktop bundle
+          gh release upload "$TAG" /tmp/vixor-erp-linux-desktop.tar.gz \
+            --clobber \
+            --repo ${{ github.repository }}
+          
+          echo "✅ Uploaded to release $TAG"
 
   build-windows:
     name: Windows Desktop
@@ -110,32 +125,36 @@ jobs:
         working-directory: mobile-client
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
 
-      - name: Download Flutter from Google
+      - name: Download Flutter from Google (no Azure)
         shell: pwsh
         run: |
-          $url="https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.4-stable.zip"
-          Invoke-WebRequest $url -OutFile "$env:TEMP\flutter.zip"
-          Expand-Archive "$env:TEMP\flutter.zip" -DestinationPath "C:\flutter-sdk"
+          $url = "https://storage.googleapis.com/flutter_infra_release/releases/stable/windows/flutter_windows_3.44.4-stable.zip"
+          Write-Host "Downloading Flutter..."
+          Invoke-WebRequest $url -OutFile "$env:TEMP\flutter.zip" -UseBasicParsing
+          Write-Host "Extracting..."
+          Expand-Archive "$env:TEMP\flutter.zip" -DestinationPath "C:\flutter-sdk" -Force
           echo "C:\flutter-sdk\flutter\bin" | Out-File -Append $env:GITHUB_PATH
+          Write-Host "Flutter ready"
 
       - name: Flutter setup
+        shell: pwsh
         run: |
+          $env:PATH = "C:\flutter-sdk\flutter\bin;$env:PATH"
           flutter config --enable-windows-desktop --no-analytics
-          flutter create --platforms=windows . 2>&1 | Out-Null
+          flutter create --platforms=windows . 2>&1 | Out-Null || true
 
       - name: Patch pubspec & stubs
         shell: bash
         run: |
           python3 -c "
           import re
-          c=open('pubspec.yaml').read()
+          c = open('pubspec.yaml').read()
           for p in ['mobile_scanner','local_auth','http_parser']:
-              c=re.sub(rf'^  {p}:.*$','',c,flags=re.MULTILINE)
-          c=re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies:|\Z)','',c,flags=re.DOTALL)
+              c = re.sub(rf'^  {p}:.*$','',c,flags=re.MULTILINE)
+          c = re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies:|\Z)','',c,flags=re.DOTALL)
           open('pubspec.yaml','w').write(c)
+          print('pubspec OK')
           "
           cat > lib/services/biometric_service.dart << 'DART'
           class BiometricService {
@@ -155,15 +174,15 @@ jobs:
             final _c = TextEditingController();
             @override Widget build(BuildContext ctx) => Scaffold(
               appBar: AppBar(title: const Text('Enter barcode')),
-              body: Padding(padding: const EdgeInsets.all(24),child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,children: [
-                  const Icon(Icons.qr_code,size:64,color:Colors.grey),
-                  const SizedBox(height:12),
-                  TextField(controller:_c,autofocus:true,
-                    decoration:const InputDecoration(labelText:'Barcode',border:OutlineInputBorder()),
-                    onSubmitted:(v)=>Navigator.pop(ctx,v)),
-                  const SizedBox(height:12),
-                  FilledButton(onPressed:()=>Navigator.pop(ctx,_c.text),child:const Text('OK')),
+              body: Padding(padding: const EdgeInsets.all(24), child: Column(
+                mainAxisAlignment: MainAxisAlignment.center, children: [
+                  const Icon(Icons.qr_code, size: 64, color: Colors.grey),
+                  const SizedBox(height: 12),
+                  TextField(controller: _c, autofocus: true,
+                    decoration: const InputDecoration(labelText: 'Barcode', border: OutlineInputBorder()),
+                    onSubmitted: (v) => Navigator.pop(ctx, v)),
+                  const SizedBox(height: 12),
+                  FilledButton(onPressed: () => Navigator.pop(ctx, _c.text), child: const Text('OK')),
                 ],
               )),
             );
@@ -174,16 +193,21 @@ jobs:
       - name: pub get
         run: flutter pub get
 
-      - name: Build
+      - name: Build Windows
         run: flutter build windows --release
 
-      - name: Package & push to git
+      - name: Package & upload via GitHub API
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath vixor-erp-windows-desktop.zip -Force
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git checkout -B build-desktop-windows-flutter
-          git add -f vixor-erp-windows-desktop.zip
-          git commit -m "build: windows desktop"
-          git push --force origin build-desktop-windows-flutter
+          $src = "build\windows\x64\runner\Release"
+          $zip = "$env:TEMP\vixor-erp-windows-desktop.zip"
+          Compress-Archive -Path "$src\*" -DestinationPath $zip -Force
+          $size = [math]::Round((Get-Item $zip).Length / 1MB, 1)
+          Write-Host "Size: $size MB"
+          
+          $tag = "${{ github.ref_name }}"
+          gh release create $tag --title "Vixor ERP $tag" --notes "Auto build" 2>$null
+          gh release upload $tag $zip --clobber --repo "${{ github.repository }}"
+          Write-Host "✅ Uploaded to release $tag"
