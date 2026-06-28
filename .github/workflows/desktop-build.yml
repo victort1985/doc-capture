@@ -39,7 +39,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
-      - name: Push installer to git
+      - name: Upload to GitHub Release
         if: success()
         working-directory: ${{ github.workspace }}
         shell: pwsh
@@ -48,15 +48,12 @@ jobs:
         run: |
           $exe = Get-ChildItem desktop-client/dist -Filter "*.exe" -Recurse | Select-Object -First 1
           if (-not $exe) { Write-Error "No .exe found"; exit 1 }
-          Write-Host "✅ $($exe.Name) — $([math]::Round($exe.Length/1MB,1)) MB"
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git remote set-url origin https://x-access-token:$env:GH_TOKEN@github.com/${{ github.repository }}.git
-          git checkout -B build-desktop-win
-          git add -f "$($exe.FullName)"
-          git diff --cached --stat
-          git commit -m "build: Vixor ERP ${{ github.ref_name }} Windows"
-          git push --force origin build-desktop-win
+          $size = [math]::Round($exe.Length/1MB,1)
+          Write-Host "✅ $($exe.Name) — $size MB"
+          $tag = "${{ github.ref_name }}"
+          gh release create $tag --title "Vixor ERP $tag" --notes "Auto-built" 2>$null
+          gh release upload $tag "$($exe.FullName)" --clobber --repo "${{ github.repository }}"
+          Write-Host "✅ Uploaded to GitHub Release $tag" 
 
   build-mac:
     name: macOS DMG
@@ -97,7 +94,7 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
-      - name: Push DMG to git
+      - name: Upload to GitHub Release
         if: success()
         working-directory: ${{ github.workspace }}
         env:
@@ -105,15 +102,11 @@ jobs:
         run: |
           DMG=$(find desktop-client/dist -name "*.dmg" | head -1)
           [ -z "$DMG" ] && echo "No DMG found" && exit 1
-          SIZE=$(du -sh "$DMG" | cut -f1)
-          echo "✅ $DMG — $SIZE"
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
-          git checkout -B build-desktop-mac
-          git add -f "$DMG"
-          git commit -m "build: Vixor ERP ${{ github.ref_name }} macOS"
-          git push --force origin build-desktop-mac
+          echo "✅ $DMG ($(du -sh "$DMG" | cut -f1))"
+          TAG="${{ github.ref_name }}"
+          gh release create "$TAG" --title "Vixor ERP $TAG" --notes "Auto-built" 2>/dev/null || true
+          gh release upload "$TAG" "$DMG" --clobber --repo ${{ github.repository }}
+          echo "✅ Uploaded to GitHub Release $TAG" 
 
   build-linux:
     name: Linux (tar.gz bundle)
@@ -160,28 +153,27 @@ jobs:
           git commit -m "debug: electron linux error"
           git push --force origin debug-electron-linux2 || true
 
-      - name: Package as tar.gz and push
+      - name: Package & upload to GitHub Release
         working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "=== dist contents ==="
+          echo "=== Finding build output ==="
           find desktop-client/dist -maxdepth 3 2>/dev/null | head -20
-          echo "==="
+          
           DIR=$(find desktop-client/dist -maxdepth 3 -type d -name "*unpacked*" 2>/dev/null | head -1)
-          [ -z "$DIR" ] && DIR=$(find desktop-client/dist -maxdepth 2 -type d 2>/dev/null | grep -v "^desktop-client/dist$" | head -1)
-          [ -z "$DIR" ] && echo "ERROR: no build dir found" && exit 1
+          [ -z "$DIR" ] && DIR=$(find desktop-client/dist -maxdepth 2 -mindepth 1 -type d 2>/dev/null | head -1)
+          [ -z "$DIR" ] && echo "ERROR: no build output" && exit 1
           echo "Packing: $DIR"
           tar -czf vixor-erp-linux-x64.tar.gz -C "$DIR" .
           SIZE=$(du -sh vixor-erp-linux-x64.tar.gz | cut -f1)
-          echo "✅ vixor-erp-linux-x64.tar.gz — $SIZE"
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
-          git checkout -B build-desktop-linux-electron
-          git add -f vixor-erp-linux-x64.tar.gz
-          git commit -m "build: Vixor ERP ${{ github.ref_name }} Linux"
-          git push --force origin build-desktop-linux-electron   git config user.email "ci@doccapture.local"
+          echo "✅ Package size: $SIZE"
+          
+          TAG="${{ github.ref_name }}"
+          # Create or update release (uploads.github.com — NOT Azure CDN)
+          gh release create "$TAG" --title "Vixor ERP $TAG" --notes "Auto-built desktop clients" 2>/dev/null || true
+          gh release upload "$TAG" vixor-erp-linux-x64.tar.gz --clobber --repo ${{ github.repository }}
+          echo "✅ Uploaded to GitHub Release $TAG"    git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
           git checkout -B build-desktop-linux-electron
