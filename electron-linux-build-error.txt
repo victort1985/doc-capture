@@ -1,0 +1,86 @@
+
+> vixor-erp-desktop@1.0.0 build:linux
+> electron-builder --linux
+
+  • electron-builder  version=24.13.3 os=6.17.0-1018-azure
+  • artifacts will be published  reason=tag is defined tag=v0.23.9
+  • loaded configuration  file=package.json ("build" field)
+  • effective config  config=directories:
+  output: dist
+  buildResources: build
+appId: app.doc-capture.vixor-erp
+productName: Vixor ERP
+copyright: Copyright © 2026 Vixor
+files:
+  - filter:
+      - main.js
+      - preload.js
+      - assets/**
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  icon: assets/icon.ico
+mac:
+  target:
+    - target: dmg
+      arch:
+        - x64
+        - arm64
+  icon: assets/icon.icns
+  category: public.app-category.business
+linux:
+  target:
+    - target: AppImage
+      arch:
+        - x64
+  icon: assets/icon.png
+  category: Office
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: assets/icon.ico
+  uninstallerIcon: assets/icon.ico
+  installerHeaderIcon: assets/icon.ico
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+  • author is missed in the package.json  appPackageFile=/home/runner/work/doc-capture/doc-capture/desktop-client/package.json
+  • spawning        command=/home/runner/work/doc-capture/doc-capture/desktop-client/node_modules/app-builder-bin/linux/x64/app-builder node-dep-tree --dir /home/runner/work/doc-capture/doc-capture/desktop-client
+  • exited          command=app-builder code=0 pid=2395 out=[]
+  • spawning        command=/home/runner/work/doc-capture/doc-capture/desktop-client/node_modules/app-builder-bin/linux/x64/app-builder rebuild-node-modules cwd=/home/runner/work/doc-capture/doc-capture/desktop-client
+  • no native dependencies  
+  • exited          command=app-builder code=0 pid=2400
+  • packaging       platform=linux arch=x64 electron=31.7.7 appOutDir=dist/linux-unpacked
+  • spawning        command=/home/runner/work/doc-capture/doc-capture/desktop-client/node_modules/app-builder-bin/linux/x64/app-builder unpack-electron --configuration [{"platform":"linux","arch":"x64","version":"31.7.7"}] --output /home/runner/work/doc-capture/doc-capture/desktop-client/dist/linux-unpacked --distMacOsAppName Electron.app
+  • map async       taskCount=2
+  • map async       taskCount=1
+  ⨯ cannot resolve https://github.com/electron/electron/releases/download/31.7.7/electron-v31.7.7-linux-x64.zip: status code 404
+github.com/develar/app-builder/pkg/download.(*Downloader).follow
+	/Volumes/data/Documents/app-builder/pkg/download/downloader.go:237
+github.com/develar/app-builder/pkg/download.(*Downloader).DownloadNoRetry
+	/Volumes/data/Documents/app-builder/pkg/download/downloader.go:128
+github.com/develar/app-builder/pkg/download.(*Downloader).Download
+	/Volumes/data/Documents/app-builder/pkg/download/downloader.go:112
+github.com/develar/app-builder/pkg/electron.(*ElectronDownloader).doDownload
+	/Volumes/data/Documents/app-builder/pkg/electron/electronDownloader.go:192
+github.com/develar/app-builder/pkg/electron.(*ElectronDownloader).Download
+	/Volumes/data/Documents/app-builder/pkg/electron/electronDownloader.go:177
+github.com/develar/app-builder/pkg/electron.downloadElectron.func1.1
+	/Volumes/data/Documents/app-builder/pkg/electron/electronDownloader.go:73
+github.com/develar/app-builder/pkg/util.MapAsyncConcurrency.func2
+	/Volumes/data/Documents/app-builder/pkg/util/async.go:68
+runtime.goexit
+	/usr/local/Cellar/go/1.17/libexec/src/runtime/asm_amd64.s:1581  
+  • exited          command=app-builder code=1 pid=2405
+  ⨯ /home/runner/work/doc-capture/doc-capture/desktop-client/node_modules/app-builder-bin/linux/x64/app-builder process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+Exit code:
+1  failedTask=build stackTrace=Error: /home/runner/work/doc-capture/doc-capture/desktop-client/node_modules/app-builder-bin/linux/x64/app-builder process failed ERR_ELECTRON_BUILDER_CANNOT_EXECUTE
+Exit code:
+1
+    at ChildProcess.<anonymous> (/home/runner/work/doc-capture/doc-capture/desktop-client/node_modules/builder-util/src/util.ts:252:14)
+    at Object.onceWrapper (node:events:639:26)
+    at ChildProcess.emit (node:events:524:28)
+    at maybeClose (node:internal/child_process:1104:16)
+    at Process.ChildProcess._handle.onexit (node:internal/child_process:304:5)
