@@ -153,27 +153,41 @@ jobs:
           git commit -m "debug: electron linux error"
           git push --force origin debug-electron-linux2 || true
 
-      - name: Package & upload to GitHub Release
+      - name: Package & upload via curl (no gh CLI, no Azure)
         working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
         run: |
-          echo "=== Finding build output ==="
-          find desktop-client/dist -maxdepth 3 2>/dev/null | head -20
-          
+          # Find build dir
           DIR=$(find desktop-client/dist -maxdepth 3 -type d -name "*unpacked*" 2>/dev/null | head -1)
           [ -z "$DIR" ] && DIR=$(find desktop-client/dist -maxdepth 2 -mindepth 1 -type d 2>/dev/null | head -1)
-          [ -z "$DIR" ] && echo "ERROR: no build output" && exit 1
-          echo "Packing: $DIR"
-          tar -czf vixor-erp-linux-x64.tar.gz -C "$DIR" .
-          SIZE=$(du -sh vixor-erp-linux-x64.tar.gz | cut -f1)
-          echo "✅ Package size: $SIZE"
+          echo "Build dir: ${DIR:-NOT FOUND}"
+          echo "Dist listing:"; ls desktop-client/dist/ 2>/dev/null
+          [ -z "$DIR" ] && exit 1
           
-          TAG="${{ github.ref_name }}"
-          # Create or update release (uploads.github.com — NOT Azure CDN)
-          gh release create "$TAG" --title "Vixor ERP $TAG" --notes "Auto-built desktop clients" 2>/dev/null || true
-          gh release upload "$TAG" vixor-erp-linux-x64.tar.gz --clobber --repo ${{ github.repository }}
-          echo "✅ Uploaded to GitHub Release $TAG"    git config user.email "ci@doccapture.local"
+          # Create tar.gz
+          tar -czf vixor-erp-linux-x64.tar.gz -C "$DIR" .
+          SIZE=$(stat -c%s vixor-erp-linux-x64.tar.gz)
+          echo "✅ Package: $(du -sh vixor-erp-linux-x64.tar.gz | cut -f1)"
+          
+          # Create release via REST API (api.github.com — works fine)
+          RELEASE=$(curl -s -X POST             -H "Authorization: token $GH_TOKEN"             -H "Content-Type: application/json"             "https://api.github.com/repos/$REPO/releases"             -d "{"tag_name":"$TAG","name":"Vixor ERP $TAG","body":"Desktop builds","draft":false}"             2>/dev/null)
+          RELEASE_ID=$(echo "$RELEASE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null)
+          
+          # If release exists, get its ID
+          if [ -z "$RELEASE_ID" ]; then
+            RELEASE_ID=$(curl -s -H "Authorization: token $GH_TOKEN"               "https://api.github.com/repos/$REPO/releases/tags/$TAG" 2>/dev/null |               python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+          fi
+          
+          echo "Release ID: $RELEASE_ID"
+          [ -z "$RELEASE_ID" ] && echo "Failed to get release ID" && exit 1
+          
+          # Upload asset via REST API (uploads.github.com — not Azure)
+          UPLOAD_RESULT=$(curl -s -X POST             -H "Authorization: token $GH_TOKEN"             -H "Content-Type: application/gzip"             "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=vixor-erp-linux-x64.tar.gz"             --data-binary @vixor-erp-linux-x64.tar.gz 2>/dev/null)
+          
+          echo "$UPLOAD_RESULT" | python3 -c "import json,sys; d=json.load(sys.stdin); print('✅ Uploaded:', d.get('browser_download_url','ERROR'))" 2>/dev/null || echo "Upload result: $UPLOAD_RESULT"    git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
           git checkout -B build-desktop-linux-electron
