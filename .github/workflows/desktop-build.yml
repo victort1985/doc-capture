@@ -116,14 +116,30 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Install & build
-        run: |
-          npm install
-          npm run build:linux
+      - name: npm install
+        run: npm install
+
+      - name: Build Linux
+        run: npm run build:linux 2>&1 | tee /tmp/build-linux.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
+
+      - name: Save build log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
+          git checkout -B debug-electron-linux2
+          cp /tmp/build-linux.log electron-build-error.txt 2>/dev/null || echo "npm install failed" > electron-build-error.txt
+          git add -f electron-build-error.txt
+          git commit -m "debug: electron linux error"
+          git push --force origin debug-electron-linux2 || true
 
       - name: Package as tar.gz and push
         if: success()
