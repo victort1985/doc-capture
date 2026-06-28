@@ -9,7 +9,6 @@ defaults:
     working-directory: desktop-client
 
 jobs:
-  # ── Windows NSIS installer ────────────────────────────────────────────────
   build-windows:
     name: Windows NSIS installer
     runs-on: windows-latest
@@ -20,41 +19,36 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Setup Node.js (no cache — avoids Azure CDN)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          # no cache: true — that uses Azure blob storage
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build Windows installer
-        run: npm run build:win
+      - name: Install & build
+        run: |
+          npm install
+          npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
-          ELECTRON_BUILDER_HTTP_TIMEOUT: 120000
+          ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
-      - name: Push to git branch (no Azure upload-artifact)
+      - name: Push to branch
         working-directory: ${{ github.workspace }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $exe = Get-ChildItem desktop-client/dist -Filter "*.exe" | Select-Object -First 1
-          if (-not $exe) { Write-Host "No exe found"; exit 1 }
-          Write-Host "Found: $($exe.FullName) ($([math]::Round($exe.Length/1MB,1)) MB)"
+          $exe = Get-ChildItem desktop-client/dist -Filter "*.exe" -Recurse | Select-Object -First 1
+          if (-not $exe) { Write-Error "No exe found in dist/"; exit 1 }
+          Write-Host "Found: $($exe.Name) ($([math]::Round($exe.Length/1MB,1)) MB)"
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$env:GH_TOKEN@github.com/${{ github.repository }}.git
           git checkout -B build-desktop-win
           git add -f "$($exe.FullName)"
-          git commit -m "build: windows installer ${{ github.ref_name }}"
+          git commit -m "build: windows ${{ github.ref_name }}"
           git push --force origin build-desktop-win
-          Write-Host "✅ Pushed to build-desktop-win"
 
-  # ── macOS DMG ─────────────────────────────────────────────────────────────
   build-mac:
     name: macOS DMG
     runs-on: macos-latest
@@ -65,50 +59,45 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Setup Node.js (no cache)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Create .icns icon
+      - name: Create .icns
         run: |
           mkdir -p VixorERP.iconset
           for sz in 16 32 128 256 512; do
             cp assets/icon_${sz}.png VixorERP.iconset/icon_${sz}x${sz}.png
-            cp assets/icon_${sz}.png VixorERP.iconset/icon_${sz}x${sz}@2x.png 2>/dev/null || true
           done
           iconutil -c icns VixorERP.iconset -o assets/icon.icns 2>/dev/null \
             || sips -s format icns assets/icon.png --out assets/icon.icns || true
 
-      - name: Build macOS DMG
-        run: npm run build:mac
+      - name: Install & build
+        run: |
+          npm install
+          npm run build:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
-          ELECTRON_BUILDER_HTTP_TIMEOUT: 120000
+          ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
-      - name: Push to git branch (no Azure)
+      - name: Push to branch
         working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DMG=$(find desktop-client/dist -name "*.dmg" | head -1)
-          if [ -z "$DMG" ]; then echo "No DMG found"; exit 1; fi
+          [ -z "$DMG" ] && echo "No DMG found" && exit 1
           echo "Found: $DMG ($(du -sh "$DMG" | cut -f1))"
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
           git checkout -B build-desktop-mac
           git add -f "$DMG"
-          git commit -m "build: macOS DMG ${{ github.ref_name }}"
+          git commit -m "build: macOS ${{ github.ref_name }}"
           git push --force origin build-desktop-mac
-          echo "✅ Pushed to build-desktop-mac"
 
-  # ── Linux AppImage ─────────────────────────────────────────────────────────
   build-linux:
     name: Linux AppImage
     runs-on: ubuntu-latest
@@ -119,52 +108,32 @@ jobs:
         with:
           persist-credentials: true
 
-      - name: Setup Node.js (no cache)
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Install dependencies
-        run: npm install
-
-      - name: Build Linux AppImage
-        run: npm run build:linux 2>&1 | tee /tmp/electron-linux-build.log; exit ${PIPESTATUS[0]}
+      - name: Install & build
+        run: |
+          npm install
+          npm run build:linux 2>&1 | tee /tmp/build.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
-          ELECTRON_BUILDER_HTTP_TIMEOUT: 120000
-          DEBUG: electron-builder
+          ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
-      - name: Save build log on failure
-        if: failure()
+      - name: Push to branch
         working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
-          git checkout -B debug-electron-linux
-          cp /tmp/electron-linux-build.log electron-linux-build-error.txt 2>/dev/null || echo "No log" > electron-linux-build-error.txt
-          git add -f electron-linux-build-error.txt
-          git commit -m "debug: electron linux build error"
-          git push --force origin debug-electron-linux || true
-
-      - name: Push to git branch (no Azure)
-        working-directory: ${{ github.workspace }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          APP=$(find dist -name "*.AppImage" | head -1)
-          if [ -z "$APP" ]; then echo "No AppImage found"; exit 1; fi
+          APP=$(find desktop-client/dist -name "*.AppImage" | head -1)
+          [ -z "$APP" ] && cat /tmp/build.log | tail -20 && exit 1
           echo "Found: $APP ($(du -sh "$APP" | cut -f1))"
-          cd $GITHUB_WORKSPACE
+          cp "$APP" vixor-erp-linux.AppImage
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
-          git checkout -B build-desktop-linux
-          cp "desktop-client/$APP" vixor-erp-linux.AppImage
+          git checkout -B build-desktop-linux-electron
           git add -f vixor-erp-linux.AppImage
           git commit -m "build: linux AppImage ${{ github.ref_name }}"
-          git push --force origin build-desktop-linux
-          echo "✅ Pushed to build-desktop-linux"
+          git push --force origin build-desktop-linux-electron
