@@ -34,8 +34,6 @@ jobs:
             echo "Using local electron: $ELECTRON_OVERRIDE_DIST_PATH"
           fi
           npm run build:linux 2>&1 | tee /tmp/build.log
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Package & push debug info
         if: always()
@@ -125,8 +123,6 @@ jobs:
             if ($ep) { $env:ELECTRON_OVERRIDE_DIST_PATH = Split-Path $ep }
           } catch {}
           npm run build:win 2>&1 | Tee-Object -FilePath "$env:TEMP\build-win.log"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Save debug & upload
         if: always()
@@ -193,7 +189,6 @@ jobs:
           fi
           npm run build:mac 2>&1 | tee /tmp/build-mac.log
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Save debug & upload

@@ -66,8 +66,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },
-    "electronVersion": "40.10.5",
-    "publish": "never"
+    "electronVersion": "40.10.5"
   },
   "devDependencies": {
     "electron": "40.10.5",
