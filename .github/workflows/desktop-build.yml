@@ -9,105 +9,6 @@ defaults:
     working-directory: desktop-client
 
 jobs:
-  build-windows:
-    name: Windows NSIS installer
-    runs-on: windows-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: npm install
-        run: npm install
-
-      - name: Build Windows
-        shell: pwsh
-        run: |
-          $ep = node -e "console.log(require('electron'))" 2>$null
-          if ($ep) {
-            $env:ELECTRON_OVERRIDE_DIST_PATH = Split-Path $ep
-            Write-Host "Using electron at: $env:ELECTRON_OVERRIDE_DIST_PATH"
-          }
-          npm run build:win
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
-
-      - name: Upload to GitHub Release
-        if: success()
-        working-directory: ${{ github.workspace }}
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $exe = Get-ChildItem desktop-client/dist -Filter "*.exe" -Recurse | Select-Object -First 1
-          if (-not $exe) { Write-Error "No .exe found"; exit 1 }
-          $size = [math]::Round($exe.Length/1MB,1)
-          Write-Host "✅ $($exe.Name) — $size MB"
-          $tag = "${{ github.ref_name }}"
-          gh release create $tag --title "Vixor ERP $tag" --notes "Auto-built" 2>$null
-          gh release upload $tag "$($exe.FullName)" --clobber --repo "${{ github.repository }}"
-          Write-Host "✅ Uploaded to GitHub Release $tag" 
-
-  build-mac:
-    name: macOS DMG
-    runs-on: macos-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          persist-credentials: true
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Create .icns
-        run: |
-          mkdir -p VixorERP.iconset
-          for sz in 16 32 128 256 512; do
-            cp assets/icon_${sz}.png VixorERP.iconset/icon_${sz}x${sz}.png
-          done
-          iconutil -c icns VixorERP.iconset -o assets/icon.icns 2>/dev/null \
-            || sips -s format icns assets/icon.png --out assets/icon.icns || true
-
-      - name: npm install
-        run: npm install
-
-      - name: Build macOS
-        run: |
-          ELECTRON_PATH=$(node -e "console.log(require('electron'))" 2>/dev/null || echo "")
-          if [ -n "$ELECTRON_PATH" ]; then
-            export ELECTRON_OVERRIDE_DIST_PATH=$(dirname "$ELECTRON_PATH")
-            echo "Using electron at: $ELECTRON_OVERRIDE_DIST_PATH"
-          fi
-          npm run build:mac
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CSC_IDENTITY_AUTO_DISCOVERY: false
-          ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
-
-      - name: Upload to GitHub Release
-        if: success()
-        working-directory: ${{ github.workspace }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          DMG=$(find desktop-client/dist -name "*.dmg" | head -1)
-          [ -z "$DMG" ] && echo "No DMG found" && exit 1
-          echo "✅ $DMG ($(du -sh "$DMG" | cut -f1))"
-          TAG="${{ github.ref_name }}"
-          gh release create "$TAG" --title "Vixor ERP $TAG" --notes "Auto-built" 2>/dev/null || true
-          gh release upload "$TAG" "$DMG" --clobber --repo ${{ github.repository }}
-          echo "✅ Uploaded to GitHub Release $TAG" 
-
   build-linux:
     name: Linux (tar.gz bundle)
     runs-on: ubuntu-latest
@@ -127,70 +28,202 @@ jobs:
 
       - name: Build Linux
         run: |
-          # Use already-downloaded electron from npm (avoids re-download)
-          ELECTRON_PATH=$(node -e "console.log(require('electron'))" 2>/dev/null || echo "")
+          ELECTRON_PATH=$(node -e "console.log(require('electron'))" 2>/dev/null)
           if [ -n "$ELECTRON_PATH" ]; then
             export ELECTRON_OVERRIDE_DIST_PATH=$(dirname "$ELECTRON_PATH")
-            echo "Using electron at: $ELECTRON_OVERRIDE_DIST_PATH"
+            echo "Using local electron: $ELECTRON_OVERRIDE_DIST_PATH"
           fi
-          npm run build:linux 2>&1 | tee /tmp/build-linux.log
+          npm run build:linux 2>&1 | tee /tmp/build.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
-      - name: Save build log on failure
-        if: failure()
+      - name: Package & push debug info
+        if: always()
         working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
         run: |
+          # Collect diagnostics
+          {
+            echo "=== dist listing ==="
+            find desktop-client/dist -maxdepth 4 2>/dev/null || echo "dist not found"
+            echo ""
+            echo "=== build log tail ==="
+            tail -30 /tmp/build.log 2>/dev/null || echo "no build log"
+          } > /tmp/debug.txt
+          cat /tmp/debug.txt
+
+          # Try to package
+          DIR=$(find desktop-client/dist -maxdepth 3 -type d -name "*unpacked*" 2>/dev/null | head -1)
+          [ -z "$DIR" ] && DIR=$(find desktop-client/dist -maxdepth 2 -mindepth 1 -type d 2>/dev/null | head -1)
+
+          if [ -n "$DIR" ]; then
+            tar -czf vixor-erp-linux-x64.tar.gz -C "$DIR" .
+            SIZE=$(du -sh vixor-erp-linux-x64.tar.gz | cut -f1)
+            BYTES=$(stat -c%s vixor-erp-linux-x64.tar.gz)
+            echo "Package: $SIZE ($BYTES bytes)" >> /tmp/debug.txt
+
+            # Upload to release via API
+            echo "Creating release..." >> /tmp/debug.txt
+            RELEASE=$(curl -sf -X POST \
+              -H "Authorization: token $GH_TOKEN" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases" \
+              -d "{\"tag_name\":\"$TAG\",\"name\":\"Vixor ERP $TAG\",\"draft\":false,\"prerelease\":false}" 2>&1)
+            echo "Release API: $RELEASE" >> /tmp/debug.txt
+
+            RID=$(echo "$RELEASE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null)
+            if [ -z "$RID" ]; then
+              RID=$(curl -sf -H "Authorization: token $GH_TOKEN" \
+                "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG" 2>/dev/null | \
+                python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+            fi
+            echo "Release ID: $RID" >> /tmp/debug.txt
+
+            if [ -n "$RID" ]; then
+              UPLOAD=$(curl -sf -X POST \
+                -H "Authorization: token $GH_TOKEN" \
+                -H "Content-Type: application/gzip" \
+                "https://uploads.github.com/repos/${{ github.repository }}/releases/$RID/assets?name=vixor-erp-linux-x64.tar.gz" \
+                --data-binary @vixor-erp-linux-x64.tar.gz 2>&1)
+              echo "Upload result: $UPLOAD" >> /tmp/debug.txt
+              echo "$UPLOAD" | python3 -c "import json,sys; d=json.load(sys.stdin); print('URL:', d.get('browser_download_url',''))" 2>/dev/null || true
+            fi
+          fi
+
+          # Save debug to git
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
-          git checkout -B debug-electron-linux2
-          cp /tmp/build-linux.log electron-build-error.txt 2>/dev/null || echo "npm install failed" > electron-build-error.txt
-          git add -f electron-build-error.txt
-          git commit -m "debug: electron linux error"
-          git push --force origin debug-electron-linux2 || true
+          git checkout -B debug-electron-v24
+          cp /tmp/debug.txt electron-debug.txt
+          git add -f electron-debug.txt
+          [ -f vixor-erp-linux-x64.tar.gz ] && git add -f vixor-erp-linux-x64.tar.gz || true
+          git commit -m "debug: electron linux $TAG"
+          git push --force origin debug-electron-v24
 
-      - name: Package & upload via curl (no gh CLI, no Azure)
-        working-directory: ${{ github.workspace }}
+  build-windows:
+    name: Windows NSIS installer
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: npm install
+        run: npm install
+
+      - name: Build Windows
+        shell: pwsh
+        run: |
+          try {
+            $ep = node -e "console.log(require('electron'))" 2>$null
+            if ($ep) { $env:ELECTRON_OVERRIDE_DIST_PATH = Split-Path $ep }
+          } catch {}
+          npm run build:win 2>&1 | Tee-Object -FilePath "$env:TEMP\build-win.log"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
+
+      - name: Save debug & upload
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ github.ref_name }}
         run: |
-          # Find build dir
-          DIR=$(find desktop-client/dist -maxdepth 3 -type d -name "*unpacked*" 2>/dev/null | head -1)
-          [ -z "$DIR" ] && DIR=$(find desktop-client/dist -maxdepth 2 -mindepth 1 -type d 2>/dev/null | head -1)
-          echo "Build dir: ${DIR:-NOT FOUND}"
-          echo "Dist listing:"; ls desktop-client/dist/ 2>/dev/null
-          [ -z "$DIR" ] && exit 1
-          
-          # Create tar.gz
-          tar -czf vixor-erp-linux-x64.tar.gz -C "$DIR" .
-          SIZE=$(stat -c%s vixor-erp-linux-x64.tar.gz)
-          echo "✅ Package: $(du -sh vixor-erp-linux-x64.tar.gz | cut -f1)"
-          
-          # Create release via REST API (api.github.com — works fine)
-          RELEASE=$(curl -s -X POST             -H "Authorization: token $GH_TOKEN"             -H "Content-Type: application/json"             "https://api.github.com/repos/$REPO/releases"             -d "{"tag_name":"$TAG","name":"Vixor ERP $TAG","body":"Desktop builds","draft":false}"             2>/dev/null)
-          RELEASE_ID=$(echo "$RELEASE" | python3 -c "import json,sys; d=json.load(sys.stdin); print(d.get('id',''))" 2>/dev/null)
-          
-          # If release exists, get its ID
-          if [ -z "$RELEASE_ID" ]; then
-            RELEASE_ID=$(curl -s -H "Authorization: token $GH_TOKEN"               "https://api.github.com/repos/$REPO/releases/tags/$TAG" 2>/dev/null |               python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+          Get-Content "$env:TEMP\build-win.log" -ErrorAction SilentlyContinue | Select-Object -Last 40 | Out-File debug-win.txt
+          "=== dist ===" | Add-Content debug-win.txt
+          Get-ChildItem desktop-client/dist -Recurse -ErrorAction SilentlyContinue | Out-File -Append debug-win.txt
+
+          $exe = Get-ChildItem desktop-client/dist -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($exe) {
+            Write-Host "Found: $($exe.Name) $([math]::Round($exe.Length/1MB,1))MB"
+            # Create release
+            $body = "{`"tag_name`":`"$env:TAG`",`"name`":`"Vixor ERP $env:TAG`",`"draft`":false}"
+            $rel = curl -sf -X POST -H "Authorization: token $env:GH_TOKEN" -H "Content-Type: application/json" "https://api.github.com/repos/${{ github.repository }}/releases" -d $body 2>&1
+            $rid = $rel | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>$null
+            if (-not $rid) {
+              $rid = curl -sf -H "Authorization: token $env:GH_TOKEN" "https://api.github.com/repos/${{ github.repository }}/releases/tags/$env:TAG" 2>$null | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>$null
+            }
+            if ($rid) {
+              curl -sf -X POST -H "Authorization: token $env:GH_TOKEN" -H "Content-Type: application/octet-stream" "https://uploads.github.com/repos/${{ github.repository }}/releases/$rid/assets?name=$($exe.Name)" --data-binary "@$($exe.FullName)" 2>&1 | Out-File -Append debug-win.txt
+            }
+          }
+
+          git -C ${{ github.workspace }} config user.email "ci@doccapture.local"
+          git -C ${{ github.workspace }} config user.name "CI Bot"
+          git -C ${{ github.workspace }} remote set-url origin https://x-access-token:$env:GH_TOKEN@github.com/${{ github.repository }}.git
+          git -C ${{ github.workspace }} checkout -B debug-electron-win
+          Copy-Item debug-win.txt ${{ github.workspace }}/debug-win.txt -Force
+          git -C ${{ github.workspace }} add -f debug-win.txt
+          git -C ${{ github.workspace }} commit -m "debug: windows $env:TAG"
+          git -C ${{ github.workspace }} push --force origin debug-electron-win
+
+  build-mac:
+    name: macOS DMG
+    runs-on: macos-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Create .icns
+        run: |
+          mkdir -p VixorERP.iconset
+          for sz in 16 32 128 256 512; do
+            cp assets/icon_${sz}.png VixorERP.iconset/icon_${sz}x${sz}.png
+          done
+          iconutil -c icns VixorERP.iconset -o assets/icon.icns 2>/dev/null || true
+
+      - name: npm install
+        run: npm install
+
+      - name: Build macOS
+        run: |
+          ELECTRON_PATH=$(node -e "console.log(require('electron'))" 2>/dev/null)
+          if [ -n "$ELECTRON_PATH" ]; then
+            export ELECTRON_OVERRIDE_DIST_PATH=$(dirname "$ELECTRON_PATH")
           fi
-          
-          echo "Release ID: $RELEASE_ID"
-          [ -z "$RELEASE_ID" ] && echo "Failed to get release ID" && exit 1
-          
-          # Upload asset via REST API (uploads.github.com — not Azure)
-          UPLOAD_RESULT=$(curl -s -X POST             -H "Authorization: token $GH_TOKEN"             -H "Content-Type: application/gzip"             "https://uploads.github.com/repos/$REPO/releases/$RELEASE_ID/assets?name=vixor-erp-linux-x64.tar.gz"             --data-binary @vixor-erp-linux-x64.tar.gz 2>/dev/null)
-          
-          echo "$UPLOAD_RESULT" | python3 -c "import json,sys; d=json.load(sys.stdin); print('✅ Uploaded:', d.get('browser_download_url','ERROR'))" 2>/dev/null || echo "Upload result: $UPLOAD_RESULT"    git config user.email "ci@doccapture.local"
+          npm run build:mac 2>&1 | tee /tmp/build-mac.log
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+
+      - name: Save debug & upload
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          { tail -30 /tmp/build-mac.log; echo "=== dist ==="; find desktop-client/dist -maxdepth 4 2>/dev/null; } > /tmp/debug-mac.txt
+          cat /tmp/debug-mac.txt
+
+          DMG=$(find desktop-client/dist -name "*.dmg" 2>/dev/null | head -1)
+          if [ -n "$DMG" ]; then
+            RELEASE=$(curl -sf -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/json" \
+              "https://api.github.com/repos/${{ github.repository }}/releases" \
+              -d "{\"tag_name\":\"$TAG\",\"name\":\"Vixor ERP $TAG\",\"draft\":false}" 2>&1)
+            RID=$(echo "$RELEASE" | python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+            [ -z "$RID" ] && RID=$(curl -sf -H "Authorization: token $GH_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/tags/$TAG" 2>/dev/null | \
+              python3 -c "import json,sys; print(json.load(sys.stdin).get('id',''))" 2>/dev/null)
+            [ -n "$RID" ] && curl -sf -X POST -H "Authorization: token $GH_TOKEN" -H "Content-Type: application/x-apple-diskimage" \
+              "https://uploads.github.com/repos/${{ github.repository }}/releases/$RID/assets?name=$(basename "$DMG")" \
+              --data-binary @"$DMG" >> /tmp/debug-mac.txt 2>&1 || true
+          fi
+
+          git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
-          git checkout -B build-desktop-linux-electron
-          git add -f vixor-erp-linux-x64.tar.gz
-          git commit -m "build: Vixor ERP ${{ github.ref_name }} Linux"
-          git push --force origin build-desktop-linux-electron
+          git checkout -B debug-electron-mac
+          cp /tmp/debug-mac.txt debug-mac.txt
+          git add -f debug-mac.txt
+          git commit -m "debug: mac $TAG"
+          git push --force origin debug-electron-mac
