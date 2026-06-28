@@ -128,11 +128,27 @@ jobs:
         run: npm install
 
       - name: Build Linux AppImage
-        run: npm run build:linux
+        run: npm run build:linux 2>&1 | tee /tmp/electron-linux-build.log; exit ${PIPESTATUS[0]}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           ELECTRON_BUILDER_HTTP_TIMEOUT: 120000
+          DEBUG: electron-builder
+
+      - name: Save build log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
+          git checkout -B debug-electron-linux
+          cp /tmp/electron-linux-build.log electron-linux-build-error.txt 2>/dev/null || echo "No log" > electron-linux-build-error.txt
+          git add -f electron-linux-build-error.txt
+          git commit -m "debug: electron linux build error"
+          git push --force origin debug-electron-linux || true
 
       - name: Push to git branch (no Azure)
         working-directory: ${{ github.workspace }}
