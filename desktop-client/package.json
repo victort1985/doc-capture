@@ -48,7 +48,7 @@
     "linux": {
       "target": [
         {
-          "target": "AppImage",
+          "target": "dir",
           "arch": [
             "x64"
           ]
@@ -66,11 +66,11 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },
-    "electronVersion": "42.5.0"
+    "electronVersion": "40.10.5"
   },
   "devDependencies": {
-    "electron": "^42.5.0",
-    "electron-builder": "^24.0.0"
+    "electron": "40.10.5",
+    "electron-builder": "^25.1.8"
   },
   "author": "Viktor Tykhonov <victort1985@gmail.com>"
 }

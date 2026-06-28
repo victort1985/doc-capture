@@ -32,21 +32,23 @@ jobs:
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
-      - name: Push to branch
+      - name: Push installer to git
+        if: success()
         working-directory: ${{ github.workspace }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           $exe = Get-ChildItem desktop-client/dist -Filter "*.exe" -Recurse | Select-Object -First 1
-          if (-not $exe) { Write-Error "No exe found in dist/"; exit 1 }
-          Write-Host "Found: $($exe.Name) ($([math]::Round($exe.Length/1MB,1)) MB)"
+          if (-not $exe) { Write-Error "No .exe found"; exit 1 }
+          Write-Host "✅ $($exe.Name) — $([math]::Round($exe.Length/1MB,1)) MB"
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$env:GH_TOKEN@github.com/${{ github.repository }}.git
           git checkout -B build-desktop-win
           git add -f "$($exe.FullName)"
-          git commit -m "build: windows ${{ github.ref_name }}"
+          git diff --cached --stat
+          git commit -m "build: Vixor ERP ${{ github.ref_name }} Windows"
           git push --force origin build-desktop-win
 
   build-mac:
@@ -82,24 +84,26 @@ jobs:
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
-      - name: Push to branch
+      - name: Push DMG to git
+        if: success()
         working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           DMG=$(find desktop-client/dist -name "*.dmg" | head -1)
           [ -z "$DMG" ] && echo "No DMG found" && exit 1
-          echo "Found: $DMG ($(du -sh "$DMG" | cut -f1))"
+          SIZE=$(du -sh "$DMG" | cut -f1)
+          echo "✅ $DMG — $SIZE"
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
           git checkout -B build-desktop-mac
           git add -f "$DMG"
-          git commit -m "build: macOS ${{ github.ref_name }}"
+          git commit -m "build: Vixor ERP ${{ github.ref_name }} macOS"
           git push --force origin build-desktop-mac
 
   build-linux:
-    name: Linux AppImage
+    name: Linux (tar.gz bundle)
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -115,25 +119,29 @@ jobs:
       - name: Install & build
         run: |
           npm install
-          npm run build:linux 2>&1 | tee /tmp/build.log
+          npm run build:linux
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
-      - name: Push to branch
+      - name: Package as tar.gz and push
+        if: success()
         working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          APP=$(find desktop-client/dist -name "*.AppImage" | head -1)
-          [ -z "$APP" ] && cat /tmp/build.log | tail -20 && exit 1
-          echo "Found: $APP ($(du -sh "$APP" | cut -f1))"
-          cp "$APP" vixor-erp-linux.AppImage
+          # Use dir output (not AppImage) → much smaller compressed
+          DIR=$(find desktop-client/dist -maxdepth 1 -type d -name "linux-*" | head -1)
+          [ -z "$DIR" ] && echo "No linux dir found" && ls desktop-client/dist && exit 1
+          echo "Packing $DIR..."
+          tar -czf vixor-erp-linux-x64.tar.gz -C "$DIR" .
+          SIZE=$(du -sh vixor-erp-linux-x64.tar.gz | cut -f1)
+          echo "✅ vixor-erp-linux-x64.tar.gz — $SIZE"
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
           git checkout -B build-desktop-linux-electron
-          git add -f vixor-erp-linux.AppImage
-          git commit -m "build: linux AppImage ${{ github.ref_name }}"
+          git add -f vixor-erp-linux-x64.tar.gz
+          git commit -m "build: Vixor ERP ${{ github.ref_name }} Linux"
           git push --force origin build-desktop-linux-electron
