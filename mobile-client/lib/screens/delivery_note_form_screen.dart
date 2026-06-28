@@ -268,7 +268,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     final fontS = fontR; // small/terms — same as regular
 
     // ── Logo ────────────────────────────────────────────────────────────────
-    final logoBytes = decodeLogoBytes(_settings.logoBase64);
+    final logoBytes = _decodeLogoBytes();
     pw.ImageProvider? logoImg;
     if (logoBytes != null) {
       try { logoImg = pw.MemoryImage(logoBytes); } catch (_) {}
@@ -561,8 +561,8 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 border: Border.all(color: AppColors.primary.withOpacity(0.2)),
               ),
               child: Column(children: [
-                if (_settings.logoBase64 != null)
-                Image.memory(_decodeLogoBytes()!, height: 36, fit: BoxFit.contain),
+                if (_decodeLogoBytes() case final logoData?)
+                  Image.memory(logoData, height: 36, fit: BoxFit.contain),
               Text(_settings.companyName ?? 'Vixor ERP', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
               Text('תעודת משלוח / הסכם שכירות', style: const TextStyle(fontSize: 13, color: AppColors.inkSoft)),
               ]),
