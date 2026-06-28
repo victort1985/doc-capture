@@ -66,11 +66,16 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },
-    "electronVersion": "40.10.5"
+    "electronVersion": "40.10.5",
+    "publish": "never"
   },
   "devDependencies": {
     "electron": "40.10.5",
     "electron-builder": "^25.1.8"
   },
-  "author": "Viktor Tykhonov <victort1985@gmail.com>"
+  "author": "Viktor Tykhonov <victort1985@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/victort1985/doc-capture"
+  }
 }
