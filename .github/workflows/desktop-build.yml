@@ -27,10 +27,16 @@ jobs:
         run: npm install
 
       - name: Build Windows
-        run: npm run build:win
+        shell: pwsh
+        run: |
+          $ep = node -e "console.log(require('electron'))" 2>$null
+          if ($ep) {
+            $env:ELECTRON_OVERRIDE_DIST_PATH = Split-Path $ep
+            Write-Host "Using electron at: $env:ELECTRON_OVERRIDE_DIST_PATH"
+          }
+          npm run build:win
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
       - name: Push installer to git
@@ -79,11 +85,16 @@ jobs:
         run: npm install
 
       - name: Build macOS
-        run: npm run build:mac
+        run: |
+          ELECTRON_PATH=$(node -e "console.log(require('electron'))" 2>/dev/null || echo "")
+          if [ -n "$ELECTRON_PATH" ]; then
+            export ELECTRON_OVERRIDE_DIST_PATH=$(dirname "$ELECTRON_PATH")
+            echo "Using electron at: $ELECTRON_OVERRIDE_DIST_PATH"
+          fi
+          npm run build:mac
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
       - name: Push DMG to git
@@ -122,10 +133,16 @@ jobs:
         run: npm install
 
       - name: Build Linux
-        run: npm run build:linux 2>&1 | tee /tmp/build-linux.log
+        run: |
+          # Use already-downloaded electron from npm (avoids re-download)
+          ELECTRON_PATH=$(node -e "console.log(require('electron'))" 2>/dev/null || echo "")
+          if [ -n "$ELECTRON_PATH" ]; then
+            export ELECTRON_OVERRIDE_DIST_PATH=$(dirname "$ELECTRON_PATH")
+            echo "Using electron at: $ELECTRON_OVERRIDE_DIST_PATH"
+          fi
+          npm run build:linux 2>&1 | tee /tmp/build-linux.log
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
           ELECTRON_BUILDER_HTTP_TIMEOUT: 300000
 
       - name: Save build log on failure
