@@ -48,7 +48,7 @@
     "linux": {
       "target": [
         {
-          "target": "dir",
+          "target": "AppImage",
           "arch": [
             "x64"
           ]
@@ -66,7 +66,14 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true
     },
-    "electronVersion": "40.10.5"
+    "electronVersion": "40.10.5",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "victort1985",
+        "repo": "doc-capture"
+      }
+    ]
   },
   "devDependencies": {
     "electron": "40.10.5",
