@@ -161,22 +161,27 @@ jobs:
           git push --force origin debug-electron-linux2 || true
 
       - name: Package as tar.gz and push
-        if: success()
         working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Use dir output (not AppImage) → much smaller compressed
-          # electron-builder dir target creates 'linux-unpacked' (no arch suffix)
-          DIR=$(find desktop-client/dist -maxdepth 2 -type d \( -name "linux-unpacked" -o -name "linux-*" \) | head -1)
-          if [ -z "$DIR" ]; then
-            echo "No linux dir found. Contents of dist:"; ls -la desktop-client/dist/; exit 1
-          fi
-          echo "Packing $DIR..."
+          echo "=== dist contents ==="
+          find desktop-client/dist -maxdepth 3 2>/dev/null | head -20
+          echo "==="
+          DIR=$(find desktop-client/dist -maxdepth 3 -type d -name "*unpacked*" 2>/dev/null | head -1)
+          [ -z "$DIR" ] && DIR=$(find desktop-client/dist -maxdepth 2 -type d 2>/dev/null | grep -v "^desktop-client/dist$" | head -1)
+          [ -z "$DIR" ] && echo "ERROR: no build dir found" && exit 1
+          echo "Packing: $DIR"
           tar -czf vixor-erp-linux-x64.tar.gz -C "$DIR" .
           SIZE=$(du -sh vixor-erp-linux-x64.tar.gz | cut -f1)
           echo "✅ vixor-erp-linux-x64.tar.gz — $SIZE"
           git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
+          git checkout -B build-desktop-linux-electron
+          git add -f vixor-erp-linux-x64.tar.gz
+          git commit -m "build: Vixor ERP ${{ github.ref_name }} Linux"
+          git push --force origin build-desktop-linux-electron   git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}.git
           git checkout -B build-desktop-linux-electron
