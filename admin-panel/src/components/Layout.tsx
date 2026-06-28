@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall,
@@ -31,6 +31,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [open, setOpen] = useState(false);
+  const sidebarRef = React.useRef<HTMLElement>(null);
   const initial = user?.username?.[0]?.toUpperCase() ?? '?';
 
   const nav = user?.organizationId == null
@@ -39,6 +40,13 @@ export default function Layout() {
 
   // Close on route change
   useEffect(() => { setOpen(false); }, [location.pathname]);
+
+  // Reset sidebar scroll to top when opening
+  useEffect(() => {
+    if (open && sidebarRef.current) {
+      sidebarRef.current.scrollTop = 0;
+    }
+  }, [open]);
 
   // Close on Escape
   useEffect(() => {
@@ -87,6 +95,7 @@ export default function Layout() {
 
       {/* ── Sidebar ── */}
       <aside
+        ref={sidebarRef}
         id="sidebar"
         className={`sidebar ${open ? 'sidebar--open' : ''}`}
         aria-label="Navigation"
