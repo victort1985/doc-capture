@@ -38,6 +38,8 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   List<WarehouseItem> _items = [];
   List<WarehouseCategory> _categories = [];
   int? _selectedCategoryId;
+  String? _selectedLocation;
+  List<String> _locations = [];
   bool _loading = true;
 
   @override
@@ -52,7 +54,25 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
     try {
       final cats = await _svc.listCategories();
       final items = await _svc.listItems(categoryId: _selectedCategoryId);
-      if (mounted) setState(() { _categories = cats; _items = items; _loading = false; });
+      // Extract unique non-null locations, sorted
+      final locs = items
+          .map((i) => i.location)
+          .whereType<String>()
+          .toSet()
+          .toList()
+        ..sort();
+      if (mounted) setState(() {
+        _categories = cats;
+        _items = items;
+        _locations = locs;
+        // Keep current selection if still valid; otherwise default to first location
+        if (_selectedLocation != null && !locs.contains(_selectedLocation)) {
+          _selectedLocation = locs.isNotEmpty ? locs.first : null;
+        } else if (_selectedLocation == null && locs.isNotEmpty) {
+          _selectedLocation = locs.first;
+        }
+        _loading = false;
+      });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -315,9 +335,13 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    // Group items by category
+    // Filter by selected location, then group by category
+    final visibleItems = _selectedLocation == null
+        ? _items
+        : _items.where((i) => i.location == _selectedLocation).toList();
+
     final Map<String, List<WarehouseItem>> grouped = {};
-    for (final item in _items) {
+    for (final item in visibleItems) {
       final key = item.category?.name ?? 'Uncategorized';
       grouped.putIfAbsent(key, () => []).add(item);
     }
@@ -335,6 +359,21 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
             IconButton.outlined(icon: const Icon(Icons.picture_as_pdf_outlined, size: 20), tooltip: l10n.warehousePrint, onPressed: _printAllPdf),
           ]),
         ),
+
+        // Location filter chips
+        if (_locations.isNotEmpty)
+          SizedBox(
+            height: 34,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              children: [
+                _CatChip(label: l10n.warehouseAll, selected: _selectedLocation == null, onTap: () => setState(() => _selectedLocation = null)),
+                ..._locations.map((loc) => _CatChip(label: loc, selected: _selectedLocation == loc, onTap: () => setState(() => _selectedLocation = loc))),
+              ],
+            ),
+          ),
+        const SizedBox(height: 2),
 
         // Category filter chips
         if (_categories.isNotEmpty)
@@ -355,7 +394,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : _items.isEmpty
+              : visibleItems.isEmpty
                   ? Center(child: Text(l10n.warehouseEmpty, style: const TextStyle(color: AppColors.inkSoft)))
                   : RefreshIndicator(
                       onRefresh: _load,
