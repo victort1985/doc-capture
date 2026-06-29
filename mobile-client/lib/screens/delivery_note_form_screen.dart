@@ -51,6 +51,10 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   String? _lessorSig;
   String? _lesseeSig;
 
+  // Organization picker (for global/super-admin users)
+  List<Map<String, dynamic>> _orgs = [];
+  int? _selectedOrgId;
+
   // Autocomplete suggestions
 
   @override
@@ -60,6 +64,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
       _loadExisting();
     } else {
       _dateCtrl.text = DateTime.now().toIso8601String().slice(0, 10);      _loadSettings();
+    _loadOrgs();
     }
   }
 
@@ -97,7 +102,6 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
       await Share.share(
         shareText,
         subject: 'תעודה מספר $noteNum לחתימה',
-        sharePositionOrigin: rect,
       );
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -116,14 +120,19 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     return iso;
   }
 
-  Future<void> _loadSettings() async {    final s = await widget.svc.getSettings();
+  Future<void> _loadOrgs() async {
+    final orgs = await widget.svc.getOrganizations();
+    if (mounted) setState(() => _orgs = orgs);
+  }
+
+  Future<void> _loadSettings({int? orgId}) async {    final s = await widget.svc.getSettings(orgId: orgId ?? _selectedOrgId);
     if (mounted) setState(() { _settings = s; _loading = false; });
   }
 
   Future<void> _loadExisting() async {
     try {
       final note = await widget.svc.getOne(widget.noteId!);
-      final settings = await widget.svc.getSettings();
+      final settings = await widget.svc.getSettings(orgId: _selectedOrgId);
       _fillFrom(note);
       if (mounted) setState(() { _note = note; _settings = settings; _loading = false; });
     } catch (_) {
@@ -255,7 +264,6 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     await Share.shareXFiles(
       [XFile(file.path, mimeType: 'application/pdf')],
       subject: 'Delivery Note #$noteNum',
-      sharePositionOrigin: rect,
     );
   }
 
@@ -568,6 +576,35 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
               ]),
             ),
             const SizedBox(height: 16),
+
+            // ── Organization picker (visible only when >1 org available) ──
+            if (_orgs.length > 1) ...[
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('ORGANIZATION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.inkSoft)),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: _selectedOrgId,
+                      isExpanded: true,
+                      hint: const Text('Select organization'),
+                      style: const TextStyle(fontSize: 15, color: Color(0xFF0E1642)),
+                      items: _orgs.map((o) => DropdownMenuItem<int>(
+                        value: o['id'] as int,
+                        child: Text(o['name'] as String? ?? ''),
+                      )).toList(),
+                      onChanged: (v) {
+                        setState(() => _selectedOrgId = v);
+                        _loadSettings(orgId: v);
+                      },
+                    ),
+                  ),
+                ),
+              ]),
+              const SizedBox(height: 12),
+            ],
 
             // ── Document type selector ─────────────────────────────────────
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
