@@ -25,11 +25,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Pre-download Electron binary
-        run: npx @electron/get --version=31.0.0
-        env:
-          ELECTRON_MIRROR: https://github.com/electron/electron/releases/download/
-          
       - name: Build Windows installer
         run: npm run build:win
         env:
