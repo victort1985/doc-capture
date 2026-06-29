@@ -135,7 +135,7 @@ jobs:
           python3 -c "
           import re
           c=open('pubspec.yaml').read()
-          for p in ['mobile_scanner','local_auth','http_parser']:
+          for p in ['mobile_scanner','local_auth','http_parser','permission_handler']:
               c=re.sub(rf'^  {p}:.*$','',c,flags=re.MULTILINE)
           c=re.sub(r'\n  config:.*?(?=\n  [a-z]|\ndev_dependencies:|\Z)','',c,flags=re.DOTALL)
           open('pubspec.yaml','w').write(c)
