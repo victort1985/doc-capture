@@ -7,12 +7,14 @@ class AuthUser {
   final String username;
   final String language;
   final String role;
+  final int? organizationId;
 
   AuthUser({
     required this.id,
     required this.username,
     required this.language,
     required this.role,
+    this.organizationId,
   });
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
@@ -20,6 +22,7 @@ class AuthUser {
         username: json['username'] as String,
         language: json['language'] as String? ?? 'he',
         role: json['role'] as String? ?? 'user',
+        organizationId: json['organizationId'] as int?,
       );
 }
 

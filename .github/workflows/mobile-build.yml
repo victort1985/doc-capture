@@ -171,16 +171,31 @@ jobs:
       - name: Patch Xcode project — disable code signing
         run: |
           PROJ=ios/Runner.xcodeproj/project.pbxproj
-          # Clear development team
-          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' "$PROJ" || \
+          # Clear development team (both populated and already-empty forms)
+          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' "$PROJ" 2>/dev/null || \
           sed -i    's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' "$PROJ"
           # Set empty code-sign identity
-          sed -i '' 's/CODE_SIGN_IDENTITY = ".*";/CODE_SIGN_IDENTITY = "";/g' "$PROJ" || \
+          sed -i '' 's/CODE_SIGN_IDENTITY = ".*";/CODE_SIGN_IDENTITY = "";/g' "$PROJ" 2>/dev/null || \
           sed -i    's/CODE_SIGN_IDENTITY = ".*";/CODE_SIGN_IDENTITY = "";/g' "$PROJ"
           # Disable provisioning profile
-          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PROJ" || \
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PROJ" 2>/dev/null || \
           sed -i    's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PROJ"
-          echo "Patched: $(grep -c 'DEVELOPMENT_TEAM = ""' $PROJ) team entries cleared"
+          # Explicitly disable code signing (required when DEVELOPMENT_TEAM was never set)
+          # Insert CODE_SIGNING_ALLOWED = NO after each buildSettings = { block
+          python3 - <<'PYEOF'
+          import re, sys
+          path = 'ios/Runner.xcodeproj/project.pbxproj'
+          content = open(path).read()
+          # Add CODE_SIGNING_ALLOWED and CODE_SIGNING_REQUIRED into every buildSettings block
+          def inject(m):
+              block = m.group(0)
+              if 'CODE_SIGNING_ALLOWED' not in block:
+                  block = block.rstrip('}\n\t ') + '\n\t\t\t\tCODE_SIGNING_ALLOWED = NO;\n\t\t\t\tCODE_SIGNING_REQUIRED = NO;\n\t\t\t\t}'
+              return block
+          content = re.sub(r'buildSettings = \{[^}]*\}', inject, content, flags=re.DOTALL)
+          open(path, 'w').write(content)
+          print("Patched pbxproj — code signing disabled")
+          PYEOF
 
       - name: Build iOS app (unsigned .app bundle)
         run: |
