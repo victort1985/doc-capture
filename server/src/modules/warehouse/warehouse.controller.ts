@@ -120,4 +120,21 @@ export class WarehouseController {
   getItemRepairs(@Param('id', ParseIntPipe) id: number) {
     return this.warehouseService.getItemRepairs(id);
   }
+
+  // ── Transfers ───────────────────────────────────────────────────────────────
+
+  @Get('transfers')
+  listTransfers(@CurrentUser() user: RequestUser) {
+    return this.warehouseService.listTransfers(user.organizationId);
+  }
+
+  @Post('transfers')
+  createTransfer(@Body() dto: any, @CurrentUser() user: RequestUser) {
+    return this.warehouseService.createTransfer(dto, user.organizationId, user.id);
+  }
+
+  @Post('transfers/:id/pdf')
+  storeTransferPdf(@Param('id', ParseIntPipe) id: number, @Body() dto: { pdf: string }) {
+    return this.warehouseService.storeTransferPdf(id, dto.pdf);
+  }
 }
