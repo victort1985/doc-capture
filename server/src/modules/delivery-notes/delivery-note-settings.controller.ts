@@ -28,8 +28,12 @@ export class DeliveryNoteSettingsController {
 
   @Get()
   async getMine(@CurrentUser() user: ReqUser, @Query('orgId') orgId?: string) {
-    const resolvedOrgId = orgId ? parseInt(orgId, 10) : user.organizationId;
-    if (resolvedOrgId == null) return {};
+    let resolvedOrgId = orgId ? parseInt(orgId, 10) : user.organizationId;
+    if (resolvedOrgId == null) {
+      // Global user with no orgId: return first org settings
+      const first = await this.repo.findOne({ relations: ['organization'], order: { id: 'ASC' } });
+      return first ?? {};
+    }
     return this.repo.findOne({ where: { organization: { id: resolvedOrgId } } }) ?? {};
   }
 
