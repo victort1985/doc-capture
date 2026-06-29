@@ -40,16 +40,6 @@ jobs:
           path: desktop-client/dist/*.exe
           retention-days: 30
 
-      - name: Push installer to git branch
-        working-directory: ${{ github.workspace }}
-        shell: bash
-        run: |
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git checkout -B build-desktop-win
-          find desktop-client/dist -name "*.exe" -exec git add -f {} \;
-          git commit -m "build: windows installer" || true
-          git push --force origin build-desktop-win
 
   # ── macOS DMG ───────────────────────────────────────────────────────────────
   build-mac:
@@ -88,15 +78,6 @@ jobs:
           path: desktop-client/dist/*.dmg
           retention-days: 30
 
-      - name: Push DMG to git branch
-        working-directory: ${{ github.workspace }}
-        run: |
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git checkout -B build-desktop-mac
-          find desktop-client/dist -name "*.dmg" -exec git add -f {} \;
-          git commit -m "build: macos dmg" || true
-          git push --force origin build-desktop-mac
 
   # ── Linux AppImage ───────────────────────────────────────────────────────────
   build-linux:
@@ -125,12 +106,3 @@ jobs:
           path: desktop-client/dist/*.AppImage
           retention-days: 30
 
-      - name: Push AppImage to git branch
-        working-directory: ${{ github.workspace }}
-        run: |
-          git config user.email "ci@doccapture.local"
-          git config user.name "CI Bot"
-          git checkout -B build-desktop-linux
-          find desktop-client/dist -name "*.AppImage" -exec git add -f {} \;
-          git commit -m "build: linux appimage" || true
-          git push --force origin build-desktop-linux
