@@ -63,9 +63,10 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     if (widget.noteId != null) {
       _loadExisting();
     } else {
-      _dateCtrl.text = DateTime.now().toIso8601String().slice(0, 10);      _loadSettings();
-    _loadOrgs();
+      _dateCtrl.text = DateTime.now().toIso8601String().slice(0, 10);
+      _loadSettings();
     }
+    _loadOrgs();
   }
 
   static const _docTypes = [
