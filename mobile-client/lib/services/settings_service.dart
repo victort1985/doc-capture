@@ -76,6 +76,18 @@ class SettingsService {
       await prefs.setString(_cfClientSecretKey, clientSecret);
     }
   }
+
+  static String _licenseKey(int userId) => 'license_accepted_$userId';
+
+  Future<bool> hasAcceptedLicense(int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_licenseKey(userId)) == true;
+  }
+
+  Future<void> acceptLicense(int userId) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_licenseKey(userId), true);
+  }
 }
 
 enum ConnectionMode { direct, cloud }
