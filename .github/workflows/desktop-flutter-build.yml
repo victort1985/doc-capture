@@ -173,6 +173,14 @@ jobs:
           }
           DART
           find lib -name '*.dart' -exec sed -i 's/,\s*sharePositionOrigin:[^,)]*//' {} \;
+          cat > lib/services/push_notifications_service.dart << 'DART'
+          import 'api_service.dart';
+          class PushNotificationsService {
+            PushNotificationsService(ApiService api);
+            Future<void> initAndRegister() async {}
+            Future<void> unregister() async {}
+          }
+          DART
 
       - name: Patch CMakeLists for MSVC
         shell: pwsh
