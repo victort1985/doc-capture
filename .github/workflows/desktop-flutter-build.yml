@@ -173,6 +173,7 @@ jobs:
           }
           DART
           find lib -name '*.dart' -exec sed -i 's/,\s*sharePositionOrigin:[^,)]*//' {} \;
+          echo 'add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)' >> windows/CMakeLists.txt
 
       - name: pub get
         run: flutter pub get
