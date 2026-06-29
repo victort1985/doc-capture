@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Param, ParseIntPipe,
+  Body, Controller, Get, Param, ParseIntPipe, Query,
   Post, Put, UploadedFile, UseGuards, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
