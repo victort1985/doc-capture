@@ -9,6 +9,8 @@ import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+import '../services/locations_service.dart';
+import '../models/location.dart' as loc_model;
 import '../services/management_services.dart';
 import '../services/pdf_helpers.dart';
 import '../services/field_cache_service.dart';
@@ -16,10 +18,11 @@ import '../widgets/phone_book_search_field.dart';
 import 'barcode_scanner_screen.dart';
 
 // ─── Location/client quick-search bar ────────────────────────────────────────
+// Uses the same LocationsService as the "Place" field on the home screen,
+// plus phone book contacts. Results shown inline (not overlay) to match UX.
 
 class _WarehouseSearchBar extends StatefulWidget {
-  const _WarehouseSearchBar({required this.svc, required this.onLocationPicked});
-  final WarehouseService svc;
+  const _WarehouseSearchBar({required this.onLocationPicked});
   final void Function(String? location) onLocationPicked;
 
   @override
@@ -28,138 +31,125 @@ class _WarehouseSearchBar extends StatefulWidget {
 
 class _WarehouseSearchBarState extends State<_WarehouseSearchBar> {
   final _ctrl = TextEditingController();
-  final _focus = FocusNode();
-  final _layerLink = LayerLink();
-  OverlayEntry? _overlay;
   bool _searching = false;
+  bool _showResults = false;
+  List<_SearchResult> _results = [];
 
   @override
-  void initState() {
-    super.initState();
-    _ctrl.addListener(_onChanged);
-    _focus.addListener(_onFocusChanged);
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
-  @override
-  void dispose() {
-    _ctrl.removeListener(_onChanged);
-    _focus.removeListener(_onFocusChanged);
-    _removeOverlay();
-    _ctrl.dispose();
-    _focus.dispose();
-    super.dispose();
-  }
-
-  void _onFocusChanged() {
-    if (!_focus.hasFocus) Future.delayed(const Duration(milliseconds: 150), _removeOverlay);
-  }
-
-  void _onChanged() {
-    final q = _ctrl.text.trim();
-    if (q.isEmpty) { _removeOverlay(); return; }
-    if (q.length >= 1) _search(q);
-  }
-
-  Future<void> _search(String q) async {
-    setState(() => _searching = true);
+  Future<void> _onChanged(String q) async {
+    if (q.trim().isEmpty) {
+      setState(() { _results = []; _showResults = false; });
+      widget.onLocationPicked(null);
+      return;
+    }
+    setState(() { _searching = true; _showResults = true; });
     try {
+      final locSvc = context.read<LocationsService>();
       final api = context.read<ApiService>();
-      final results = await Future.wait([
-        widget.svc.listLocations(q: q),
-        api.get('/phonebook/search?q=${Uri.encodeComponent(q)}') as Future,
+      final fetched = await Future.wait([
+        locSvc.searchLocations(q.trim()),
+        api.get('/phonebook/search?q=${Uri.encodeComponent(q.trim())}') as Future,
       ]);
-      final locs = results[0] as List<String>;
-      final contacts = ((results[1] as List?) ?? [])
+      final locs = fetched[0] as List<loc_model.Location>;
+      final contacts = ((fetched[1] as List?) ?? [])
           .map((j) => PhoneContact.fromJson(j as Map<String, dynamic>))
           .toList();
-      if (mounted) {
-        setState(() => _searching = false);
-        if (locs.isEmpty && contacts.isEmpty) { _removeOverlay(); return; }
-        _showOverlay(locs, contacts);
-      }
+      if (mounted) setState(() {
+        _searching = false;
+        _results = [
+          ...locs.map((l) => _SearchResult(
+            label: l.city != null ? '${l.name} (${l.city!.name})' : l.name,
+            value: l.name,
+            isLocation: true,
+          )),
+          ...contacts.map((c) => _SearchResult(
+            label: c.phone != null ? '${c.name}  ${c.phone}' : c.name,
+            value: c.name,
+            isLocation: false,
+          )),
+        ];
+      });
     } catch (_) {
       if (mounted) setState(() => _searching = false);
     }
   }
 
-  void _pick(String value) {
-    _ctrl.text = value;
-    _ctrl.selection = TextSelection.fromPosition(TextPosition(offset: value.length));
-    _removeOverlay();
-    widget.onLocationPicked(value);
+  void _pick(_SearchResult r) {
+    _ctrl.text = r.value;
+    setState(() { _results = []; _showResults = false; });
+    FocusScope.of(context).unfocus();
+    widget.onLocationPicked(r.value);
   }
 
   void _clear() {
     _ctrl.clear();
-    _removeOverlay();
+    setState(() { _results = []; _showResults = false; });
     widget.onLocationPicked(null);
   }
 
-  void _showOverlay(List<String> locs, List<PhoneContact> contacts) {
-    _removeOverlay();
-    final renderBox = context.findRenderObject() as RenderBox?;
-    final size = renderBox?.size ?? const Size(300, 44);
-    _overlay = OverlayEntry(builder: (_) => Positioned(
-      width: size.width,
-      child: CompositedTransformFollower(
-        link: _layerLink,
-        showWhenUnlinked: false,
-        offset: Offset(0, size.height + 2),
-        child: Material(
-          elevation: 6,
-          borderRadius: BorderRadius.circular(10),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 240),
-            child: ListView(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              children: [
-                ...locs.map((loc) => ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.warehouse_outlined, size: 16, color: AppColors.inkSoft),
-                  title: Text(loc, style: const TextStyle(fontSize: 13)),
-                  onTap: () => _pick(loc),
-                )),
-                ...contacts.map((c) => ListTile(
-                  dense: true,
-                  leading: const Icon(Icons.person_outline, size: 16, color: AppColors.inkSoft),
-                  title: Text(c.name, style: const TextStyle(fontSize: 13)),
-                  subtitle: c.phone != null ? Text(c.phone!, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)) : null,
-                  onTap: () => _pick(c.name),
-                )),
-              ],
-            ),
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      TextField(
+        controller: _ctrl,
+        decoration: InputDecoration(
+          hintText: 'Search by location or client…',
+          prefixIcon: const Icon(Icons.search, size: 20),
+          suffixIcon: _searching
+            ? const SizedBox(width: 14, height: 14, child: Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2)))
+            : _ctrl.text.isNotEmpty
+              ? IconButton(icon: const Icon(Icons.close, size: 18), onPressed: _clear)
+              : null,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        onChanged: _onChanged,
+        onTap: () => setState(() => _showResults = _results.isNotEmpty),
+      ),
+      if (_showResults && _results.isNotEmpty)
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          constraints: const BoxConstraints(maxHeight: 220),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AppColors.inkSoft.withOpacity(0.25)),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6)],
+          ),
+          child: ListView.separated(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            itemCount: _results.length,
+            separatorBuilder: (_, __) => const Divider(height: 1),
+            itemBuilder: (_, i) {
+              final r = _results[i];
+              return ListTile(
+                dense: true,
+                leading: Icon(
+                  r.isLocation ? Icons.location_on_outlined : Icons.person_outline,
+                  size: 16, color: AppColors.inkSoft,
+                ),
+                title: Text(r.label, style: const TextStyle(fontSize: 13)),
+                onTap: () => _pick(r),
+              );
+            },
           ),
         ),
-      ),
-    ));
-    Overlay.of(context).insert(_overlay!);
-  }
-
-  void _removeOverlay() { _overlay?.remove(); _overlay = null; }
-
-  @override
-  Widget build(BuildContext context) => CompositedTransformTarget(
-    link: _layerLink,
-    child: TextField(
-      controller: _ctrl,
-      focusNode: _focus,
-      decoration: InputDecoration(
-        hintText: 'Search by location or client…',
-        prefixIcon: const Icon(Icons.search, size: 20),
-        suffixIcon: _searching
-          ? const SizedBox(width: 14, height: 14, child: Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2)))
-          : _ctrl.text.isNotEmpty
-            ? IconButton(icon: const Icon(Icons.close, size: 18), onPressed: _clear)
-            : null,
-        isDense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-        filled: true,
-        fillColor: Colors.white,
-      ),
-    ),
+    ],
   );
+}
+
+class _SearchResult {
+  final String label;
+  final String value;
+  final bool isLocation;
+  const _SearchResult({required this.label, required this.value, required this.isLocation});
 }
 
 // ─── Barcode generator (client-side, random) ──────────────────────────────────
@@ -511,7 +501,6 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
         Padding(
           padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
           child: _WarehouseSearchBar(
-            svc: _svc,
             onLocationPicked: (loc) => setState(() => _selectedLocation = loc),
           ),
         ),
