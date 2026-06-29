@@ -254,4 +254,77 @@ class WarehouseService {
 
   Future<void> returnFromRepair(int repairId, {String? notes}) =>
       _api.post('/warehouse/repairs/$repairId/return', { if (notes != null) 'notes': notes });
+
+  // ── Transfers ───────────────────────────────────────────────────────────────
+
+  Future<List<WarehouseTransfer>> listTransfers() async {
+    final data = await _api.get('/warehouse/transfers') as List? ?? [];
+    return data.map((j) => WarehouseTransfer.fromJson(j as Map<String, dynamic>)).toList();
+  }
+
+  Future<WarehouseTransfer> createTransfer(Map<String, dynamic> dto) async {
+    final j = await _api.post('/warehouse/transfers', dto);
+    return WarehouseTransfer.fromJson(j as Map<String, dynamic>);
+  }
+
+  Future<void> storePdf(int transferId, String base64Pdf) =>
+      _api.post('/warehouse/transfers/$transferId/pdf', {'pdf': base64Pdf});
+}
+
+// ── Warehouse Transfer models ─────────────────────────────────────────────────
+
+class TransferItemRecord {
+  final int? itemId;
+  final String name;
+  final int quantity;
+  final String? barcode;
+
+  TransferItemRecord({this.itemId, required this.name, required this.quantity, this.barcode});
+
+  Map<String, dynamic> toJson() => {
+    if (itemId != null) 'itemId': itemId,
+    'name': name,
+    'quantity': quantity,
+    if (barcode != null) 'barcode': barcode,
+  };
+
+  factory TransferItemRecord.fromJson(Map<String, dynamic> j) => TransferItemRecord(
+    itemId: j['itemId'],
+    name: j['name'] ?? '',
+    quantity: j['quantity'] ?? 0,
+    barcode: j['barcode'],
+  );
+}
+
+class WarehouseTransfer {
+  final int id;
+  final String noteNumber;
+  final String? fromLocation;
+  final String? toLocation;
+  final List<TransferItemRecord> items;
+  final String? notes;
+  final String createdAt;
+  final String? createdByUsername;
+
+  WarehouseTransfer({
+    required this.id,
+    required this.noteNumber,
+    this.fromLocation,
+    this.toLocation,
+    required this.items,
+    this.notes,
+    required this.createdAt,
+    this.createdByUsername,
+  });
+
+  factory WarehouseTransfer.fromJson(Map<String, dynamic> j) => WarehouseTransfer(
+    id: j['id'],
+    noteNumber: j['noteNumber'] ?? '',
+    fromLocation: j['fromLocation'],
+    toLocation: j['toLocation'],
+    items: (j['items'] as List? ?? []).map((i) => TransferItemRecord.fromJson(i as Map<String, dynamic>)).toList(),
+    notes: j['notes'],
+    createdAt: j['createdAt'] ?? '',
+    createdByUsername: j['createdBy']?['username'],
+  );
 }

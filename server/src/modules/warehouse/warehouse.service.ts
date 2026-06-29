@@ -5,6 +5,7 @@ import { WarehouseCategory } from './entities/warehouse-category.entity';
 import { WarehouseItem } from './entities/warehouse-item.entity';
 import { WarehouseTransaction, TransactionType } from './entities/warehouse-transaction.entity';
 import { WarehouseRepair } from './entities/warehouse-repair.entity';
+import { WarehouseTransfer, TransferItemRecord } from './entities/warehouse-transfer.entity';
 
 @Injectable()
 export class WarehouseService {
@@ -13,6 +14,7 @@ export class WarehouseService {
     @InjectRepository(WarehouseItem) private readonly itemsRepo: Repository<WarehouseItem>,
     @InjectRepository(WarehouseTransaction) private readonly txRepo: Repository<WarehouseTransaction>,
     @InjectRepository(WarehouseRepair) private readonly repairsRepo: Repository<WarehouseRepair>,
+    @InjectRepository(WarehouseTransfer) private readonly transfersRepo: Repository<WarehouseTransfer>,
   ) {}
 
   // ── Barcode generation ─────────────────────────────────────────────
@@ -174,5 +176,91 @@ export class WarehouseService {
       where: { itemId },
       order: { sentAt: 'DESC' },
     });
+  }
+
+  // ── Transfers ──────────────────────────────────────────────────────────────
+
+  async listTransfers(organizationId: number | null): Promise<WarehouseTransfer[]> {
+    const qb = this.transfersRepo.createQueryBuilder('t')
+      .leftJoin('t.createdBy', 'u')
+      .addSelect(['u.id', 'u.username'])
+      .orderBy('t.createdAt', 'DESC');
+    if (organizationId != null) {
+      qb.where('t.organizationId = :orgId', { orgId: organizationId });
+    }
+    return qb.getMany();
+  }
+
+  async createTransfer(
+    dto: { fromLocation?: string; toLocation?: string; items: TransferItemRecord[]; notes?: string },
+    organizationId: number | null,
+    userId: number,
+  ): Promise<WarehouseTransfer> {
+    const count = await this.transfersRepo.count();
+    const noteNumber = `T-${String(count + 1).padStart(6, '0')}`;
+
+    for (const rec of dto.items) {
+      if (!rec.itemId || rec.quantity <= 0) continue;
+
+      // Deduct from source item
+      const srcItem = await this.itemsRepo.findOne({ where: { id: rec.itemId } });
+      if (srcItem) {
+        srcItem.quantity = Math.max(0, srcItem.quantity - rec.quantity);
+        await this.itemsRepo.save(srcItem);
+        await this.txRepo.save(this.txRepo.create({
+          item: { id: srcItem.id } as any,
+          type: TransactionType.OUT,
+          quantity: rec.quantity,
+          reason: `Transfer to: ${dto.toLocation ?? '—'}  [${noteNumber}]`,
+          registeredBy: { id: userId } as any,
+        }));
+      }
+
+      // Add to destination: find same-named item in toLocation, or create it
+      if (dto.toLocation) {
+        let destItem = await this.itemsRepo.findOne({
+          where: { name: rec.name, location: dto.toLocation, organization: organizationId ? { id: organizationId } : undefined },
+        });
+        if (!destItem) {
+          destItem = this.itemsRepo.create({
+            name: rec.name,
+            barcode: await this.generateBarcode(),
+            location: dto.toLocation,
+            quantity: 0,
+            unit: srcItem?.unit,
+            category: srcItem?.category,
+            organization: organizationId ? ({ id: organizationId } as any) : undefined,
+          });
+        }
+        destItem.quantity = (destItem.quantity ?? 0) + rec.quantity;
+        await this.itemsRepo.save(destItem);
+        await this.txRepo.save(this.txRepo.create({
+          item: { id: destItem.id } as any,
+          type: TransactionType.IN,
+          quantity: rec.quantity,
+          reason: `Transfer from: ${dto.fromLocation ?? '—'}  [${noteNumber}]`,
+          registeredBy: { id: userId } as any,
+        }));
+      }
+    }
+
+    return this.transfersRepo.save(this.transfersRepo.create({
+      noteNumber,
+      fromLocation: dto.fromLocation,
+      toLocation: dto.toLocation,
+      items: dto.items,
+      notes: dto.notes,
+      createdBy: { id: userId } as any,
+      organization: organizationId ? ({ id: organizationId } as any) : undefined,
+    }));
+  }
+
+  async storeTransferPdf(id: number, base64Pdf: string): Promise<string> {
+    const transfer = await this.transfersRepo.findOne({ where: { id } });
+    if (!transfer) throw new NotFoundException('Transfer not found');
+    const path = `/uploads/transfer-pdfs/${id}.pdf`;
+    transfer.pdfPath = path;
+    await this.transfersRepo.save(transfer);
+    return path;
   }
 }
