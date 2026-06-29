@@ -12,7 +12,6 @@ defaults:
     working-directory: desktop-client
 
 jobs:
-  # ── Windows installer ───────────────────────────────────────────────────────
   build-windows:
     name: Windows NSIS installer
     runs-on: windows-latest
@@ -48,8 +47,6 @@ jobs:
           path: desktop-client/dist/*.exe
           retention-days: 30
 
-
-  # ── macOS DMG ───────────────────────────────────────────────────────────────
   build-mac:
     name: macOS DMG
     runs-on: macos-latest
@@ -86,8 +83,6 @@ jobs:
           path: desktop-client/dist/*.dmg
           retention-days: 30
 
-
-  # ── Linux AppImage ───────────────────────────────────────────────────────────
   build-linux:
     name: Linux AppImage
     runs-on: ubuntu-latest
@@ -113,4 +108,3 @@ jobs:
           name: vixor-erp-linux
           path: desktop-client/dist/*.AppImage
           retention-days: 30
-
