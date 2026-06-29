@@ -15,6 +15,153 @@ import '../services/field_cache_service.dart';
 import '../widgets/phone_book_search_field.dart';
 import 'barcode_scanner_screen.dart';
 
+// ─── Location/client quick-search bar ────────────────────────────────────────
+
+class _WarehouseSearchBar extends StatefulWidget {
+  const _WarehouseSearchBar({required this.svc, required this.onLocationPicked});
+  final WarehouseService svc;
+  final void Function(String? location) onLocationPicked;
+
+  @override
+  State<_WarehouseSearchBar> createState() => _WarehouseSearchBarState();
+}
+
+class _WarehouseSearchBarState extends State<_WarehouseSearchBar> {
+  final _ctrl = TextEditingController();
+  final _focus = FocusNode();
+  final _layerLink = LayerLink();
+  OverlayEntry? _overlay;
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl.addListener(_onChanged);
+    _focus.addListener(_onFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.removeListener(_onChanged);
+    _focus.removeListener(_onFocusChanged);
+    _removeOverlay();
+    _ctrl.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (!_focus.hasFocus) Future.delayed(const Duration(milliseconds: 150), _removeOverlay);
+  }
+
+  void _onChanged() {
+    final q = _ctrl.text.trim();
+    if (q.isEmpty) { _removeOverlay(); return; }
+    if (q.length >= 1) _search(q);
+  }
+
+  Future<void> _search(String q) async {
+    setState(() => _searching = true);
+    try {
+      final api = context.read<ApiService>();
+      final results = await Future.wait([
+        widget.svc.listLocations(q: q),
+        api.get('/phonebook/search?q=${Uri.encodeComponent(q)}') as Future,
+      ]);
+      final locs = results[0] as List<String>;
+      final contacts = ((results[1] as List?) ?? [])
+          .map((j) => PhoneContact.fromJson(j as Map<String, dynamic>))
+          .toList();
+      if (mounted) {
+        setState(() => _searching = false);
+        if (locs.isEmpty && contacts.isEmpty) { _removeOverlay(); return; }
+        _showOverlay(locs, contacts);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _pick(String value) {
+    _ctrl.text = value;
+    _ctrl.selection = TextSelection.fromPosition(TextPosition(offset: value.length));
+    _removeOverlay();
+    widget.onLocationPicked(value);
+  }
+
+  void _clear() {
+    _ctrl.clear();
+    _removeOverlay();
+    widget.onLocationPicked(null);
+  }
+
+  void _showOverlay(List<String> locs, List<PhoneContact> contacts) {
+    _removeOverlay();
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final size = renderBox?.size ?? const Size(300, 44);
+    _overlay = OverlayEntry(builder: (_) => Positioned(
+      width: size.width,
+      child: CompositedTransformFollower(
+        link: _layerLink,
+        showWhenUnlinked: false,
+        offset: Offset(0, size.height + 2),
+        child: Material(
+          elevation: 6,
+          borderRadius: BorderRadius.circular(10),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 240),
+            child: ListView(
+              padding: EdgeInsets.zero,
+              shrinkWrap: true,
+              children: [
+                ...locs.map((loc) => ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.warehouse_outlined, size: 16, color: AppColors.inkSoft),
+                  title: Text(loc, style: const TextStyle(fontSize: 13)),
+                  onTap: () => _pick(loc),
+                )),
+                ...contacts.map((c) => ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.person_outline, size: 16, color: AppColors.inkSoft),
+                  title: Text(c.name, style: const TextStyle(fontSize: 13)),
+                  subtitle: c.phone != null ? Text(c.phone!, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)) : null,
+                  onTap: () => _pick(c.name),
+                )),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ));
+    Overlay.of(context).insert(_overlay!);
+  }
+
+  void _removeOverlay() { _overlay?.remove(); _overlay = null; }
+
+  @override
+  Widget build(BuildContext context) => CompositedTransformTarget(
+    link: _layerLink,
+    child: TextField(
+      controller: _ctrl,
+      focusNode: _focus,
+      decoration: InputDecoration(
+        hintText: 'Search by location or client…',
+        prefixIcon: const Icon(Icons.search, size: 20),
+        suffixIcon: _searching
+          ? const SizedBox(width: 14, height: 14, child: Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2)))
+          : _ctrl.text.isNotEmpty
+            ? IconButton(icon: const Icon(Icons.close, size: 18), onPressed: _clear)
+            : null,
+        isDense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        filled: true,
+        fillColor: Colors.white,
+      ),
+    ),
+  );
+}
+
 // ─── Barcode generator (client-side, random) ──────────────────────────────────
 
 String generateLocalBarcode() {
@@ -358,6 +505,15 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
             IconButton.outlined(icon: const Icon(Icons.qr_code_scanner, size: 20), tooltip: l10n.warehouseScan, onPressed: _scanToAddItem),
             IconButton.outlined(icon: const Icon(Icons.picture_as_pdf_outlined, size: 20), tooltip: l10n.warehousePrint, onPressed: _printAllPdf),
           ]),
+        ),
+
+        // Quick-search bar
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+          child: _WarehouseSearchBar(
+            svc: _svc,
+            onLocationPicked: (loc) => setState(() => _selectedLocation = loc),
+          ),
         ),
 
         // Location filter chips
