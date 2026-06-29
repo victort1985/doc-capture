@@ -93,9 +93,9 @@ export default function DeliveryNoteSettingsPage() {
 
       {error && <div className="error-banner">{error}</div>}
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+      <div className="two-panel">
         {/* Org selector */}
-        <div className="card" style={{ width: 200, flexShrink: 0 }}>
+        <div className="card two-panel-sidebar">
           <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>Organization</div>
           {orgs.map(o => (
             <div key={o.id} onClick={() => setSelOrgId(o.id)}

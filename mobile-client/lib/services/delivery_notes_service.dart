@@ -170,13 +170,24 @@ class DeliveryNotesService {
     return (j as Map<String, dynamic>)['path'] as String;
   }
 
-  Future<NoteSettings> getSettings() async {
+  Future<NoteSettings> getSettings({int? orgId}) async {
     try {
-      final j = await _api.get('/delivery-note-settings');
+      final path = orgId != null ? '/delivery-note-settings?orgId=$orgId' : '/delivery-note-settings';
+      final j = await _api.get(path);
       if (j == null) return NoteSettings.empty;
       return NoteSettings.fromJson(j as Map<String, dynamic>);
     } catch (_) {
       return NoteSettings.empty;
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> getOrganizations() async {
+    try {
+      final j = await _api.get('/organizations');
+      if (j == null) return [];
+      return (j as List).cast<Map<String, dynamic>>();
+    } catch (_) {
+      return [];
     }
   }
 }

@@ -115,9 +115,9 @@ export default function PermissionsPage() {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+      <div className="two-panel">
         {/* User list */}
-        <div className="card" style={{ width: 220, flexShrink: 0 }}>
+        <div className="card two-panel-sidebar">
           <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>Users</div>
           {users.map(u => (
             <div key={u.id} onClick={() => select(u)}

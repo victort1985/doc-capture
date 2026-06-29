@@ -27,9 +27,10 @@ export class DeliveryNoteSettingsController {
   }
 
   @Get()
-  async getMine(@CurrentUser() user: ReqUser) {
-    if (user.organizationId == null) return {};
-    return this.repo.findOne({ where: { organization: { id: user.organizationId } } }) ?? {};
+  async getMine(@CurrentUser() user: ReqUser, @Query('orgId') orgId?: string) {
+    const resolvedOrgId = orgId ? parseInt(orgId, 10) : user.organizationId;
+    if (resolvedOrgId == null) return {};
+    return this.repo.findOne({ where: { organization: { id: resolvedOrgId } } }) ?? {};
   }
 
   /** Create or update settings for an org */
