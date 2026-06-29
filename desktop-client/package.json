@@ -13,19 +13,47 @@
     "appId": "app.doc-capture.vixor-erp",
     "productName": "Vixor ERP",
     "copyright": "Copyright © 2026 Vixor",
-    "directories": { "output": "dist" },
-    "files": ["main.js", "preload.js", "assets/**"],
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "assets/**"
+    ],
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "assets/icon.ico"
     },
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
       "icon": "assets/icon.icns",
       "category": "public.app-category.business"
     },
     "linux": {
-      "target": [{ "target": "AppImage", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "assets/icon.png",
       "category": "Office"
     },
@@ -42,5 +70,6 @@
   "devDependencies": {
     "electron": "32.0.0",
     "electron-builder": "^24.0.0"
-  }
+  },
+  "repository": "https://github.com/victort1985/doc-capture"
 }
