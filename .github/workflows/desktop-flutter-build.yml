@@ -173,7 +173,11 @@ jobs:
           }
           DART
           find lib -name '*.dart' -exec sed -i 's/,\s*sharePositionOrigin:[^,)]*//' {} \;
-          echo 'add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)' >> windows/CMakeLists.txt
+
+      - name: Patch CMakeLists for MSVC
+        shell: pwsh
+        run: |
+          Add-Content -Path windows\CMakeLists.txt -Value 'add_definitions(-D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)'
 
       - name: pub get
         run: flutter pub get
