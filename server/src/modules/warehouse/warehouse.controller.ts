@@ -43,6 +43,13 @@ export class WarehouseController {
     return this.warehouseService.removeCategory(id);
   }
 
+  // ── Locations ──────────────────────────────────────────────────────
+
+  @Get('locations')
+  findLocations(@CurrentUser() user: RequestUser, @Query('q') q?: string) {
+    return this.warehouseService.findLocations(user.organizationId, q);
+  }
+
   // ── Items ──────────────────────────────────────────────────────────
 
   @Get('items')

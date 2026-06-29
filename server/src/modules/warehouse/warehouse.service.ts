@@ -52,6 +52,22 @@ export class WarehouseService {
 
   // ── Items ──────────────────────────────────────────────────────────
 
+  async findLocations(organizationId: number | null, q?: string): Promise<string[]> {
+    const qb = this.itemsRepo.createQueryBuilder('item')
+      .select('DISTINCT item.location', 'location')
+      .where('item.location IS NOT NULL')
+      .andWhere("item.location != ''");
+    if (organizationId != null) {
+      qb.andWhere('(item.organizationId = :orgId OR item.organizationId IS NULL)', { orgId: organizationId });
+    }
+    if (q?.trim()) {
+      qb.andWhere('item.location ILIKE :q', { q: `%${q.trim()}%` });
+    }
+    qb.orderBy('item.location', 'ASC');
+    const rows = await qb.getRawMany();
+    return rows.map(r => r.location as string);
+  }
+
   findItems(organizationId: number | null, categoryId?: number, q?: string): Promise<WarehouseItem[]> {
     const qb = this.itemsRepo.createQueryBuilder('item')
       .leftJoinAndSelect('item.category', 'category')

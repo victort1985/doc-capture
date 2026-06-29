@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../services/api_service.dart';
 import '../services/field_cache_service.dart';
-import '../models/location.dart';
 
 class PhoneContact {
   final int id;
@@ -67,7 +66,7 @@ class _PhoneBookSearchFieldState extends State<PhoneBookSearchField> {
 
   List<String> _cached = [];
   List<PhoneContact> _contacts = [];
-  List<Location> _locations = [];
+  List<String> _warehouseLocs = [];
   bool _searching = false;
 
   @override
@@ -117,12 +116,20 @@ class _PhoneBookSearchFieldState extends State<PhoneBookSearchField> {
     setState(() => _searching = true);
     try {
       final api = context.read<ApiService>();
-      final params = '?q=${Uri.encodeComponent(q)}${widget.contactFilter != null ? "&type=${widget.contactFilter}" : ""}';
-      final data = await api.get('/phonebook/search$params') as List? ?? [];
-      final contacts = data.map((j) => PhoneContact.fromJson(j as Map<String, dynamic>)).toList();
+      final contactParams = '?q=${Uri.encodeComponent(q)}${widget.contactFilter != null ? "&type=${widget.contactFilter}" : ""}';
+      final futures = <Future>[
+        api.get('/phonebook/search$contactParams') as Future,
+        if (widget.includeLocations) api.get('/warehouse/locations?q=${Uri.encodeComponent(q)}') as Future,
+      ];
+      final results = await Future.wait(futures);
+      final contactData = results[0] as List? ?? [];
+      final contacts = contactData.map((j) => PhoneContact.fromJson(j as Map<String, dynamic>)).toList();
+      final locs = widget.includeLocations
+          ? ((results[1] as List?) ?? []).cast<String>()
+          : <String>[];
       if (mounted) {
-        setState(() { _contacts = contacts; _searching = false; });
-        if (contacts.isNotEmpty) _showContactSuggestions();
+        setState(() { _contacts = contacts; _warehouseLocs = locs; _searching = false; });
+        if (contacts.isNotEmpty || locs.isNotEmpty) _showContactSuggestions();
         else _removeOverlay();
       }
     } catch (_) {
@@ -149,20 +156,32 @@ class _PhoneBookSearchFieldState extends State<PhoneBookSearchField> {
 
   void _showContactSuggestions() {
     _removeOverlay();
-    if (_contacts.isEmpty) return;
+    if (_contacts.isEmpty && _warehouseLocs.isEmpty) return;
     _overlay = _buildOverlay(
-      children: _contacts.map((c) => _SuggestionTile(
-        leading: const Icon(Icons.person_outline, size: 16, color: AppColors.inkSoft),
-        title: c.name,
-        subtitle: [c.phone, c.company].whereType<String>().join(' · '),
-        onTap: () {
-          widget.controller.text = c.name;
-          widget.controller.selection = TextSelection.fromPosition(TextPosition(offset: c.name.length));
-          FieldCacheService.instance.save(widget.fieldKey, c.name);
-          widget.onContactSelected?.call(c);
-          _removeOverlay();
-        },
-      )).toList(),
+      children: [
+        ..._warehouseLocs.map((loc) => _SuggestionTile(
+          leading: const Icon(Icons.warehouse_outlined, size: 16, color: AppColors.inkSoft),
+          title: loc,
+          onTap: () {
+            widget.controller.text = loc;
+            widget.controller.selection = TextSelection.fromPosition(TextPosition(offset: loc.length));
+            FieldCacheService.instance.save(widget.fieldKey, loc);
+            _removeOverlay();
+          },
+        )),
+        ..._contacts.map((c) => _SuggestionTile(
+          leading: const Icon(Icons.person_outline, size: 16, color: AppColors.inkSoft),
+          title: c.name,
+          subtitle: [c.phone, c.company].whereType<String>().join(' · '),
+          onTap: () {
+            widget.controller.text = c.name;
+            widget.controller.selection = TextSelection.fromPosition(TextPosition(offset: c.name.length));
+            FieldCacheService.instance.save(widget.fieldKey, c.name);
+            widget.onContactSelected?.call(c);
+            _removeOverlay();
+          },
+        )),
+      ],
     );
     Overlay.of(context).insert(_overlay!);
   }

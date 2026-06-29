@@ -181,6 +181,13 @@ class WarehouseService {
     return data.map((j) => WarehouseCategory.fromJson(j as Map<String, dynamic>)).toList();
   }
 
+  Future<List<String>> listLocations({String? q}) async {
+    final params = <String, dynamic>{};
+    if (q?.isNotEmpty == true) params['q'] = q;
+    final data = await _api.get('/warehouse/locations', query: params) as List? ?? [];
+    return data.cast<String>();
+  }
+
   Future<List<WarehouseItem>> listItems({int? categoryId, String? q}) async {
     final params = <String, dynamic>{};
     if (categoryId != null) params['categoryId'] = categoryId;
