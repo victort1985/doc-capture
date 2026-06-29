@@ -26,7 +26,7 @@ jobs:
         run: npm install
 
       - name: Build Windows installer
-        run: npm run build:win
+        run: npm run build:win -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           USE_SYSTEM_FPM: true
@@ -74,7 +74,7 @@ jobs:
             sips -s format icns assets/icon.png --out assets/icon.icns || true
 
       - name: Build macOS DMG
-        run: npm run build:mac
+        run: npm run build:mac -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
@@ -112,7 +112,7 @@ jobs:
         run: npm install
 
       - name: Build Linux AppImage
-        run: npm run build:linux
+        run: npm run build:linux -- --publish never
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
