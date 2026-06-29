@@ -12,6 +12,8 @@
   "languageEnglish": "Английский",
   "languageRussian": "Русский",
   "homeTitle": "Загрузка файлов",
+  "company": "Компания",
+  "allCompanies": "Все компании",
   "place": "Место",
   "placeHint": "например: филиал Тель-Авив",
   "docType": "Тип файла",

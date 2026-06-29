@@ -41,6 +41,9 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
         setState(() => _tabIndex = _tabController.index);
       }
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<AppState>().loadAvailableOrgs();
+    });
   }
 
   @override
@@ -130,10 +133,53 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
       );
 
   Widget _buildCaptureTab(AppLocalizations l10n, FileService fileService) {
+    final appState = context.watch<AppState>();
+    final isSuperAdmin = appState.currentUser?.organizationId == null;
+    final orgs = appState.availableOrgs;
+
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
         children: [
+          if (isSuperAdmin && orgs.isNotEmpty) ...[
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionLabel(l10n.company.toUpperCase()),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<int?>(
+                          value: appState.activeOrgId,
+                          isExpanded: true,
+                          hint: Text(l10n.allCompanies),
+                          items: [
+                            DropdownMenuItem<int?>(value: null, child: Text(l10n.allCompanies)),
+                            ...orgs.map((o) => DropdownMenuItem<int?>(
+                              value: o['id'] as int?,
+                              child: Text(o['name'] as String? ?? ''),
+                            )),
+                          ],
+                          onChanged: (v) {
+                            final name = v == null ? null : orgs.firstWhere((o) => o['id'] == v)['name'] as String?;
+                            appState.setActiveOrg(v, name);
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),

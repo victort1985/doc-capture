@@ -27,6 +27,11 @@ class AppState extends ChangeNotifier {
   ConnectionConfig connectionConfig =
       const ConnectionConfig(mode: ConnectionMode.direct, address: '');
 
+  // Active organization for super-admin users (null = own org / all orgs)
+  int? activeOrgId;
+  String? activeOrgName;
+  List<Map<String, dynamic>> availableOrgs = [];
+
   Future<(String?, String?)> getCfServiceToken() => _settingsService.getCfServiceToken();
 
   Future<void> bootstrap() async {
@@ -92,6 +97,22 @@ class AppState extends ChangeNotifier {
     languageCode = code;
     await _settingsService.setLanguage(code);
     notifyListeners();
+  }
+
+  Future<void> setActiveOrg(int? orgId, String? orgName) {
+    activeOrgId = orgId;
+    activeOrgName = orgName;
+    notifyListeners();
+    return Future.value();
+  }
+
+  Future<void> loadAvailableOrgs() async {
+    if (currentUser?.organizationId != null) return; // only super-admin sees all orgs
+    try {
+      final data = await _apiService.get('/organizations') as List? ?? [];
+      availableOrgs = data.cast<Map<String, dynamic>>();
+      notifyListeners();
+    } catch (_) {}
   }
 
   Future<void> login(String username, String password) async {

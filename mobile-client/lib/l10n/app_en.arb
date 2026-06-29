@@ -12,6 +12,8 @@
   "languageEnglish": "English",
   "languageRussian": "Russian",
   "homeTitle": "Upload files",
+  "company": "Company",
+  "allCompanies": "All companies",
   "place": "Place",
   "placeHint": "e.g. Tel Aviv branch",
   "docType": "File type",

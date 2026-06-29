@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../services/api_service.dart';
 import '../services/field_cache_service.dart';
+import '../services/locations_service.dart';
+import '../models/location.dart' as loc_model;
 
 class PhoneContact {
   final int id;
@@ -66,7 +68,7 @@ class _PhoneBookSearchFieldState extends State<PhoneBookSearchField> {
 
   List<String> _cached = [];
   List<PhoneContact> _contacts = [];
-  List<String> _warehouseLocs = [];
+  List<loc_model.Location> _locations = [];
   bool _searching = false;
 
   @override
@@ -119,16 +121,16 @@ class _PhoneBookSearchFieldState extends State<PhoneBookSearchField> {
       final contactParams = '?q=${Uri.encodeComponent(q)}${widget.contactFilter != null ? "&type=${widget.contactFilter}" : ""}';
       final futures = <Future>[
         api.get('/phonebook/search$contactParams') as Future,
-        if (widget.includeLocations) api.get('/warehouse/locations?q=${Uri.encodeComponent(q)}') as Future,
+        if (widget.includeLocations) context.read<LocationsService>().searchLocations(q),
       ];
       final results = await Future.wait(futures);
       final contactData = results[0] as List? ?? [];
       final contacts = contactData.map((j) => PhoneContact.fromJson(j as Map<String, dynamic>)).toList();
       final locs = widget.includeLocations
-          ? ((results[1] as List?) ?? []).cast<String>()
-          : <String>[];
+          ? (results[1] as List<loc_model.Location>)
+          : <loc_model.Location>[];
       if (mounted) {
-        setState(() { _contacts = contacts; _warehouseLocs = locs; _searching = false; });
+        setState(() { _contacts = contacts; _locations = locs; _searching = false; });
         if (contacts.isNotEmpty || locs.isNotEmpty) _showContactSuggestions();
         else _removeOverlay();
       }
@@ -156,19 +158,22 @@ class _PhoneBookSearchFieldState extends State<PhoneBookSearchField> {
 
   void _showContactSuggestions() {
     _removeOverlay();
-    if (_contacts.isEmpty && _warehouseLocs.isEmpty) return;
+    if (_contacts.isEmpty && _locations.isEmpty) return;
     _overlay = _buildOverlay(
       children: [
-        ..._warehouseLocs.map((loc) => _SuggestionTile(
-          leading: const Icon(Icons.warehouse_outlined, size: 16, color: AppColors.inkSoft),
-          title: loc,
-          onTap: () {
-            widget.controller.text = loc;
-            widget.controller.selection = TextSelection.fromPosition(TextPosition(offset: loc.length));
-            FieldCacheService.instance.save(widget.fieldKey, loc);
-            _removeOverlay();
-          },
-        )),
+        ..._locations.map((loc) {
+          final label = loc.city != null ? '${loc.name} (${loc.city!.name})' : loc.name;
+          return _SuggestionTile(
+            leading: const Icon(Icons.location_on_outlined, size: 16, color: AppColors.inkSoft),
+            title: label,
+            onTap: () {
+              widget.controller.text = loc.name;
+              widget.controller.selection = TextSelection.fromPosition(TextPosition(offset: loc.name.length));
+              FieldCacheService.instance.save(widget.fieldKey, loc.name);
+              _removeOverlay();
+            },
+          );
+        }),
         ..._contacts.map((c) => _SuggestionTile(
           leading: const Icon(Icons.person_outline, size: 16, color: AppColors.inkSoft),
           title: c.name,

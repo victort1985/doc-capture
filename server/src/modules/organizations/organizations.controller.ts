@@ -68,7 +68,6 @@ export class OrganizationsController {
   }
 
   @Get(':id/logo')
-  @UseGuards(SuperAdminGuard)
   async getLogo(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const logo = await this.orgsService.getLogo(id);
     if (!logo) {
