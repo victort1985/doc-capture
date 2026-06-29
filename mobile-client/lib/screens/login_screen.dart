@@ -7,7 +7,9 @@ import '../services/biometric_service.dart';
 import '../store/app_state.dart';
 import '../widgets/copyright_notice.dart';
 import '../widgets/stamp_mark.dart';
+import '../services/settings_service.dart' show SettingsService;
 import 'connection_settings_screen.dart';
+import 'license_agreement_screen.dart';
 import 'root_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -90,8 +92,11 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         await appState.authService.clearSavedCredentials();
       }
       if (!mounted) return;
+      final userId = context.read<AppState>().currentUser!.id;
+      final accepted = await SettingsService().hasAcceptedLicense(userId);
+      if (!mounted) return;
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const RootScreen()),
+        MaterialPageRoute(builder: (_) => accepted ? const RootScreen() : const LicenseAgreementScreen()),
       );
     } on DioException catch (e) {
       if (!mounted) return;

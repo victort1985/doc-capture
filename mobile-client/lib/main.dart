@@ -18,8 +18,10 @@ import 'services/calendar_service.dart';
 import 'services/management_services.dart';
 import 'services/delivery_notes_service.dart';
 import 'store/app_state.dart';
+import 'services/settings_service.dart' show SettingsService;
 import 'screens/login_screen.dart';
 import 'screens/root_screen.dart';
+import 'screens/license_agreement_screen.dart';
 
 void main() {
   runApp(const DocCaptureApp());
@@ -111,10 +113,41 @@ class _AppRootState extends State<_AppRoot> {
           if (snapshot.connectionState != ConnectionState.done) {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
-          final loggedIn = appState.currentUser != null;
-          return loggedIn ? const RootScreen() : const LoginScreen();
+          final user = appState.currentUser;
+          if (user == null) return const LoginScreen();
+          return _LicenseGate(userId: user.id);
         },
       ),
     );
   }
+}
+
+// Checks per-user license acceptance; shows agreement screen if needed.
+class _LicenseGate extends StatefulWidget {
+  const _LicenseGate({required this.userId});
+  final int userId;
+
+  @override
+  State<_LicenseGate> createState() => _LicenseGateState();
+}
+
+class _LicenseGateState extends State<_LicenseGate> {
+  late final Future<bool> _check;
+
+  @override
+  void initState() {
+    super.initState();
+    _check = SettingsService().hasAcceptedLicense(widget.userId);
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<bool>(
+    future: _check,
+    builder: (_, snap) {
+      if (snap.connectionState != ConnectionState.done) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      return snap.data == true ? const RootScreen() : const LicenseAgreementScreen();
+    },
+  );
 }
