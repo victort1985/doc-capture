@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../services/api_service.dart';
 import '../services/field_cache_service.dart';
+import '../models/location.dart';
 
 class PhoneContact {
   final int id;
@@ -41,6 +42,7 @@ class PhoneBookSearchField extends StatefulWidget {
     required this.label,
     this.onContactSelected,
     this.contactFilter,
+    this.includeLocations = false,
     this.textInputAction,
     this.onSubmitted,
   });
@@ -50,6 +52,7 @@ class PhoneBookSearchField extends StatefulWidget {
   final String label;
   final void Function(PhoneContact contact)? onContactSelected;
   final String? contactFilter; // 'supplier' | 'client' | null
+  final bool includeLocations;
   final TextInputAction? textInputAction;
   final void Function(String)? onSubmitted;
 
@@ -64,6 +67,7 @@ class _PhoneBookSearchFieldState extends State<PhoneBookSearchField> {
 
   List<String> _cached = [];
   List<PhoneContact> _contacts = [];
+  List<Location> _locations = [];
   bool _searching = false;
 
   @override

@@ -85,6 +85,7 @@ class DeliveryNote {
   final String? pdfPath;
   final String? createdByUsername;
   final String createdAt;
+  final int? organizationId;
 
   DeliveryNote({
     required this.id,
@@ -105,6 +106,7 @@ class DeliveryNote {
     this.pdfPath,
     this.createdByUsername,
     required this.createdAt,
+    this.organizationId,
   });
 
   factory DeliveryNote.fromJson(Map<String, dynamic> j) => DeliveryNote(
@@ -126,6 +128,7 @@ class DeliveryNote {
     pdfPath: j['pdfPath'],
     createdByUsername: j['createdBy']?['username'],
     createdAt: j['createdAt'] ?? '',
+    organizationId: j['organization']?['id'] as int?,
   );
 }
 

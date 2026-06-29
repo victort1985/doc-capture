@@ -14,7 +14,9 @@ import '../app/theme.dart';
 import '../services/delivery_notes_service.dart';
 import '../services/pdf_helpers.dart';
 import '../services/field_cache_service.dart';
+import '../services/management_services.dart';
 import '../widgets/phone_book_search_field.dart';
+import 'barcode_scanner_screen.dart';
 
 class DeliveryNoteFormScreen extends StatefulWidget {
   const DeliveryNoteFormScreen({super.key, required this.svc, this.noteId});
@@ -133,7 +135,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   Future<void> _loadExisting() async {
     try {
       final note = await widget.svc.getOne(widget.noteId!);
-      final settings = await widget.svc.getSettings(orgId: _selectedOrgId);
+      final settings = await widget.svc.getSettings(orgId: _selectedOrgId ?? note.organizationId);
       _fillFrom(note);
       if (mounted) setState(() { _note = note; _settings = settings; _loading = false; });
     } catch (_) {
@@ -500,6 +502,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     int maxLines = 1,
     bool isNameField = false,
     String? contactFilter,
+    bool includeLocations = false,
     void Function(PhoneContact)? onContactSelected,
   }) {
     final key = cacheKey ?? label.toLowerCase().replaceAll(' ', '_');
@@ -514,6 +517,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
             controller: ctrl,
             label: label,
             contactFilter: contactFilter,
+            includeLocations: includeLocations,
             onContactSelected: onContactSelected,
           )
         else
@@ -663,9 +667,9 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 Padding(padding: const EdgeInsets.only(top: 4), child: Text('№ ${_note!.noteNumber ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
             ]),
 
-            _field('Client name', _clientNameCtrl, isNameField: true, contactFilter: 'client', onContactSelected: (contact) { setState(() { if (contact.phone != null) _clientPhoneCtrl.text = contact.phone!; }); }),
+            _field('Client name', _clientNameCtrl, isNameField: true, contactFilter: 'client', includeLocations: true, onContactSelected: (contact) { setState(() { if (contact.phone != null) _clientPhoneCtrl.text = contact.phone!; }); }),
             _field('Client address', _clientAddrCtrl, cacheKey: 'clientAddress'),
-            _field('Delivered to', _deliveredToCtrl, isNameField: true),
+            _field('Delivered to', _deliveredToCtrl, isNameField: true, contactFilter: 'client'),
             Row(children: [
               Expanded(child: _field('Role', _roleCtrl, cacheKey: 'role')),
               const SizedBox(width: 12),
@@ -692,6 +696,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 ),
                 const Divider(height: 1),
                 ..._items.asMap().entries.map((e) => _ItemRowWidget(
+                  key: ObjectKey(e.value),
                   row: e.value,
                   onDelete: _items.length > 1 ? () => setState(() => _items.removeAt(e.key)) : null,
                 )),
@@ -748,27 +753,165 @@ class _ItemRow {
   }
 }
 
-class _ItemRowWidget extends StatelessWidget {
-  const _ItemRowWidget({required this.row, this.onDelete});
+class _ItemRowWidget extends StatefulWidget {
+  const _ItemRowWidget({super.key, required this.row, this.onDelete});
   final _ItemRow row;
   final VoidCallback? onDelete;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-    child: Row(children: [
-      SizedBox(width: 46, child: TextField(controller: row.qtyCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6)))),
-      const SizedBox(width: 6),
-      Expanded(child: TextField(controller: row.nameCtrl, decoration: const InputDecoration(isDense: true, hintText: 'Item name…', contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6)))),
-      const SizedBox(width: 6),
-      SizedBox(width: 76, child: TextField(controller: row.notesCtrl, decoration: const InputDecoration(isDense: true, hintText: 'Notes', contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6)))),
-      SizedBox(width: 30, child: IconButton(
-        icon: const Icon(Icons.close, size: 16),
-        onPressed: onDelete,
-        color: onDelete != null ? Colors.red.shade300 : Colors.transparent,
-        padding: EdgeInsets.zero,
-      )),
-    ]),
+  State<_ItemRowWidget> createState() => _ItemRowWidgetState();
+}
+
+class _ItemRowWidgetState extends State<_ItemRowWidget> {
+  final _focus      = FocusNode();
+  final _layerLink  = LayerLink();
+  OverlayEntry? _overlay;
+  List<WarehouseItem> _suggestions = [];
+  bool _searching = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.row.nameCtrl.addListener(_onTextChanged);
+    _focus.addListener(_onFocusChanged);
+  }
+
+  @override
+  void dispose() {
+    widget.row.nameCtrl.removeListener(_onTextChanged);
+    _focus.removeListener(_onFocusChanged);
+    _focus.dispose();
+    _removeOverlay();
+    super.dispose();
+  }
+
+  void _onFocusChanged() {
+    if (!_focus.hasFocus) {
+      Future.delayed(const Duration(milliseconds: 150), _removeOverlay);
+    }
+  }
+
+  void _onTextChanged() {
+    final q = widget.row.nameCtrl.text;
+    if (q.length >= 2) _search(q);
+    else _removeOverlay();
+  }
+
+  Future<void> _search(String q) async {
+    setState(() => _searching = true);
+    try {
+      final api = context.read<ApiService>();
+      final svc = WarehouseService(api);
+      final items = await svc.listItems(q: q);
+      if (mounted) {
+        setState(() { _suggestions = items; _searching = false; });
+        if (items.isNotEmpty) _showOverlay();
+        else _removeOverlay();
+      }
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _pick(WarehouseItem item) {
+    widget.row.nameCtrl.text = item.name;
+    widget.row.nameCtrl.selection = TextSelection.fromPosition(TextPosition(offset: item.name.length));
+    _removeOverlay();
+  }
+
+  void _showOverlay() {
+    _removeOverlay();
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox == null) return;
+    final size = renderBox.size;
+    _overlay = OverlayEntry(
+      builder: (_) => Positioned(
+        width: size.width,
+        child: CompositedTransformFollower(
+          link: _layerLink,
+          showWhenUnlinked: false,
+          offset: Offset(0, size.height + 2),
+          child: Material(
+            elevation: 4,
+            borderRadius: BorderRadius.circular(8),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 200),
+              child: ListView(
+                padding: EdgeInsets.zero,
+                shrinkWrap: true,
+                children: _suggestions.map((item) => ListTile(
+                  dense: true,
+                  leading: const Icon(Icons.inventory_2_outlined, size: 16, color: AppColors.inkSoft),
+                  title: Text(item.name, style: const TextStyle(fontSize: 13)),
+                  subtitle: item.barcode.isNotEmpty ? Text(item.barcode, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)) : null,
+                  onTap: () => _pick(item),
+                )).toList(),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    Overlay.of(context).insert(_overlay!);
+  }
+
+  void _removeOverlay() {
+    _overlay?.remove();
+    _overlay = null;
+  }
+
+  Future<void> _scanBarcode() async {
+    final code = await Navigator.of(context).push<String>(
+      MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+    );
+    if (code == null || !mounted) return;
+    final api = context.read<ApiService>();
+    final svc = WarehouseService(api);
+    final item = await svc.findByBarcode(code);
+    if (item != null) {
+      widget.row.nameCtrl.text = item.name;
+    } else {
+      widget.row.nameCtrl.text = code;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => CompositedTransformTarget(
+    link: _layerLink,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      child: Row(children: [
+        SizedBox(width: 46, child: TextField(controller: widget.row.qtyCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6)))),
+        const SizedBox(width: 6),
+        Expanded(child: TextField(
+          controller: widget.row.nameCtrl,
+          focusNode: _focus,
+          decoration: InputDecoration(
+            isDense: true,
+            hintText: 'Item name…',
+            contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            suffixIcon: _searching
+              ? const SizedBox(width: 14, height: 14, child: Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator(strokeWidth: 2)))
+              : null,
+          ),
+        )),
+        SizedBox(width: 28, child: IconButton(
+          icon: const Icon(Icons.qr_code_scanner, size: 18),
+          onPressed: _scanBarcode,
+          color: AppColors.primary,
+          padding: EdgeInsets.zero,
+          tooltip: 'Scan barcode',
+        )),
+        const SizedBox(width: 4),
+        SizedBox(width: 72, child: TextField(controller: widget.row.notesCtrl, decoration: const InputDecoration(isDense: true, hintText: 'Notes', contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6)))),
+        SizedBox(width: 30, child: IconButton(
+          icon: const Icon(Icons.close, size: 16),
+          onPressed: widget.onDelete,
+          color: widget.onDelete != null ? Colors.red.shade300 : Colors.transparent,
+          padding: EdgeInsets.zero,
+        )),
+      ]),
+    ),
   );
 }
 
