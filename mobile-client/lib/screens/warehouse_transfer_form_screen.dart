@@ -8,6 +8,7 @@ import '../app/theme.dart';
 import '../services/api_service.dart';
 import '../services/management_services.dart';
 import '../services/field_cache_service.dart';
+import '../widgets/phone_book_search_field.dart';
 import 'barcode_scanner_screen.dart';
 
 // ── Item row state ─────────────────────────────────────────────────────────────
@@ -221,9 +222,9 @@ class _WarehouseTransferFormScreenState extends State<WarehouseTransferFormScree
         children: [
           // From / To
           Row(children: [
-            Expanded(child: _LocationField(label: 'From location', controller: _fromCtrl, cacheKey: 'transfer.from')),
+            Expanded(child: _LocationField(label: 'From location', controller: _fromCtrl, cacheKey: 'transfer.from', svc: widget.svc)),
             const Padding(padding: EdgeInsets.only(top: 6, left: 6, right: 6), child: Icon(Icons.arrow_forward, color: AppColors.inkSoft)),
-            Expanded(child: _LocationField(label: 'To location', controller: _toCtrl, cacheKey: 'transfer.to')),
+            Expanded(child: _LocationField(label: 'To location', controller: _toCtrl, cacheKey: 'transfer.to', svc: widget.svc)),
           ]),
           const SizedBox(height: 16),
 
@@ -271,12 +272,14 @@ class _WarehouseTransferFormScreenState extends State<WarehouseTransferFormScree
 }
 
 // ── Location autocomplete field ───────────────────────────────────────────────
+// Searches warehouse locations (from DB) + phone book contacts in one overlay.
 
 class _LocationField extends StatefulWidget {
-  const _LocationField({required this.label, required this.controller, required this.cacheKey});
+  const _LocationField({required this.label, required this.controller, required this.cacheKey, required this.svc});
   final String label;
   final TextEditingController controller;
   final String cacheKey;
+  final WarehouseService svc;
 
   @override
   State<_LocationField> createState() => _LocationFieldState();
@@ -287,48 +290,122 @@ class _LocationFieldState extends State<_LocationField> {
   final _layerLink = LayerLink();
   OverlayEntry? _overlay;
   List<String> _recent = [];
+  bool _searching = false;
 
   @override
   void initState() {
     super.initState();
     FieldCacheService.instance.recent(widget.cacheKey).then((r) { if (mounted) setState(() => _recent = r); });
-    _focus.addListener(() {
-      if (_focus.hasFocus && widget.controller.text.isEmpty && _recent.isNotEmpty) {
-        _showOverlay();
-      } else if (!_focus.hasFocus) {
-        FieldCacheService.instance.save(widget.cacheKey, widget.controller.text);
-        Future.delayed(const Duration(milliseconds: 150), _removeOverlay);
-      }
-    });
+    widget.controller.addListener(_onTextChanged);
+    _focus.addListener(_onFocusChanged);
   }
 
   @override
-  void dispose() { _removeOverlay(); _focus.dispose(); super.dispose(); }
+  void dispose() {
+    widget.controller.removeListener(_onTextChanged);
+    _focus.removeListener(_onFocusChanged);
+    _removeOverlay();
+    _focus.dispose();
+    super.dispose();
+  }
 
-  void _showOverlay() {
+  void _onFocusChanged() {
+    if (_focus.hasFocus && widget.controller.text.isEmpty && _recent.isNotEmpty) {
+      _showRecentOverlay();
+    } else if (!_focus.hasFocus) {
+      FieldCacheService.instance.save(widget.cacheKey, widget.controller.text);
+      Future.delayed(const Duration(milliseconds: 150), _removeOverlay);
+    }
+  }
+
+  void _onTextChanged() {
+    final q = widget.controller.text;
+    if (q.isEmpty) {
+      if (_recent.isNotEmpty && _focus.hasFocus) _showRecentOverlay();
+      else _removeOverlay();
+      return;
+    }
+    if (q.length >= 1) _search(q);
+    else _removeOverlay();
+  }
+
+  Future<void> _search(String q) async {
+    if (mounted) setState(() => _searching = true);
+    try {
+      final api = context.read<ApiService>();
+      // Query warehouse locations + phone book contacts in parallel
+      final results = await Future.wait([
+        widget.svc.listLocations(q: q),
+        api.get('/phonebook/search?q=${Uri.encodeComponent(q)}') as Future,
+      ]);
+      final locs = results[0] as List<String>;
+      final contacts = ((results[1] as List?) ?? [])
+          .map((j) => PhoneContact.fromJson(j as Map<String, dynamic>))
+          .toList();
+      if (mounted) {
+        setState(() => _searching = false);
+        if (locs.isEmpty && contacts.isEmpty) { _removeOverlay(); return; }
+        _showSearchOverlay(locs, contacts);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _pick(String value) {
+    widget.controller.text = value;
+    widget.controller.selection = TextSelection.fromPosition(TextPosition(offset: value.length));
+    FieldCacheService.instance.save(widget.cacheKey, value);
+    _removeOverlay();
+  }
+
+  void _showRecentOverlay() {
     _removeOverlay();
     if (_recent.isEmpty) return;
+    _showOverlayWithChildren(_recent.map((v) => ListTile(
+      dense: true,
+      leading: const Icon(Icons.history, size: 16, color: AppColors.inkSoft),
+      title: Text(v, style: const TextStyle(fontSize: 13)),
+      onTap: () => _pick(v),
+    )).toList());
+  }
+
+  void _showSearchOverlay(List<String> locs, List<PhoneContact> contacts) {
+    _removeOverlay();
+    final children = <Widget>[
+      ...locs.map((loc) => ListTile(
+        dense: true,
+        leading: const Icon(Icons.warehouse_outlined, size: 16, color: AppColors.inkSoft),
+        title: Text(loc, style: const TextStyle(fontSize: 13)),
+        onTap: () => _pick(loc),
+      )),
+      ...contacts.map((c) => ListTile(
+        dense: true,
+        leading: const Icon(Icons.person_outline, size: 16, color: AppColors.inkSoft),
+        title: Text(c.name, style: const TextStyle(fontSize: 13)),
+        subtitle: c.phone != null ? Text(c.phone!, style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)) : null,
+        onTap: () => _pick(c.name),
+      )),
+    ];
+    _showOverlayWithChildren(children);
+  }
+
+  void _showOverlayWithChildren(List<Widget> children) {
+    _removeOverlay();
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final size = renderBox?.size ?? const Size(200, 48);
     _overlay = OverlayEntry(builder: (_) => Positioned(
-      width: 180,
+      width: size.width,
       child: CompositedTransformFollower(
         link: _layerLink,
         showWhenUnlinked: false,
-        offset: const Offset(0, 54),
+        offset: Offset(0, size.height + 2),
         child: Material(
           elevation: 4,
           borderRadius: BorderRadius.circular(8),
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 160),
-            child: ListView(
-              padding: EdgeInsets.zero,
-              shrinkWrap: true,
-              children: _recent.map((v) => ListTile(
-                dense: true,
-                leading: const Icon(Icons.history, size: 14),
-                title: Text(v, style: const TextStyle(fontSize: 13)),
-                onTap: () { widget.controller.text = v; _removeOverlay(); },
-              )).toList(),
-            ),
+            constraints: const BoxConstraints(maxHeight: 220),
+            child: ListView(padding: EdgeInsets.zero, shrinkWrap: true, children: children),
           ),
         ),
       ),
@@ -344,7 +421,12 @@ class _LocationFieldState extends State<_LocationField> {
     child: TextField(
       controller: widget.controller,
       focusNode: _focus,
-      decoration: InputDecoration(labelText: widget.label),
+      decoration: InputDecoration(
+        labelText: widget.label,
+        suffixIcon: _searching
+          ? const SizedBox(width: 14, height: 14, child: Padding(padding: EdgeInsets.all(10), child: CircularProgressIndicator(strokeWidth: 2)))
+          : null,
+      ),
     ),
   );
 }
