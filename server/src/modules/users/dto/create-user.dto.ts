@@ -63,4 +63,10 @@ export class CreateUserDto {
   @IsInt()
   @IsOptional()
   organizationId?: number;
+
+  /** Organizations this user can switch into in the mobile app. */
+  @IsArray()
+  @IsInt({ each: true })
+  @IsOptional()
+  allowedOrganizationIds?: number[];
 }

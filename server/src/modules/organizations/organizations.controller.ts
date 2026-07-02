@@ -68,7 +68,6 @@ export class OrganizationsController {
   }
 
   @Get(':id/logo')
-  @UseGuards(SuperAdminGuard)
   async getLogo(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const logo = await this.orgsService.getLogo(id);
     if (!logo) {
@@ -77,6 +76,20 @@ export class OrganizationsController {
     }
     res.set({ 'Content-Type': logo.mimetype });
     res.send(logo.data);
+  }
+
+  /** Returns organizations this user is allowed to switch into.
+   *  Super-admin gets all orgs. Regular user gets their own org +
+   *  orgs listed in their allowedOrganizationIds. */
+  @Get('allowed')
+  async getAllowed(@CurrentUser() user: any) {
+    const all = await this.orgsService.findAll();
+    if (user.organizationId == null) return all; // super-admin sees all
+    const ids = new Set<number>([
+      user.organizationId,
+      ...(user.allowedOrganizationIds ?? []),
+    ]);
+    return all.filter((o) => ids.has(o.id));
   }
 
   // Self-service: any authenticated user (mobile app) can fetch their

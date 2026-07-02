@@ -24,6 +24,14 @@ class AppState extends ChangeNotifier {
   AuthUser? currentUser;
   bool initialized = false;
 
+  /// The organization the user is currently working in.
+  /// Starts as the user's home org, can be switched if they have orgs.switch permission.
+  int? activeOrganizationId;
+  String? activeOrganizationName;
+
+  /// List of orgs this user may switch into (fetched after login).
+  List<Map<String, dynamic>> switchableOrgs = [];
+
   ConnectionConfig connectionConfig =
       const ConnectionConfig(mode: ConnectionMode.direct, address: '');
 
@@ -42,6 +50,7 @@ class AppState extends ChangeNotifier {
     currentUser = await _authService.fetchCurrentUser();
     if (currentUser != null) {
       await _pushNotificationsService.initAndRegister();
+      await _loadSwitchableOrgs();
     }
 
     initialized = true;
@@ -96,15 +105,47 @@ class AppState extends ChangeNotifier {
 
   Future<void> login(String username, String password) async {
     currentUser = await _authService.login(username, password);
-    // Respect the user's saved per-account language if present.
     await setLanguage(currentUser!.language);
     await _pushNotificationsService.initAndRegister();
+    await _loadSwitchableOrgs();
+  }
+
+  Future<void> _loadSwitchableOrgs() async {
+    if (currentUser == null) return;
+    try {
+      final orgs = await _apiService.get('/organizations/allowed');
+      switchableOrgs = (orgs as List<dynamic>)
+          .map((o) => o as Map<String, dynamic>)
+          .toList();
+      // Set active org to current user's home org
+      activeOrganizationId ??= currentUser!.organizationId;
+      if (activeOrganizationId != null) {
+        final match = switchableOrgs.firstWhere(
+          (o) => o['id'] == activeOrganizationId,
+          orElse: () => switchableOrgs.isNotEmpty ? switchableOrgs.first : {},
+        );
+        activeOrganizationName = match['name'] as String?;
+      }
+      notifyListeners();
+    } catch (_) {}
+  }
+
+  /// Switch active organization (mobile org-switcher).
+  /// Updates API header so all subsequent requests are scoped to new org.
+  Future<void> switchOrganization(int orgId, String orgName) async {
+    activeOrganizationId = orgId;
+    activeOrganizationName = orgName;
+    _apiService.setActiveOrganizationId(orgId);
+    notifyListeners();
   }
 
   Future<void> logout() async {
     await _pushNotificationsService.unregister();
     await _authService.logout();
     currentUser = null;
+    activeOrganizationId = null;
+    activeOrganizationName = null;
+    switchableOrgs = [];
     notifyListeners();
   }
 }

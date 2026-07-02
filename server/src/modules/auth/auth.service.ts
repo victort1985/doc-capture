@@ -33,6 +33,8 @@ export class AuthService {
         language: user.language,
         role: user.role,
         organizationId: user.organization?.id ?? null,
+        allowedOrganizationIds: user.allowedOrganizationIds ?? [],
+        permissions: user.permissions ?? {},
       },
     };
   }

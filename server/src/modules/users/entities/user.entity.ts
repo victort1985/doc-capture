@@ -99,6 +99,11 @@ export class User {
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'SET NULL' })
   organization?: Organization;
 
+  /** Organizations this user is allowed to switch into (mobile org-switcher).
+   *  Stored as an array of org IDs. Empty = only their own org. */
+  @Column({ type: 'jsonb', default: [] })
+  allowedOrganizationIds: number[];
+
   @CreateDateColumn()
   createdAt: Date;
 

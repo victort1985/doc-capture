@@ -11,6 +11,7 @@ import 'camera_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/search_picker_field.dart';
+import '../widgets/org_switcher_bar.dart';
 
 /// Everything that existed before the Calls feature (upload / history /
 /// settings) now lives together under the "Переучет" (Inventory) tab —
@@ -140,6 +141,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const OrgSwitcherBar(),
                   _sectionLabel(l10n.place.toUpperCase()),
                   SearchPickerField<loc.Location>(
                     controller: _placeController,

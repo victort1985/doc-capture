@@ -7,19 +7,33 @@ class AuthUser {
   final String username;
   final String language;
   final String role;
+  final int? organizationId;
+  final List<int> allowedOrganizationIds;
+  final Map<String, bool> permissions;
 
   AuthUser({
     required this.id,
     required this.username,
     required this.language,
     required this.role,
+    this.organizationId,
+    this.allowedOrganizationIds = const [],
+    this.permissions = const {},
   });
+
+  bool hasPermission(String key) => permissions[key] ?? false;
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
         id: json['id'] as int,
         username: json['username'] as String,
         language: json['language'] as String? ?? 'he',
         role: json['role'] as String? ?? 'user',
+        organizationId: json['organizationId'] as int?,
+        allowedOrganizationIds: (json['allowedOrganizationIds'] as List<dynamic>?)
+            ?.map((e) => e as int)
+            .toList() ?? [],
+        permissions: (json['permissions'] as Map<String, dynamic>?)
+            ?.map((k, v) => MapEntry(k, v as bool)) ?? {},
       );
 }
 

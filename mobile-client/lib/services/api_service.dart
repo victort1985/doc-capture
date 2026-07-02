@@ -94,6 +94,16 @@ class ApiService {
     }
   }
 
+  /// Tells the server which org context this client is currently using.
+  /// The server uses this header to scope data when a user can switch orgs.
+  void setActiveOrganizationId(int? orgId) {
+    if (orgId == null) {
+      _dio.options.headers.remove('X-Active-Org');
+    } else {
+      _dio.options.headers['X-Active-Org'] = orgId.toString();
+    }
+  }
+
   Future<Map<String, dynamic>> post(
     String path,
     Map<String, dynamic> body,

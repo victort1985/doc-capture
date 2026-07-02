@@ -43,6 +43,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // that organization's data only. Always derived from the live DB
       // row above, never trusted from the JWT payload itself.
       organizationId: user.organization?.id ?? null,
+      allowedOrganizationIds: user.allowedOrganizationIds ?? [],
+      permissions: user.permissions ?? {},
     };
   }
 }

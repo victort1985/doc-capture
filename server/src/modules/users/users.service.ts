@@ -132,6 +132,7 @@ export class UsersService {
       regions,
       isGlobal: dto.isGlobal ?? false,
       organization,
+      allowedOrganizationIds: dto.allowedOrganizationIds ?? [],
     });
     return this.usersRepo.save(user);
   }
@@ -160,6 +161,7 @@ export class UsersService {
       regions: dto.regionIds !== undefined ? regions : user.regions,
       isGlobal: dto.isGlobal ?? user.isGlobal,
       organization,
+      allowedOrganizationIds: dto.allowedOrganizationIds ?? user.allowedOrganizationIds,
     });
     return this.usersRepo.save(user);
   }

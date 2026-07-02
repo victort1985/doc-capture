@@ -27,6 +27,7 @@ interface UserRow {
   regions?: Region[];
   isGlobal: boolean;
   organization?: { id: number; name: string };
+  allowedOrganizationIds?: number[];
 }
 interface Org {
   id: number;
@@ -37,6 +38,7 @@ const EMPTY_FORM = {
   username: '', password: '', role: 'user', language: 'he',
   firstName: '', lastName: '', specialization: '', phone: '',
   cityId: '', regionIds: [] as number[], isGlobal: false, organizationId: '',
+  allowedOrganizationIds: [] as number[],
 };
 
 export default function UsersPage() {
@@ -116,6 +118,7 @@ export default function UsersPage() {
       regionIds: u.regions?.map((r) => r.id) || [],
       isGlobal: u.isGlobal,
       organizationId: u.organization ? String(u.organization.id) : '',
+      allowedOrganizationIds: u.allowedOrganizationIds ?? [],
     });
     setShowForm(true);
   }
@@ -210,6 +213,34 @@ export default function UsersPage() {
                     <option key={o.id} value={o.id}>{o.name}</option>
                   ))}
                 </select>
+              </div>
+            )}
+            {form.organizationId && orgs.length > 1 && (
+              <div>
+                <label>Can switch to organizations</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                  {orgs.filter(o => String(o.id) !== form.organizationId).map((o) => {
+                    const checked = form.allowedOrganizationIds.includes(o.id);
+                    return (
+                      <label key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400, cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => setForm(f => ({
+                            ...f,
+                            allowedOrganizationIds: checked
+                              ? f.allowedOrganizationIds.filter(id => id !== o.id)
+                              : [...f.allowedOrganizationIds, o.id],
+                          }))}
+                        />
+                        {o.name}
+                      </label>
+                    );
+                  })}
+                </div>
+                <small style={{ color: 'var(--ink-soft)' }}>
+                  Requires "Switch between organizations" permission in Permissions page
+                </small>
               </div>
             )}
             <div>
