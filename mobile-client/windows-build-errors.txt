@@ -1,0 +1,7 @@
+Building Windows application...                                 
+lib/store/app_state.dart(121,45): error G4127D1E8: The getter 'organizationId' isn't defined for the type 'AuthUser'. [D:\a\doc-capture\doc-capture\mobile-client\build\windows\x64\flutter\flutter_assemble.vcxproj]
+lib/widgets/org_switcher_bar.dart(18,28): error GE5CFE876: The method 'hasPermission' isn't defined for the type 'AuthUser'. [D:\a\doc-capture\doc-capture\mobile-client\build\windows\x64\flutter\flutter_assemble.vcxproj]
+lib/widgets/org_switcher_bar.dart(20,14): error G4127D1E8: The getter 'organizationId' isn't defined for the type 'AuthUser'. [D:\a\doc-capture\doc-capture\mobile-client\build\windows\x64\flutter\flutter_assemble.vcxproj]
+C:\Program Files\Microsoft Visual Studio\18\Enterprise\MSBuild\Microsoft\VC\v180\Microsoft.CppCommon.targets(254,5): error MSB8066: Custom build for 'D:\a\doc-capture\doc-capture\mobile-client\build\windows\x64\CMakeFiles\4df916a39278c32bd2b987e053e211de\flutter_windows.dll.rule;D:\a\doc-capture\doc-capture\mobile-client\build\windows\x64\CMakeFiles\a80f8a3c191163ad0a31e81072c7f064\flutter_assemble.rule;D:\a\doc-capture\doc-capture\mobile-client\windows\flutter\CMakeLists.txt' exited with code 1. [D:\a\doc-capture\doc-capture\mobile-client\build\windows\x64\flutter\flutter_assemble.vcxproj]
+Building Windows application...                                    53.2s
+Build process failed.
