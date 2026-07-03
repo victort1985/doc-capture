@@ -17,7 +17,16 @@ export class DeliveryNotesController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@CurrentUser() user: ReqUser, @Req() req: Request) {
+  findAll(
+    @CurrentUser() user: ReqUser,
+    @Req() req: Request,
+    @Query('orgId') orgIdParam?: string,
+  ) {
+    // Super-admin can filter by specific org via ?orgId=X
+    if (user.organizationId == null && orgIdParam) {
+      const parsed = parseInt(orgIdParam, 10);
+      if (!isNaN(parsed)) return this.svc.findAll(parsed);
+    }
     return this.svc.findAll(getActiveOrgId(user, req));
   }
 

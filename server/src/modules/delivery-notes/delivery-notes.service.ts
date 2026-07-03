@@ -18,7 +18,7 @@ export class DeliveryNotesService {
   findAll(organizationId: number | null): Promise<DeliveryNote[]> {
     return this.repo.find({
       where: organizationId != null ? { organization: { id: organizationId } } : {},
-      relations: ['createdBy'],
+      relations: ['createdBy', 'organization'],
       order: { createdAt: 'DESC' },
     });
   }

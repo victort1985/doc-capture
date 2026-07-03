@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pencil, Trash2, Plus, AlertTriangle, X, FileText } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle, X, FileText, Building2 } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,30 +16,23 @@ interface DeliveryNote {
   remarks?: string;
   createdAt: string;
   createdByUsername?: string;
+  organization?: { id: number; name: string };
 }
+interface Org { id: number; name: string; }
 
 function fmtDate(iso?: string) {
   if (!iso) return '';
-  const d = iso.slice(0, 10);
-  const [y, m, day] = d.split('-');
+  const [y, m, day] = iso.slice(0, 10).split('-');
   return `${day}/${m}/${y}`;
 }
 
 function DeleteModal({ note, onConfirm, onCancel }: { note: DeliveryNote; onConfirm: () => Promise<void>; onCancel: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
   async function handleClick() {
-    setLoading(true);
-    setError('');
-    try {
-      await onConfirm();
-    } catch (e: any) {
-      setError(e?.message || 'Delete failed');
-      setLoading(false);
-    }
+    setLoading(true); setError('');
+    try { await onConfirm(); } catch (e: any) { setError(e?.message || 'Delete failed'); setLoading(false); }
   }
-
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
       <div className="card" style={{ width: 360, padding: 28 }}>
@@ -54,11 +47,8 @@ function DeleteModal({ note, onConfirm, onCancel }: { note: DeliveryNote; onConf
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button onClick={onCancel} disabled={loading} style={{ flex: 1 }}>Cancel</button>
-          <button
-            onClick={handleClick}
-            disabled={loading}
-            style={{ flex: 1, background: 'var(--danger, #e53e3e)', color: 'white', border: 'none', borderRadius: 8, padding: '10px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, opacity: loading ? 0.7 : 1 }}
-          >
+          <button onClick={handleClick} disabled={loading}
+            style={{ flex: 1, background: 'var(--danger, #e53e3e)', color: 'white', border: 'none', borderRadius: 8, padding: '10px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, opacity: loading ? 0.7 : 1 }}>
             {loading ? 'Deleting…' : 'Delete'}
           </button>
         </div>
@@ -67,26 +57,15 @@ function DeleteModal({ note, onConfirm, onCancel }: { note: DeliveryNote; onConf
   );
 }
 
-function NoteModal({ note, onSave, onClose }: { note: Partial<DeliveryNote> | null; onSave: (data: any) => void; onCancel?: () => void; onClose: () => void }) {
+function NoteModal({ note, onSave, onClose }: { note: Partial<DeliveryNote> | null; onSave: (data: any) => void; onClose: () => void }) {
   const [form, setForm] = useState<any>(note || { documentType: 'תעודת משלוח', date: new Date().toISOString().slice(0, 10), items: [{ quantity: 1, name: '', notes: '' }] });
   const [saving, setSaving] = useState(false);
-
   const docTypes = ['תעודת משלוח', 'הסכם שכירות', 'ביצוע עבודה', 'תעודת משלוח / הסכם שכירות', 'תעודת משלוח / ביצוע עבודה'];
-
   function setField(k: string, v: any) { setForm((p: any) => ({ ...p, [k]: v })); }
-
   function setItem(i: number, k: string, v: any) {
-    setForm((p: any) => {
-      const items = [...(p.items || [])];
-      items[i] = { ...items[i], [k]: v };
-      return { ...p, items };
-    });
+    setForm((p: any) => { const items = [...(p.items || [])]; items[i] = { ...items[i], [k]: v }; return { ...p, items }; });
   }
-
-  async function save() {
-    setSaving(true);
-    try { await onSave(form); } finally { setSaving(false); }
-  }
+  async function save() { setSaving(true); try { await onSave(form); } finally { setSaving(false); } }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
@@ -95,7 +74,6 @@ function NoteModal({ note, onSave, onClose }: { note: Partial<DeliveryNote> | nu
           <h2 style={{ margin: 0 }}>{note?.id ? 'Edit note' : 'New note'}</h2>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
         </div>
-
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
           <div><label>Document type</label>
             <select value={form.documentType || ''} onChange={e => setField('documentType', e.target.value)} style={{ width: '100%' }}>
@@ -115,29 +93,20 @@ function NoteModal({ note, onSave, onClose }: { note: Partial<DeliveryNote> | nu
             <textarea value={form.remarks || ''} onChange={e => setField('remarks', e.target.value)} style={{ width: '100%', minHeight: 60 }} />
           </div>
         </div>
-
         <div style={{ marginBottom: 10 }}>
           <label>Items</label>
           {(form.items || []).map((item: any, i: number) => (
             <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4 }}>
-              <input type="number" value={item.quantity || 1} onChange={e => setItem(i, 'quantity', +e.target.value)}
-                style={{ width: 60 }} min={1} />
-              <input value={item.name || ''} onChange={e => setItem(i, 'name', e.target.value)}
-                placeholder="Item name" style={{ flex: 2 }} />
-              <input value={item.notes || ''} onChange={e => setItem(i, 'notes', e.target.value)}
-                placeholder="Notes" style={{ flex: 1 }} />
+              <input type="number" value={item.quantity || 1} onChange={e => setItem(i, 'quantity', +e.target.value)} style={{ width: 60 }} min={1} />
+              <input value={item.name || ''} onChange={e => setItem(i, 'name', e.target.value)} placeholder="Item name" style={{ flex: 2 }} />
+              <input value={item.notes || ''} onChange={e => setItem(i, 'notes', e.target.value)} placeholder="Notes" style={{ flex: 1 }} />
               <button onClick={() => setForm((p: any) => ({ ...p, items: p.items.filter((_: any, j: number) => j !== i) }))}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
-                <X size={14} />
-              </button>
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}><X size={14} /></button>
             </div>
           ))}
           <button onClick={() => setForm((p: any) => ({ ...p, items: [...(p.items || []), { quantity: 1, name: '', notes: '' }] }))}
-            style={{ fontSize: 12, marginTop: 4 }}>
-            + Add item
-          </button>
+            style={{ fontSize: 12, marginTop: 4 }}>+ Add item</button>
         </div>
-
         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
           <button onClick={onClose}>Cancel</button>
           <button onClick={save} disabled={saving} style={{ background: 'var(--primary)', color: 'white', border: 'none', borderRadius: 8, padding: '8px 20px', cursor: 'pointer', fontWeight: 700 }}>
@@ -151,23 +120,36 @@ function NoteModal({ note, onSave, onClose }: { note: Partial<DeliveryNote> | nu
 
 export default function DeliveryNotesPage() {
   const auth = useAuth();
+  const isSuperAdmin = auth?.user?.organizationId == null;
   const [notes, setNotes] = useState<DeliveryNote[]>([]);
+  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<DeliveryNote | null>(null);
   const [editTarget, setEditTarget] = useState<Partial<DeliveryNote> | null | undefined>(undefined);
 
-  // Admin-only guard
-  const isAdmin = auth?.user?.role === 'admin' || auth?.user?.organizationId === null;
+  const isAdmin = auth?.user?.role === 'admin' || isSuperAdmin;
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (isSuperAdmin) {
+      apiFetch<Org[]>('/organizations').then(setOrgs).catch(() => {});
+    }
+    load('');
+  }, []);
 
-  async function load() {
+  async function load(orgId: string) {
     setLoading(true);
     try {
-      const data = await apiFetch<DeliveryNote[]>('/delivery-notes');
+      const url = orgId ? `/delivery-notes?orgId=${orgId}` : '/delivery-notes';
+      const data = await apiFetch<DeliveryNote[]>(url);
       setNotes(data);
     } finally { setLoading(false); }
+  }
+
+  function handleOrgChange(orgId: string) {
+    setSelectedOrgId(orgId);
+    load(orgId);
   }
 
   async function handleDelete() {
@@ -180,14 +162,12 @@ export default function DeliveryNotesPage() {
   async function handleSave(form: any) {
     if (editTarget?.id) {
       const updated = await apiFetch<DeliveryNote>(`/delivery-notes/${editTarget.id}`, {
-        method: 'PATCH', body: JSON.stringify(form),
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH', body: JSON.stringify(form), headers: { 'Content-Type': 'application/json' },
       });
       setNotes(prev => prev.map(n => n.id === updated.id ? updated : n));
     } else {
       const created = await apiFetch<DeliveryNote>('/delivery-notes', {
-        method: 'POST', body: JSON.stringify(form),
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', body: JSON.stringify(form), headers: { 'Content-Type': 'application/json' },
       });
       setNotes(prev => [created, ...prev]);
     }
@@ -202,8 +182,10 @@ export default function DeliveryNotesPage() {
   );
 
   const filtered = notes.filter(n =>
-    !search || (n.clientName || '').toLowerCase().includes(search.toLowerCase()) ||
-    (n.noteNumber || '').includes(search) || (n.deliveredTo || '').toLowerCase().includes(search.toLowerCase())
+    !search ||
+    (n.clientName || '').toLowerCase().includes(search.toLowerCase()) ||
+    (n.noteNumber || '').includes(search) ||
+    (n.deliveredTo || '').toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -218,27 +200,62 @@ export default function DeliveryNotesPage() {
         </button>
       </div>
 
-      <div style={{ marginBottom: 14 }}>
+      {/* Filters row */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
         <input
           placeholder="Search by client, note number…"
           value={search} onChange={e => setSearch(e.target.value)}
-          style={{ width: '100%', maxWidth: 360 }}
+          style={{ flex: 1, minWidth: 200, maxWidth: 360 }}
         />
+        {/* Organization filter — super-admin only */}
+        {isSuperAdmin && orgs.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Building2 size={16} style={{ color: 'var(--ink-soft)', flexShrink: 0 }} />
+            <select
+              value={selectedOrgId}
+              onChange={e => handleOrgChange(e.target.value)}
+              style={{ minWidth: 180 }}
+            >
+              <option value="">All organizations</option>
+              {orgs.map(o => (
+                <option key={o.id} value={o.id}>{o.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
+        {/* Current org badge for regular admin */}
+        {!isSuperAdmin && auth?.user?.organizationId && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6,
+            padding: '6px 12px', background: 'var(--primary-wash)',
+            borderRadius: 8, border: '1px solid var(--border)', fontSize: 13 }}>
+            <Building2 size={14} style={{ color: 'var(--primary)' }} />
+            <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
+              {orgs.find(o => o.id === auth?.user?.organizationId)?.name ?? 'Your organization'}
+            </span>
+          </div>
+        )}
+        <span style={{ color: 'var(--ink-soft)', fontSize: 13, marginLeft: 'auto' }}>
+          {filtered.length} note{filtered.length !== 1 ? 's' : ''}
+        </span>
       </div>
 
-      {loading ? <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--ink-soft)' }}>Loading…</div> : (
-        <div className="card" style={{ padding: 0 }}>
+      {loading ? (
+        <div className="card" style={{ textAlign: 'center', padding: 32, color: 'var(--ink-soft)' }}>Loading…</div>
+      ) : (
+        <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)' }}>
-                {['#', 'Type', 'Date', 'Client', 'Delivered to', 'Items', 'Status', ''].map(h => (
-                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: 'var(--ink-soft)', fontSize: 11, textTransform: 'uppercase' }}>{h}</th>
+                {['#', 'Type', 'Date', 'Client', 'Delivered to', 'Items', 'Status',
+                  ...(isSuperAdmin ? ['Organization'] : []),
+                  ''].map(h => (
+                  <th key={h} style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 700, color: 'var(--ink-soft)', fontSize: 11, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.length === 0 && (
-                <tr><td colSpan={8} style={{ textAlign: 'center', padding: 32, color: 'var(--ink-soft)' }}>
+                <tr><td colSpan={9} style={{ textAlign: 'center', padding: 32, color: 'var(--ink-soft)' }}>
                   <FileText size={32} style={{ opacity: 0.3, display: 'block', margin: '0 auto 8px' }} />
                   No notes found
                 </td></tr>
@@ -247,12 +264,17 @@ export default function DeliveryNotesPage() {
                 <tr key={n.id} style={{ borderBottom: '1px solid var(--border)' }}
                   onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface-muted)')}
                   onMouseLeave={e => (e.currentTarget.style.background = '')}>
-                  <td style={{ padding: '10px 12px', fontWeight: 700 }}>DN{n.noteNumber}</td>
-                  <td style={{ padding: '10px 12px', maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} dir="rtl">{n.documentType || 'תעודת משלוח'}</td>
+                  {/* Note number — no prefix, show as-is */}
+                  <td style={{ padding: '10px 12px', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {n.noteNumber ?? `#${n.id}`}
+                  </td>
+                  <td style={{ padding: '10px 12px', maxWidth: 130, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} dir="rtl">
+                    {n.documentType || 'תעודת משלוח'}
+                  </td>
                   <td style={{ padding: '10px 12px', whiteSpace: 'nowrap' }}>{fmtDate(n.date)}</td>
                   <td style={{ padding: '10px 12px' }}>{n.clientName}</td>
                   <td style={{ padding: '10px 12px' }}>{n.deliveredTo}</td>
-                  <td style={{ padding: '10px 12px', color: 'var(--ink-soft)' }}>{n.items?.length || 0} items</td>
+                  <td style={{ padding: '10px 12px', color: 'var(--ink-soft)' }}>{n.items?.length || 0}</td>
                   <td style={{ padding: '10px 12px' }}>
                     <span style={{
                       padding: '2px 8px', borderRadius: 20, fontSize: 11, fontWeight: 700,
@@ -260,6 +282,11 @@ export default function DeliveryNotesPage() {
                       color: n.status === 'signed' ? '#155724' : '#856404',
                     }}>{n.status}</span>
                   </td>
+                  {isSuperAdmin && (
+                    <td style={{ padding: '10px 12px', fontSize: 12, color: 'var(--ink-soft)' }}>
+                      {n.organization?.name ?? '—'}
+                    </td>
+                  )}
                   <td style={{ padding: '10px 12px' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="ghost" title="Edit" onClick={() => setEditTarget(n)}><Pencil size={14} /></button>
@@ -276,7 +303,6 @@ export default function DeliveryNotesPage() {
       {deleteTarget && (
         <DeleteModal note={deleteTarget} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
       )}
-
       {editTarget !== undefined && (
         <NoteModal note={editTarget} onSave={handleSave} onClose={() => setEditTarget(undefined)} />
       )}
