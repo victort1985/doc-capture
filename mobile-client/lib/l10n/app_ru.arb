@@ -52,7 +52,7 @@
   "connectionExportButton": "Экспорт в файл",
   "connectionExportSuccess": "Настройки сохранены в файл",
   "connectionDiagnosticsButton": "Проверить соединение",
-  "navHome": "Главная",
+  "navHome": "Домашняя",
   "navHistory": "История",
   "navSettings": "Настройки",
   "cameraUnavailable": "На этом устройстве не найдена камера.",
