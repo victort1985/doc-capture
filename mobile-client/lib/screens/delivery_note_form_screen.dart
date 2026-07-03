@@ -15,6 +15,8 @@ import '../services/delivery_notes_service.dart';
 import '../services/pdf_helpers.dart';
 import '../services/field_cache_service.dart';
 import '../widgets/phone_book_search_field.dart';
+import '../widgets/client_search_field.dart';
+import '../widgets/item_row_widget.dart';
 
 class DeliveryNoteFormScreen extends StatefulWidget {
   const DeliveryNoteFormScreen({super.key, required this.svc, this.noteId});
@@ -45,7 +47,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   final _lesseeIdCtrl    = TextEditingController();
 
   // Equipment rows
-  List<_ItemRow> _items = [_ItemRow()];
+  List<ItemRow> _items = [ItemRow()];
 
   // Signatures (base64 PNG)
   String? _lessorSig;
@@ -142,8 +144,8 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     _remarksCtrl.text     = n.remarks ?? '';
     _lesseeIdCtrl.text    = n.lesseeIdNumber ?? '';
     _items = n.items.isNotEmpty
-        ? n.items.map((i) => _ItemRow(quantity: i.quantity, name: i.name, notes: i.notes ?? '')).toList()
-        : [_ItemRow()];
+        ? n.items.map((i) => ItemRow(quantity: i.quantity, name: i.name, notes: i.notes ?? '')).toList()
+        : [ItemRow()];
     _lessorSig = n.lessorSignature;
     _lesseeSig = n.lesseeSignature;
   }
@@ -625,9 +627,30 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 Padding(padding: const EdgeInsets.only(top: 4), child: Text('№ ${_note!.noteNumber ?? ''}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
             ]),
 
-            _field('Client name', _clientNameCtrl, isNameField: true, contactFilter: 'client', onContactSelected: (contact) { setState(() { if (contact.phone != null) _clientPhoneCtrl.text = contact.phone!; }); }),
+            ClientSearchField(
+              controller: _clientNameCtrl,
+              label: 'Client name',
+              hintText: 'Search contacts or locations…',
+              includeLocations: true,
+              onSelected: ({String? role, String? phone}) {
+                setState(() {
+                  if (role != null && _roleCtrl.text.isEmpty) _roleCtrl.text = role;
+                  if (phone != null && _clientPhoneCtrl.text.isEmpty) _clientPhoneCtrl.text = phone;
+                });
+              },
+            ),
             _field('Client address', _clientAddrCtrl, cacheKey: 'clientAddress'),
-            _field('Delivered to', _deliveredToCtrl, isNameField: true),
+            ClientSearchField(
+              controller: _deliveredToCtrl,
+              label: 'Delivered to',
+              hintText: 'Search contacts…',
+              includeLocations: false,
+              onSelected: ({String? role, String? phone}) {
+                setState(() {
+                  if (role != null && _roleCtrl.text.isEmpty) _roleCtrl.text = role;
+                });
+              },
+            ),
             Row(children: [
               Expanded(child: _field('Role', _roleCtrl, cacheKey: 'role')),
               const SizedBox(width: 12),
@@ -653,12 +676,13 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                   ]),
                 ),
                 const Divider(height: 1),
-                ..._items.asMap().entries.map((e) => _ItemRowWidget(
+                ..._items.asMap().entries.map((e) => ItemRowWidget(
                   row: e.value,
                   onDelete: _items.length > 1 ? () => setState(() => _items.removeAt(e.key)) : null,
+                  onBarcodeScanned: () => setState(() {}),
                 )),
                 TextButton.icon(
-                  onPressed: () => setState(() => _items.add(_ItemRow())),
+                  onPressed: () => setState(() => _items.add(ItemRow())),
                   icon: const Icon(Icons.add, size: 16),
                   label: const Text('Add row', style: TextStyle(fontSize: 13)),
                 ),
@@ -695,43 +719,6 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
       ),
     );
   }
-}
-
-// ─── Item row widget ──────────────────────────────────────────────────────────
-
-class _ItemRow {
-  final qtyCtrl   = TextEditingController(text: '1');
-  final nameCtrl  = TextEditingController();
-  final notesCtrl = TextEditingController();
-  _ItemRow({int quantity = 1, String name = '', String notes = ''}) {
-    qtyCtrl.text   = '$quantity';
-    nameCtrl.text  = name;
-    notesCtrl.text = notes;
-  }
-}
-
-class _ItemRowWidget extends StatelessWidget {
-  const _ItemRowWidget({required this.row, this.onDelete});
-  final _ItemRow row;
-  final VoidCallback? onDelete;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-    child: Row(children: [
-      SizedBox(width: 46, child: TextField(controller: row.qtyCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: const InputDecoration(isDense: true, contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6)))),
-      const SizedBox(width: 6),
-      Expanded(child: TextField(controller: row.nameCtrl, decoration: const InputDecoration(isDense: true, hintText: 'Item name…', contentPadding: EdgeInsets.symmetric(horizontal: 6, vertical: 6)))),
-      const SizedBox(width: 6),
-      SizedBox(width: 76, child: TextField(controller: row.notesCtrl, decoration: const InputDecoration(isDense: true, hintText: 'Notes', contentPadding: EdgeInsets.symmetric(horizontal: 4, vertical: 6)))),
-      SizedBox(width: 30, child: IconButton(
-        icon: const Icon(Icons.close, size: 16),
-        onPressed: onDelete,
-        color: onDelete != null ? Colors.red.shade300 : Colors.transparent,
-        padding: EdgeInsets.zero,
-      )),
-    ]),
-  );
 }
 
 // ─── Signature box ────────────────────────────────────────────────────────────
