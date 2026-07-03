@@ -33,7 +33,7 @@ jobs:
       - name: Flutter setup
         run: |
           flutter config --enable-linux-desktop --no-analytics
-          flutter create --platforms=linux . 2>/dev/null || true
+          flutter create --platforms=linux --project-name vixor_erp . 2>/dev/null || true
 
       - name: Patch pubspec & stubs
         run: |
@@ -213,7 +213,7 @@ jobs:
         run: |
           $env:PATH = "C:\flutter-sdk\flutter\bin;$env:PATH"
           flutter config --enable-windows-desktop --no-analytics
-          flutter create --platforms=windows . 2>&1 | Out-Null || true
+          flutter create --platforms=windows --project-name vixor_erp . 2>&1 | Out-Null || true
 
       - name: Patch pubspec & stubs
         shell: bash
