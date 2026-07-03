@@ -1,16 +1,18 @@
 import {
   Body, Controller, Get, Param, ParseIntPipe,
-  Post, Put, UploadedFile, UseGuards, UseInterceptors,
+  Post, Put, Req, UploadedFile, UseGuards, UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { Request } from 'express';
 import { DeliveryNoteSettings } from './delivery-note-settings.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { getActiveOrgId } from '../../common/utils/active-org.util';
 
-type ReqUser = { id: number; organizationId: number | null };
+type ReqUser = { id: number; organizationId: number | null; allowedOrganizationIds?: number[] };
 
 @Controller('delivery-note-settings')
 @UseGuards(JwtAuthGuard)
@@ -26,10 +28,12 @@ export class DeliveryNoteSettingsController {
     return this.repo.findOne({ where: { organization: { id: orgId } } }) ?? {};
   }
 
+  /** Get settings for the currently ACTIVE organization (respects X-Active-Org header) */
   @Get()
-  async getMine(@CurrentUser() user: ReqUser) {
-    if (user.organizationId == null) return {};
-    return this.repo.findOne({ where: { organization: { id: user.organizationId } } }) ?? {};
+  async getMine(@CurrentUser() user: ReqUser, @Req() req: Request) {
+    const orgId = getActiveOrgId(user, req);
+    if (orgId == null) return {};
+    return this.repo.findOne({ where: { organization: { id: orgId } } }) ?? {};
   }
 
   /** Create or update settings for an org */

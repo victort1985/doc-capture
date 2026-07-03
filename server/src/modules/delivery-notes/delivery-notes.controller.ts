@@ -1,14 +1,15 @@
 import {
   Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe,
-  Patch, Post, Query, Res, SetMetadata, UseGuards,
+  Patch, Post, Query, Req, Res, SetMetadata, UseGuards,
 } from '@nestjs/common';
-import { Response } from 'express';
+import { Response, Request } from 'express';
 import { DeliveryNotesService } from './delivery-notes.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { getActiveOrgId } from '../../common/utils/active-org.util';
 
 const SkipAuth = () => SetMetadata('skipAuth', true);
-type ReqUser = { id: number; organizationId: number | null };
+type ReqUser = { id: number; organizationId: number | null; allowedOrganizationIds?: number[] };
 
 @Controller('delivery-notes')
 export class DeliveryNotesController {
@@ -16,31 +17,29 @@ export class DeliveryNotesController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@CurrentUser() user: ReqUser) {
-    return this.svc.findAll(user.organizationId);
+  findAll(@CurrentUser() user: ReqUser, @Req() req: Request) {
+    return this.svc.findAll(getActiveOrgId(user, req));
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('autocomplete/clients')
-  autocompleteClients(@Query('q') q = '', @CurrentUser() user: ReqUser) {
-    return this.svc.autocompleteClients(q, user.organizationId);
+  autocompleteClients(@Query('q') q = '', @CurrentUser() user: ReqUser, @Req() req: Request) {
+    return this.svc.autocompleteClients(q, getActiveOrgId(user, req));
   }
 
   @UseGuards(JwtAuthGuard)
   @Get('autocomplete/field')
-  autocompleteField(@Query('field') field: string, @Query('q') q = '', @CurrentUser() user: ReqUser) {
-    return this.svc.autocompleteField(field, q, user.organizationId);
+  autocompleteField(@Query('field') field: string, @Query('q') q = '', @CurrentUser() user: ReqUser, @Req() req: Request) {
+    return this.svc.autocompleteField(field, q, getActiveOrgId(user, req));
   }
 
-  // ── Remote signing — PUBLIC (must be declared BEFORE :id to avoid route shadowing) ──
+  // ── Remote signing — PUBLIC ──────────────────────────────────────────────
 
-  /** GET /delivery-notes/sign/:token — no auth — returns note data for signer */
   @Get('sign/:token')
   async getForSigning(@Param('token') token: string) {
     return this.svc.getNoteForSigning(token);
   }
 
-  /** POST /delivery-notes/sign/:token — no auth — submit name + signature */
   @Post('sign/:token')
   async submitSignature(
     @Param('token') token: string,
@@ -49,60 +48,59 @@ export class DeliveryNotesController {
     return this.svc.submitRemoteSignature(token, body.signerName, body.signerRole, body.signature);
   }
 
-  /** POST /delivery-notes/:id/signing-link — authenticated — generate signing token */
   @UseGuards(JwtAuthGuard)
   @Post(':id/signing-link')
   async createSigningLink(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: ReqUser,
+    @Req() req: Request,
   ) {
-    return this.svc.createSigningLink(id, user.organizationId);
+    return this.svc.createSigningLink(id, getActiveOrgId(user, req));
   }
 
   @UseGuards(JwtAuthGuard)
   @Get(':id')
-  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
-    return this.svc.findOne(id, user.organizationId);
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Req() req: Request) {
+    return this.svc.findOne(id, getActiveOrgId(user, req));
   }
 
   @UseGuards(JwtAuthGuard)
   @Post()
-  create(@Body() dto: any, @CurrentUser() user: ReqUser) {
-    return this.svc.create(user.organizationId, user.id, dto);
+  create(@Body() dto: any, @CurrentUser() user: ReqUser, @Req() req: Request) {
+    return this.svc.create(getActiveOrgId(user, req), user.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: any, @CurrentUser() user: ReqUser) {
-    return this.svc.update(id, user.organizationId, dto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: any, @CurrentUser() user: ReqUser, @Req() req: Request) {
+    return this.svc.update(id, getActiveOrgId(user, req), dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @HttpCode(204)
   @Delete(':id')
-  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
-    return this.svc.remove(id, user.organizationId);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Req() req: Request) {
+    return this.svc.remove(id, getActiveOrgId(user, req));
   }
 
-  /** Client uploads generated PDF (with embedded signatures) */
   @UseGuards(JwtAuthGuard)
   @Post(':id/pdf')
   async storePdf(
     @Param('id', ParseIntPipe) id: number,
-    @Body() body: { pdf: string }, // base64
+    @Body() body: { pdf: string },
     @CurrentUser() user: ReqUser,
+    @Req() req: Request,
   ) {
     const buffer = Buffer.from(body.pdf, 'base64');
-    const path = await this.svc.storePdf(id, user.organizationId, user.id, buffer);
+    const path = await this.svc.storePdf(id, getActiveOrgId(user, req), user.id, buffer);
     return { path };
   }
 
   @UseGuards(JwtAuthGuard)
   @Get(':id/pdf')
-  async downloadPdf(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Res() res: Response) {
-    const { buffer, filename } = await this.svc.downloadPdf(id, user.organizationId);
+  async downloadPdf(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Req() req: Request, @Res() res: Response) {
+    const { buffer, filename } = await this.svc.downloadPdf(id, getActiveOrgId(user, req));
     res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${filename}"` });
     res.send(buffer);
   }
-
 }
