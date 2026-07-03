@@ -98,6 +98,10 @@ jobs:
               this.allowedOrganizationIds = const [], this.permissions = const {}});
 
             bool hasPermission(String key) => permissions[key] ?? false;
+            String get fullName {
+              final parts = [firstName, lastName].where((s) => s != null && s!.isNotEmpty).toList();
+              return parts.isNotEmpty ? parts.join(' ') : username;
+            }
 
             factory AuthUser.fromJson(Map<String, dynamic> j) => AuthUser(
               id: j['id'] as int, username: j['username'] as String,
@@ -161,11 +165,17 @@ jobs:
 
       - name: Package bundle
         run: |
-          # Flutter 3.x: build/linux/x64/release/bundle/
+          echo "=== build/linux tree ==="
+          find build/linux -maxdepth 5 2>/dev/null | head -30
+          echo "==="
+          # Flutter 3.x: build/linux/x64/release/bundle/ OR build/linux/x64/release/
           BUNDLE=$(find build/linux -type d -name bundle 2>/dev/null | head -1)
+          # Fallback: find the directory containing the vixor_erp binary
           if [ -z "$BUNDLE" ]; then
-            echo "Bundle not found! Searching deeper..."
-            find build/linux -maxdepth 6 -type d | head -30
+            BUNDLE=$(dirname "$(find build/linux -type f -name "vixor_erp" 2>/dev/null | head -1)" 2>/dev/null)
+          fi
+          if [ -z "$BUNDLE" ] || [ "$BUNDLE" = "." ]; then
+            echo "Bundle not found!"
             exit 1
           fi
           echo "Bundle: $BUNDLE"
@@ -280,6 +290,10 @@ jobs:
               this.allowedOrganizationIds = const [], this.permissions = const {}});
 
             bool hasPermission(String key) => permissions[key] ?? false;
+            String get fullName {
+              final parts = [firstName, lastName].where((s) => s != null && s!.isNotEmpty).toList();
+              return parts.isNotEmpty ? parts.join(' ') : username;
+            }
 
             factory AuthUser.fromJson(Map<String, dynamic> j) => AuthUser(
               id: j['id'] as int, username: j['username'] as String,
