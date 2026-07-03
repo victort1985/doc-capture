@@ -43,12 +43,12 @@ jobs:
       # the containing folder, and "mobile-client" has a hyphen, which is
       # not a valid Dart package name.
       - name: flutter create (android scaffolding)
-        run: flutter create . --platforms=android --project-name vixor_erp --org com.vixor.erp
+        run: flutter create . --platforms=android --project-name doc_capture --org com.doccapture
 
       - name: Set Android app name
         run: |
-          sed -i 's/android:label="vixor_erp"/android:label="Vixor ERP"/g' android/app/src/main/AndroidManifest.xml
           sed -i 's/android:label="doc_capture"/android:label="Vixor ERP"/g' android/app/src/main/AndroidManifest.xml
+          sed -i 's/android:label="Doc Capture"/android:label="Vixor ERP"/g' android/app/src/main/AndroidManifest.xml
           echo "Android label set to Vixor ERP" 
 
       - name: Add Firebase config (google-services.json)
@@ -148,7 +148,7 @@ jobs:
 
       # ios/ isn't committed either (installation-guide.md, section 4.2).
       - name: flutter create (ios scaffolding)
-        run: flutter create . --platforms=ios --project-name vixor_erp --org com.vixor.erp
+        run: flutter create . --platforms=ios --project-name doc_capture --org com.doccapture
 
       - name: Set iOS app name
         run: |
