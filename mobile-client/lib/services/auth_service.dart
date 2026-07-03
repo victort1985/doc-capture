@@ -10,6 +10,8 @@ class AuthUser {
   final int? organizationId;
   final List<int> allowedOrganizationIds;
   final Map<String, bool> permissions;
+  final String? firstName;
+  final String? lastName;
 
   AuthUser({
     required this.id,
@@ -19,9 +21,17 @@ class AuthUser {
     this.organizationId,
     this.allowedOrganizationIds = const [],
     this.permissions = const {},
+    this.firstName,
+    this.lastName,
   });
 
   bool hasPermission(String key) => permissions[key] ?? false;
+
+  /// Full name for auto-filling lessor signature etc.
+  String get fullName {
+    final parts = [firstName, lastName].where((s) => s != null && s.isNotEmpty).toList();
+    return parts.isNotEmpty ? parts.join(' ') : username;
+  }
 
   factory AuthUser.fromJson(Map<String, dynamic> json) => AuthUser(
         id: json['id'] as int,
@@ -34,6 +44,8 @@ class AuthUser {
             .toList() ?? [],
         permissions: (json['permissions'] as Map<String, dynamic>?)
             ?.map((k, v) => MapEntry(k, v as bool)) ?? {},
+        firstName: json['firstName'] as String?,
+        lastName: json['lastName'] as String?,
       );
 }
 

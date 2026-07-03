@@ -9,7 +9,7 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { getActiveOrgId } from '../../common/utils/active-org.util';
 
 const SkipAuth = () => SetMetadata('skipAuth', true);
-type ReqUser = { id: number; organizationId: number | null; allowedOrganizationIds?: number[] };
+type ReqUser = { id: number; organizationId: number | null; allowedOrganizationIds?: number[]; firstName?: string; lastName?: string; username?: string };
 
 @Controller('delivery-notes')
 export class DeliveryNotesController {
@@ -76,7 +76,11 @@ export class DeliveryNotesController {
   @UseGuards(JwtAuthGuard)
   @Post()
   create(@Body() dto: any, @CurrentUser() user: ReqUser, @Req() req: Request) {
-    return this.svc.create(getActiveOrgId(user, req), user.id, dto);
+    const lessorName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.username;
+    return this.svc.create(getActiveOrgId(user, req), user.id, {
+      ...dto,
+      lessorSignerName: dto.lessorSignerName ?? lessorName,
+    });
   }
 
   @UseGuards(JwtAuthGuard)

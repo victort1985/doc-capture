@@ -101,6 +101,10 @@ export class DeliveryNote {
   @Column({ nullable: true })
   lesseeSignerRole?: string;
 
+  /** Name of the lessor (document creator) — auto-filled from user profile */
+  @Column({ nullable: true })
+  lessorSignerName?: string;
+
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   organization?: Organization;
 

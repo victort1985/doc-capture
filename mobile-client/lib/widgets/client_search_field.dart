@@ -50,6 +50,7 @@ class _ClientSearchFieldState extends State<ClientSearchField> {
   List<_SearchResult> _results = [];
   bool _loading = false;
   bool _showResults = false;
+  bool _selecting = false;   // prevents listener re-triggering search after selection
   final _focusNode = FocusNode();
 
   @override
@@ -72,6 +73,7 @@ class _ClientSearchFieldState extends State<ClientSearchField> {
   }
 
   void _onChanged() {
+    if (_selecting) return;   // ← ignore programmatic text change
     final q = widget.controller.text.trim();
     _debounce?.cancel();
     if (q.length < 2) {
@@ -124,8 +126,11 @@ class _ClientSearchFieldState extends State<ClientSearchField> {
   }
 
   void _select(_SearchResult r) {
+    _selecting = true;
     widget.controller.text = r.name;
-    setState(() { _results = []; _showResults = false; });
+    _selecting = false;
+    _debounce?.cancel();
+    setState(() { _results = []; _showResults = false; _loading = false; });
     _focusNode.unfocus();
     widget.onSelected?.call(role: r.role, phone: r.phone);
   }

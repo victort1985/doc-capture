@@ -1,88 +1,80 @@
 import 'package:flutter/material.dart';
 import '../app/theme.dart';
 
-/// The brand mark, drawn in code so it matches the admin-panel's inline SVG
-/// pixel-for-pixel without needing an image asset: a circular ink-stamp
-/// impression around a folded-document glyph with a checkmark.
+/// Vixor ERP brand mark — navy rounded square with white V + orange bar.
+/// Shown in navigation and login screen.
 class StampMark extends StatelessWidget {
-  const StampMark({super.key, this.size = 40, this.color = AppColors.stamp});
+  const StampMark({super.key, this.size = 40, this.color = AppColors.primary});
 
   final double size;
-  final Color color;
+  final Color color;  // kept for API compat, not used (uses fixed brand colors)
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(painter: _StampPainter(color)),
+      child: CustomPaint(painter: _VixorPainter(size)),
     );
   }
 }
 
-class _StampPainter extends CustomPainter {
-  _StampPainter(this.color);
-  final Color color;
+class _VixorPainter extends CustomPainter {
+  _VixorPainter(this.size);
+  final double size;
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final scale = size.width / 48;
-    final stroke = Paint()
-      ..color = color
+  void paint(Canvas canvas, Size sz) {
+    final s = sz.width;
+    final r = s * 0.18; // corner radius
+
+    // ── Outer frame (subtle border) ─────────────────────────────────────────
+    final framePaint = Paint()
+      ..color = const Color(0xFF0E1642).withOpacity(0.12)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s * 0.04;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(s*0.02, s*0.02, s*0.96, s*0.96), Radius.circular(r + s*0.04)),
+      framePaint,
+    );
+
+    // ── Navy background square ──────────────────────────────────────────────
+    final bgPaint = Paint()
+      ..color = const Color(0xFF0E1642)
+      ..style = PaintingStyle.fill;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(Rect.fromLTWH(s*0.08, s*0.08, s*0.84, s*0.84), Radius.circular(r)),
+      bgPaint,
+    );
+
+    // ── White V letter ──────────────────────────────────────────────────────
+    final vPaint = Paint()
+      ..color = Colors.white
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = s * 0.09;
 
-    final center = Offset(size.width / 2, size.height / 2);
+    final vPath = Path()
+      ..moveTo(s * 0.25, s * 0.28)
+      ..lineTo(s * 0.50, s * 0.65)
+      ..lineTo(s * 0.75, s * 0.28);
+    canvas.drawPath(vPath, vPaint);
 
-    canvas.drawCircle(center, 21 * scale, stroke..strokeWidth = 2.5 * scale);
-
-    final dashPaint = Paint()
-      ..color = color.withOpacity(0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1 * scale;
-    _drawDashedCircle(canvas, center, 15.5 * scale, dashPaint);
-
-    final docPath = Path()
-      ..moveTo(17 * scale, 15 * scale)
-      ..lineTo(27 * scale, 15 * scale)
-      ..lineTo(31 * scale, 19 * scale)
-      ..lineTo(31 * scale, 33 * scale)
-      ..arcToPoint(Offset(30 * scale, 34 * scale), radius: Radius.circular(1 * scale))
-      ..lineTo(17 * scale, 34 * scale)
-      ..arcToPoint(Offset(16 * scale, 33 * scale), radius: Radius.circular(1 * scale))
-      ..lineTo(16 * scale, 16 * scale)
-      ..arcToPoint(Offset(17 * scale, 15 * scale), radius: Radius.circular(1 * scale));
-    canvas.drawPath(docPath, stroke..strokeWidth = 2 * scale);
-
-    final fold = Path()
-      ..moveTo(27 * scale, 15 * scale)
-      ..lineTo(27 * scale, 19 * scale)
-      ..lineTo(31 * scale, 19 * scale);
-    canvas.drawPath(fold, stroke..strokeWidth = 2 * scale);
-
-    final check = Path()
-      ..moveTo(19.5 * scale, 25.5 * scale)
-      ..lineTo(22.5 * scale, 28.5 * scale)
-      ..lineTo(28.5 * scale, 22 * scale);
-    canvas.drawPath(check, stroke..strokeWidth = 2 * scale);
-  }
-
-  void _drawDashedCircle(Canvas canvas, Offset center, double radius, Paint paint) {
-    const dashLength = 2.0, gapLength = 3.0;
-    final circumference = 2 * 3.14159265 * radius;
-    final dashCount = (circumference / (dashLength + gapLength)).floor();
-    final angleStep = (2 * 3.14159265) / dashCount;
-    for (int i = 0; i < dashCount; i++) {
-      final start = i * angleStep;
-      final end = start + (dashLength / radius);
-      canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius),
-        start, end - start, false, paint,
-      );
-    }
+    // ── Orange accent bar ────────────────────────────────────────────────────
+    final barPaint = Paint()
+      ..color = const Color(0xFFF2701C)
+      ..style = PaintingStyle.fill;
+    final barH = s * 0.065;
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(s * 0.22, s * 0.73, s * 0.56, barH),
+        Radius.circular(barH / 2),
+      ),
+      barPaint,
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _StampPainter oldDelegate) => oldDelegate.color != color;
+  bool shouldRepaint(covariant _VixorPainter old) => old.size != size;
 }

@@ -52,12 +52,19 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   // Signatures (base64 PNG)
   String? _lessorSig;
   String? _lesseeSig;
-
-  // Autocomplete suggestions
+  // Name shown under lessor signature
+  final _lessorNameCtrl = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    // Auto-fill lessor name from current user
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = context.read<AppState>().currentUser;
+      if (user != null && _lessorNameCtrl.text.isEmpty) {
+        _lessorNameCtrl.text = user.fullName;
+      }
+    });
     if (widget.noteId != null) {
       _loadExisting();
     } else {
@@ -148,6 +155,12 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
         : [ItemRow()];
     _lessorSig = n.lessorSignature;
     _lesseeSig = n.lesseeSignature;
+    // Auto-fill lessor name from saved value or current user
+    if (n.lessorSignerName != null && n.lessorSignerName!.isNotEmpty) {
+      _lessorNameCtrl.text = n.lessorSignerName!;
+    }
+    // If note was remotely signed — fields already filled from submitRemoteSignature
+    // deliveredTo and recipientRole are set by server when signing
   }
 
   /// Decodes the base64 logo from settings (data:image/...;base64,... format)
@@ -180,6 +193,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     }).toList(),
     if (_lessorSig != null) 'lessorSignature': _lessorSig,
     if (_lesseeSig != null) 'lesseeSignature': _lesseeSig,
+    if (_lessorNameCtrl.text.isNotEmpty) 'lessorSignerName': _lessorNameCtrl.text,
   };
 
   Future<void> _save() async {
@@ -709,6 +723,16 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 onTap: () => _captureSignature(isLessor: false),
               )),
             ]),
+            const SizedBox(height: 8),
+            // Lessor name under signature — auto-filled from user profile
+            TextField(
+              controller: _lessorNameCtrl,
+              decoration: const InputDecoration(
+                labelText: 'Lessor name',
+                hintText: 'Auto-filled from your profile',
+                isDense: true,
+              ),
+            ),
 
             if (_lesseeSig != null) ...[
               const SizedBox(height: 10),

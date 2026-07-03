@@ -79,8 +79,11 @@ class DeliveryNote {
   final List<NoteItem> items;
   final String? remarks;
   final String? lessorSignature;
+  final String? lessorSignerName;
   final String? lesseeSignature;
   final String? lesseeIdNumber;
+  final String? lesseeSignerName;
+  final String? lesseeSignerRole;
   final DeliveryNoteStatus status;
   final String? pdfPath;
   final String? createdByUsername;
@@ -99,8 +102,11 @@ class DeliveryNote {
     required this.items,
     this.remarks,
     this.lessorSignature,
+    this.lessorSignerName,
     this.lesseeSignature,
     this.lesseeIdNumber,
+    this.lesseeSignerName,
+    this.lesseeSignerRole,
     required this.status,
     this.pdfPath,
     this.createdByUsername,
@@ -120,8 +126,11 @@ class DeliveryNote {
     items: (j['items'] as List? ?? []).map((i) => NoteItem.fromJson(i as Map<String, dynamic>)).toList(),
     remarks: j['remarks'],
     lessorSignature: j['lessorSignature'],
+    lessorSignerName: j['lessorSignerName'],
     lesseeSignature: j['lesseeSignature'],
     lesseeIdNumber: j['lesseeIdNumber'],
+    lesseeSignerName: j['lesseeSignerName'],
+    lesseeSignerRole: j['lesseeSignerRole'],
     status: j['status'] == 'signed' ? DeliveryNoteStatus.signed : j['status'] == 'cancelled' ? DeliveryNoteStatus.cancelled : DeliveryNoteStatus.draft,
     pdfPath: j['pdfPath'],
     createdByUsername: j['createdBy']?['username'],
