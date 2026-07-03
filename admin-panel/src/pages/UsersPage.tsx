@@ -206,40 +206,103 @@ export default function UsersPage() {
             </div>
             {isSuperAdmin && (
               <div>
-                <label>Organization</label>
-                <select value={form.organizationId} onChange={(e) => setForm({ ...form, organizationId: e.target.value })}>
-                  <option value="">— Super-admin (no organization) —</option>
-                  {orgs.map((o) => (
-                    <option key={o.id} value={o.id}>{o.name}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {form.organizationId && orgs.length > 1 && (
-              <div>
-                <label>Can switch to organizations</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
-                  {orgs.filter(o => String(o.id) !== form.organizationId).map((o) => {
-                    const checked = form.allowedOrganizationIds.includes(o.id);
+                <label>Organizations</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
+                  {/* No organization = super-admin */}
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400, cursor: 'pointer',
+                    padding: '8px 10px', borderRadius: 8,
+                    background: !form.organizationId ? 'var(--primary-wash)' : 'transparent',
+                    border: !form.organizationId ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                  }}>
+                    <input
+                      type="radio"
+                      name="primary_org"
+                      checked={!form.organizationId}
+                      onChange={() => setForm(f => ({ ...f, organizationId: '', allowedOrganizationIds: [] }))}
+                    />
+                    <span>
+                      <strong>Super-admin</strong>
+                      <small style={{ display: 'block', color: 'var(--ink-soft)', fontWeight: 400 }}>No organization — sees everything</small>
+                    </span>
+                  </label>
+
+                  {orgs.map((o) => {
+                    const isPrimary = String(o.id) === form.organizationId;
+                    const isAllowed = form.allowedOrganizationIds.includes(o.id);
+                    const isSelected = isPrimary || isAllowed;
                     return (
-                      <label key={o.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400, cursor: 'pointer' }}>
+                      <div key={o.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 10px', borderRadius: 8,
+                        background: isSelected ? 'var(--primary-wash)' : 'transparent',
+                        border: isPrimary ? '1.5px solid var(--primary)' : isAllowed ? '1.5px solid var(--border)' : '1.5px solid var(--border)',
+                      }}>
+                        {/* Checkbox — is user in this org? */}
                         <input
                           type="checkbox"
-                          checked={checked}
-                          onChange={() => setForm(f => ({
-                            ...f,
-                            allowedOrganizationIds: checked
-                              ? f.allowedOrganizationIds.filter(id => id !== o.id)
-                              : [...f.allowedOrganizationIds, o.id],
-                          }))}
+                          checked={isSelected}
+                          onChange={() => {
+                            if (isPrimary) {
+                              // Uncheck primary → move to first allowed or clear
+                              const next = form.allowedOrganizationIds[0];
+                              setForm(f => ({
+                                ...f,
+                                organizationId: next ? String(next) : '',
+                                allowedOrganizationIds: f.allowedOrganizationIds.slice(1),
+                              }));
+                            } else if (isAllowed) {
+                              // Uncheck allowed → remove
+                              setForm(f => ({
+                                ...f,
+                                allowedOrganizationIds: f.allowedOrganizationIds.filter(id => id !== o.id),
+                              }));
+                            } else {
+                              // Check → add as allowed (or primary if none set)
+                              if (!form.organizationId) {
+                                setForm(f => ({ ...f, organizationId: String(o.id) }));
+                              } else {
+                                setForm(f => ({ ...f, allowedOrganizationIds: [...f.allowedOrganizationIds, o.id] }));
+                              }
+                            }
+                          }}
                         />
-                        {o.name}
-                      </label>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontWeight: isPrimary ? 700 : 400 }}>{o.name}</span>
+                          {isPrimary && (
+                            <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--primary)', fontWeight: 600,
+                              background: 'var(--primary-wash)', padding: '2px 6px', borderRadius: 4 }}>
+                              PRIMARY
+                            </span>
+                          )}
+                        </div>
+                        {/* Radio — set as primary org */}
+                        {isSelected && (
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 12,
+                            color: isPrimary ? 'var(--primary)' : 'var(--ink-soft)', cursor: 'pointer' }}>
+                            <input
+                              type="radio"
+                              name="primary_org"
+                              checked={isPrimary}
+                              onChange={() => {
+                                setForm(f => ({
+                                  ...f,
+                                  organizationId: String(o.id),
+                                  allowedOrganizationIds: [
+                                    ...(f.organizationId ? [Number(f.organizationId)] : []),
+                                    ...f.allowedOrganizationIds.filter(id => id !== o.id),
+                                  ],
+                                }));
+                              }}
+                            />
+                            Set primary
+                          </label>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
-                <small style={{ color: 'var(--ink-soft)' }}>
-                  Requires "Switch between organizations" permission in Permissions page
+                <small style={{ color: 'var(--ink-soft)', marginTop: 6, display: 'block' }}>
+                  ✓ Check organizations to assign. PRIMARY = home org (data scope). Others = can switch into.
                 </small>
               </div>
             )}
