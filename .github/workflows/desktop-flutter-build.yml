@@ -92,15 +92,21 @@ jobs:
             final int? organizationId;
             final List<int> allowedOrganizationIds;
             final Map<String, bool> permissions;
+            final String? firstName;
+            final String? lastName;
 
             AuthUser({required this.id, required this.username, required this.language,
               required this.role, this.organizationId,
-              this.allowedOrganizationIds = const [], this.permissions = const {}});
+              this.allowedOrganizationIds = const [], this.permissions = const {},
+              this.firstName, this.lastName});
 
             bool hasPermission(String key) => permissions[key] ?? false;
+
             String get fullName {
-              final parts = [firstName, lastName].where((s) => s != null && s!.isNotEmpty).toList();
-              return parts.isNotEmpty ? parts.join(' ') : username;
+              final f = firstName ?? '';
+              final l = lastName ?? '';
+              final full = '$f $l'.trim();
+              return full.isNotEmpty ? full : username;
             }
 
             factory AuthUser.fromJson(Map<String, dynamic> j) => AuthUser(
@@ -110,7 +116,9 @@ jobs:
               allowedOrganizationIds: (j['allowedOrganizationIds'] as List<dynamic>?)
                   ?.map((e) => e as int).toList() ?? [],
               permissions: (j['permissions'] as Map<String, dynamic>?)
-                  ?.map((k, v) => MapEntry(k, v as bool)) ?? {});
+                  ?.map((k, v) => MapEntry(k, v as bool)) ?? {},
+              firstName: j['firstName'] as String?,
+              lastName: j['lastName'] as String?);
           }
 
           class AuthService {
@@ -284,15 +292,21 @@ jobs:
             final int? organizationId;
             final List<int> allowedOrganizationIds;
             final Map<String, bool> permissions;
+            final String? firstName;
+            final String? lastName;
 
             AuthUser({required this.id, required this.username, required this.language,
               required this.role, this.organizationId,
-              this.allowedOrganizationIds = const [], this.permissions = const {}});
+              this.allowedOrganizationIds = const [], this.permissions = const {},
+              this.firstName, this.lastName});
 
             bool hasPermission(String key) => permissions[key] ?? false;
+
             String get fullName {
-              final parts = [firstName, lastName].where((s) => s != null && s!.isNotEmpty).toList();
-              return parts.isNotEmpty ? parts.join(' ') : username;
+              final f = firstName ?? '';
+              final l = lastName ?? '';
+              final full = '$f $l'.trim();
+              return full.isNotEmpty ? full : username;
             }
 
             factory AuthUser.fromJson(Map<String, dynamic> j) => AuthUser(
@@ -302,7 +316,9 @@ jobs:
               allowedOrganizationIds: (j['allowedOrganizationIds'] as List<dynamic>?)
                   ?.map((e) => e as int).toList() ?? [],
               permissions: (j['permissions'] as Map<String, dynamic>?)
-                  ?.map((k, v) => MapEntry(k, v as bool)) ?? {});
+                  ?.map((k, v) => MapEntry(k, v as bool)) ?? {},
+              firstName: j['firstName'] as String?,
+              lastName: j['lastName'] as String?);
           }
 
           class AuthService {
