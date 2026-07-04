@@ -248,8 +248,8 @@ jobs:
           echo "Bundle: $BUNDLE"
           ls -la "$BUNDLE"
           grep -q "gtk_window_set_icon" linux/my_application.cc && echo "PATCHED=yes" > /tmp/icon_patch_diag.txt || echo "PATCHED=no" > /tmp/icon_patch_diag.txt
-          cat linux/my_application.cc >> /tmp/icon_patch_diag.txt
-          tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" . -C /tmp icon_patch_diag.txt
+          cat linux/my_application.cc >> /tmp/icon_patch_diag.txt || echo "(source unavailable at package time)" >> /tmp/icon_patch_diag.txt
+          tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" . -C /tmp icon_patch_diag.txt || tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" .
           echo "Size: $(du -sh /tmp/vixor-erp-linux-desktop.tar.gz)"
 
       - name: Push bundle to git (no Azure)
