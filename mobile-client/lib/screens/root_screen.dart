@@ -104,10 +104,9 @@ class _RootScreenState extends State<RootScreen> {
               leading: Padding(
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Column(children: [
-                  Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(color: const Color(0xFFF2701C), borderRadius: BorderRadius.circular(10)),
-                    child: const Center(child: Text('V', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 22))),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset('assets/icons/app_icon.png', width: 40, height: 40),
                   ),
                   const SizedBox(height: 4),
                   const Text('VIXOR', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 2)),
