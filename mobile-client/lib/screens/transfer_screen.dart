@@ -5,8 +5,10 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/management_services.dart';
+import '../store/app_state.dart';
 import '../widgets/location_search_field.dart';
 import 'barcode_scanner_screen.dart';
+import 'transfer_detail_screen.dart';
 
 /// One equipment row picked for the transfer — unlike the delivery-note
 /// item rows, this keeps the actual [WarehouseItem] (id + barcode), since
@@ -32,6 +34,8 @@ class _TransferScreenState extends State<TransferScreen> {
   final _notesCtrl = TextEditingController();
   int? _fromLocationId;
   int? _toLocationId;
+  String _fromLocationName = '';
+  String _toLocationName = '';
 
   final List<_TransferRow> _rows = [_TransferRow()];
   bool _submitting = false;
@@ -76,22 +80,36 @@ class _TransferScreenState extends State<TransferScreen> {
     }
     setState(() => _submitting = true);
     try {
-      await _svc.createTransfer(
+      final itemsSnapshot = _rows
+          .where((r) => r.item != null)
+          .map((r) => {'name': r.item!.name, 'barcode': r.item!.barcode, 'quantity': r.item!.quantity})
+          .toList();
+      final transfer = await _svc.createTransfer(
         fromLocationId: _fromLocationId!,
         toLocationId: _toLocationId!,
         itemIds: itemIds,
         notes: _notesCtrl.text.trim().isEmpty ? null : _notesCtrl.text.trim(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.transferSuccess), backgroundColor: Colors.green.shade700));
+      final creatorName = context.read<AppState>().currentUser?.fullName ?? '';
+      final fromName = _fromLocationName;
+      final toName = _toLocationName;
       setState(() {
         _fromCtrl.clear(); _toCtrl.clear(); _notesCtrl.clear();
         _fromLocationId = null; _toLocationId = null;
+        _fromLocationName = ''; _toLocationName = '';
         for (final r in _rows) r.dispose();
         _rows
           ..clear()
           ..add(_TransferRow());
       });
+      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => TransferDetailScreen(
+        transfer: transfer,
+        fromLocationName: fromName,
+        toLocationName: toName,
+        items: itemsSnapshot,
+        createdByName: creatorName,
+      )));
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${l10n.transferFailed}: $e'), backgroundColor: Colors.red.shade700));
@@ -114,13 +132,13 @@ class _TransferScreenState extends State<TransferScreen> {
           LocationSearchField(
             controller: _fromCtrl,
             label: l10n.transferFrom,
-            onSelected: (loc) => setState(() => _fromLocationId = loc.id),
+            onSelected: (loc) => setState(() { _fromLocationId = loc.id; _fromLocationName = loc.name; }),
           ),
           const SizedBox(height: 10),
           LocationSearchField(
             controller: _toCtrl,
             label: l10n.transferTo,
-            onSelected: (loc) => setState(() => _toLocationId = loc.id),
+            onSelected: (loc) => setState(() { _toLocationId = loc.id; _toLocationName = loc.name; }),
           ),
           const SizedBox(height: 16),
 

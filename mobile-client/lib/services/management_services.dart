@@ -255,18 +255,19 @@ class WarehouseService {
     } catch (_) { return {}; }
   }
 
-  Future<void> createTransfer({
+  Future<WarehouseTransfer> createTransfer({
     required int fromLocationId,
     required int toLocationId,
     required List<int> itemIds,
     String? notes,
   }) async {
-    await _api.post('/warehouse/transfers', {
+    final res = await _api.post('/warehouse/transfers', {
       'fromLocationId': fromLocationId,
       'toLocationId': toLocationId,
       'itemIds': itemIds,
       if (notes != null && notes.isNotEmpty) 'notes': notes,
     });
+    return WarehouseTransfer.fromJson(res as Map<String, dynamic>);
   }
 
   Future<List<WarehouseTransfer>> listTransfers() async {
