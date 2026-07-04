@@ -133,6 +133,7 @@ export class UsersService {
       isGlobal: dto.isGlobal ?? false,
       organization,
       allowedOrganizationIds: dto.allowedOrganizationIds ?? [],
+      permissions: dto.permissions ?? {},
     });
     return this.usersRepo.save(user);
   }
@@ -162,6 +163,7 @@ export class UsersService {
       isGlobal: dto.isGlobal ?? user.isGlobal,
       organization,
       allowedOrganizationIds: dto.allowedOrganizationIds ?? user.allowedOrganizationIds,
+      permissions: dto.permissions ? { ...user.permissions, ...dto.permissions } : user.permissions,
     });
     return this.usersRepo.save(user);
   }

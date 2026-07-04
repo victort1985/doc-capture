@@ -69,4 +69,8 @@ export class CreateUserDto {
   @IsInt({ each: true })
   @IsOptional()
   allowedOrganizationIds?: number[];
+
+  /** Per-user feature permission overrides, e.g. { warehouseTransfer: true }. */
+  @IsOptional()
+  permissions?: Record<string, boolean>;
 }

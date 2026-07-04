@@ -141,8 +141,10 @@ class WarehouseItem {
   final String? location;
   final String? notes;
   final String repairStatus; // 'none' | 'in_repair' | 'returned'
+  final int? warehouseLocationId;
+  final String? warehouseLocationName;
 
-  WarehouseItem({required this.id, required this.name, required this.barcode, this.description, this.category, required this.quantity, this.unit, this.location, this.notes, this.repairStatus = 'none'});
+  WarehouseItem({required this.id, required this.name, required this.barcode, this.description, this.category, required this.quantity, this.unit, this.location, this.notes, this.repairStatus = 'none', this.warehouseLocationId, this.warehouseLocationName});
 
   factory WarehouseItem.fromJson(Map<String, dynamic> j) => WarehouseItem(
     id: j['id'], name: j['name'] ?? '', barcode: j['barcode'] ?? '',
@@ -151,6 +153,8 @@ class WarehouseItem {
     quantity: j['quantity'] ?? 0,
     unit: j['unit'], location: j['location'], notes: j['notes'],
     repairStatus: j['repairStatus'] ?? 'none',
+    warehouseLocationId: j['warehouseLocation']?['id'],
+    warehouseLocationName: j['warehouseLocation']?['name'],
   );
 }
 
@@ -172,6 +176,28 @@ class WarehouseTransaction {
   );
 }
 
+class WarehouseTransfer {
+  final int id;
+  final String? fromLocationName;
+  final String? toLocationName;
+  final List<Map<String, dynamic>> items;
+  final String? notes;
+  final String? createdByUsername;
+  final String createdAt;
+
+  WarehouseTransfer({required this.id, this.fromLocationName, this.toLocationName, this.items = const [], this.notes, this.createdByUsername, required this.createdAt});
+
+  factory WarehouseTransfer.fromJson(Map<String, dynamic> j) => WarehouseTransfer(
+    id: j['id'],
+    fromLocationName: j['fromLocation']?['name'],
+    toLocationName: j['toLocation']?['name'],
+    items: (j['items'] as List? ?? []).cast<Map<String, dynamic>>(),
+    notes: j['notes'],
+    createdByUsername: j['createdBy']?['username'],
+    createdAt: j['createdAt'] ?? '',
+  );
+}
+
 class WarehouseService {
   WarehouseService(this._api);
   final ApiService _api;
@@ -181,10 +207,11 @@ class WarehouseService {
     return data.map((j) => WarehouseCategory.fromJson(j as Map<String, dynamic>)).toList();
   }
 
-  Future<List<WarehouseItem>> listItems({int? categoryId, String? q}) async {
+  Future<List<WarehouseItem>> listItems({int? categoryId, String? q, int? locationId}) async {
     final params = <String, dynamic>{};
     if (categoryId != null) params['categoryId'] = categoryId;
     if (q?.isNotEmpty == true) params['q'] = q;
+    if (locationId != null) params['locationId'] = locationId;
     final data = await _api.get('/warehouse/items', query: params) as List? ?? [];
     return data.map((j) => WarehouseItem.fromJson(j as Map<String, dynamic>)).toList();
   }
@@ -226,6 +253,25 @@ class WarehouseService {
       final j = await _api.get('/delivery-note-settings');
       return (j as Map<String, dynamic>?) ?? {};
     } catch (_) { return {}; }
+  }
+
+  Future<void> createTransfer({
+    required int fromLocationId,
+    required int toLocationId,
+    required List<int> itemIds,
+    String? notes,
+  }) async {
+    await _api.post('/warehouse/transfers', {
+      'fromLocationId': fromLocationId,
+      'toLocationId': toLocationId,
+      'itemIds': itemIds,
+      if (notes != null && notes.isNotEmpty) 'notes': notes,
+    });
+  }
+
+  Future<List<WarehouseTransfer>> listTransfers() async {
+    final data = await _api.get('/warehouse/transfers') as List? ?? [];
+    return data.map((j) => WarehouseTransfer.fromJson(j as Map<String, dynamic>)).toList();
   }
 
   // ── Repair ─────────────────────────────────────────────────────────────────

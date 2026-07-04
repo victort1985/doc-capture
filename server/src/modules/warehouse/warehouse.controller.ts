@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
 import { Response } from 'express';
 import { WarehouseService } from './warehouse.service';
 import { TransactionType } from './entities/warehouse-transaction.entity';
@@ -8,7 +8,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
 
-type RequestUser = { id: number; organizationId: number | null };
+type RequestUser = { id: number; organizationId: number | null; permissions?: Record<string, boolean> };
 
 @Controller('warehouse')
 @UseGuards(JwtAuthGuard)
@@ -46,8 +46,8 @@ export class WarehouseController {
   // ── Items ──────────────────────────────────────────────────────────
 
   @Get('items')
-  findItems(@CurrentUser() user: RequestUser, @Query('categoryId') catId?: string, @Query('q') q?: string) {
-    return this.warehouseService.findItems(user.organizationId, catId ? parseInt(catId) : undefined, q);
+  findItems(@CurrentUser() user: RequestUser, @Query('categoryId') catId?: string, @Query('q') q?: string, @Query('locationId') locationId?: string) {
+    return this.warehouseService.findItems(user.organizationId, catId ? parseInt(catId) : undefined, q, locationId ? parseInt(locationId) : undefined);
   }
 
   @Get('items/by-barcode/:barcode')
@@ -119,5 +119,27 @@ export class WarehouseController {
   @Get('items/:id/repairs')
   getItemRepairs(@Param('id', ParseIntPipe) id: number) {
     return this.warehouseService.getItemRepairs(id);
+  }
+
+  // ── Location-to-location transfers ────────────────────────────────
+
+  /** History of equipment transfers between locations. */
+  @Get('transfers')
+  listTransfers(@CurrentUser() user: RequestUser) {
+    return this.warehouseService.listTransfers(user.organizationId);
+  }
+
+  /** Move equipment from one location's warehouse to another. Only users
+   * with the `warehouseTransfer` permission (set in the admin panel) may
+   * do this. */
+  @Post('transfers')
+  createTransfer(
+    @Body() dto: { fromLocationId: number; toLocationId: number; itemIds: number[]; notes?: string },
+    @CurrentUser() user: RequestUser,
+  ) {
+    if (!user.permissions?.warehouseTransfer) {
+      throw new ForbiddenException('You do not have permission to transfer warehouse equipment');
+    }
+    return this.warehouseService.createTransfer(dto, user.id, user.organizationId);
   }
 }

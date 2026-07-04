@@ -13,6 +13,7 @@ import '../services/management_services.dart';
 import '../services/pdf_helpers.dart';
 import '../services/field_cache_service.dart';
 import '../widgets/phone_book_search_field.dart';
+import '../widgets/location_search_field.dart';
 import 'barcode_scanner_screen.dart';
 
 // ─── Barcode generator (client-side, random) ──────────────────────────────────
@@ -38,21 +39,40 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
   List<WarehouseItem> _items = [];
   List<WarehouseCategory> _categories = [];
   int? _selectedCategoryId;
-  bool _loading = true;
+  bool _loading = false;
+
+  final _locationCtrl = TextEditingController();
+  int? _selectedLocationId;
 
   @override
   void initState() {
     super.initState();
     _svc = WarehouseService(context.read<ApiService>());
+    _svc.listCategories().then((cats) { if (mounted) setState(() => _categories = cats); });
+  }
+
+  @override
+  void dispose() {
+    _locationCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onLocationSelected(LocationResult loc) {
+    setState(() { _selectedLocationId = loc.id; _selectedCategoryId = null; });
     _load();
   }
 
   Future<void> _load() async {
+    // No shared "general" warehouse anymore — each location has its own,
+    // independent stock, so nothing is shown until one is picked.
+    if (_selectedLocationId == null) {
+      setState(() { _items = []; _loading = false; });
+      return;
+    }
     setState(() => _loading = true);
     try {
-      final cats = await _svc.listCategories();
-      final items = await _svc.listItems(categoryId: _selectedCategoryId);
-      if (mounted) setState(() { _categories = cats; _items = items; _loading = false; });
+      final items = await _svc.listItems(categoryId: _selectedCategoryId, locationId: _selectedLocationId);
+      if (mounted) setState(() { _items = items; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -205,6 +225,7 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
                 if (catId != null) 'categoryId': catId,
                 if (unitCtrl.text.isNotEmpty) 'unit': unitCtrl.text.trim(),
                 if (locCtrl.text.isNotEmpty) 'location': locCtrl.text.trim(),
+                if (_selectedLocationId != null) 'locationId': _selectedLocationId,
               });
               if (ctx.mounted) Navigator.pop(ctx);
               _load();
@@ -330,47 +351,68 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
           padding: const EdgeInsets.fromLTRB(10, 10, 10, 4),
           child: Row(children: [
             Expanded(child: Text(l10n.warehouseTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18))),
-            IconButton.outlined(icon: const Icon(Icons.qr_code_outlined, size: 20), tooltip: 'Generate barcode', onPressed: _generateAndPrint),
-            IconButton.outlined(icon: const Icon(Icons.qr_code_scanner, size: 20), tooltip: l10n.warehouseScan, onPressed: _scanToAddItem),
-            IconButton.outlined(icon: const Icon(Icons.picture_as_pdf_outlined, size: 20), tooltip: l10n.warehousePrint, onPressed: _printAllPdf),
+            if (_selectedLocationId != null) ...[
+              IconButton.outlined(icon: const Icon(Icons.qr_code_outlined, size: 20), tooltip: 'Generate barcode', onPressed: _generateAndPrint),
+              IconButton.outlined(icon: const Icon(Icons.qr_code_scanner, size: 20), tooltip: l10n.warehouseScan, onPressed: _scanToAddItem),
+              IconButton.outlined(icon: const Icon(Icons.picture_as_pdf_outlined, size: 20), tooltip: l10n.warehousePrint, onPressed: _printAllPdf),
+            ],
           ]),
         ),
 
-        // Category filter chips
-        if (_categories.isNotEmpty)
-          SizedBox(
-            height: 34,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              children: [
-                _CatChip(label: l10n.warehouseAll, selected: _selectedCategoryId == null, onTap: () { setState(() => _selectedCategoryId = null); _load(); }),
-                ..._categories.map((c) => _CatChip(label: c.name, selected: _selectedCategoryId == c.id, onTap: () { setState(() => _selectedCategoryId = c.id); _load(); })),
-              ],
-            ),
+        // Location picker — each location has its own independent warehouse,
+        // there's no combined/general stock view anymore.
+        Padding(
+          padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
+          child: LocationSearchField(
+            controller: _locationCtrl,
+            label: l10n.warehouseLocationPicker,
+            hintText: l10n.warehouseLocationSearchHint,
+            onSelected: _onLocationSelected,
           ),
-        const SizedBox(height: 4),
+        ),
+
+        if (_selectedLocationId != null) ...[
+          // Category filter chips
+          if (_categories.isNotEmpty)
+            SizedBox(
+              height: 34,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                children: [
+                  _CatChip(label: l10n.warehouseAll, selected: _selectedCategoryId == null, onTap: () { setState(() => _selectedCategoryId = null); _load(); }),
+                  ..._categories.map((c) => _CatChip(label: c.name, selected: _selectedCategoryId == c.id, onTap: () { setState(() => _selectedCategoryId = c.id); _load(); })),
+                ],
+              ),
+            ),
+          const SizedBox(height: 4),
+        ],
 
         // Item list grouped by category
         Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _items.isEmpty
-                  ? Center(child: Text(l10n.warehouseEmpty, style: const TextStyle(color: AppColors.inkSoft)))
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView(
-                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 80),
-                        children: grouped.entries.map((entry) => _CategorySection(
-                          name: entry.key,
-                          items: entry.value,
-                          onTap: _showItemDetail,
-                        )).toList(),
-                      ),
-                    ),
+          child: _selectedLocationId == null
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32),
+                  child: Text(l10n.warehousePickLocation, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.inkSoft)),
+                ))
+              : _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _items.isEmpty
+                      ? Center(child: Text(l10n.warehouseEmpty, style: const TextStyle(color: AppColors.inkSoft)))
+                      : RefreshIndicator(
+                          onRefresh: _load,
+                          child: ListView(
+                            padding: const EdgeInsets.fromLTRB(10, 0, 10, 80),
+                            children: grouped.entries.map((entry) => _CategorySection(
+                              name: entry.key,
+                              items: entry.value,
+                              onTap: _showItemDetail,
+                            )).toList(),
+                          ),
+                        ),
         ),
       ]),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: _selectedLocationId == null ? null : FloatingActionButton(
         onPressed: () => _showAddItemDialog(),
         child: const Icon(Icons.add),
       ),

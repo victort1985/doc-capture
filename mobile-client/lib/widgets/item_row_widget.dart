@@ -39,7 +39,11 @@ class _ItemRowWidgetState extends State<ItemRowWidget> {
   void initState() {
     super.initState();
     _focusNode.addListener(() {
-      if (!_focusNode.hasFocus) setState(() => _showResults = false);
+      if (!_focusNode.hasFocus) {
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted && !_focusNode.hasFocus) setState(() => _showResults = false);
+        });
+      }
     });
     widget.row.nameCtrl.addListener(_onNameChanged);
   }

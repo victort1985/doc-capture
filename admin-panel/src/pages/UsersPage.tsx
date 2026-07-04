@@ -28,6 +28,7 @@ interface UserRow {
   isGlobal: boolean;
   organization?: { id: number; name: string };
   allowedOrganizationIds?: number[];
+  permissions?: Record<string, boolean>;
 }
 interface Org {
   id: number;
@@ -39,6 +40,7 @@ const EMPTY_FORM = {
   firstName: '', lastName: '', specialization: '', phone: '',
   cityId: '', regionIds: [] as number[], isGlobal: false, organizationId: '',
   allowedOrganizationIds: [] as number[],
+  permissions: {} as Record<string, boolean>,
 };
 
 export default function UsersPage() {
@@ -119,6 +121,7 @@ export default function UsersPage() {
       isGlobal: u.isGlobal,
       organizationId: u.organization ? String(u.organization.id) : '',
       allowedOrganizationIds: u.allowedOrganizationIds ?? [],
+      permissions: u.permissions ?? {},
     });
     setShowForm(true);
   }
@@ -340,6 +343,17 @@ export default function UsersPage() {
                   style={{ marginRight: 6 }}
                 />
                 Global (notified about every call, any region)
+              </label>
+            </div>
+            <div>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={form.permissions.warehouseTransfer ?? false}
+                  onChange={(e) => setForm({ ...form, permissions: { ...form.permissions, warehouseTransfer: e.target.checked } })}
+                  style={{ marginRight: 6 }}
+                />
+                Can transfer warehouse equipment between locations
               </label>
             </div>
             <div style={{ gridColumn: '1 / -1' }}>

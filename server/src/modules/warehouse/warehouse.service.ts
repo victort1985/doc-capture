@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, In } from 'typeorm';
 import { WarehouseCategory } from './entities/warehouse-category.entity';
 import { WarehouseItem } from './entities/warehouse-item.entity';
 import { WarehouseTransaction, TransactionType } from './entities/warehouse-transaction.entity';
 import { WarehouseRepair } from './entities/warehouse-repair.entity';
+import { WarehouseTransfer } from './entities/warehouse-transfer.entity';
 
 @Injectable()
 export class WarehouseService {
@@ -13,6 +14,7 @@ export class WarehouseService {
     @InjectRepository(WarehouseItem) private readonly itemsRepo: Repository<WarehouseItem>,
     @InjectRepository(WarehouseTransaction) private readonly txRepo: Repository<WarehouseTransaction>,
     @InjectRepository(WarehouseRepair) private readonly repairsRepo: Repository<WarehouseRepair>,
+    @InjectRepository(WarehouseTransfer) private readonly transfersRepo: Repository<WarehouseTransfer>,
   ) {}
 
   // ── Barcode generation ─────────────────────────────────────────────
@@ -50,14 +52,16 @@ export class WarehouseService {
 
   // ── Items ──────────────────────────────────────────────────────────
 
-  findItems(organizationId: number | null, categoryId?: number, q?: string): Promise<WarehouseItem[]> {
+  findItems(organizationId: number | null, categoryId?: number, q?: string, locationId?: number): Promise<WarehouseItem[]> {
     const qb = this.itemsRepo.createQueryBuilder('item')
       .leftJoinAndSelect('item.category', 'category')
+      .leftJoinAndSelect('item.warehouseLocation', 'warehouseLocation')
       .orderBy('item.name', 'ASC');
     if (organizationId != null) {
       qb.andWhere('(item.organizationId = :orgId OR item.organizationId IS NULL)', { orgId: organizationId });
     }
     if (categoryId) qb.andWhere('category.id = :catId', { catId: categoryId });
+    if (locationId) qb.andWhere('warehouseLocation.id = :locId', { locId: locationId });
     if (q?.trim()) qb.andWhere('(item.name ILIKE :q OR item.barcode ILIKE :q)', { q: `%${q.trim()}%` });
     return qb.getMany();
   }
@@ -69,7 +73,7 @@ export class WarehouseService {
     });
   }
 
-  async createItem(dto: Partial<WarehouseItem> & { categoryId?: number }, organizationId: number | null): Promise<WarehouseItem> {
+  async createItem(dto: Partial<WarehouseItem> & { categoryId?: number; locationId?: number }, organizationId: number | null): Promise<WarehouseItem> {
     const barcode = dto.barcode || await this.generateBarcode();
     const existing = await this.itemsRepo.findOne({ where: { barcode } });
     if (existing) throw new ConflictException(`Barcode ${barcode} already in use`);
@@ -77,17 +81,19 @@ export class WarehouseService {
       ...dto,
       barcode,
       category: dto.categoryId ? ({ id: dto.categoryId } as any) : undefined,
+      warehouseLocation: dto.locationId ? ({ id: dto.locationId } as any) : undefined,
       organization: organizationId ? ({ id: organizationId } as any) : undefined,
     }));
   }
 
-  async updateItem(id: number, dto: Partial<WarehouseItem> & { categoryId?: number }, organizationId: number | null): Promise<WarehouseItem> {
-    const item = await this.itemsRepo.findOne({ where: { id }, relations: ['category', 'organization'] });
+  async updateItem(id: number, dto: Partial<WarehouseItem> & { categoryId?: number; locationId?: number }, organizationId: number | null): Promise<WarehouseItem> {
+    const item = await this.itemsRepo.findOne({ where: { id }, relations: ['category', 'organization', 'warehouseLocation'] });
     if (!item) throw new NotFoundException('Item not found');
     if (organizationId != null && item.organization?.id !== organizationId) throw new NotFoundException('Item not found');
     Object.assign(item, {
       ...dto,
       category: dto.categoryId !== undefined ? ({ id: dto.categoryId } as any) : item.category,
+      warehouseLocation: dto.locationId !== undefined ? ({ id: dto.locationId } as any) : item.warehouseLocation,
     });
     return this.itemsRepo.save(item);
   }
@@ -173,6 +179,58 @@ export class WarehouseService {
     return this.repairsRepo.find({
       where: { itemId },
       order: { sentAt: 'DESC' },
+    });
+  }
+
+  // ── Location-to-location equipment transfers ──────────────────────────
+
+  /**
+   * Moves the given warehouse items to `toLocationId` and records the
+   * move as a transfer document. Each item's `quantity` is transferred
+   * in full (transfers move whole barcoded rows, not partial splits).
+   */
+  async createTransfer(
+    dto: { fromLocationId: number; toLocationId: number; itemIds: number[]; notes?: string },
+    userId: number,
+    organizationId: number | null,
+  ): Promise<WarehouseTransfer> {
+    if (dto.fromLocationId === dto.toLocationId) {
+      throw new ConflictException('Source and destination locations must be different');
+    }
+    if (!dto.itemIds?.length) {
+      throw new ConflictException('At least one item is required');
+    }
+    const items = await this.itemsRepo.find({ where: { id: In(dto.itemIds) } });
+    if (items.length !== dto.itemIds.length) {
+      throw new NotFoundException('One or more items not found');
+    }
+    const snapshot = items.map((i) => ({
+      warehouseItemId: i.id,
+      name: i.name,
+      barcode: i.barcode,
+      quantity: i.quantity,
+    }));
+    for (const item of items) {
+      item.warehouseLocation = { id: dto.toLocationId } as any;
+    }
+    await this.itemsRepo.save(items);
+    const transfer = this.transfersRepo.create({
+      fromLocation: { id: dto.fromLocationId } as any,
+      toLocation: { id: dto.toLocationId } as any,
+      items: snapshot,
+      notes: dto.notes,
+      createdBy: { id: userId } as any,
+      organization: organizationId ? ({ id: organizationId } as any) : undefined,
+    });
+    return this.transfersRepo.save(transfer);
+  }
+
+  listTransfers(organizationId: number | null): Promise<WarehouseTransfer[]> {
+    return this.transfersRepo.find({
+      where: organizationId != null ? { organization: { id: organizationId } } : {},
+      relations: ['fromLocation', 'toLocation', 'createdBy'],
+      order: { createdAt: 'DESC' },
+      take: 100,
     });
   }
 }
