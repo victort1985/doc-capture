@@ -90,9 +90,9 @@ jobs:
               diag('EXCEPTION:')
               diag(traceback.format_exc())
 
-          open('/tmp/icon_patch_diag.txt', 'w').write(chr(10).join(diag_lines))
+          open('icon_patch_diag.txt', 'w').write(chr(10).join(diag_lines))
           "
-          cp /tmp/icon_patch_diag.txt icon_patch_diag.txt || true
+          ls -la icon_patch_diag.txt 2>&1 || true
 
       - name: Patch pubspec & stubs
         run: |
