@@ -42,7 +42,12 @@ export default function WarehousePage() {
 
   async function removeCategory(id: number) {
     if (!confirm('Delete category?')) return;
-    await apiFetch(`/warehouse/categories/${id}`, { method: 'DELETE' }); setCategories((prev: any[]) => prev.filter(x => x.id !== id));
+    try {
+      await apiFetch(`/warehouse/categories/${id}`, { method: 'DELETE' });
+      setCategories((prev: any[]) => prev.filter(x => x.id !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete category');
+    }
   }
 
   async function generateBarcode() {
@@ -64,7 +69,12 @@ export default function WarehousePage() {
 
   async function removeItem(id: number) {
     if (!confirm('Delete item?')) return;
-    await apiFetch(`/warehouse/items/${id}`, { method: 'DELETE' }); load();
+    try {
+      await apiFetch(`/warehouse/items/${id}`, { method: 'DELETE' });
+      load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete item');
+    }
   }
 
   async function doTx() {
