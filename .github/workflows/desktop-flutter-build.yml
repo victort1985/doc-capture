@@ -92,17 +92,7 @@ jobs:
 
           open('/tmp/icon_patch_diag.txt', 'w').write(chr(10).join(diag_lines))
           "
-          cp /tmp/icon_patch_diag.txt ../icon_patch_diag.txt || true
-          cd ..
-          git config user.email \"ci@doccapture.local\"
-          git config user.name \"CI Bot\"
-          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-          git checkout -B debug-linux-icon-patch
-          git add -f icon_patch_diag.txt
-          git commit -m \"debug: icon patch diagnostics ${{ github.ref_name }}\" || echo \"nothing new to commit\"
-          git push --force origin debug-linux-icon-patch || echo \"debug push failed, continuing anyway\"
-          cd mobile-client
-          exit 0
+          cp /tmp/icon_patch_diag.txt icon_patch_diag.txt || true
 
       - name: Patch pubspec & stubs
         run: |
@@ -257,6 +247,9 @@ jobs:
           fi
           echo "Bundle: $BUNDLE"
           ls "$BUNDLE"
+          if [ -f icon_patch_diag.txt ]; then
+            cp icon_patch_diag.txt "$BUNDLE/icon_patch_diag.txt"
+          fi
           tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" .
           echo "Size: $(du -sh /tmp/vixor-erp-linux-desktop.tar.gz)"
 
