@@ -65,7 +65,7 @@ jobs:
           # Anchor on the window-creation statement itself (very stable across
           # Flutter versions) rather than a nearby gtk_widget_show() call whose
           # position has moved between Flutter releases (see flutter/flutter#118269).
-          anchor = re.compile(r'GTK_WINDOW\(gtk_application_window_new\(GTK_APPLICATION\(application\)\)\)\);')
+          anchor = re.compile(r'GTK_WINDOW\(gtk_application_window_new\(GTK_APPLICATION\(application\)\)\);')
           m = anchor.search(src)
           if m:
               insert_at = m.end()
