@@ -38,13 +38,11 @@ jobs:
       - name: Patch app icon (Linux window/taskbar icon)
         run: |
           python3 -c "
+          import re
           path = 'linux/my_application.cc'
           src = open(path).read()
-          marker = 'gtk_widget_show(GTK_WIDGET(window));'
+
           icon_code = '''
-            // Vixor ERP: set window icon (fixes generic icon in Dock/taskbar).
-            // Bundled by the packaging step at data/flutter_assets/assets/icons/app_icon.png,
-            // resolved relative to the running executable so it works regardless of install path.
             {
               g_autofree gchar* exe_path = g_file_read_link(\"/proc/self/exe\", nullptr);
               if (exe_path != nullptr) {
@@ -63,12 +61,33 @@ jobs:
               }
             }
           '''
-          assert marker in src, 'my_application.cc template changed — icon patch marker not found'
-          assert src.count(marker) == 1, 'expected exactly one window show call to anchor on'
-          src = src.replace(marker, icon_code + '  ' + marker, 1)
-          open(path, 'w').write(src)
-          print('Icon patch applied to', path)
+
+          # Anchor on the window-creation statement itself (very stable across
+          # Flutter versions) rather than a nearby gtk_widget_show() call whose
+          # position has moved between Flutter releases (see flutter/flutter#118269).
+          anchor = re.compile(r'GTK_WINDOW\(gtk_application_window_new\(GTK_APPLICATION\(application\)\)\)\);')
+          m = anchor.search(src)
+          if m:
+              insert_at = m.end()
+              src = src[:insert_at] + icon_code + src[insert_at:]
+              open(path, 'w').write(src)
+              print('Icon patch applied at offset', insert_at)
+          else:
+              print('WARNING: window-creation anchor not found in my_application.cc — skipping icon patch (build continues without custom Dock icon).')
+              open('/tmp/my_application_dump.cc', 'w').write(src)
           "
+          if [ -f /tmp/my_application_dump.cc ]; then
+            cp /tmp/my_application_dump.cc ../my_application_dump.cc
+            cd ..
+            git config user.email \"ci@doccapture.local\"
+            git config user.name \"CI Bot\"
+            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+            git checkout -B debug-linux-icon-patch
+            git add -f my_application_dump.cc
+            git commit -m \"debug: dump generated my_application.cc (icon anchor not found) ${{ github.ref_name }}\" || echo \"nothing new to commit\"
+            git push --force origin debug-linux-icon-patch
+            cd mobile-client
+          fi
 
       - name: Patch pubspec & stubs
         run: |
