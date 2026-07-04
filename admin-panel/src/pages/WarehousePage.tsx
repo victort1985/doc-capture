@@ -19,6 +19,7 @@ export default function WarehousePage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const [txModal, setTxModal] = useState<{ item: Item; type: 'in' | 'out' } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ kind: 'item' | 'category'; id: number; label: string } | null>(null);
   const [txQty, setTxQty] = useState('1');
   const [txReason, setTxReason] = useState('');
   const [filter, setFilter] = useState('');
@@ -42,7 +43,6 @@ export default function WarehousePage() {
   }
 
   async function removeCategory(id: number) {
-    if (!confirm('Delete category?')) return;
     try {
       await apiFetch(`/warehouse/categories/${id}`, { method: 'DELETE' });
       setCategories((prev: any[]) => prev.filter(x => x.id !== id));
@@ -69,7 +69,6 @@ export default function WarehousePage() {
   }
 
   async function removeItem(id: number) {
-    if (!confirm('Delete item?')) return;
     try {
       await apiFetch(`/warehouse/items/${id}`, { method: 'DELETE' });
       load();
@@ -116,7 +115,7 @@ export default function WarehousePage() {
           {categories.map(c => (
             <span key={c.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--surface-muted)', borderRadius: 6, padding: '3px 8px', fontSize: 13 }}>
               {c.name}
-              <button className="ghost" onClick={() => removeCategory(c.id)} style={{ padding: 0, color: 'var(--danger)' }}><X size={12} /></button>
+              <button className="ghost" onClick={() => setConfirmDelete({ kind: 'category', id: c.id, label: c.name })} style={{ padding: 0, color: 'var(--danger)' }}><X size={12} /></button>
             </span>
           ))}
           {categories.length === 0 && <span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>No categories yet</span>}
@@ -174,7 +173,7 @@ export default function WarehousePage() {
                     <button className="ghost" title="Add to stock" onClick={() => setTxModal({ item, type: 'in' })} style={{ color: 'green' }}><ArrowDown size={15} /></button>
                     <button className="ghost" title="Remove from stock" onClick={() => setTxModal({ item, type: 'out' })} style={{ color: 'red' }}><ArrowUp size={15} /></button>
                     <button className="ghost" onClick={() => { setEditingId(item.id); setForm({ ...item, categoryId: item.category?.id }); setShowForm(true); }}><Pencil size={15} /></button>
-                    <button className="ghost" onClick={() => removeItem(item.id)} style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
+                    <button className="ghost" onClick={() => setConfirmDelete({ kind: 'item', id: item.id, label: `${item.name} (${item.barcode})` })} style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                   </div>
                 </td>
               </tr>
@@ -197,6 +196,33 @@ export default function WarehousePage() {
             <div className="form-actions" style={{ marginTop: 14 }}>
               <button className="ghost" onClick={() => setTxModal(null)}>Cancel</button>
               <button onClick={doTx}><Save size={15} /> Confirm</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete confirmation modal — not window.confirm(), which some
+          browsers silently suppress after the user dismisses one dialog
+          with "prevent this page from creating additional dialogs". */}
+      {confirmDelete && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+          onClick={() => setConfirmDelete(null)}>
+          <div className="card" style={{ width: 360 }} onClick={e => e.stopPropagation()}>
+            <h3 style={{ marginTop: 0 }}>Delete {confirmDelete.kind}?</h3>
+            <p style={{ color: 'var(--ink-soft)' }}>{confirmDelete.label}</p>
+            <div className="form-actions" style={{ marginTop: 14 }}>
+              <button className="ghost" onClick={() => setConfirmDelete(null)}>Cancel</button>
+              <button
+                style={{ background: 'var(--danger)' }}
+                onClick={async () => {
+                  const { kind, id } = confirmDelete;
+                  setConfirmDelete(null);
+                  if (kind === 'item') await removeItem(id);
+                  else await removeCategory(id);
+                }}
+              >
+                <Trash2 size={15} /> Delete
+              </button>
             </div>
           </div>
         </div>
