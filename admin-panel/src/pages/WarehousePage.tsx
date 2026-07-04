@@ -6,6 +6,7 @@ interface Category { id: number; name: string; }
 interface Item {
   id: number; name: string; barcode: string; description?: string;
   category?: Category; quantity: number; unit?: string; location?: string; notes?: string;
+  warehouseLocation?: { id: number; name: string };
 }
 
 export default function WarehousePage() {
@@ -156,13 +157,14 @@ export default function WarehousePage() {
           <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Search by name or barcode…" style={{ width: 280 }} />
         </div>
         <table>
-          <thead><tr><th>Name</th><th>Barcode</th><th>Category</th><th>Location</th><th style={{ textAlign: 'right' }}>Qty</th><th /></tr></thead>
+          <thead><tr><th>Name</th><th>Barcode</th><th>Category</th><th>Warehouse</th><th>Location</th><th style={{ textAlign: 'right' }}>Qty</th><th /></tr></thead>
           <tbody>
             {filtered.map(item => (
               <tr key={item.id}>
                 <td>{item.name}</td>
                 <td className="mono" style={{ fontSize: 12 }}>{item.barcode}</td>
                 <td>{item.category?.name ?? '—'}</td>
+                <td>{item.warehouseLocation?.name ?? '—'}</td>
                 <td>{item.location ?? '—'}</td>
                 <td style={{ textAlign: 'right', fontWeight: 700, color: item.quantity === 0 ? 'var(--danger)' : 'var(--primary)' }}>
                   {item.quantity}{item.unit ? ` ${item.unit}` : ''}
