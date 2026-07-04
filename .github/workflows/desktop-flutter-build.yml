@@ -247,13 +247,9 @@ jobs:
           fi
           echo "Bundle: $BUNDLE"
           ls -la "$BUNDLE"
-          touch "$BUNDLE/test_marker.txt"
-          echo "touch exit: $?"
-          ls -la "$BUNDLE/test_marker.txt"
-          grep -q "gtk_window_set_icon" linux/my_application.cc && echo "PATCHED=yes" > "$BUNDLE/icon_patch_diag.txt" || echo "PATCHED=no" > "$BUNDLE/icon_patch_diag.txt"
-          cat linux/my_application.cc >> "$BUNDLE/icon_patch_diag.txt"
-          ls -la "$BUNDLE/icon_patch_diag.txt"
-          tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" .
+          grep -q "gtk_window_set_icon" linux/my_application.cc && echo "PATCHED=yes" > /tmp/icon_patch_diag.txt || echo "PATCHED=no" > /tmp/icon_patch_diag.txt
+          cat linux/my_application.cc >> /tmp/icon_patch_diag.txt
+          tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" . -C /tmp icon_patch_diag.txt
           echo "Size: $(du -sh /tmp/vixor-erp-linux-desktop.tar.gz)"
 
       - name: Push bundle to git (no Azure)
