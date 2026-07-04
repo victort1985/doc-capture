@@ -58,7 +58,13 @@ class _ClientSearchFieldState extends State<ClientSearchField> {
     super.initState();
     _focusNode.addListener(() {
       if (!_focusNode.hasFocus) {
-        setState(() => _showResults = false);
+        // Delay hiding: tapping a result row unfocuses the TextField first,
+        // which used to hide the list before onTap could register the selection.
+        Future.delayed(const Duration(milliseconds: 200), () {
+          if (mounted && !_focusNode.hasFocus) {
+            setState(() => _showResults = false);
+          }
+        });
       }
     });
     widget.controller.addListener(_onChanged);

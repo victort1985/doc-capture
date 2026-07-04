@@ -80,7 +80,7 @@ class _RootScreenState extends State<RootScreen> {
     ];
 
     final destinations = [
-      (Icons.inventory_2_outlined, Icons.inventory_2, l10n.inventoryTitle),
+      (Icons.inventory_2_outlined, Icons.inventory_2, l10n.navHome),
       (Icons.support_agent_outlined, Icons.support_agent, l10n.callsTitle),
       (Icons.contacts_outlined, Icons.contacts, l10n.phoneBookTitle),
       (Icons.calendar_month_outlined, Icons.calendar_month, l10n.calendarTitle),
