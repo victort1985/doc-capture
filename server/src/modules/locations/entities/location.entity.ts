@@ -33,4 +33,12 @@ export class Location {
 
   @CreateDateColumn()
   createdAt: Date;
+
+  /** Marks this as one of the company's primary/main warehouses — the
+   * default source for new equipment registration and for equipment
+   * search while filling out a regular накладная, as opposed to a
+   * venue-specific location with its own independent (but secondary)
+   * stock. Set from the admin panel. */
+  @Column({ default: false })
+  isMainWarehouse: boolean;
 }

@@ -52,7 +52,7 @@ export class WarehouseService {
 
   // ── Items ──────────────────────────────────────────────────────────
 
-  findItems(organizationId: number | null, categoryId?: number, q?: string, locationId?: number): Promise<WarehouseItem[]> {
+  findItems(organizationId: number | null, categoryId?: number, q?: string, locationId?: number, mainOnly?: boolean): Promise<WarehouseItem[]> {
     const qb = this.itemsRepo.createQueryBuilder('item')
       .leftJoinAndSelect('item.category', 'category')
       .leftJoinAndSelect('item.warehouseLocation', 'warehouseLocation')
@@ -62,6 +62,7 @@ export class WarehouseService {
     }
     if (categoryId) qb.andWhere('category.id = :catId', { catId: categoryId });
     if (locationId) qb.andWhere('warehouseLocation.id = :locId', { locId: locationId });
+    if (mainOnly) qb.andWhere('warehouseLocation.isMainWarehouse = true');
     if (q?.trim()) qb.andWhere('(item.name ILIKE :q OR item.barcode ILIKE :q)', { q: `%${q.trim()}%` });
     return qb.getMany();
   }

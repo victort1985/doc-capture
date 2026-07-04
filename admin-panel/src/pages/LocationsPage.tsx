@@ -15,6 +15,7 @@ interface Location {
   id: number;
   name: string;
   city: City;
+  isMainWarehouse: boolean;
 }
 
 export default function LocationsPage() {
@@ -112,6 +113,19 @@ export default function LocationsPage() {
     if (!confirm('Delete this location?')) return;
     await apiFetch(`/locations/${id}`, { method: 'DELETE' });
     setCities((prev: any[]) => prev.filter((x: any) => x.id !== id));
+  }
+
+  async function toggleMainWarehouse(loc: Location) {
+    setError(null);
+    try {
+      await apiFetch(`/locations/${loc.id}/main-warehouse`, {
+        method: 'PATCH',
+        body: JSON.stringify({ isMainWarehouse: !loc.isMainWarehouse }),
+      });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update main warehouse');
+    }
   }
 
   return (
@@ -236,6 +250,40 @@ export default function LocationsPage() {
             </ul>
           )}
         </div>
+      </div>
+
+      {/* Main warehouses — separate block: mark which locations are the
+          company's primary stock, used as defaults for new equipment
+          registration and equipment search on regular накладные. */}
+      <div className="card" style={{ marginTop: 20 }}>
+        <h3 style={{ marginTop: 0 }}>Main warehouses</h3>
+        <p style={{ color: 'var(--ink-soft)', marginTop: -6, marginBottom: 14, maxWidth: 640 }}>
+          These are the default stock locations used when registering new equipment
+          and when searching for equipment while filling out a regular накладная.
+          Other locations still have their own independent warehouse, but aren't
+          used as a default.
+        </p>
+        {locations.length === 0 ? (
+          <div className="empty-state" style={{ padding: 16 }}>
+            <MapPin size={24} strokeWidth={1.5} />
+            <span>No locations yet</span>
+          </div>
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
+            {locations.map((l) => (
+              <li key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={l.isMainWarehouse}
+                    onChange={() => toggleMainWarehouse(l)}
+                  />
+                  <span>{l.name} <span style={{ color: 'var(--ink-soft)', fontSize: 12 }}>({l.city?.name})</span></span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

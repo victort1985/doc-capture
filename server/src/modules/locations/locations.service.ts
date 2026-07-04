@@ -93,7 +93,7 @@ export class LocationsService {
    * since none of them had been assigned to an organization yet. The
    * super-admin still sees everything regardless.
    */
-  findLocations(query?: string, cityId?: number, organizationId?: number | null): Promise<Location[]> {
+  findLocations(query?: string, cityId?: number, organizationId?: number | null, mainOnly?: boolean): Promise<Location[]> {
     const qb = this.locationsRepo
       .createQueryBuilder('location')
       .leftJoinAndSelect('location.city', 'city')
@@ -109,7 +109,18 @@ export class LocationsService {
     if (organizationId != null) {
       qb.andWhere('(location.organizationId = :organizationId OR location.organizationId IS NULL)', { organizationId });
     }
+    if (mainOnly) {
+      qb.andWhere('location.isMainWarehouse = true');
+    }
     return qb.getMany();
+  }
+
+  /** Toggles whether a location is one of the company's main warehouses. */
+  async setMainWarehouse(id: number, isMainWarehouse: boolean): Promise<Location> {
+    const location = await this.locationsRepo.findOne({ where: { id } });
+    if (!location) throw new NotFoundException('Location not found');
+    location.isMainWarehouse = isMainWarehouse;
+    return this.locationsRepo.save(location);
   }
 
   /**

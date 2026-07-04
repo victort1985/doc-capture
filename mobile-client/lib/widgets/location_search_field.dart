@@ -46,6 +46,9 @@ class _LocationSearchFieldState extends State<LocationSearchField> {
   void initState() {
     super.initState();
     _focusNode.addListener(() {
+      if (_focusNode.hasFocus && widget.controller.text.trim().isEmpty) {
+        _loadMainWarehouses();
+      }
       if (!_focusNode.hasFocus) {
         // Delay hiding so a tap on a result row has time to register
         // before the dropdown disappears (focus is lost on pointer-down).
@@ -94,6 +97,30 @@ class _LocationSearchFieldState extends State<LocationSearchField> {
       if (mounted) setState(() { _results = locs; _loading = false; });
     } catch (_) {
       if (mounted) setState(() { _results = []; _loading = false; });
+    }
+  }
+
+  /// Quick-pick suggestions shown as soon as the field is focused, before
+  /// typing anything — the company's main warehouses (set in the admin
+  /// panel), since that's almost always what you want here.
+  Future<void> _loadMainWarehouses() async {
+    final api = context.read<ApiService>();
+    setState(() { _loading = true; _showResults = true; });
+    try {
+      final data = await api.get('/locations', query: {'mainOnly': 'true'});
+      final locs = (data as List<dynamic>? ?? []).map((l) {
+        final j = l as Map<String, dynamic>;
+        return LocationResult(
+          id: j['id'] as int,
+          name: j['name'] as String? ?? '',
+          cityName: j['city']?['name'] as String?,
+        );
+      }).toList();
+      if (mounted && widget.controller.text.trim().isEmpty) {
+        setState(() { _results = locs; _loading = false; });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
     }
   }
 

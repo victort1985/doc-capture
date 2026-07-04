@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { CreateRegionDto } from './dto/create-region.dto';
 import { CreateCityDto } from './dto/create-city.dto';
@@ -61,10 +61,10 @@ export class LocationsController {
 
   // --- Locations ("place" / "organization" business field) — org-scoped ---
 
-  /** Search-as-you-type: ?q=<prefix>&cityId=<id>. Scoped to the requester's organization unless they're the super-admin. */
+  /** Search-as-you-type: ?q=<prefix>&cityId=<id>&mainOnly=true. Scoped to the requester's organization unless they're the super-admin. */
   @Get()
-  findLocations(@CurrentUser() user: RequestUser, @Query('q') q?: string, @Query('cityId') cityId?: string) {
-    return this.locationsService.findLocations(q, cityId ? parseInt(cityId, 10) : undefined, user.organizationId);
+  findLocations(@CurrentUser() user: RequestUser, @Query('q') q?: string, @Query('cityId') cityId?: string, @Query('mainOnly') mainOnly?: string) {
+    return this.locationsService.findLocations(q, cityId ? parseInt(cityId, 10) : undefined, user.organizationId, mainOnly === 'true');
   }
 
   @Get(':id')
@@ -77,6 +77,14 @@ export class LocationsController {
   @Roles(UserRole.ADMIN)
   createLocation(@Body() dto: CreateLocationDto, @CurrentUser() user: RequestUser) {
     return this.locationsService.createLocation(dto, user.organizationId);
+  }
+
+  /** Marks/unmarks this location as one of the company's main warehouses. */
+  @Patch(':id/main-warehouse')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  setMainWarehouse(@Param('id', ParseIntPipe) id: number, @Body() body: { isMainWarehouse: boolean }) {
+    return this.locationsService.setMainWarehouse(id, !!body.isMainWarehouse);
   }
 
   @Delete(':id')

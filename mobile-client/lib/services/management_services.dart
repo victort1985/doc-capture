@@ -207,11 +207,12 @@ class WarehouseService {
     return data.map((j) => WarehouseCategory.fromJson(j as Map<String, dynamic>)).toList();
   }
 
-  Future<List<WarehouseItem>> listItems({int? categoryId, String? q, int? locationId}) async {
+  Future<List<WarehouseItem>> listItems({int? categoryId, String? q, int? locationId, bool? mainOnly}) async {
     final params = <String, dynamic>{};
     if (categoryId != null) params['categoryId'] = categoryId;
     if (q?.isNotEmpty == true) params['q'] = q;
     if (locationId != null) params['locationId'] = locationId;
+    if (mainOnly == true) params['mainOnly'] = 'true';
     final data = await _api.get('/warehouse/items', query: params) as List? ?? [];
     return data.map((j) => WarehouseItem.fromJson(j as Map<String, dynamic>)).toList();
   }

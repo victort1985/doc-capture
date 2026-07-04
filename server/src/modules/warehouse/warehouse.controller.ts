@@ -46,8 +46,8 @@ export class WarehouseController {
   // ── Items ──────────────────────────────────────────────────────────
 
   @Get('items')
-  findItems(@CurrentUser() user: RequestUser, @Query('categoryId') catId?: string, @Query('q') q?: string, @Query('locationId') locationId?: string) {
-    return this.warehouseService.findItems(user.organizationId, catId ? parseInt(catId) : undefined, q, locationId ? parseInt(locationId) : undefined);
+  findItems(@CurrentUser() user: RequestUser, @Query('categoryId') catId?: string, @Query('q') q?: string, @Query('locationId') locationId?: string, @Query('mainOnly') mainOnly?: string) {
+    return this.warehouseService.findItems(user.organizationId, catId ? parseInt(catId) : undefined, q, locationId ? parseInt(locationId) : undefined, mainOnly === 'true');
   }
 
   @Get('items/by-barcode/:barcode')

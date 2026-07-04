@@ -71,7 +71,7 @@ class _ItemRowWidgetState extends State<ItemRowWidget> {
     try {
       final api = context.read<ApiService>();
       final svc = WarehouseService(api);
-      final items = await svc.listItems(q: q);
+      final items = await svc.listItems(q: q, mainOnly: true);
       if (mounted) setState(() { _results = items; _loading = false; });
     } catch (_) {
       if (mounted) setState(() { _results = []; _loading = false; });
