@@ -14,8 +14,23 @@ import '../services/api_service.dart';
 /// Fetched once per RootScreen lifetime (not re-fetched per tab switch)
 /// since the logo can't change without logging out/in again.
 class OrganizationLogoBackground extends StatefulWidget {
-  const OrganizationLogoBackground({super.key, required this.child});
+  const OrganizationLogoBackground({
+    super.key,
+    required this.child,
+    this.fit = BoxFit.cover,
+    this.backgroundColor,
+  });
   final Widget child;
+
+  /// How the logo image is scaled. Defaults to [BoxFit.cover] (mobile).
+  /// Desktop uses [BoxFit.fitHeight] so the logo spans the full window
+  /// height without ever stretching its width out of proportion.
+  final BoxFit fit;
+
+  /// Solid color painted behind the faint logo, in front of whatever
+  /// sits behind this widget (e.g. a dark sidebar). Null keeps the
+  /// previous fully-transparent behavior.
+  final Color? backgroundColor;
 
   @override
   State<OrganizationLogoBackground> createState() => _OrganizationLogoBackgroundState();
@@ -44,10 +59,12 @@ class _OrganizationLogoBackgroundState extends State<OrganizationLogoBackground>
     if (_logoBytes == null) return widget.child;
     return Stack(
       children: [
+        if (widget.backgroundColor != null)
+          Positioned.fill(child: ColoredBox(color: widget.backgroundColor!)),
         Positioned.fill(
           child: Opacity(
             opacity: 0.2,
-            child: Image.memory(_logoBytes!, fit: BoxFit.cover),
+            child: Image.memory(_logoBytes!, fit: widget.fit),
           ),
         ),
         widget.child,

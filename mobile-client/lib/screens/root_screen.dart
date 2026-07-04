@@ -91,9 +91,8 @@ class _RootScreenState extends State<RootScreen> {
     if (isDesktop) {
       // ── Desktop layout: NavigationRail sidebar + content ──────────────────
       return Scaffold(
-        body: OrganizationLogoBackground(
-          child: Row(children: [
-            NavigationRail(
+        body: Row(children: [
+          NavigationRail(
               extended: MediaQuery.of(context).size.width >= 1200,
               selectedIndex: _index,
               onDestinationSelected: (i) => setState(() => _index = i),
@@ -122,10 +121,13 @@ class _RootScreenState extends State<RootScreen> {
             ),
             const VerticalDivider(width: 1, thickness: 1, color: Color(0x22FFFFFF)),
             Expanded(
-              child: IndexedStack(index: _index, children: screens),
+              child: OrganizationLogoBackground(
+                fit: BoxFit.fitHeight,
+                backgroundColor: Colors.white,
+                child: IndexedStack(index: _index, children: screens),
+              ),
             ),
-          ]),
-        ),
+        ]),
       );
     }
 
