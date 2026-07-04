@@ -46,7 +46,7 @@ jobs:
               print(s)
 
           try:
-              path = 'linux/my_application.cc'
+              path = 'linux/runner/my_application.cc'
               diag('path=' + path)
               import os
               diag('exists=' + str(os.path.exists(path)))
@@ -252,8 +252,8 @@ jobs:
             echo "ls .:"; ls -la .
             echo "ls linux (if exists):"; ls -la linux 2>&1
           } > /tmp/icon_patch_diag.txt
-          grep -q "gtk_window_set_icon" linux/my_application.cc && echo "PATCHED=yes" >> /tmp/icon_patch_diag.txt || echo "PATCHED=no" >> /tmp/icon_patch_diag.txt
-          cat linux/my_application.cc >> /tmp/icon_patch_diag.txt || echo "(source unavailable at package time)" >> /tmp/icon_patch_diag.txt
+          grep -q "gtk_window_set_icon" linux/runner/my_application.cc && echo "PATCHED=yes" >> /tmp/icon_patch_diag.txt || echo "PATCHED=no" >> /tmp/icon_patch_diag.txt
+          cat linux/runner/my_application.cc >> /tmp/icon_patch_diag.txt || echo "(source unavailable at package time)" >> /tmp/icon_patch_diag.txt
           tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" . -C /tmp icon_patch_diag.txt || tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" .
           echo "Size: $(du -sh /tmp/vixor-erp-linux-desktop.tar.gz)"
 
