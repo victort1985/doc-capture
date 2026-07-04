@@ -60,6 +60,10 @@ export class UsersService {
         isActive: true,
         createdAt: true,
         updatedAt: true,
+        firstName: true,
+        lastName: true,
+        allowedOrganizationIds: true,
+        permissions: true,
       },
     });
   }

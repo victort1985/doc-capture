@@ -35,6 +35,8 @@ export class AuthService {
         organizationId: user.organization?.id ?? null,
         allowedOrganizationIds: user.allowedOrganizationIds ?? [],
         permissions: user.permissions ?? {},
+        firstName: user.firstName ?? null,
+        lastName: user.lastName ?? null,
       },
     };
   }
