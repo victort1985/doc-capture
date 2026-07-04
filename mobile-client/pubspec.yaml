@@ -1,7 +1,7 @@
 name: vixor_erp
 description: Vixor ERP — Field Service Management Platform
 publish_to: 'none'
-version: 1.0.37+137
+version: 1.0.38+138
 
 environment:
   sdk: '>=3.5.0 <4.0.0'
