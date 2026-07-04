@@ -38,56 +38,71 @@ jobs:
       - name: Patch app icon (Linux window/taskbar icon)
         run: |
           python3 -c "
-          import re
-          path = 'linux/my_application.cc'
-          src = open(path).read()
+          import re, traceback
 
-          icon_code = '''
-            {
-              g_autofree gchar* exe_path = g_file_read_link(\"/proc/self/exe\", nullptr);
-              if (exe_path != nullptr) {
-                g_autofree gchar* exe_dir = g_path_get_dirname(exe_path);
-                g_autofree gchar* icon_path = g_build_filename(
-                    exe_dir, \"data\", \"flutter_assets\", \"assets\", \"icons\", \"app_icon.png\", nullptr);
-                GError* icon_error = nullptr;
-                GdkPixbuf* icon = gdk_pixbuf_new_from_file(icon_path, &icon_error);
-                if (icon != nullptr) {
-                  gtk_window_set_icon(window, icon);
-                  g_object_unref(icon);
-                } else if (icon_error != nullptr) {
-                  g_warning(\"Failed to load app icon: %s\", icon_error->message);
-                  g_error_free(icon_error);
+          diag_lines = []
+          def diag(s):
+              diag_lines.append(s)
+              print(s)
+
+          try:
+              path = 'linux/my_application.cc'
+              diag('path=' + path)
+              import os
+              diag('exists=' + str(os.path.exists(path)))
+              src = open(path).read()
+              diag('file length=' + str(len(src)))
+
+              icon_code = '''
+                {
+                  g_autofree gchar* exe_path = g_file_read_link(\"/proc/self/exe\", nullptr);
+                  if (exe_path != nullptr) {
+                    g_autofree gchar* exe_dir = g_path_get_dirname(exe_path);
+                    g_autofree gchar* icon_path = g_build_filename(
+                        exe_dir, \"data\", \"flutter_assets\", \"assets\", \"icons\", \"app_icon.png\", nullptr);
+                    GError* icon_error = nullptr;
+                    GdkPixbuf* icon = gdk_pixbuf_new_from_file(icon_path, &icon_error);
+                    if (icon != nullptr) {
+                      gtk_window_set_icon(window, icon);
+                      g_object_unref(icon);
+                    } else if (icon_error != nullptr) {
+                      g_warning(\"Failed to load app icon: %s\", icon_error->message);
+                      g_error_free(icon_error);
+                    }
+                  }
                 }
-              }
-            }
-          '''
+              '''
 
-          # Anchor on the window-creation statement itself (very stable across
-          # Flutter versions) rather than a nearby gtk_widget_show() call whose
-          # position has moved between Flutter releases (see flutter/flutter#118269).
-          anchor = re.compile(r'GTK_WINDOW\(gtk_application_window_new\(GTK_APPLICATION\(application\)\)\);')
-          m = anchor.search(src)
-          if m:
-              insert_at = m.end()
-              src = src[:insert_at] + icon_code + src[insert_at:]
-              open(path, 'w').write(src)
-              print('Icon patch applied at offset', insert_at)
-          else:
-              print('WARNING: window-creation anchor not found in my_application.cc — skipping icon patch (build continues without custom Dock icon).')
-              open('/tmp/my_application_dump.cc', 'w').write(src)
+              anchor = re.compile(r'GTK_WINDOW\(gtk_application_window_new\(GTK_APPLICATION\(application\)\)\);')
+              m = anchor.search(src)
+              diag('anchor_found=' + str(bool(m)))
+              if m:
+                  insert_at = m.end()
+                  src = src[:insert_at] + icon_code + src[insert_at:]
+                  open(path, 'w').write(src)
+                  diag('PATCH APPLIED at offset ' + str(insert_at))
+              else:
+                  diag('ANCHOR NOT FOUND — dumping full source below for inspection')
+                  diag('----- my_application.cc -----')
+                  diag(src)
+                  diag('----- end -----')
+          except Exception:
+              diag('EXCEPTION:')
+              diag(traceback.format_exc())
+
+          open('/tmp/icon_patch_diag.txt', 'w').write(chr(10).join(diag_lines))
           "
-          if [ -f /tmp/my_application_dump.cc ]; then
-            cp /tmp/my_application_dump.cc ../my_application_dump.cc
-            cd ..
-            git config user.email \"ci@doccapture.local\"
-            git config user.name \"CI Bot\"
-            git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
-            git checkout -B debug-linux-icon-patch
-            git add -f my_application_dump.cc
-            git commit -m \"debug: dump generated my_application.cc (icon anchor not found) ${{ github.ref_name }}\" || echo \"nothing new to commit\"
-            git push --force origin debug-linux-icon-patch
-            cd mobile-client
-          fi
+          cp /tmp/icon_patch_diag.txt ../icon_patch_diag.txt || true
+          cd ..
+          git config user.email \"ci@doccapture.local\"
+          git config user.name \"CI Bot\"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+          git checkout -B debug-linux-icon-patch
+          git add -f icon_patch_diag.txt
+          git commit -m \"debug: icon patch diagnostics ${{ github.ref_name }}\" || echo \"nothing new to commit\"
+          git push --force origin debug-linux-icon-patch || echo \"debug push failed, continuing anyway\"
+          cd mobile-client
+          exit 0
 
       - name: Patch pubspec & stubs
         run: |
