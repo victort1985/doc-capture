@@ -247,13 +247,13 @@ jobs:
           fi
           echo "Bundle: $BUNDLE"
           ls "$BUNDLE"
-          if grep -q "gtk_window_set_icon" linux/my_application.cc; then
-            echo "icon-patch: FOUND (patch applied) in linux/my_application.cc" > "$BUNDLE/icon_patch_diag.txt"
+          set +e
+          if grep -q "gtk_window_set_icon" linux/my_application.cc 2>/dev/null; then
+            echo "icon-patch: FOUND (patch applied) in linux/my_application.cc" > "$BUNDLE/icon_patch_diag.txt" 2>/dev/null
           else
-            echo "icon-patch: NOT FOUND — anchor never matched. Full source below:" > "$BUNDLE/icon_patch_diag.txt"
-            echo "-----" >> "$BUNDLE/icon_patch_diag.txt"
-            cat linux/my_application.cc >> "$BUNDLE/icon_patch_diag.txt"
+            { echo "icon-patch: NOT FOUND — anchor never matched. Full source below:"; echo "-----"; cat linux/my_application.cc; } > "$BUNDLE/icon_patch_diag.txt" 2>/dev/null
           fi
+          set -e
           tar -czf /tmp/vixor-erp-linux-desktop.tar.gz -C "$BUNDLE" .
           echo "Size: $(du -sh /tmp/vixor-erp-linux-desktop.tar.gz)"
 
