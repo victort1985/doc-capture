@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
-import { scanAndCropDocument } from './document-scanner';
+import { scanAndCropDocument, correctDocumentLighting } from './document-scanner';
 
 const MAX_PDF_BYTES = 1 * 1024 * 1024; // 1 MB per spec
 
@@ -34,11 +34,15 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
     console.warn(`[processDocument] Auto-crop skipped: ${(err as Error)?.message ?? err}`);
   }
 
-  const enhanced = sharp(cropSource)
-    .greyscale()              // remove color cast (the grayish/blueish tint real photos pick up)
-    .normalize()              // stretch contrast to the full range
-    .linear(1.35, -25)        // push further: brighter background, darker text — a "scanned" look
-    .sharpen({ sigma: 1 });
+  let corrected: Buffer;
+  try {
+    corrected = await correctDocumentLighting(cropSource);
+  } catch (err) {
+    console.warn(`[processDocument] Lighting correction failed, falling back to a simple contrast boost: ${(err as Error)?.message ?? err}`);
+    corrected = await sharp(cropSource).greyscale().normalize().toBuffer();
+  }
+
+  const enhanced = sharp(corrected).sharpen({ sigma: 1 });
 
   let quality = 90;
   let jpegBuffer = await enhanced.clone().jpeg({ quality }).toBuffer();

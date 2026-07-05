@@ -168,6 +168,73 @@ function shrinkQuadInward(quad: Point[], fraction: number): Point[] {
   }));
 }
 
+/** Percentile-based contrast stretch: maps the `lowPct`-th and
+ * `(100-highPct)`-th brightness percentiles to 0/255. More robust than a
+ * plain min/max stretch, which a single outlier pixel can throw off. */
+function stretchContrast(gray: Uint8Array | Buffer, lowPct: number, highPct: number): Buffer {
+  const hist = new Array(256).fill(0);
+  for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
+  const total = gray.length;
+
+  let cum = 0, lo = 0;
+  for (let v = 0; v < 256; v++) {
+    cum += hist[v];
+    if ((cum / total) * 100 >= lowPct) { lo = v; break; }
+  }
+  cum = 0;
+  let hi = 255;
+  for (let v = 255; v >= 0; v--) {
+    cum += hist[v];
+    if ((cum / total) * 100 >= 100 - highPct) { hi = v; break; }
+  }
+
+  const range = Math.max(1, hi - lo);
+  const out = Buffer.alloc(gray.length);
+  for (let i = 0; i < gray.length; i++) {
+    out[i] = Math.max(0, Math.min(255, Math.round(((gray[i] - lo) / range) * 255)));
+  }
+  return out;
+}
+
+/**
+ * Flat-field lighting correction: removes shadows and uneven lighting by
+ * normalizing every pixel against an estimate of the *local* background
+ * brightness around it, rather than a single global contrast stretch.
+ *
+ * A shadow across part of a page darkens a whole region gradually — both
+ * the paper and the ink in that region get darker together. A single
+ * global brightness/contrast adjustment can't fix that (it would need to
+ * brighten the shadowed area without also blowing out the already-lit
+ * area). Dividing each pixel by a heavily-blurred version of itself
+ * (which approximates "what the background would be at this point,
+ * ignoring small dark text strokes") cancels that gradual variation out:
+ * paper-under-shadow and paper-in-light both end up close to the same
+ * brightness, since each is being compared to its own local surroundings.
+ *
+ * This is the standard "flat-fielding" technique scanning software uses
+ * for exactly this problem.
+ */
+export async function correctDocumentLighting(imageBuffer: Buffer): Promise<Buffer> {
+  const { data: gray, info } = await sharp(imageBuffer).greyscale().raw().toBuffer({ resolveWithObject: true });
+  const { width, height } = info;
+
+  // Radius large enough that text strokes (thin) get blurred away into
+  // the surrounding paper tone, but small enough to still track gradual
+  // shadow gradients across the page.
+  const radius = Math.max(15, Math.round(Math.min(width, height) * 0.04));
+  const background = boxBlur(gray, width, height, radius, 2);
+
+  const flattened = Buffer.alloc(gray.length);
+  for (let i = 0; i < gray.length; i++) {
+    const bg = Math.max(background[i], 1);
+    const v = (gray[i] / bg) * 235; // 235, not 255: leaves a little headroom before the final stretch
+    flattened[i] = Math.max(0, Math.min(255, Math.round(v)));
+  }
+
+  const stretched = stretchContrast(flattened, 2, 2);
+  return sharp(stretched, { raw: { width, height, channels: 1 } }).png().toBuffer();
+}
+
 /**
  * Detects the document's four corners and returns a straightened,
  * cropped PNG buffer — or null if no confident document region was
