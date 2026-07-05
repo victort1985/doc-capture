@@ -112,7 +112,12 @@ export class GoogleCalendarService {
           if (!gEvent.id) continue;
 
           if (gEvent.status === 'cancelled') {
-            const existing = await this.eventsRepo.findOne({ where: { googleEventId: gEvent.id } });
+            let existing = await this.eventsRepo.findOne({ where: { googleEventId: gEvent.id } });
+            if (!existing && gEvent.iCalUID) {
+              existing = await this.eventsRepo.findOne({
+                where: { calendar: { id: calendar.id }, technicalRequirements: `ics-uid:${gEvent.iCalUID}` },
+              });
+            }
             if (existing) {
               await this.eventsRepo.remove(existing);
               removed++;
@@ -126,8 +131,17 @@ export class GoogleCalendarService {
           const allDay = !gEvent.start?.dateTime;
 
           let row = await this.eventsRepo.findOne({ where: { googleEventId: gEvent.id } });
+          if (!row && gEvent.iCalUID) {
+            // This event may already exist from an earlier one-time .ics
+            // import (calendar.service.ts dedups those by this same UID
+            // format) — adopt that row instead of creating a duplicate.
+            row = await this.eventsRepo.findOne({
+              where: { calendar: { id: calendar.id }, technicalRequirements: `ics-uid:${gEvent.iCalUID}` },
+            });
+          }
           const isNew = !row;
-          row = row ?? this.eventsRepo.create({ googleEventId: gEvent.id, calendar });
+          row = row ?? this.eventsRepo.create({ calendar });
+          row.googleEventId = gEvent.id;
           row.calendar = calendar;
           row.type = CalendarEventType.EVENT;
           row.title = gEvent.summary || '(untitled Google event)';
