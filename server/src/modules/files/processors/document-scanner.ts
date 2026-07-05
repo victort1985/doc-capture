@@ -159,6 +159,15 @@ function warpPerspective(rgba: Buffer, srcWidth: number, srcHeight: number, quad
   return out;
 }
 
+function shrinkQuadInward(quad: Point[], fraction: number): Point[] {
+  const cx = quad.reduce((s, p) => s + p.x, 0) / quad.length;
+  const cy = quad.reduce((s, p) => s + p.y, 0) / quad.length;
+  return quad.map((p) => ({
+    x: p.x + (cx - p.x) * fraction,
+    y: p.y + (cy - p.y) * fraction,
+  }));
+}
+
 /**
  * Detects the document's four corners and returns a straightened,
  * cropped PNG buffer — or null if no confident document region was
@@ -176,7 +185,7 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
   const smallW = Math.round(width * scale), smallH = Math.round(height * scale);
   const small = await sharp(imageBuffer).resize(smallW, smallH).greyscale().raw().toBuffer();
 
-  const blurred = boxBlur(small, smallW, smallH, 4, 3);
+  const blurred = boxBlur(small, smallW, smallH, 6, 3);
   const threshold = otsuThreshold(blurred);
 
   const binary = new Uint8Array(blurred.length);
@@ -185,7 +194,8 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
   const smallCorners = findCorners(binary, smallW, smallH);
   if (!smallCorners) return null;
 
-  const quad = smallCorners.map((p) => ({ x: p.x / scale, y: p.y / scale }));
+  let quad = smallCorners.map((p) => ({ x: p.x / scale, y: p.y / scale }));
+  quad = shrinkQuadInward(quad, 0.012); // trim ~1.2% inward — corner detection tends to catch a thin sliver of background/shadow right at the edge
   const [tl, tr, br, bl] = quad;
   const outWidth = Math.round(Math.max(Math.hypot(tr.x - tl.x, tr.y - tl.y), Math.hypot(br.x - bl.x, br.y - bl.y)));
   const outHeight = Math.round(Math.max(Math.hypot(bl.x - tl.x, bl.y - tl.y), Math.hypot(br.x - tr.x, br.y - tr.y)));

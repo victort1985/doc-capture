@@ -35,7 +35,9 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
   }
 
   const enhanced = sharp(cropSource)
-    .normalize() // stretch contrast — approximates a "scan" look
+    .greyscale()              // remove color cast (the grayish/blueish tint real photos pick up)
+    .normalize()              // stretch contrast to the full range
+    .linear(1.35, -25)        // push further: brighter background, darker text — a "scanned" look
     .sharpen({ sigma: 1 });
 
   let quality = 90;
