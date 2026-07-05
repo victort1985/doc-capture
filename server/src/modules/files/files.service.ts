@@ -67,6 +67,13 @@ export class FilesService {
 
     const results: UploadResult[] = [];
 
+    // Seed the {counter} variable from what's already been uploaded today
+    // for this place — otherwise every separate upload call restarted at
+    // 1, so a second single-file upload today could resolve to the exact
+    // same filename as an earlier one and silently overwrite it.
+    const fileRecordType = docType === 'document' ? FileRecordType.DOCUMENT : FileRecordType.PHOTO;
+    const counterStart = await this.templatesService.countTodayRecords(place, fileRecordType);
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
@@ -88,7 +95,7 @@ export class FilesService {
         place,
         username,
         docType,
-        counter: i + 1,
+        counter: counterStart + i + 1,
       });
       // Encryption happens after naming so the on-disk/on-NAS file gets a
       // visibly different extension (.enc) instead of looking like a normal,
@@ -100,7 +107,7 @@ export class FilesService {
         place,
         username,
         docType,
-        counter: i + 1,
+        counter: counterStart + i + 1,
       });
       const relativePath = `${subfolder}/${generatedName}`;
 

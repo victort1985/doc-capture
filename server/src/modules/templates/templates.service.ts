@@ -1,8 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { IsNull, MoreThanOrEqual, Repository } from 'typeorm';
 import { FileTemplate, TemplateAppliesTo } from './entities/file-template.entity';
-import { FileRecord } from './entities/file-record.entity';
+import { FileRecord, FileRecordType } from './entities/file-record.entity';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
 
@@ -120,5 +120,21 @@ export class TemplatesService {
 
   logFileRecord(data: Partial<FileRecord>): Promise<FileRecord> {
     return this.recordsRepo.save(this.recordsRepo.create(data));
+  }
+
+  /** How many records already exist today for this place+type — used to
+   * seed the `{counter}` naming variable so it keeps incrementing across
+   * separate uploads instead of restarting at 1 every time (which was
+   * silently overwriting earlier files that resolved to the same name). */
+  async countTodayRecords(place: string, type: FileRecordType): Promise<number> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    return this.recordsRepo.count({
+      where: {
+        place,
+        type,
+        createdAt: MoreThanOrEqual(startOfDay),
+      },
+    });
   }
 }
