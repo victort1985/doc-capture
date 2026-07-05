@@ -5,7 +5,10 @@ import { google } from 'googleapis';
 import { Calendar } from './entities/calendar.entity';
 import { CalendarEvent, CalendarEventType } from './entities/calendar-event.entity';
 
-const SCOPES = ['https://www.googleapis.com/auth/calendar.readonly'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/calendar.readonly',
+  'https://www.googleapis.com/auth/userinfo.email',
+];
 
 @Injectable()
 export class GoogleCalendarService {
