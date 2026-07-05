@@ -159,6 +159,9 @@ jobs:
       - name: Add camera + location usage descriptions
         run: python3 ../.github/scripts/patch_ios_plist.py
 
+      - name: Add push-notifications entitlement
+        run: python3 ../.github/scripts/patch_ios_push_entitlement.py
+
       - name: Bump iOS deployment target to 15.0 (firebase_core requirement)
         run: python3 ../.github/scripts/patch_ios_deployment_target.py
 

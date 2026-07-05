@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
+import 'dart:io' show Platform;
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 
 import 'l10n/app_localizations.dart';
 import 'app/theme.dart';
@@ -23,7 +26,22 @@ import 'screens/root_screen.dart';
 import 'screens/eula_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Firebase Cloud Messaging (push notifications) only has a real native
+  // SDK on Android/iOS — desktop builds have no GoogleService config at
+  // all and would just throw here. try/catch as a second safety net: an
+  // unconfigured/misconfigured project shouldn't be able to crash the
+  // whole app before it even starts, since real OS push is a bonus on
+  // top of the in-app WebSocket notifications, not a requirement to use
+  // the app at all.
+  if (Platform.isAndroid || Platform.isIOS) {
+    try {
+      await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+    } catch (e) {
+      debugPrint('Firebase.initializeApp() failed (push notifications will be unavailable): $e');
+    }
+  }
   runApp(const DocCaptureApp());
 }
 
