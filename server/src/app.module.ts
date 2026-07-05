@@ -22,6 +22,7 @@ import { StatsModule } from './modules/stats/stats.module';
 import { FleetModule } from './modules/fleet/fleet.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { DocumentStorageSettingsModule } from './modules/document-storage-settings/document-storage-settings.module';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ReportsModule } from './modules/reports/reports.module';
 import { DeliveryNotesModule } from './modules/delivery-notes/delivery-notes.module';
 
@@ -36,6 +37,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     // its own much stricter limit via @Throttle(), see auth.controller.ts.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60000, limit: 100 }]),
     TypeOrmModule.forRootAsync({ useFactory: typeOrmConfig }),
+    ScheduleModule.forRoot(),
     // Serves the admin-panel production build when it's been copied into
     // ./public (see scripts/package-windows.sh). Only registered when that
     // build is actually present — otherwise its SPA fallback would try to

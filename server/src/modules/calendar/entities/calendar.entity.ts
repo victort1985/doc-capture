@@ -29,6 +29,25 @@ export class Calendar {
   @Column({ nullable: true })
   googleCalendarId?: string;
 
+  /** Refresh token for the connected Google account (one-way sync:
+   * Google → Vixor). Never exposed to the client. */
+  @Column({ type: 'text', nullable: true, select: false })
+  googleRefreshToken?: string;
+
+  /** Which Google account is connected, shown in the admin panel so it's
+   * clear whose calendar is being pulled from. */
+  @Column({ nullable: true })
+  googleConnectedEmail?: string;
+
+  /** Google Calendar API sync cursor for incremental polling — lets us
+   * fetch only what changed since the last sync instead of the whole
+   * calendar every time. */
+  @Column({ type: 'text', nullable: true })
+  googleSyncToken?: string;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  googleLastSyncedAt?: Date;
+
   /** Secret token for the public ICS feed URL.
    *  Generated once, used to authenticate calendar subscriptions
    *  from Google Calendar / Apple Calendar / Outlook without login. */

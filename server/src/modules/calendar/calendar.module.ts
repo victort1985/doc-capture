@@ -7,11 +7,14 @@ import { CalendarService } from './calendar.service';
 import { CalendarController } from './calendar.controller';
 import { IcsController } from './ics.controller';
 import { StorageModule } from '../storage/storage.module';
+import { GoogleCalendarService } from './google-calendar.service';
+import { GoogleCalendarController } from './google-calendar.controller';
+import { GoogleCalendarCron } from './google-calendar.cron';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Calendar, CalendarEvent, CalendarAttachment]), StorageModule],
-  controllers: [CalendarController, IcsController],
-  providers: [CalendarService],
+  controllers: [CalendarController, IcsController, GoogleCalendarController],
+  providers: [CalendarService, GoogleCalendarService, GoogleCalendarCron],
   exports: [CalendarService],
 })
 export class CalendarModule {}

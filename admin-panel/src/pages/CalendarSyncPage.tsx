@@ -19,12 +19,67 @@ export default function CalendarSyncPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const baseUrl = window.location.origin;
 
+  const [googleStatus, setGoogleStatus] = useState<{ connectedEmail?: string; lastSyncedAt?: string } | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const [syncingNow, setSyncingNow] = useState(false);
+
   useEffect(() => {
     load();
     apiFetch<Org[]>('/organizations')
       .then(os => { setOrgs(os); if (os.length) setSelOrgId(os[0].id); })
       .catch(() => {});
+    loadGoogleStatus();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('google') === 'connected') {
+      loadGoogleStatus();
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (params.get('google') === 'error') {
+      setError(params.get('message') || 'Failed to connect Google Calendar');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
   }, []);
+
+  async function loadGoogleStatus() {
+    try {
+      const s = await apiFetch<{ connectedEmail: string | null; lastSyncedAt: string | null }>('/calendar/google/status');
+      setGoogleStatus({ connectedEmail: s.connectedEmail ?? undefined, lastSyncedAt: s.lastSyncedAt ?? undefined });
+    } catch (e) { /* non-fatal — leave card in "not connected" state */ }
+  }
+
+  async function connectGoogle() {
+    setConnecting(true);
+    try {
+      const { url } = await apiFetch<{ url: string | null }>('/calendar/google/auth-url');
+      if (url) window.location.href = url;
+      else setError('No organization selected for this account.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start Google connection');
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  async function disconnectGoogle() {
+    try {
+      await apiFetch('/calendar/google/disconnect', { method: 'POST' });
+      setGoogleStatus(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to disconnect');
+    }
+  }
+
+  async function syncNow() {
+    setSyncingNow(true);
+    try {
+      await apiFetch('/calendar/google/sync-now', { method: 'POST' });
+      await loadGoogleStatus();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sync failed');
+    } finally {
+      setSyncingNow(false);
+    }
+  }
 
   async function load() {
     try {
@@ -143,6 +198,46 @@ export default function CalendarSyncPage() {
 
         {/* ── RIGHT: Import from Google Calendar ────────────────────────── */}
         <div>
+          <div className="card" style={{ marginBottom: 14 }}>
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
+              <RefreshCw size={20} style={{ color: 'var(--primary)' }} />
+              <h3 style={{ margin: 0 }}>Auto-sync from Google Calendar</h3>
+            </div>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 0, lineHeight: 1.6 }}>
+              Connect a Google account once — new and changed events on that
+              calendar are pulled into Vixor automatically every ~10 minutes,
+              no manual export needed. One-way: Google → Vixor.
+            </p>
+
+            {googleStatus?.connectedEmail ? (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-muted)', borderRadius: 8, padding: '10px 12px', marginBottom: 12 }}>
+                  <CheckCircle2 size={16} style={{ color: 'green' }} />
+                  <div style={{ fontSize: 13 }}>
+                    Connected as <strong>{googleStatus.connectedEmail}</strong>
+                    {googleStatus.lastSyncedAt && (
+                      <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
+                        Last synced: {new Date(googleStatus.lastSyncedAt).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={syncNow} disabled={syncingNow}>
+                    <RefreshCw size={14} /> {syncingNow ? 'Syncing…' : 'Sync now'}
+                  </button>
+                  <button className="ghost" onClick={disconnectGoogle} style={{ color: 'var(--danger)' }}>
+                    Disconnect
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button onClick={connectGoogle} disabled={connecting}>
+                <ExternalLink size={14} /> {connecting ? 'Opening Google…' : 'Connect Google Calendar'}
+              </button>
+            )}
+          </div>
+
           <div className="card" style={{ marginBottom: 14 }}>
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 12 }}>
               <Upload size={20} style={{ color: 'var(--primary)' }} />
