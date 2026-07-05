@@ -28,11 +28,9 @@ export default function CalendarSyncPage() {
     apiFetch<Org[]>('/organizations')
       .then(os => { setOrgs(os); if (os.length) setSelOrgId(os[0].id); })
       .catch(() => {});
-    loadGoogleStatus();
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('google') === 'connected') {
-      loadGoogleStatus();
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('google') === 'error') {
       setError(params.get('message') || 'Failed to connect Google Calendar');
@@ -40,17 +38,22 @@ export default function CalendarSyncPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (selOrgId != null) loadGoogleStatus();
+  }, [selOrgId]);
+
   async function loadGoogleStatus() {
     try {
-      const s = await apiFetch<{ connectedEmail: string | null; lastSyncedAt: string | null }>('/calendar/google/status');
+      const s = await apiFetch<{ connectedEmail: string | null; lastSyncedAt: string | null }>(`/calendar/google/status?organizationId=${selOrgId}`);
       setGoogleStatus({ connectedEmail: s.connectedEmail ?? undefined, lastSyncedAt: s.lastSyncedAt ?? undefined });
     } catch (e) { /* non-fatal — leave card in "not connected" state */ }
   }
 
   async function connectGoogle() {
+    if (!selOrgId) { setError('Please select an organization first.'); return; }
     setConnecting(true);
     try {
-      const { url } = await apiFetch<{ url: string | null }>('/calendar/google/auth-url');
+      const { url } = await apiFetch<{ url: string | null }>(`/calendar/google/auth-url?organizationId=${selOrgId}`);
       if (url) window.location.href = url;
       else setError('No organization selected for this account.');
     } catch (e) {
@@ -62,7 +65,7 @@ export default function CalendarSyncPage() {
 
   async function disconnectGoogle() {
     try {
-      await apiFetch('/calendar/google/disconnect', { method: 'POST' });
+      await apiFetch(`/calendar/google/disconnect?organizationId=${selOrgId}`, { method: 'POST' });
       setGoogleStatus(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to disconnect');
@@ -72,7 +75,7 @@ export default function CalendarSyncPage() {
   async function syncNow() {
     setSyncingNow(true);
     try {
-      await apiFetch('/calendar/google/sync-now', { method: 'POST' });
+      await apiFetch(`/calendar/google/sync-now?organizationId=${selOrgId}`, { method: 'POST' });
       await loadGoogleStatus();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Sync failed');
@@ -208,6 +211,24 @@ export default function CalendarSyncPage() {
               calendar are pulled into Vixor automatically every ~10 minutes,
               no manual export needed. One-way: Google → Vixor.
             </p>
+
+            {orgs.length > 1 && (
+              <div style={{ marginBottom: 12 }}>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--ink-soft)', textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 6 }}>
+                  Organization
+                </label>
+                <select value={selOrgId ?? ''} onChange={e => setSelOrgId(Number(e.target.value))} style={{ width: '100%' }}>
+                  {orgs.map(o => (
+                    <option key={o.id} value={o.id}>{o.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {selOrgId && orgs.length > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginBottom: 12 }}>
+                For <strong>{orgs.find(o => o.id === selOrgId)?.name}</strong>'s calendar
+              </div>
+            )}
 
             {googleStatus?.connectedEmail ? (
               <>

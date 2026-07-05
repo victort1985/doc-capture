@@ -21,19 +21,21 @@ export class GoogleCalendarController {
   @Get('auth-url')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async getAuthUrl(@CurrentUser() user: RequestUser) {
-    if (user.organizationId == null) return { url: null };
-    const calendar = await this.calendarService.getOrCreateOrgCalendar(user.organizationId, user.id);
+  async getAuthUrl(@CurrentUser() user: RequestUser, @Query('organizationId') orgIdParam?: string) {
+    const orgId = orgIdParam ? parseInt(orgIdParam, 10) : user.organizationId;
+    if (orgId == null) return { url: null };
+    const calendar = await this.calendarService.getOrCreateOrgCalendar(orgId, user.id);
     return { url: this.googleCalendarService.getAuthUrl(calendar.id) };
   }
 
-  /** Whether a Google account is connected for the current org's calendar. */
+  /** Whether a Google account is connected for the given org's calendar. */
   @Get('status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async getStatus(@CurrentUser() user: RequestUser) {
-    if (user.organizationId == null) return { connectedEmail: null, lastSyncedAt: null };
-    const calendar = await this.calendarService.getOrCreateOrgCalendar(user.organizationId, user.id);
+  async getStatus(@CurrentUser() user: RequestUser, @Query('organizationId') orgIdParam?: string) {
+    const orgId = orgIdParam ? parseInt(orgIdParam, 10) : user.organizationId;
+    if (orgId == null) return { connectedEmail: null, lastSyncedAt: null };
+    const calendar = await this.calendarService.getOrCreateOrgCalendar(orgId, user.id);
     return { connectedEmail: calendar.googleConnectedEmail ?? null, lastSyncedAt: calendar.googleLastSyncedAt ?? null };
   }
 
@@ -54,9 +56,10 @@ export class GoogleCalendarController {
   @Post('disconnect')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async disconnect(@CurrentUser() user: RequestUser) {
-    if (user.organizationId == null) return { ok: false };
-    const calendar = await this.calendarService.getOrCreateOrgCalendar(user.organizationId, user.id);
+  async disconnect(@CurrentUser() user: RequestUser, @Query('organizationId') orgIdParam?: string) {
+    const orgId = orgIdParam ? parseInt(orgIdParam, 10) : user.organizationId;
+    if (orgId == null) return { ok: false };
+    const calendar = await this.calendarService.getOrCreateOrgCalendar(orgId, user.id);
     await this.googleCalendarService.disconnect(calendar.id);
     return { ok: true };
   }
@@ -64,9 +67,10 @@ export class GoogleCalendarController {
   @Post('sync-now')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  async syncNow(@CurrentUser() user: RequestUser) {
-    if (user.organizationId == null) return { imported: 0, updated: 0, removed: 0 };
-    const calendar = await this.calendarService.getOrCreateOrgCalendar(user.organizationId, user.id);
+  async syncNow(@CurrentUser() user: RequestUser, @Query('organizationId') orgIdParam?: string) {
+    const orgId = orgIdParam ? parseInt(orgIdParam, 10) : user.organizationId;
+    if (orgId == null) return { imported: 0, updated: 0, removed: 0 };
+    const calendar = await this.calendarService.getOrCreateOrgCalendar(orgId, user.id);
     return this.googleCalendarService.syncCalendar(calendar.id);
   }
 }
