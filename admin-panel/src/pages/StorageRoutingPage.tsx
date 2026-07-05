@@ -27,6 +27,23 @@ const DEFAULT_FORM = {
   photoSubfolderPattern: '{date}/{place}',
 };
 
+const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  delivery_note: 'Накладные',
+  recount: 'Документы переучета (Домашняя)',
+  transfer: 'Накладные перевода между складами',
+  fleet: 'Автопарк',
+  warehouse: 'Склад',
+};
+
+interface DocTypeSettings {
+  documentType: string;
+  storageConnection?: { id: number } | null;
+  pathPattern: string;
+  filenameTemplate: string;
+}
+
+interface TemplateVar { key: string; label: string; }
+
 export default function StorageRoutingPage() {
   const [users, setUsers] = useState<UserRow[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -34,6 +51,44 @@ export default function StorageRoutingPage() {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [docTypeSettings, setDocTypeSettings] = useState<Record<string, { storageConnectionId: string; pathPattern: string; filenameTemplate: string }>>({});
+  const [templateVars, setTemplateVars] = useState<TemplateVar[]>([]);
+  const [savedDocType, setSavedDocType] = useState<string | null>(null);
+
+  useEffect(() => {
+    apiFetch<DocTypeSettings[]>('/document-storage-settings').then((rows) => {
+      const map: typeof docTypeSettings = {};
+      rows.forEach((r) => {
+        map[r.documentType] = {
+          storageConnectionId: r.storageConnection?.id != null ? String(r.storageConnection.id) : '',
+          pathPattern: r.pathPattern,
+          filenameTemplate: r.filenameTemplate,
+        };
+      });
+      setDocTypeSettings(map);
+    }).catch((e) => setError(e.message));
+    apiFetch<TemplateVar[]>('/document-storage-settings/template-variables').then(setTemplateVars).catch(() => {});
+  }, []);
+
+  async function saveDocType(documentType: string) {
+    const s = docTypeSettings[documentType];
+    setError(null);
+    try {
+      await apiFetch(`/document-storage-settings/${documentType}`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          storageConnectionId: s.storageConnectionId ? parseInt(s.storageConnectionId, 10) : null,
+          pathPattern: s.pathPattern,
+          filenameTemplate: s.filenameTemplate,
+        }),
+      });
+      setSavedDocType(documentType);
+      setTimeout(() => setSavedDocType(null), 2000);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save document type settings');
+    }
+  }
 
   useEffect(() => {
     apiFetch<UserRow[]>('/users').then(setUsers).catch((e) => setError(e.message));
@@ -169,6 +224,73 @@ export default function StorageRoutingPage() {
           </div>
         </div>
       )}
+
+      {/* Per-document-type storage path + filename template settings */}
+      <div className="topbar" style={{ marginTop: 32 }}>
+        <span className="eyebrow">Document types</span>
+        <h1 className="page-title" style={{ fontSize: 22 }}>Save paths &amp; naming templates</h1>
+        <p style={{ color: 'var(--ink-soft)', marginTop: 8, marginBottom: 0 }}>
+          Where each document type is saved, and how its folder path and
+          filename are built from a template.
+        </p>
+      </div>
+
+      {templateVars.length > 0 && (
+        <div className="card" style={{ marginBottom: 20 }}>
+          <strong>Available variables</strong>
+          <ul style={{ marginTop: 8, marginBottom: 0, paddingInlineStart: 20 }}>
+            {templateVars.map((v) => (
+              <li key={v.key} style={{ marginBottom: 4 }}>
+                <code className="mono" style={{ background: 'var(--bg)', padding: '1px 6px', borderRadius: 4 }}>{'{' + v.key + '}'}</code>
+                {' — '}{v.label}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {Object.keys(DOCUMENT_TYPE_LABELS).map((type) => {
+        const s = docTypeSettings[type] ?? { storageConnectionId: '', pathPattern: '{location}/{date}', filenameTemplate: '{docType}-{number}' };
+        return (
+          <div className="card form-card" key={type} style={{ marginBottom: 16 }}>
+            <h3 style={{ marginTop: 0 }}>{DOCUMENT_TYPE_LABELS[type]}</h3>
+            <div className="form-grid">
+              <div>
+                <label>Storage connection</label>
+                <select
+                  value={s.storageConnectionId}
+                  onChange={(e) => setDocTypeSettings({ ...docTypeSettings, [type]: { ...s, storageConnectionId: e.target.value } })}
+                >
+                  <option value="">— none —</option>
+                  {connections.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.type})</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label>Folder path pattern</label>
+                <input
+                  className="mono"
+                  value={s.pathPattern}
+                  onChange={(e) => setDocTypeSettings({ ...docTypeSettings, [type]: { ...s, pathPattern: e.target.value } })}
+                />
+              </div>
+              <div>
+                <label>Filename template</label>
+                <input
+                  className="mono"
+                  value={s.filenameTemplate}
+                  onChange={(e) => setDocTypeSettings({ ...docTypeSettings, [type]: { ...s, filenameTemplate: e.target.value } })}
+                />
+              </div>
+            </div>
+            <div className="form-actions">
+              <button onClick={() => saveDocType(type)}><Save size={16} /> Save</button>
+              {savedDocType === type && <span className="stamp-badge on"><Check size={12} /> saved</span>}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -21,6 +21,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { StatsModule } from './modules/stats/stats.module';
 import { FleetModule } from './modules/fleet/fleet.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
+import { DocumentStorageSettingsModule } from './modules/document-storage-settings/document-storage-settings.module';
 import { ReportsModule } from './modules/reports/reports.module';
 import { DeliveryNotesModule } from './modules/delivery-notes/delivery-notes.module';
 
@@ -61,6 +62,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     StatsModule,
     FleetModule,
     WarehouseModule,
+    DocumentStorageSettingsModule,
     ReportsModule,
     DeliveryNotesModule,
   ],
