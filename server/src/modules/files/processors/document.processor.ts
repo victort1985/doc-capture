@@ -38,7 +38,10 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
 
   let trimmed = rotated;
   try {
-    trimmed = await sharp(rotated).trim().toBuffer();
+    const before = await sharp(rotated).metadata();
+    trimmed = await sharp(rotated).trim({ threshold: 35 }).toBuffer();
+    const after = await sharp(trimmed).metadata();
+    console.log(`[processDocument] Auto-trim: ${before.width}x${before.height} -> ${after.width}x${after.height}`);
   } catch (err) {
     // trim() throws if the whole image is one uniform colour (nothing
     // to trim) or on other edge cases — never let that block the upload,
