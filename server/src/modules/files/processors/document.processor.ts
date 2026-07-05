@@ -1,22 +1,28 @@
 import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
-import { runEdgeDetectionInWorker } from './document-edge-detection';
 
 /**
- * Document pipeline: auto-crop to the document's edges (if confidently
- * detected), normalize contrast for a "scanned" look, then wrap as a
+ * Document pipeline: auto-trim uniform background/margins around the
+ * document, normalize contrast for a "scanned" look, then wrap as a
  * single-page PDF.
  *
- * The auto-crop step was disabled for a while after a real production
- * incident: OpenCV.js's WASM init ran as a side effect of this module
- * being loaded at server bootstrap, pinning the server at 100% CPU
- * indefinitely before a single request even arrived. It's back on now,
- * but run through runEdgeDetectionInWorker() (see document-edge-detection.ts),
- * which isolates the actual detection work in a disposable worker_thread
- * with a hard, enforced timeout — if it hangs, the worker is forcibly
- * terminated and we just fall back to the uncropped photo, exactly like
- * the "no confident edges found" case. A single slow/bad upload can no
- * longer take the whole server down with it.
+ * An OpenCV.js-based approach (perspective-correcting the document like
+ * a dedicated scanner app) was tried twice and abandoned both times —
+ * see document-edge-detection.ts and edge-detection.worker.ts, kept
+ * only as dormant reference. First attempt: importing it pinned the
+ * server at 100% CPU indefinitely from boot, before a single request
+ * even arrived. Second attempt, after isolating it in a worker_thread
+ * with a hard enforced timeout so a hang could no longer take the
+ * server down: it still hung/timed out on real uploads every time,
+ * never once completing successfully. Two failures with the same
+ * library on this server is enough — it isn't worth another attempt.
+ *
+ * sharp's own `.trim()` (native libvips, no WASM) instead: it crops away
+ * uniform-colour borders/background around the document. It won't
+ * correct perspective on an angled photo the way OpenCV would have, but
+ * it reliably tightens the crop to the document's edges, which is what
+ * actually makes scanned photos look neat — and it has none of the
+ * stability risk.
  *
  * If the input is already a PDF (picked from the file manager rather than
  * the camera/gallery), it's passed through unchanged instead of being fed
@@ -30,29 +36,17 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
 
   const rotated = await sharp(buffer).rotate().toBuffer(); // respect EXIF orientation first
 
-  let cropSource = rotated;
+  let trimmed = rotated;
   try {
-    const { data: rgba, info } = await sharp(rotated)
-      .raw()
-      .ensureAlpha()
-      .toBuffer({ resolveWithObject: true });
-
-    const cropped = await runEdgeDetectionInWorker(rgba, info.width, info.height);
-
-    if (cropped) {
-      cropSource = await sharp(cropped.buffer, {
-        raw: { width: cropped.width, height: cropped.height, channels: 4 },
-      })
-        .png()
-        .toBuffer();
-    }
-    // cropped === null: no confidently-detected document edges (or the
-    // detector timed out/errored) — fall back to the uncropped photo.
+    trimmed = await sharp(rotated).trim().toBuffer();
   } catch (err) {
-    console.warn(`[processDocument] Edge-detection crop skipped: ${(err as Error)?.message ?? err}`);
+    // trim() throws if the whole image is one uniform colour (nothing
+    // to trim) or on other edge cases — never let that block the upload,
+    // just fall back to the untrimmed photo.
+    console.warn(`[processDocument] Auto-trim skipped: ${(err as Error)?.message ?? err}`);
   }
 
-  const normalized = await sharp(cropSource)
+  const normalized = await sharp(trimmed)
     .normalize() // stretch contrast — approximates a "scan" look
     .sharpen({ sigma: 1 })
     .toFormat('png')
