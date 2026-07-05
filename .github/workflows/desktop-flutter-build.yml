@@ -311,6 +311,20 @@ jobs:
           open('pubspec.yaml','w').write(c)
           print('pubspec OK')
           "
+          # firebase_core/firebase_messaging are stripped above (no Windows
+          # platform support) — any file importing them would fail to
+          # compile, so swap in no-op stubs here.
+          cat > lib/firebase_init.dart << 'DART'
+          Future<void> initFirebaseIfMobile() async {}
+          DART
+          cat > lib/services/push_notifications_service.dart << 'DART'
+          import 'api_service.dart';
+          class PushNotificationsService {
+            PushNotificationsService(ApiService api);
+            Future<void> initAndRegister() async {}
+            Future<void> unregister() async {}
+          }
+          DART
           cat > lib/services/biometric_service.dart << 'DART'
           class BiometricService {
             Future<bool> isAvailable() async => false;
