@@ -1,25 +1,22 @@
 import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
-
-// detectAndCropDocument (OpenCV.js-based edge detection) is intentionally
-// NOT called below right now — disabled after a real production
-// incident: the server sat at 100% CPU indefinitely (no incoming
-// requests even needed to trigger it, since the dependency was
-// statically imported at module-load time — now fixed to load lazily,
-// see document-edge-detection.ts) with no further log output, matching
-// instability with this exact library already seen in earlier sandbox
-// testing. A timeout around the call (Promise.race) only stops the
-// CALLER from waiting — it doesn't cancel whatever's actually hung
-// underneath, which is exactly how the runaway CPU happened in the
-// first place. Until this library's reliability on this server is
-// properly understood, every document upload just gets normalized
-// (no auto-crop) rather than risk repeating the outage on the very
-// first photo someone uploads. See document-edge-detection.ts for the
-// dormant implementation.
+import { runEdgeDetectionInWorker } from './document-edge-detection';
 
 /**
- * Document pipeline: normalize contrast for a "scanned" look, then wrap
- * as a single-page PDF.
+ * Document pipeline: auto-crop to the document's edges (if confidently
+ * detected), normalize contrast for a "scanned" look, then wrap as a
+ * single-page PDF.
+ *
+ * The auto-crop step was disabled for a while after a real production
+ * incident: OpenCV.js's WASM init ran as a side effect of this module
+ * being loaded at server bootstrap, pinning the server at 100% CPU
+ * indefinitely before a single request even arrived. It's back on now,
+ * but run through runEdgeDetectionInWorker() (see document-edge-detection.ts),
+ * which isolates the actual detection work in a disposable worker_thread
+ * with a hard, enforced timeout — if it hangs, the worker is forcibly
+ * terminated and we just fall back to the uncropped photo, exactly like
+ * the "no confident edges found" case. A single slow/bad upload can no
+ * longer take the whole server down with it.
  *
  * If the input is already a PDF (picked from the file manager rather than
  * the camera/gallery), it's passed through unchanged instead of being fed
@@ -33,7 +30,29 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
 
   const rotated = await sharp(buffer).rotate().toBuffer(); // respect EXIF orientation first
 
-  const normalized = await sharp(rotated)
+  let cropSource = rotated;
+  try {
+    const { data: rgba, info } = await sharp(rotated)
+      .raw()
+      .ensureAlpha()
+      .toBuffer({ resolveWithObject: true });
+
+    const cropped = await runEdgeDetectionInWorker(rgba, info.width, info.height);
+
+    if (cropped) {
+      cropSource = await sharp(cropped.buffer, {
+        raw: { width: cropped.width, height: cropped.height, channels: 4 },
+      })
+        .png()
+        .toBuffer();
+    }
+    // cropped === null: no confidently-detected document edges (or the
+    // detector timed out/errored) — fall back to the uncropped photo.
+  } catch (err) {
+    console.warn(`[processDocument] Edge-detection crop skipped: ${(err as Error)?.message ?? err}`);
+  }
+
+  const normalized = await sharp(cropSource)
     .normalize() // stretch contrast — approximates a "scan" look
     .sharpen({ sigma: 1 })
     .toFormat('png')

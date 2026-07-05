@@ -55,16 +55,14 @@ export interface DetectedDocument {
 }
 
 /**
- * Detects the largest 4-sided contour in a raw RGBA image and performs
- * a perspective transform ("flattens" the photographed document into a
- * straight-on rectangular crop) — equivalent to what dedicated document
- * scanner apps do. Returns null if no confident quadrilateral is found
- * (e.g. the document already fills the frame, busy background, poor
- * contrast), so the caller can fall back to using the original image
- * unmodified rather than risk a bad/garbage crop.
+ * Detects the largest 4-sided contour in a raw RGBA image and performs a
+ * perspective transform ("flattens" the photo into a straight-on crop).
+ * Returns null if no confident quadrilateral is found. Input must be raw
+ * RGBA pixel data (sharp's `.raw().ensureAlpha()`).
  *
- * Input must be raw RGBA pixel data (use sharp's `.raw().ensureAlpha()`
- * to produce it) — this function does no image decoding itself.
+ * Do not call this directly from request-handling code — use
+ * runEdgeDetectionInWorker() below, which isolates it in a worker thread
+ * with an enforced timeout. This function itself has no such protection.
  */
 export async function detectAndCropDocument(
   rgba: Buffer,
@@ -177,4 +175,78 @@ export async function detectAndCropDocument(
     hierarchy.delete();
     if (bestQuad) bestQuad.delete();
   }
+}
+
+const DEFAULT_TIMEOUT_MS = 15000; // headroom above getCv()'s internal 10s WASM-init cap
+
+/**
+ * Safe entry point for request-handling code: runs detectAndCropDocument
+ * in a separate worker_thread with a hard, enforced timeout. If it
+ * doesn't respond in time, the worker is forcibly terminated — reclaiming
+ * its CPU — and this resolves to null so the caller falls back to the
+ * uncropped image, exactly like the "no confident quad found" case.
+ *
+ * This is the whole point of the isolation: a Promise.race timeout in
+ * the main process only stops the *caller* from waiting; it doesn't
+ * cancel whatever's hung underneath. That gap is what caused a real
+ * production incident (server pinned at 100% CPU indefinitely). Worker
+ * termination actually kills the runaway work.
+ */
+export async function runEdgeDetectionInWorker(
+  rgba: Buffer,
+  width: number,
+  height: number,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
+): Promise<DetectedDocument | null> {
+  // Lazy import so a worker_threads issue can't affect anything that
+  // merely imports this module without ever calling this function.
+  const { Worker } = await import('worker_threads');
+  const path = await import('path');
+
+  return new Promise((resolve) => {
+    const workerPath = path.join(__dirname, 'edge-detection.worker.js');
+    let settled = false;
+    let worker: InstanceType<typeof Worker>;
+
+    const finish = (value: DetectedDocument | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      worker?.terminate().catch(() => {});
+      resolve(value);
+    };
+
+    const timer = setTimeout(() => {
+      console.warn(`[document-edge-detection] Timed out after ${timeoutMs}ms — terminating worker, falling back to uncropped image.`);
+      finish(null);
+    }, timeoutMs);
+
+    try {
+      worker = new Worker(workerPath, { workerData: { rgba, width, height } });
+    } catch (err: any) {
+      console.warn(`[document-edge-detection] Failed to start worker: ${err?.message ?? err}`);
+      finish(null);
+      return;
+    }
+
+    worker.once('message', (msg: { ok: boolean; result?: DetectedDocument | null; error?: string }) => {
+      if (!msg.ok) {
+        console.warn(`[document-edge-detection] Worker reported an error: ${msg.error}`);
+        finish(null);
+      } else {
+        finish(msg.result ?? null);
+      }
+    });
+
+    worker.once('error', (err) => {
+      console.warn(`[document-edge-detection] Worker crashed: ${err?.message ?? err}`);
+      finish(null);
+    });
+
+    worker.once('exit', () => {
+      // If it exited without ever posting a message (crash/kill), make
+      // sure the promise still resolves instead of hanging forever.
+      finish(null);
+    });
+  });
 }
