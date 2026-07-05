@@ -1,27 +1,21 @@
 import sharp from 'sharp';
 
-const MAX_BYTES = 1 * 1024 * 1024; // 1 MB per spec
+const MAX_BYTES = 5 * 1024 * 1024; // 5 MB per spec — photos never use the document scanner module
 
 /**
- * Photo pipeline: light/contrast enhancement, then iteratively reduce JPEG
- * quality (and if needed, dimensions) until the output is under MAX_BYTES.
+ * Photo pipeline: light/contrast enhancement, then iteratively reduce
+ * JPEG quality until the output is under MAX_BYTES. Dimensions and
+ * aspect ratio are always kept exactly as in the original — quality is
+ * the only knob turned here, never a resize.
  */
 export async function processPhoto(buffer: Buffer): Promise<Buffer> {
-  let pipeline = sharp(buffer).rotate().normalize();
-  let quality = 85;
+  const pipeline = sharp(buffer).rotate().normalize();
+  let quality = 90;
   let output = await pipeline.clone().jpeg({ quality }).toBuffer();
 
-  while (output.length > MAX_BYTES && quality > 30) {
+  while (output.length > MAX_BYTES && quality > 20) {
     quality -= 10;
     output = await pipeline.clone().jpeg({ quality }).toBuffer();
-  }
-
-  if (output.length > MAX_BYTES) {
-    // Still too big — scale down dimensions as a last resort.
-    const metadata = await sharp(buffer).metadata();
-    const scale = Math.sqrt(MAX_BYTES / output.length);
-    const width = Math.round((metadata.width || 1600) * scale);
-    output = await pipeline.clone().resize({ width }).jpeg({ quality: 70 }).toBuffer();
   }
 
   return output;
