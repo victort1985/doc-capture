@@ -42,7 +42,7 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
     corrected = await sharp(cropSource).greyscale().normalize().toBuffer();
   }
 
-  const enhanced = sharp(corrected).sharpen({ sigma: 1 });
+  const enhanced = await fitToA4(sharp(corrected).sharpen({ sigma: 1 }));
 
   let quality = 90;
   let jpegBuffer = await enhanced.clone().jpeg({ quality }).toBuffer();
@@ -55,6 +55,26 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
   }
 
   return pdfBytes;
+}
+
+const A4_RATIO = Math.SQRT2; // 297mm / 210mm
+const A4_TARGET_WIDTH = 1700; // ~205 DPI at A4 width — plenty for a document photo
+
+/**
+ * Guarantees the final page is A4-proportioned no matter what came in —
+ * covers both the normal case (scanAndCropDocument already warped to A4,
+ * so this is a no-op resize) and the fallback case (no confident crop
+ * found, so the source could be any aspect ratio). Fits the content
+ * inside the A4 canvas without stretching/distorting it — if the source
+ * isn't quite A4-shaped, it's letterboxed with white bars rather than
+ * warped to fill the frame.
+ */
+async function fitToA4(pipeline: sharp.Sharp): Promise<sharp.Sharp> {
+  const targetHeight = Math.round(A4_TARGET_WIDTH * A4_RATIO);
+  const buffer = await pipeline
+    .resize(A4_TARGET_WIDTH, targetHeight, { fit: 'contain', background: { r: 255, g: 255, b: 255 } })
+    .toBuffer();
+  return sharp(buffer);
 }
 
 async function buildSinglePageImagePdf(jpegBuffer: Buffer): Promise<Buffer> {

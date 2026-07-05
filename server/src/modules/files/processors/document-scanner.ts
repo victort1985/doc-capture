@@ -352,8 +352,21 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
   let quad = smallCorners.map((p) => ({ x: p.x / scale, y: p.y / scale }));
   quad = shrinkQuadInward(quad, 0.012); // trim ~1.2% inward — corner detection tends to catch a thin sliver of background/shadow right at the edge
   const [tl, tr, br, bl] = quad;
-  const outWidth = Math.round(Math.max(Math.hypot(tr.x - tl.x, tr.y - tl.y), Math.hypot(br.x - bl.x, br.y - bl.y)));
-  const outHeight = Math.round(Math.max(Math.hypot(bl.x - tl.x, bl.y - tl.y), Math.hypot(br.x - tr.x, br.y - tr.y)));
+  const A4_RATIO = Math.SQRT2; // 297mm / 210mm
+
+  let outWidth = Math.round(Math.max(Math.hypot(tr.x - tl.x, tr.y - tl.y), Math.hypot(br.x - bl.x, br.y - bl.y)));
+  let outHeight = Math.round(Math.max(Math.hypot(bl.x - tl.x, bl.y - tl.y), Math.hypot(br.x - tr.x, br.y - tr.y)));
+
+  // The documents this scans are standard A4 pages — any deviation from
+  // that ratio is corner-detection imprecision, not an actual differently
+  // shaped document. Keep whichever dimension came out larger (the more
+  // reliable measurement, since it's less affected by a slightly-off
+  // corner) and derive the other from the A4 ratio.
+  if (outHeight >= outWidth) {
+    outHeight = Math.round(outWidth * A4_RATIO);
+  } else {
+    outWidth = Math.round(outHeight * A4_RATIO);
+  }
 
   const warped = warpPerspective(rgba, width, height, quad, outWidth, outHeight);
   return sharp(warped, { raw: { width: outWidth, height: outHeight, channels: 4 } }).png().toBuffer();
