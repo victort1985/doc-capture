@@ -71,7 +71,46 @@ function boxBlur(gray: Buffer, width: number, height: number, radius: number, pa
   return src as Uint8ClampedArray;
 }
 
-function findCorners(binary: Uint8Array, width: number, height: number): [Point, Point, Point, Point] | null {
+/** Isolates the single largest connected blob of "bright" pixels,
+ * zeroing out everything else. Real photos never have a perfectly
+ * uniform dark background — camera sensor noise and JPEG compression
+ * artifacts reliably produce scattered isolated bright pixels/blocks in
+ * shadowed areas, and without this step those noise specks can get
+ * picked as "extreme corner" points, producing a wildly wrong quad. */
+function largestConnectedComponent(binary: Uint8Array, width: number, height: number): Uint8Array {
+  const n = width * height;
+  const visited = new Uint8Array(n);
+  const stack = new Int32Array(n);
+  let bestPixels: number[] | null = null;
+
+  for (let start = 0; start < n; start++) {
+    if (binary[start] === 0 || visited[start]) continue;
+
+    let sp = 0;
+    stack[sp++] = start;
+    visited[start] = 1;
+    const pixels: number[] = [];
+
+    while (sp > 0) {
+      const idx = stack[--sp];
+      pixels.push(idx);
+      const x = idx % width;
+      if (x > 0 && binary[idx - 1] && !visited[idx - 1]) { visited[idx - 1] = 1; stack[sp++] = idx - 1; }
+      if (x < width - 1 && binary[idx + 1] && !visited[idx + 1]) { visited[idx + 1] = 1; stack[sp++] = idx + 1; }
+      if (idx - width >= 0 && binary[idx - width] && !visited[idx - width]) { visited[idx - width] = 1; stack[sp++] = idx - width; }
+      if (idx + width < n && binary[idx + width] && !visited[idx + width]) { visited[idx + width] = 1; stack[sp++] = idx + width; }
+    }
+
+    if (!bestPixels || pixels.length > bestPixels.length) bestPixels = pixels;
+  }
+
+  const out = new Uint8Array(n);
+  if (bestPixels) for (const idx of bestPixels) out[idx] = 1;
+  return out;
+}
+
+function findCorners(binaryIn: Uint8Array, width: number, height: number): [Point, Point, Point, Point] | null {
+  const binary = largestConnectedComponent(binaryIn, width, height);
   let minSum = Infinity, maxSum = -Infinity, minDiff = Infinity, maxDiff = -Infinity;
   let tl: Point | null = null, br: Point | null = null, tr: Point | null = null, bl: Point | null = null;
   let brightCount = 0;
@@ -89,7 +128,7 @@ function findCorners(binary: Uint8Array, width: number, height: number): [Point,
   }
 
   const fraction = brightCount / (width * height);
-  if (fraction < 0.05 || fraction > 0.97 || !tl || !tr || !br || !bl) return null;
+  if (fraction < 0.03 || fraction > 0.97 || !tl || !tr || !br || !bl) return null;
   return [tl, tr, br, bl];
 }
 
@@ -171,7 +210,7 @@ function shrinkQuadInward(quad: Point[], fraction: number): Point[] {
 /** Percentile-based contrast stretch: maps the `lowPct`-th and
  * `(100-highPct)`-th brightness percentiles to 0/255. More robust than a
  * plain min/max stretch, which a single outlier pixel can throw off. */
-function stretchContrast(gray: Uint8Array | Buffer, lowPct: number, highPct: number): Buffer {
+function stretchContrast(gray: Uint8ClampedArray | Uint8Array | Buffer, lowPct: number, highPct: number): Buffer {
   const hist = new Array(256).fill(0);
   for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
   const total = gray.length;
@@ -226,12 +265,18 @@ export async function correctDocumentLighting(imageBuffer: Buffer): Promise<Buff
 
   const flattened = Buffer.alloc(gray.length);
   for (let i = 0; i < gray.length; i++) {
-    const bg = Math.max(background[i], 1);
-    const v = (gray[i] / bg) * 235; // 235, not 255: leaves a little headroom before the final stretch
-    flattened[i] = Math.max(0, Math.min(255, Math.round(v)));
+    const bg = Math.max(background[i], 30); // floor: dividing by a near-zero background (dark/noisy
+                                             // regions) would otherwise amplify per-pixel noise catastrophically
+    const ratio = Math.min(gray[i] / bg, 1.4); // clamp: a genuine document's ink/paper ratio never needs more than this
+    flattened[i] = Math.max(0, Math.min(255, Math.round(ratio * 168)));
   }
 
-  const stretched = stretchContrast(flattened, 2, 2);
+  // Light smoothing pass to knock down whatever speckle noise the
+  // division still amplified, before the final contrast stretch makes
+  // it maximally visible as pure black/white speckling.
+  const smoothed = boxBlur(flattened, width, height, 1, 1);
+
+  const stretched = stretchContrast(smoothed, 2, 2);
   return sharp(stretched, { raw: { width, height, channels: 1 } }).png().toBuffer();
 }
 
