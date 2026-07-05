@@ -40,7 +40,7 @@ function otsuThreshold(gray: Uint8ClampedArray | Buffer): number {
   return threshold;
 }
 
-function boxBlur(gray: Buffer, width: number, height: number, radius: number, passes: number): Uint8ClampedArray {
+function boxBlur(gray: Buffer | Uint8ClampedArray, width: number, height: number, radius: number, passes: number): Uint8ClampedArray {
   let src: Uint8ClampedArray | Buffer = gray;
   for (let p = 0; p < passes; p++) {
     const tmp = new Uint8ClampedArray(src.length);
@@ -210,6 +210,41 @@ function shrinkQuadInward(quad: Point[], fraction: number): Point[] {
 /** Percentile-based contrast stretch: maps the `lowPct`-th and
  * `(100-highPct)`-th brightness percentiles to 0/255. More robust than a
  * plain min/max stretch, which a single outlier pixel can throw off. */
+/** Min-filter (morphological erosion): each pixel becomes the darkest
+ * value in its neighborhood. Thickens and darkens thin/faint ink
+ * strokes — exactly what's needed when a printed original has partial
+ * ink coverage (worn toner, dot-matrix-style fonts, an average phone
+ * camera not resolving fine strokes at full density) and simply
+ * stretching contrast isn't enough to make text read as solid black. */
+function erode(gray: Uint8ClampedArray | Buffer, width: number, height: number, radius: number): Uint8ClampedArray {
+  const tmp = new Uint8ClampedArray(gray.length);
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      let m = 255;
+      for (let dx = -radius; dx <= radius; dx++) {
+        const xx = Math.min(width - 1, Math.max(0, x + dx));
+        const v = gray[row + xx];
+        if (v < m) m = v;
+      }
+      tmp[row + x] = m;
+    }
+  }
+  const out = new Uint8ClampedArray(gray.length);
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      let m = 255;
+      for (let dy = -radius; dy <= radius; dy++) {
+        const yy = Math.min(height - 1, Math.max(0, y + dy));
+        const v = tmp[yy * width + x];
+        if (v < m) m = v;
+      }
+      out[y * width + x] = m;
+    }
+  }
+  return out;
+}
+
 function stretchContrast(gray: Uint8ClampedArray | Uint8Array | Buffer, lowPct: number, highPct: number): Buffer {
   const hist = new Array(256).fill(0);
   for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
@@ -271,12 +306,20 @@ export async function correctDocumentLighting(imageBuffer: Buffer): Promise<Buff
     flattened[i] = Math.max(0, Math.min(255, Math.round(ratio * 168)));
   }
 
-  // Light smoothing pass to knock down whatever speckle noise the
-  // division still amplified, before the final contrast stretch makes
-  // it maximally visible as pure black/white speckling.
-  const smoothed = boxBlur(flattened, width, height, 1, 1);
+  // Bolden/darken faint or thin ink strokes (worn print, dot-matrix-style
+  // fonts, or just a camera not resolving fine strokes at full density)
+  // before deciding what's "text" vs "paper" — otherwise contrast
+  // stretching alone leaves partially-inked pixels a soft gray instead
+  // of a crisp black.
+  const eroded = erode(flattened, width, height, 1);
 
-  const stretched = stretchContrast(smoothed, 2, 2);
+  // Light smoothing pass to knock down whatever speckle noise the
+  // division still amplified, and to soften the harder edges erosion
+  // just introduced, before the final contrast stretch makes it all
+  // maximally visible as pure black/white.
+  const smoothed = boxBlur(eroded, width, height, 1, 1);
+
+  const stretched = stretchContrast(smoothed, 6, 12);
   return sharp(stretched, { raw: { width, height, channels: 1 } }).png().toBuffer();
 }
 
