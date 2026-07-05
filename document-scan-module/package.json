@@ -1,0 +1,13 @@
+{
+  "name": "document-scan-module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone, isolated experimentation module for document edge detection + perspective correction. Not wired into the live server — test via CLI on real photos first, integrate later once it's proven reliable.",
+  "main": "scan.js",
+  "scripts": {
+    "scan": "node scan.js"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}

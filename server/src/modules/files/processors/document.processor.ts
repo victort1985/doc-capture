@@ -2,27 +2,15 @@ import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
 
 /**
- * Document pipeline: auto-trim uniform background/margins around the
- * document, normalize contrast for a "scanned" look, then wrap as a
- * single-page PDF.
+ * Document pipeline: normalize contrast for a "scanned" look, then wrap
+ * as a single-page PDF.
  *
- * An OpenCV.js-based approach (perspective-correcting the document like
- * a dedicated scanner app) was tried twice and abandoned both times —
- * see document-edge-detection.ts and edge-detection.worker.ts, kept
- * only as dormant reference. First attempt: importing it pinned the
- * server at 100% CPU indefinitely from boot, before a single request
- * even arrived. Second attempt, after isolating it in a worker_thread
- * with a hard enforced timeout so a hang could no longer take the
- * server down: it still hung/timed out on real uploads every time,
- * never once completing successfully. Two failures with the same
- * library on this server is enough — it isn't worth another attempt.
- *
- * sharp's own `.trim()` (native libvips, no WASM) instead: it crops away
- * uniform-colour borders/background around the document. It won't
- * correct perspective on an angled photo the way OpenCV would have, but
- * it reliably tightens the crop to the document's edges, which is what
- * actually makes scanned photos look neat — and it has none of the
- * stability risk.
+ * Auto-cropping/perspective-correction is NOT done here right now — see
+ * /document-scan-module at the repo root for an isolated, in-progress
+ * pure-JavaScript rewrite (zero WASM/native deps, unlike the abandoned
+ * OpenCV.js attempts — see that module's README for the full history).
+ * It'll get wired in here deliberately once it's been tested against a
+ * real batch of phone photos, not before.
  *
  * If the input is already a PDF (picked from the file manager rather than
  * the camera/gallery), it's passed through unchanged instead of being fed
@@ -34,23 +22,9 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
     return buffer;
   }
 
-  const rotated = await sharp(buffer).rotate().toBuffer(); // respect EXIF orientation first
+  const rotated = await sharp(buffer).rotate().toBuffer(); // respect EXIF orientation
 
-  let trimmed = rotated;
-  try {
-    const before = await sharp(rotated).metadata();
-    const corner = await sharp(rotated).extract({ left: 0, top: 0, width: 1, height: 1 }).raw().toBuffer();
-    trimmed = await sharp(rotated).trim({ threshold: 60 }).toBuffer();
-    const after = await sharp(trimmed).metadata();
-    console.log(`[processDocument] Auto-trim: ${before.width}x${before.height} -> ${after.width}x${after.height}, corner pixel rgb=[${corner.join(',')}]`);
-  } catch (err) {
-    // trim() throws if the whole image is one uniform colour (nothing
-    // to trim) or on other edge cases — never let that block the upload,
-    // just fall back to the untrimmed photo.
-    console.warn(`[processDocument] Auto-trim skipped: ${(err as Error)?.message ?? err}`);
-  }
-
-  const normalized = await sharp(trimmed)
+  const normalized = await sharp(rotated)
     .normalize() // stretch contrast — approximates a "scan" look
     .sharpen({ sigma: 1 })
     .toFormat('png')
