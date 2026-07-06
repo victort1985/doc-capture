@@ -185,24 +185,38 @@ function findCorners(binaryIn: Uint8Array, width: number, height: number): [Poin
   const openRadius = Math.max(6, Math.round(Math.min(width, height) * 0.05));
   const opened = binaryDilate(binaryErode(binaryIn, width, height, openRadius), width, height, openRadius);
   const binary = largestConnectedComponent(opened, width, height);
-  let minSum = Infinity, maxSum = -Infinity, minDiff = Infinity, maxDiff = -Infinity;
-  let tl: Point | null = null, br: Point | null = null, tr: Point | null = null, bl: Point | null = null;
-  let brightCount = 0;
 
+  const points: Point[] = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      if (binary[y * width + x] === 0) continue;
-      brightCount++;
-      const s = x + y, d = x - y;
-      if (s < minSum) { minSum = s; tl = { x, y }; }
-      if (s > maxSum) { maxSum = s; br = { x, y }; }
-      if (d > maxDiff) { maxDiff = d; tr = { x, y }; }
-      if (d < minDiff) { minDiff = d; bl = { x, y }; }
+      if (binary[y * width + x]) points.push({ x, y });
     }
   }
 
-  const fraction = brightCount / (width * height);
-  if (fraction < 0.03 || fraction > 0.97 || !tl || !tr || !br || !bl) return null;
+  const fraction = points.length / (width * height);
+  if (fraction < 0.03 || fraction > 0.97 || points.length === 0) return null;
+
+  // A single outlier boundary pixel (a JPEG-compression fringe, a slight
+  // local bulge/waviness in an otherwise-straight edge) can otherwise
+  // single-handedly become "the corner" if we just take the absolute
+  // extreme of x+y / x-y — a real failure mode: one such pixel pulled a
+  // detected corner well into a background region a percentile-based
+  // pick would have ignored as noise. Sorting and taking a point near
+  // (not exactly at) each extreme is robust to that.
+  const pct = 0.008; // ~0.8% trim from each extreme
+  const nth = (arr: Point[], fromStart: boolean) => {
+    const idx = fromStart ? Math.floor(arr.length * pct) : Math.ceil(arr.length * (1 - pct)) - 1;
+    return arr[Math.max(0, Math.min(arr.length - 1, idx))];
+  };
+
+  const bySum = [...points].sort((a, b) => (a.x + a.y) - (b.x + b.y));
+  const byDiff = [...points].sort((a, b) => (a.x - a.y) - (b.x - b.y));
+
+  const tl = nth(bySum, true);
+  const br = nth(bySum, false);
+  const bl = nth(byDiff, true);
+  const tr = nth(byDiff, false);
+
   return [tl, tr, br, bl];
 }
 
@@ -471,7 +485,7 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
   if (!smallCorners) return null;
 
   let quad = smallCorners.map((p) => ({ x: p.x / scale, y: p.y / scale }));
-  quad = shrinkQuadInward(quad, 0.012); // trim ~1.2% inward — corner detection tends to catch a thin sliver of background/shadow right at the edge
+  quad = shrinkQuadInward(quad, 0.015); // small trim for ordinary anti-aliasing/blur-edge softness — outlier robustness is now handled by percentile-based corner selection in findCorners
   const [tl, tr, br, bl] = quad;
   const A4_RATIO = Math.SQRT2; // 297mm / 210mm
 
