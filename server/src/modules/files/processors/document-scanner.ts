@@ -357,15 +357,22 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
   let outWidth = Math.round(Math.max(Math.hypot(tr.x - tl.x, tr.y - tl.y), Math.hypot(br.x - bl.x, br.y - bl.y)));
   let outHeight = Math.round(Math.max(Math.hypot(bl.x - tl.x, bl.y - tl.y), Math.hypot(br.x - tr.x, br.y - tr.y)));
 
-  // The documents this scans are standard A4 pages — any deviation from
-  // that ratio is corner-detection imprecision, not an actual differently
-  // shaped document. Keep whichever dimension came out larger (the more
-  // reliable measurement, since it's less affected by a slightly-off
-  // corner) and derive the other from the A4 ratio.
-  if (outHeight >= outWidth) {
-    outHeight = Math.round(outWidth * A4_RATIO);
-  } else {
-    outWidth = Math.round(outHeight * A4_RATIO);
+  // Most things scanned here are standard A4 pages, and minor corner-
+  // detection imprecision can knock the measured ratio slightly off —
+  // snapping that back to exact A4 is a fix, not a distortion. But not
+  // everything photographed is A4 (product boxes, labels, anything
+  // narrower/wider than a page): forcing THOSE to A4 would stretch or
+  // squash the content and make text unreadable. Only snap when the
+  // natural ratio is already close (within 12%); otherwise trust the
+  // measurement and leave the shape as detected.
+  const naturalRatio = Math.max(outWidth, outHeight) / Math.min(outWidth, outHeight);
+  const closeToA4 = Math.abs(naturalRatio - A4_RATIO) / A4_RATIO < 0.12;
+  if (closeToA4) {
+    if (outHeight >= outWidth) {
+      outHeight = Math.round(outWidth * A4_RATIO);
+    } else {
+      outWidth = Math.round(outHeight * A4_RATIO);
+    }
   }
 
   const warped = warpPerspective(rgba, width, height, quad, outWidth, outHeight);
