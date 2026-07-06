@@ -30,6 +30,7 @@
   "uploadButton": "Загрузить",
   "uploadInProgress": "Загрузка…",
   "uploadSuccess": "Файлы успешно загружены",
+  "documentPreviewTitle": "Предпросмотр документа",
   "uploadError": "Ошибка загрузки, попробуйте ещё раз",
   "uploadMissingFields": "Добавьте хотя бы одно фото и заполните поле «Место» перед загрузкой",
   "historyTitle": "История",

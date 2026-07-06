@@ -30,6 +30,7 @@
   "uploadButton": "Upload",
   "uploadInProgress": "Uploading…",
   "uploadSuccess": "Files uploaded successfully",
+  "documentPreviewTitle": "Document preview",
   "uploadError": "Upload failed, please try again",
   "uploadMissingFields": "Add at least one photo and fill in the Place field before uploading",
   "historyTitle": "History",

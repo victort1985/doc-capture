@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
@@ -43,4 +44,6 @@ class FileService {
     final response = await _api.postFormData('/files/upload', formData);
     return response as List<dynamic>;
   }
+
+  Future<Uint8List> downloadFile(int id) => _api.getBytes('/files/$id/download');
 }

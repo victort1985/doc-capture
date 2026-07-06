@@ -12,6 +12,7 @@ import 'history_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/search_picker_field.dart';
 import '../widgets/org_switcher_bar.dart';
+import 'document_preview_screen.dart';
 
 /// Everything that existed before the Calls feature (upload / history /
 /// settings) now lives together under the "Переучет" (Inventory) tab —
@@ -79,13 +80,34 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
 
     setState(() { _uploading = true; _statusMessage = l10n.uploadInProgress; _statusIsError = false; });
     try {
-      await fileService.uploadBatch(
+      final results = await fileService.uploadBatch(
         place: _placeController.text.trim(),
         docType: _docType,
         files: _selectedFiles,
       );
       setState(() { _statusMessage = l10n.uploadSuccess; _selectedFiles = []; _statusIsError = false; });
       _placeController.clear();
+
+      // Preview only makes sense for generated PDFs — photos are just
+      // stored as-is, nothing to check before moving on.
+      if (_docType == 'document' && mounted) {
+        for (final r in results) {
+          final map = r as Map<String, dynamic>;
+          if (map['type'] != 'document') continue;
+          final id = map['id'] as int;
+          final name = map['generatedName'] as String? ?? 'document.pdf';
+          try {
+            final bytes = await fileService.downloadFile(id);
+            if (!mounted) return;
+            await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => DocumentPreviewScreen(pdfBytes: bytes, filename: name),
+            ));
+          } catch (_) {
+            // Upload itself already succeeded — a preview-fetch hiccup
+            // shouldn't be reported as an upload failure.
+          }
+        }
+      }
     } catch (_) {
       setState(() { _statusMessage = l10n.uploadError; _statusIsError = true; });
     } finally {

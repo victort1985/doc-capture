@@ -30,6 +30,7 @@
   "uploadButton": "העלה",
   "uploadInProgress": "מעלה…",
   "uploadSuccess": "הקבצים הועלו בהצלחה",
+  "documentPreviewTitle": "תצוגה מקדימה של המסמך",
   "uploadError": "ההעלאה נכשלה, נסה שוב",
   "uploadMissingFields": "הוסף לפחות תמונה אחת ומלא את שדה המקום לפני ההעלאה",
   "historyTitle": "היסטוריה",
