@@ -333,7 +333,7 @@ function stretchContrast(gray: Uint8ClampedArray | Uint8Array | Buffer, lowPct: 
   let hi = 255;
   for (let v = 255; v >= 0; v--) {
     cum += hist[v];
-    if ((cum / total) * 100 >= 100 - highPct) { hi = v; break; }
+    if ((cum / total) * 100 >= highPct) { hi = v; break; }
   }
 
   const range = Math.max(1, hi - lo);
@@ -420,12 +420,23 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
   // can have almost the same grayscale luminance as an ordinary wood
   // table, so no amount of blurring separates them on brightness alone.
   // Saturation is what actually tells them apart.
+  //
+  // But saturation alone is too permissive — a dark, saturated
+  // background (a purple/blue plastic folder under the document, a
+  // dark binder cover) would qualify too, and did in a real case.
+  // Gating on max(r,g,b) doesn't actually fix that: a saturated dark
+  // colour like (90,30,110) still has a max channel of 110, deceptively
+  // high even though it reads as dark. Perceptual luminance is what
+  // actually distinguishes a legible printed banner (still light enough
+  // to read) from a dark saturated background.
   const rawSmall = new Uint8ClampedArray(smallW * smallH);
   for (let i = 0; i < rawSmall.length; i++) {
     const r = rgbSmall[i * 3], g = rgbSmall[i * 3 + 1], b = rgbSmall[i * 3 + 2];
     const value = Math.max(r, g, b);
     const saturation = value - Math.min(r, g, b);
-    rawSmall[i] = Math.max(value, Math.min(255, saturation * 2.2));
+    const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+    const saturationBoost = luminance > 115 ? Math.min(255, saturation * 2.2) : 0;
+    rawSmall[i] = Math.max(value, saturationBoost);
   }
 
   // Stretch contrast before thresholding — a dim/underexposed photo (a
