@@ -412,8 +412,26 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
 
   const scale = Math.min(1, 900 / Math.max(width, height));
   const smallW = Math.round(width * scale), smallH = Math.round(height * scale);
-  const small = await sharp(imageBuffer).resize(smallW, smallH).greyscale().raw().toBuffer();
+  const rgbSmall = await sharp(imageBuffer).resize(smallW, smallH).removeAlpha().raw().toBuffer();
 
+  // A pixel reads as "part of the document" if it's either bright
+  // (plain white paper) OR vividly coloured (a printed banner/logo) —
+  // checking brightness alone isn't enough: a saturated orange banner
+  // can have almost the same grayscale luminance as an ordinary wood
+  // table, so no amount of blurring separates them on brightness alone.
+  // Saturation is what actually tells them apart.
+  const small = new Uint8ClampedArray(smallW * smallH);
+  for (let i = 0; i < small.length; i++) {
+    const r = rgbSmall[i * 3], g = rgbSmall[i * 3 + 1], b = rgbSmall[i * 3 + 2];
+    const value = Math.max(r, g, b);
+    const saturation = value - Math.min(r, g, b);
+    small[i] = Math.max(value, Math.min(255, saturation * 2.2));
+  }
+
+  // Blur before thresholding — not just to denoise, but so that fine
+  // internal content (dense small text, a QR code) gets smoothed into
+  // the surrounding page brightness instead of reading as a separate,
+  // darker "non-document" region.
   const blurred = boxBlur(small, smallW, smallH, 6, 3);
   const threshold = otsuThreshold(blurred);
 
@@ -425,11 +443,6 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
 
   let quad = smallCorners.map((p) => ({ x: p.x / scale, y: p.y / scale }));
   quad = shrinkQuadInward(quad, 0.012); // trim ~1.2% inward — corner detection tends to catch a thin sliver of background/shadow right at the edge
-  {
-    const [dtl, dtr] = quad;
-    const angleDeg = (Math.atan2(dtr.y - dtl.y, dtr.x - dtl.x) * 180) / Math.PI;
-    console.log(`[DEBUG] detected top-edge angle: ${angleDeg.toFixed(2)}°`);
-  }
   const [tl, tr, br, bl] = quad;
   const A4_RATIO = Math.SQRT2; // 297mm / 210mm
 
