@@ -25,20 +25,34 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
   const rotated = await sharp(buffer).rotate().toBuffer(); // respect EXIF orientation first
 
   let cropSource = rotated;
+  let cropSucceeded = false;
   try {
     const cropped = await scanAndCropDocument(rotated);
-    if (cropped) cropSource = cropped;
+    if (cropped) {
+      cropSource = cropped;
+      cropSucceeded = true;
+    }
     // null: no confidently-detected document edges — fall back to the
     // uncropped, EXIF-rotated photo, same as before this feature existed.
   } catch (err) {
     console.warn(`[processDocument] Auto-crop skipped: ${(err as Error)?.message ?? err}`);
   }
+  console.log(`[processDocument] crop ${cropSucceeded ? 'succeeded' : 'FAILED — using gentle fallback correction'}`);
 
   let corrected: Buffer;
-  try {
-    corrected = await correctDocumentLighting(cropSource);
-  } catch (err) {
-    console.warn(`[processDocument] Lighting correction failed, falling back to a simple contrast boost: ${(err as Error)?.message ?? err}`);
+  if (cropSucceeded) {
+    try {
+      corrected = await correctDocumentLighting(cropSource);
+    } catch (err) {
+      console.warn(`[processDocument] Lighting correction failed, falling back to a simple contrast boost: ${(err as Error)?.message ?? err}`);
+      corrected = await sharp(cropSource).greyscale().normalize().toBuffer();
+    }
+  } else {
+    // The aggressive flat-field + erosion pipeline assumes the whole
+    // frame is document content — run on an uncropped photo (background
+    // and all), it amplifies background texture/shadows into noise
+    // garbage instead of cleaning up text. A plain contrast stretch is
+    // much safer when we don't have a confident crop to trust.
     corrected = await sharp(cropSource).greyscale().normalize().toBuffer();
   }
 
