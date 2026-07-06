@@ -77,6 +77,69 @@ function boxBlur(gray: Buffer | Uint8ClampedArray, width: number, height: number
  * artifacts reliably produce scattered isolated bright pixels/blocks in
  * shadowed areas, and without this step those noise specks can get
  * picked as "extreme corner" points, producing a wildly wrong quad. */
+/** Binary erosion (separable — two 1D passes, like a min-filter): a
+ * pixel stays "on" only if every neighbor within `radius` is also "on".
+ * Shrinks every shape — thin protrusions disappear entirely (their
+ * whole width is within `radius` of an edge), while a large rectangular
+ * body just loses a thin border. */
+function binaryErode(mask: Uint8Array, width: number, height: number, radius: number): Uint8Array {
+  const tmp = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      let allOn = 1;
+      for (let dx = -radius; dx <= radius; dx++) {
+        const xx = x + dx;
+        if (xx < 0 || xx >= width || !mask[row + xx]) { allOn = 0; break; }
+      }
+      tmp[row + x] = allOn;
+    }
+  }
+  const out = new Uint8Array(mask.length);
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      let allOn = 1;
+      for (let dy = -radius; dy <= radius; dy++) {
+        const yy = y + dy;
+        if (yy < 0 || yy >= height || !tmp[yy * width + x]) { allOn = 0; break; }
+      }
+      out[y * width + x] = allOn;
+    }
+  }
+  return out;
+}
+
+/** Binary dilation (separable). Paired with an erosion of the same
+ * radius first ("opening"), this restores the main shape to close to
+ * its original size while the thin protrusion that erosion wiped out
+ * stays gone. */
+function binaryDilate(mask: Uint8Array, width: number, height: number, radius: number): Uint8Array {
+  const tmp = new Uint8Array(mask.length);
+  for (let y = 0; y < height; y++) {
+    const row = y * width;
+    for (let x = 0; x < width; x++) {
+      let anyOn = 0;
+      for (let dx = -radius; dx <= radius; dx++) {
+        const xx = x + dx;
+        if (xx >= 0 && xx < width && mask[row + xx]) { anyOn = 1; break; }
+      }
+      tmp[row + x] = anyOn;
+    }
+  }
+  const out = new Uint8Array(mask.length);
+  for (let x = 0; x < width; x++) {
+    for (let y = 0; y < height; y++) {
+      let anyOn = 0;
+      for (let dy = -radius; dy <= radius; dy++) {
+        const yy = y + dy;
+        if (yy >= 0 && yy < height && tmp[yy * width + x]) { anyOn = 1; break; }
+      }
+      out[y * width + x] = anyOn;
+    }
+  }
+  return out;
+}
+
 function largestConnectedComponent(binary: Uint8Array, width: number, height: number): Uint8Array {
   const n = width * height;
   const visited = new Uint8Array(n);
@@ -110,7 +173,18 @@ function largestConnectedComponent(binary: Uint8Array, width: number, height: nu
 }
 
 function findCorners(binaryIn: Uint8Array, width: number, height: number): [Point, Point, Point, Point] | null {
-  const binary = largestConnectedComponent(binaryIn, width, height);
+  // Opening radius scaled to image size — big enough to erase a thin
+  // torn/ragged protrusion, small enough to leave a genuine document's
+  // own corners alone.
+  // Radius tuned empirically: big enough to erase a thin torn/ragged
+  // protrusion along one edge, small enough that it doesn't eat into a
+  // genuine document's own corners. 0.05 was the sweet spot — smaller
+  // leaves ragged edges under-corrected, larger doesn't improve that
+  // further but does blunt real corners (especially on narrow/small
+  // documents, where it eats a bigger fraction of the shape).
+  const openRadius = Math.max(6, Math.round(Math.min(width, height) * 0.05));
+  const opened = binaryDilate(binaryErode(binaryIn, width, height, openRadius), width, height, openRadius);
+  const binary = largestConnectedComponent(opened, width, height);
   let minSum = Infinity, maxSum = -Infinity, minDiff = Infinity, maxDiff = -Infinity;
   let tl: Point | null = null, br: Point | null = null, tr: Point | null = null, bl: Point | null = null;
   let brightCount = 0;
@@ -351,6 +425,11 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
 
   let quad = smallCorners.map((p) => ({ x: p.x / scale, y: p.y / scale }));
   quad = shrinkQuadInward(quad, 0.012); // trim ~1.2% inward — corner detection tends to catch a thin sliver of background/shadow right at the edge
+  {
+    const [dtl, dtr] = quad;
+    const angleDeg = (Math.atan2(dtr.y - dtl.y, dtr.x - dtl.x) * 180) / Math.PI;
+    console.log(`[DEBUG] detected top-edge angle: ${angleDeg.toFixed(2)}°`);
+  }
   const [tl, tr, br, bl] = quad;
   const A4_RATIO = Math.SQRT2; // 297mm / 210mm
 
