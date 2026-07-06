@@ -428,15 +428,24 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
     small[i] = Math.max(value, Math.min(255, saturation * 2.2));
   }
 
-  // Blur before thresholding — not just to denoise, but so that fine
-  // internal content (dense small text, a QR code) gets smoothed into
-  // the surrounding page brightness instead of reading as a separate,
-  // darker "non-document" region.
-  const blurred = boxBlur(small, smallW, smallH, 6, 3);
-  const threshold = otsuThreshold(blurred);
+  // Two blur passes, combined: a small radius keeps sharp/accurate edges
+  // for corner precision, but fine dense detail (a block of small legal
+  // text, a QR code) can still average out darker than the Otsu cutoff
+  // at that radius and get excluded as "not document". A much coarser
+  // blur washes that fine detail out into a properly light region, at
+  // the cost of blurring real document edges less precisely. Taking
+  // whichever pass says "document" (logical OR) gets the precision of
+  // the fine pass for most of the page, plus the coarse pass's recovery
+  // of those dense-detail regions.
+  const blurredFine = boxBlur(small, smallW, smallH, 6, 3);
+  const blurredCoarse = boxBlur(small, smallW, smallH, 35, 2);
+  const thresholdFine = otsuThreshold(blurredFine);
+  const thresholdCoarse = otsuThreshold(blurredCoarse);
 
-  const binary = new Uint8Array(blurred.length);
-  for (let i = 0; i < blurred.length; i++) binary[i] = blurred[i] > threshold ? 1 : 0;
+  const binary = new Uint8Array(blurredFine.length);
+  for (let i = 0; i < blurredFine.length; i++) {
+    binary[i] = (blurredFine[i] > thresholdFine || blurredCoarse[i] > thresholdCoarse) ? 1 : 0;
+  }
 
   const smallCorners = findCorners(binary, smallW, smallH);
   if (!smallCorners) return null;
