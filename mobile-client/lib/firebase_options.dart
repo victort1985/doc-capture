@@ -30,6 +30,14 @@ class DefaultFirebaseOptions {
     return android;
   }
 
+  /// False while ios.apiKey/ios.appId are still the placeholder text
+  /// below — used to skip calling Firebase.initializeApp() on iOS
+  /// entirely until real values are filled in, since passing malformed
+  /// credentials to the native SDK crashes the process (not a Dart
+  /// exception, so try/catch can't stop it).
+  static bool get iosConfigIsReal =>
+      !ios.apiKey.startsWith('REPLACE_WITH_') && !ios.appId.startsWith('REPLACE_WITH_');
+
   static const android = FirebaseOptions(
     apiKey: 'AIzaSyD7_qdN01h7KF_IcxfAaw2K1bQBWNc9juc',
     appId: '1:1054062631953:android:cb6c4b6ee24171879525b0',
