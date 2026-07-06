@@ -420,13 +420,22 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
   // can have almost the same grayscale luminance as an ordinary wood
   // table, so no amount of blurring separates them on brightness alone.
   // Saturation is what actually tells them apart.
-  const small = new Uint8ClampedArray(smallW * smallH);
-  for (let i = 0; i < small.length; i++) {
+  const rawSmall = new Uint8ClampedArray(smallW * smallH);
+  for (let i = 0; i < rawSmall.length; i++) {
     const r = rgbSmall[i * 3], g = rgbSmall[i * 3 + 1], b = rgbSmall[i * 3 + 2];
     const value = Math.max(r, g, b);
     const saturation = value - Math.min(r, g, b);
-    small[i] = Math.max(value, Math.min(255, saturation * 2.2));
+    rawSmall[i] = Math.max(value, Math.min(255, saturation * 2.2));
   }
+
+  // Stretch contrast before thresholding — a dim/underexposed photo (a
+  // real failure case: mean brightness ~113/255, almost nothing above
+  // 200) can have the page and the background sitting in overlapping
+  // mid-tones (e.g. page ~120-160, table ~60-120) instead of the clear
+  // bright-page-vs-darker-background split a well-lit photo gives.
+  // Stretching what contrast IS there back out to the full 0-255 range
+  // recovers a workable separation before Otsu ever sees it.
+  const small = stretchContrast(rawSmall, 2, 2);
 
   // Two blur passes, combined: a small radius keeps sharp/accurate edges
   // for corner precision, but fine dense detail (a block of small legal
