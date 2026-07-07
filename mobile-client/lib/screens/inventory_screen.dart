@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
@@ -128,6 +129,8 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     final fileService = context.read<FileService>();
     final place = _placeController.text.trim();
     FocusScope.of(context).unfocus(); // otherwise the Place field's keyboard can stay up and squeeze the review screen's layout
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
+    await Future.delayed(const Duration(milliseconds: 150)); // give the OS keyboard-dismiss animation a moment to actually finish before the new screen appears underneath it
 
     var succeeded = 0;
     for (final file in files) {

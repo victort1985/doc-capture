@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
@@ -61,6 +62,12 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
   @override
   void initState() {
     super.initState();
+    // A plain FocusScope.unfocus() on the previous screen isn't always
+    // enough to actually close the OS keyboard before this screen
+    // finishes transitioning in (a known iOS timing quirk) — hide it
+    // directly as a more reliable safety net. Nothing on this screen
+    // ever needs a keyboard.
+    SystemChannels.textInput.invokeMethod('TextInput.hide');
     _filter = widget.docType == 'document' ? 'bw' : 'original';
     _start();
   }
@@ -189,12 +196,6 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
-        // No text field lives on this screen, but a keyboard left open
-        // from whatever screen led here can otherwise still eat into
-        // the layout the moment this Scaffold builds — this is the
-        // corner-editing/preview screen, it should never be squeezed
-        // for a keyboard that has nothing to type into here.
-        resizeToAvoidBottomInset: false,
         appBar: AppBar(
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
@@ -204,7 +205,10 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
         ),
         body: GestureDetector(
           behavior: HitTestBehavior.translucent,
-          onTap: () => FocusScope.of(context).unfocus(),
+          onTap: () {
+            FocusScope.of(context).unfocus();
+            SystemChannels.textInput.invokeMethod('TextInput.hide');
+          },
           child: SafeArea(child: _buildBody(l10n)),
         ),
       ),
