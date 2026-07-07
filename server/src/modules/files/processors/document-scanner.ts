@@ -160,6 +160,37 @@ function binaryDilate(mask: Uint8Array, width: number, height: number, radius: n
   return out;
 }
 
+/** Flood-fills starting from a single seed pixel, returning just that
+ * connected component. Unlike largestConnectedComponent (which finds
+ * whichever blob happens to be biggest, wherever it is), this only
+ * follows connectivity from a known-good starting point — used to let
+ * a coarser, more forgiving pass recover fine detail (dense text, a
+ * QR code) that's actually attached to the real document, without also
+ * scooping up an unrelated noisy blob elsewhere in the frame that
+ * independently passes the coarse threshold (e.g. reflections on a
+ * glossy background). */
+function connectedComponentFrom(binary: Uint8Array, width: number, height: number, seed: number): Uint8Array {
+  const n = width * height;
+  const visited = new Uint8Array(n);
+  const stack = new Int32Array(n);
+  const out = new Uint8Array(n);
+  if (binary[seed] === 0) return out;
+
+  let sp = 0;
+  stack[sp++] = seed;
+  visited[seed] = 1;
+  while (sp > 0) {
+    const idx = stack[--sp];
+    out[idx] = 1;
+    const x = idx % width;
+    if (x > 0 && binary[idx - 1] && !visited[idx - 1]) { visited[idx - 1] = 1; stack[sp++] = idx - 1; }
+    if (x < width - 1 && binary[idx + 1] && !visited[idx + 1]) { visited[idx + 1] = 1; stack[sp++] = idx + 1; }
+    if (idx - width >= 0 && binary[idx - width] && !visited[idx - width]) { visited[idx - width] = 1; stack[sp++] = idx - width; }
+    if (idx + width < n && binary[idx + width] && !visited[idx + width]) { visited[idx + width] = 1; stack[sp++] = idx + width; }
+  }
+  return out;
+}
+
 function largestConnectedComponent(binary: Uint8Array, width: number, height: number): Uint8Array {
   const n = width * height;
   const visited = new Uint8Array(n);
@@ -341,11 +372,49 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
   const graySmall = await sharp(imageBuffer).resize(smallW, smallH).greyscale().raw().toBuffer();
 
   const stretchedSmall = stretchContrast(graySmall, 2, 2);
-  const blurred = boxBlur(stretchedSmall, smallW, smallH, 8, 3);
-  const threshold = otsuThreshold(blurred);
 
-  const binary = new Uint8Array(blurred.length);
-  for (let i = 0; i < blurred.length; i++) binary[i] = blurred[i] > threshold ? 1 : 0;
+  // Two blur passes: a small radius keeps sharp/accurate edges for
+  // corner precision, but fine dense detail (a block of small legal
+  // text, a QR code, a dark graphic/photo element) can still fail to
+  // pass threshold at that radius and get excluded as "not document" —
+  // verified against a real upload where that cut off roughly the
+  // bottom half of a text-and-graphics-heavy bank letter. A much
+  // coarser blur washes that fine detail out into a properly-classified
+  // region, at the cost of being too forgiving on its own (it can
+  // bridge into an unrelated noisy background, verified against a
+  // different real upload with a glossy coloured folder background).
+  //
+  // The fix for both at once: find the fine pass's main blob first (the
+  // "core" of the real document), then let the coarse pass extend that
+  // specific blob via connectivity, rather than either trusting the
+  // coarse pass everywhere (unsafe) or not using it at all (misses
+  // dense content). Opening happens *before* seed selection and *before*
+  // the seeded fill — doing it after would let a thin bridge into
+  // background survive long enough to leak through regardless of where
+  // the seed is.
+  const openRadius = Math.max(6, Math.round(Math.min(smallW, smallH) * 0.05));
+
+  const blurredFine = boxBlur(stretchedSmall, smallW, smallH, 8, 3);
+  const thresholdFine = otsuThreshold(blurredFine);
+  const binaryFine = new Uint8Array(blurredFine.length);
+  for (let i = 0; i < blurredFine.length; i++) binaryFine[i] = blurredFine[i] > thresholdFine ? 1 : 0;
+  const openedFine = binaryDilate(binaryErode(binaryFine, smallW, smallH, openRadius), smallW, smallH, openRadius);
+  const fineCore = largestConnectedComponent(openedFine, smallW, smallH);
+  const seed = fineCore.indexOf(1);
+
+  let binary: Uint8Array;
+  if (seed === -1) {
+    binary = openedFine; // no confident fine-pass region at all — let findCorners's own checks reject this
+  } else {
+    const blurredCoarse = boxBlur(stretchedSmall, smallW, smallH, 50, 2);
+    const thresholdCoarse = otsuThreshold(blurredCoarse);
+    const combined = new Uint8Array(blurredFine.length);
+    for (let i = 0; i < blurredFine.length; i++) {
+      combined[i] = (binaryFine[i] || blurredCoarse[i] > thresholdCoarse) ? 1 : 0;
+    }
+    const openedCombined = binaryDilate(binaryErode(combined, smallW, smallH, openRadius), smallW, smallH, openRadius);
+    binary = connectedComponentFrom(openedCombined, smallW, smallH, seed);
+  }
 
   const smallCorners = findCorners(binary, smallW, smallH);
   if (!smallCorners) return null;
