@@ -8,5 +8,6 @@ import { TemplatesModule } from '../templates/templates.module';
   imports: [StorageModule, TemplatesModule],
   controllers: [FilesController],
   providers: [FilesService],
+  exports: [FilesService],
 })
 export class FilesModule {}
