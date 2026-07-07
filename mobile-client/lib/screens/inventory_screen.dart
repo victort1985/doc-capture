@@ -127,6 +127,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   Future<bool> _uploadViaReview(List<File> files) async {
     final fileService = context.read<FileService>();
     final place = _placeController.text.trim();
+    FocusScope.of(context).unfocus(); // otherwise the Place field's keyboard can stay up and squeeze the review screen's layout
 
     var succeeded = 0;
     for (final file in files) {

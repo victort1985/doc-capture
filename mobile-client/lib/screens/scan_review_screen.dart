@@ -189,13 +189,24 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
       },
       child: Scaffold(
         backgroundColor: Colors.black,
+        // No text field lives on this screen, but a keyboard left open
+        // from whatever screen led here can otherwise still eat into
+        // the layout the moment this Scaffold builds — this is the
+        // corner-editing/preview screen, it should never be squeezed
+        // for a keyboard that has nothing to type into here.
+        resizeToAvoidBottomInset: false,
         appBar: AppBar(
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
-          title: Text(l10n.scanReviewTitle),
+          toolbarHeight: 44,
+          title: Text(l10n.scanReviewTitle, style: const TextStyle(fontSize: 17)),
           leading: IconButton(icon: const Icon(Icons.close), onPressed: _finalizing ? null : _cancel),
         ),
-        body: SafeArea(child: _buildBody(l10n)),
+        body: GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SafeArea(child: _buildBody(l10n)),
+        ),
       ),
     );
   }
@@ -327,93 +338,111 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
   Widget _buildControls(AppLocalizations l10n) {
     return Container(
       color: const Color(0xFF161616),
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: SegmentedButton<bool>(
-                  segments: [
-                    ButtonSegment(value: true, label: Text(l10n.scanModeEditCorners), icon: const Icon(Icons.crop_free, size: 16)),
-                    ButtonSegment(value: false, label: Text(l10n.scanModePreview), icon: const Icon(Icons.visibility_outlined, size: 16)),
-                  ],
-                  selected: {_showingPreview},
-                  onSelectionChanged: (s) {
-                    if (s.first != _showingPreview) _togglePreview();
-                  },
-                  style: const ButtonStyle(
-                    visualDensity: VisualDensity.compact,
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 10),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: SegmentedButton<bool>(
+                    segments: [
+                      ButtonSegment(value: true, label: Text(l10n.scanModeEditCorners), icon: const Icon(Icons.crop_free, size: 16)),
+                      ButtonSegment(value: false, label: Text(l10n.scanModePreview), icon: const Icon(Icons.visibility_outlined, size: 16)),
+                    ],
+                    selected: {_showingPreview},
+                    onSelectionChanged: (s) {
+                      if (s.first != _showingPreview) _togglePreview();
+                    },
+                    style: const ButtonStyle(
+                      visualDensity: VisualDensity.compact,
+                    ),
                   ),
                 ),
+                if (!_showingPreview && _detectedCorners != null) ...[
+                  const SizedBox(width: 6),
+                  IconButton(
+                    tooltip: l10n.scanResetCorners,
+                    onPressed: _resetToAutoDetected,
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.replay, color: Colors.white70, size: 20),
+                  ),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<String>(
+              segments: [
+                ButtonSegment(value: 'original', label: Text(l10n.scanFilterOriginal)),
+                ButtonSegment(value: 'bw', label: Text(l10n.scanFilterBw)),
+              ],
+              selected: {_filter},
+              onSelectionChanged: (s) {
+                setState(() => _filter = s.first);
+                if (_showingPreview) _schedulePreviewRefresh();
+              },
+              style: const ButtonStyle(visualDensity: VisualDensity.compact),
+            ),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 2.5,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
               ),
-              if (!_showingPreview && _detectedCorners != null) ...[
-                const SizedBox(width: 8),
-                IconButton(
-                  tooltip: l10n.scanResetCorners,
-                  onPressed: _resetToAutoDetected,
-                  icon: const Icon(Icons.replay, color: Colors.white70, size: 20),
+              child: Column(
+                children: [
+                  _buildSlider(
+                    label: l10n.scanBrightness,
+                    value: _brightness,
+                    onChanged: (v) {
+                      setState(() => _brightness = v);
+                      if (_showingPreview) _schedulePreviewRefresh();
+                    },
+                  ),
+                  _buildSlider(
+                    label: l10n.scanContrast,
+                    value: _contrast,
+                    onChanged: (v) {
+                      setState(() => _contrast = v);
+                      if (_showingPreview) _schedulePreviewRefresh();
+                    },
+                  ),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(l10n.scanRemoveShadows, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                ),
+                Transform.scale(
+                  scale: 0.85,
+                  child: Switch(
+                    value: _removeShadows,
+                    activeColor: AppColors.primary,
+                    onChanged: (v) {
+                      setState(() => _removeShadows = v);
+                      if (_showingPreview) _schedulePreviewRefresh();
+                    },
+                  ),
                 ),
               ],
-            ],
-          ),
-          const SizedBox(height: 12),
-          SegmentedButton<String>(
-            segments: [
-              ButtonSegment(value: 'original', label: Text(l10n.scanFilterOriginal)),
-              ButtonSegment(value: 'bw', label: Text(l10n.scanFilterBw)),
-            ],
-            selected: {_filter},
-            onSelectionChanged: (s) {
-              setState(() => _filter = s.first);
-              if (_showingPreview) _schedulePreviewRefresh();
-            },
-          ),
-          const SizedBox(height: 4),
-          _buildSlider(
-            label: l10n.scanBrightness,
-            value: _brightness,
-            onChanged: (v) {
-              setState(() => _brightness = v);
-              if (_showingPreview) _schedulePreviewRefresh();
-            },
-          ),
-          _buildSlider(
-            label: l10n.scanContrast,
-            value: _contrast,
-            onChanged: (v) {
-              setState(() => _contrast = v);
-              if (_showingPreview) _schedulePreviewRefresh();
-            },
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: Text(l10n.scanRemoveShadows, style: const TextStyle(color: Colors.white70, fontSize: 13)),
-              ),
-              Switch(
-                value: _removeShadows,
-                activeColor: AppColors.primary,
-                onChanged: (v) {
-                  setState(() => _removeShadows = v);
-                  if (_showingPreview) _schedulePreviewRefresh();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton.icon(
-              icon: _finalizing
-                  ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : const Icon(Icons.check, size: 18),
-              label: Text(_finalizing ? l10n.scanFinalizing : l10n.scanConfirm),
-              onPressed: _finalizing ? null : _confirm,
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            SizedBox(
+              width: double.infinity,
+              height: 42,
+              child: FilledButton.icon(
+                icon: _finalizing
+                    ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Icon(Icons.check, size: 18),
+                label: Text(_finalizing ? l10n.scanFinalizing : l10n.scanConfirm),
+                onPressed: _finalizing ? null : _confirm,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -422,8 +451,8 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
     return Row(
       children: [
         SizedBox(
-          width: 78,
-          child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          width: 92,
+          child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12.5)),
         ),
         Expanded(
           child: Slider(
