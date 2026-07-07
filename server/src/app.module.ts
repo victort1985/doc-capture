@@ -25,6 +25,7 @@ import { DocumentStorageSettingsModule } from './modules/document-storage-settin
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReportsModule } from './modules/reports/reports.module';
 import { DeliveryNotesModule } from './modules/delivery-notes/delivery-notes.module';
+import { ScanSessionsModule } from './modules/scan-sessions/scan-sessions.module';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -67,6 +68,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     DocumentStorageSettingsModule,
     ReportsModule,
     DeliveryNotesModule,
+    ScanSessionsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

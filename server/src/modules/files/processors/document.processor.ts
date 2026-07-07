@@ -1,16 +1,15 @@
 import sharp from 'sharp';
 import { PDFDocument } from 'pdf-lib';
-import { scanAndCropDocument, correctDocumentLighting } from './document-scanner';
+import { detectDocumentCorners, warpDocument, applyFilters, A4_RATIO } from './document-scanner';
 
 const MAX_PDF_BYTES = 1 * 1024 * 1024; // 1 MB per spec
 
 /**
- * Document pipeline: auto-crop to the document's edges (via
- * document-scanner.ts's pure-JS detection — see that file and
- * /document-scan-module at the repo root for why this replaced an
- * OpenCV.js-based approach that hung on every real upload), normalize
- * contrast for a "scanned" look, then wrap as a single-page PDF,
- * iteratively reducing JPEG quality until it's under MAX_PDF_BYTES.
+ * Non-interactive document pipeline — detects, crops/straightens, and
+ * applies the default B&W filter in one shot, for callers that don't go
+ * through the review/preview flow (see ScanSessionsService for that;
+ * document-scanner.ts's detectDocumentCorners/warpDocument/applyFilters
+ * are the same composable building blocks used there).
  *
  * If the input is already a PDF (picked from the file manager rather than
  * the camera/gallery), it's passed through unchanged instead of being fed
@@ -24,39 +23,26 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
 
   const rotated = await sharp(buffer).rotate().toBuffer(); // respect EXIF orientation first
 
-  let cropSource = rotated;
-  let cropSucceeded = false;
+  let cropped: Buffer;
   try {
-    const cropped = await scanAndCropDocument(rotated);
-    if (cropped) {
-      cropSource = cropped;
-      cropSucceeded = true;
+    const detected = await detectDocumentCorners(rotated);
+    if (detected) {
+      cropped = await warpDocument(
+        rotated,
+        detected.corners,
+        { topCurve: detected.topCurve, bottomCurve: detected.bottomCurve },
+        A4_RATIO,
+      );
+    } else {
+      cropped = rotated;
     }
-    // null: no confidently-detected document edges — fall back to the
-    // uncropped, EXIF-rotated photo, same as before this feature existed.
   } catch (err) {
     console.warn(`[processDocument] Auto-crop skipped: ${(err as Error)?.message ?? err}`);
-  }
-  console.log(`[processDocument] crop ${cropSucceeded ? 'succeeded' : 'FAILED — using gentle fallback correction'}`);
-
-  let corrected: Buffer;
-  if (cropSucceeded) {
-    try {
-      corrected = await correctDocumentLighting(cropSource);
-    } catch (err) {
-      console.warn(`[processDocument] Lighting correction failed, falling back to a simple contrast boost: ${(err as Error)?.message ?? err}`);
-      corrected = await sharp(cropSource).greyscale().normalize().toBuffer();
-    }
-  } else {
-    // The aggressive flat-field + erosion pipeline assumes the whole
-    // frame is document content — run on an uncropped photo (background
-    // and all), it amplifies background texture/shadows into noise
-    // garbage instead of cleaning up text. A plain contrast stretch is
-    // much safer when we don't have a confident crop to trust.
-    corrected = await sharp(cropSource).greyscale().normalize().toBuffer();
+    cropped = rotated;
   }
 
-  const enhanced = await fitToA4(sharp(corrected).sharpen({ sigma: 1 }));
+  const filtered = await applyFilters(cropped, { mode: 'bw' });
+  const enhanced = await fitToA4(sharp(filtered).sharpen({ sigma: 1 }));
 
   let quality = 90;
   let jpegBuffer = await enhanced.clone().jpeg({ quality }).toBuffer();
@@ -71,17 +57,13 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
   return pdfBytes;
 }
 
-const A4_RATIO = Math.SQRT2; // 297mm / 210mm
 const A4_TARGET_WIDTH = 1700; // ~205 DPI at A4 width — plenty for a document photo
 
 /**
- * Guarantees the final page is A4-proportioned no matter what came in —
- * covers both the normal case (scanAndCropDocument already warped to A4,
- * so this is a no-op resize) and the fallback case (no confident crop
- * found, so the source could be any aspect ratio). Fits the content
- * inside the A4 canvas without stretching/distorting it — if the source
- * isn't quite A4-shaped, it's letterboxed with white bars rather than
- * warped to fill the frame.
+ * Guarantees the final page is A4-proportioned no matter what came in.
+ * Fits the content inside the A4 canvas without stretching/distorting it
+ * — if the source isn't quite A4-shaped, it's letterboxed with white
+ * bars rather than warped to fill the frame.
  */
 async function fitToA4(pipeline: sharp.Sharp): Promise<sharp.Sharp> {
   const targetHeight = Math.round(A4_TARGET_WIDTH * A4_RATIO);

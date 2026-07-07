@@ -41,6 +41,56 @@ export class FilesService {
       this.assertFileTypeAllowed(file, docType);
     }
 
+    // Seed the {counter} variable from what's already been uploaded today
+    // for this place — otherwise every separate upload call restarted at
+    // 1, so a second single-file upload today could resolve to the exact
+    // same filename as an earlier one and silently overwrite it.
+    const fileRecordType = docType === 'document' ? FileRecordType.DOCUMENT : FileRecordType.PHOTO;
+    const counterStart = await this.templatesService.countTodayRecords(place, fileRecordType);
+
+    const results: UploadResult[] = [];
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+
+      let processed: Buffer;
+      try {
+        processed =
+          docType === 'document'
+            ? await processDocument(file.buffer)
+            : await processPhoto(file.buffer);
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : 'unknown error';
+        throw new BadRequestException(
+          `Could not process "${file.originalname}" as a ${docType}: ${reason}`,
+        );
+      }
+
+      const result = await this.commitProcessedFile(
+        userId, username, place, docType, processed, file.originalname, counterStart + i + 1,
+      );
+      results.push(result);
+    }
+
+    return results;
+  }
+
+  /**
+   * Writes an already-processed file (cropped/filtered PDF or JPEG) to
+   * the user's configured storage and logs the FileRecord. Shared by
+   * uploadBatch() above (the direct, non-interactive upload path) and
+   * ScanSessionsService.finalize() (the review-then-commit path) — both
+   * ultimately want the same naming/storage/encryption/logging logic
+   * once they have a finished buffer in hand.
+   */
+  async commitProcessedFile(
+    userId: number,
+    username: string,
+    place: string,
+    docType: 'document' | 'photo',
+    processed: Buffer,
+    originalFilename: string,
+    counter: number,
+  ): Promise<UploadResult> {
     const settings = await this.storageService.getClientSettings(userId);
 
     const connectionId =
@@ -65,83 +115,45 @@ export class FilesService {
     const template = await this.templatesService.findApplicableTemplate(userId, docTypeEnum);
     const namePattern = template?.pattern || DEFAULT_PATTERN;
 
-    const results: UploadResult[] = [];
+    const extension = docType === 'document' ? 'pdf' : 'jpg';
+    const baseName = resolveNamePattern(namePattern, { place, username, docType, counter });
+    // Encryption happens after naming so the on-disk/on-NAS file gets a
+    // visibly different extension (.enc) instead of looking like a normal,
+    // openable PDF/JPG that just happens to be corrupt.
+    const generatedName = encryptAtRest ? `${baseName}.${extension}.enc` : `${baseName}.${extension}`;
+    const toWrite = encryptAtRest ? encryptBuffer(processed) : processed;
 
-    // Seed the {counter} variable from what's already been uploaded today
-    // for this place — otherwise every separate upload call restarted at
-    // 1, so a second single-file upload today could resolve to the exact
-    // same filename as an earlier one and silently overwrite it.
-    const fileRecordType = docType === 'document' ? FileRecordType.DOCUMENT : FileRecordType.PHOTO;
-    const counterStart = await this.templatesService.countTodayRecords(place, fileRecordType);
+    const subfolder = resolveNamePattern(subfolderPattern, { place, username, docType, counter });
+    const relativePath = `${subfolder}/${generatedName}`;
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-
-      let processed: Buffer;
-      try {
-        processed =
-          docType === 'document'
-            ? await processDocument(file.buffer)
-            : await processPhoto(file.buffer);
-      } catch (err) {
-        const reason = err instanceof Error ? err.message : 'unknown error';
-        throw new BadRequestException(
-          `Could not process "${file.originalname}" as a ${docType}: ${reason}`,
-        );
-      }
-
-      const extension = docType === 'document' ? 'pdf' : 'jpg';
-      const baseName = resolveNamePattern(namePattern, {
-        place,
-        username,
-        docType,
-        counter: counterStart + i + 1,
-      });
-      // Encryption happens after naming so the on-disk/on-NAS file gets a
-      // visibly different extension (.enc) instead of looking like a normal,
-      // openable PDF/JPG that just happens to be corrupt.
-      const generatedName = encryptAtRest ? `${baseName}.${extension}.enc` : `${baseName}.${extension}`;
-      const toWrite = encryptAtRest ? encryptBuffer(processed) : processed;
-
-      const subfolder = resolveNamePattern(subfolderPattern, {
-        place,
-        username,
-        docType,
-        counter: counterStart + i + 1,
-      });
-      const relativePath = `${subfolder}/${generatedName}`;
-
-      let finalPath: string;
-      try {
-        finalPath = await adapter.write(relativePath, toWrite);
-      } catch (err) {
-        const reason = err instanceof Error ? err.message : 'unknown error';
-        throw new BadRequestException(
-          `Could not save "${file.originalname}" to storage: ${reason}`,
-        );
-      }
-
-      const record = await this.templatesService.logFileRecord({
-        user: { id: userId } as any,
-        originalName: file.originalname,
-        generatedName,
-        type: docType === 'document' ? FileRecordType.DOCUMENT : FileRecordType.PHOTO,
-        place,
-        storageConnection: { id: connectionId } as any,
-        path: finalPath,
-        relativePath,
-        encrypted: encryptAtRest,
-      });
-
-      results.push({
-        id: record.id,
-        generatedName,
-        type: docType,
-        storage: { type: 'connection', path: finalPath },
-      });
+    let finalPath: string;
+    try {
+      finalPath = await adapter.write(relativePath, toWrite);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : 'unknown error';
+      throw new BadRequestException(
+        `Could not save "${originalFilename}" to storage: ${reason}`,
+      );
     }
 
-    return results;
+    const record = await this.templatesService.logFileRecord({
+      user: { id: userId } as any,
+      originalName: originalFilename,
+      generatedName,
+      type: docType === 'document' ? FileRecordType.DOCUMENT : FileRecordType.PHOTO,
+      place,
+      storageConnection: { id: connectionId } as any,
+      path: finalPath,
+      relativePath,
+      encrypted: encryptAtRest,
+    });
+
+    return {
+      id: record.id,
+      generatedName,
+      type: docType,
+      storage: { type: 'connection', path: finalPath },
+    };
   }
 
   async downloadFile(recordId: number): Promise<DownloadedFile> {
