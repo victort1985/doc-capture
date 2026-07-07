@@ -166,4 +166,16 @@ class ApiService {
     );
     return Uint8List.fromList(res.data!);
   }
+
+  /// POSTs a JSON body and gets raw bytes back — used for the scan-review
+  /// live preview endpoint (renders on demand, nothing is saved server
+  /// side, so there's no record to fetch via [getBytes]).
+  Future<Uint8List> postBytes(String path, Map<String, dynamic> body) async {
+    final res = await _dio.post<List<int>>(
+      path,
+      data: body,
+      options: Options(responseType: ResponseType.bytes),
+    );
+    return Uint8List.fromList(res.data!);
+  }
 }
