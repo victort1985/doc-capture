@@ -630,6 +630,24 @@ export async function scanAndCropDocument(imageBuffer: Buffer): Promise<Buffer |
     else outWidth = Math.round(outHeight * A4_RATIO);
   }
 
+  // Clamp the traced curves against what a straight 4-corner line would
+  // predict at each column. A genuinely curved/wavy page deviates from
+  // that mildly and gradually; a broken or noisy region mask (a real
+  // failure mode on a difficult, low-contrast photo) can instead produce
+  // wild per-column jumps that would scramble the warp into nonsense.
+  // Capping the deviation keeps the genuine-curvature correction while
+  // discarding anything that looks like tracing noise rather than an
+  // actual curved edge.
+  const avgHeight = (Math.hypot(bl.x - tl.x, bl.y - tl.y) + Math.hypot(br.x - tr.x, br.y - tr.y)) / 2;
+  const maxDeviation = avgHeight * 0.06;
+  for (let x = 0; x < width; x++) {
+    const frac = (x - tl.x) / Math.max(1, tr.x - tl.x); // not exact for a rotated quad, but good enough for a sanity bound
+    const straightTop = tl.y + (tr.y - tl.y) * Math.max(0, Math.min(1, frac));
+    const straightBottom = bl.y + (br.y - bl.y) * Math.max(0, Math.min(1, frac));
+    topCurveFull[x] = Math.max(straightTop - maxDeviation, Math.min(straightTop + maxDeviation, topCurveFull[x]));
+    bottomCurveFull[x] = Math.max(straightBottom - maxDeviation, Math.min(straightBottom + maxDeviation, bottomCurveFull[x]));
+  }
+
   const warped = warpWithCurvedTopBottom(rgba, width, height, quad, outWidth, outHeight, topCurveFull, bottomCurveFull);
   return sharp(warped, { raw: { width: outWidth, height: outHeight, channels: 4 } }).png().toBuffer();
 }
