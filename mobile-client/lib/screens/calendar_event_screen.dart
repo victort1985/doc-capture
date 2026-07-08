@@ -395,7 +395,7 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
                       borderRadius: BorderRadius.circular(10),
                       child: a.isPhoto
                         ? MediaThumbnail.photo(url: downloadUrl)
-                        : const MediaThumbnail.pdf(),
+                        : MediaThumbnail.pdf(url: downloadUrl),
                     ),
                   ),
                   Positioned(top: -6, right: -6, child: GestureDetector(

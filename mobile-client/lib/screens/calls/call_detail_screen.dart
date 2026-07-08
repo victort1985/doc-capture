@@ -329,7 +329,7 @@ class _CallDetailScreenState extends State<CallDetailScreen> {
                   if (detail.attachments.isEmpty) Text(l10n.callNoAttachments, style: const TextStyle(color: AppColors.inkSoft, fontSize: 13)),
                   ...detail.attachments.map((a) => Card(
                         child: ListTile(
-                          leading: const MediaThumbnail.pdf(),
+                          leading: MediaThumbnail.pdf(url: '/calls/attachments/${a.id}/download'),
                           title: Text(a.originalName),
                           subtitle: Text(a.uploadedByUsername, style: const TextStyle(fontSize: 11.5)),
                           trailing: const Icon(Icons.visibility_outlined, size: 18),
