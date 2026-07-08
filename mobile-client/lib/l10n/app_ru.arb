@@ -206,6 +206,7 @@
   "calendarDescription": "Описание",
   "calendarDescriptionHint": "Добавить описание…",
   "calendarLocation": "Место",
+  "calendarContactPerson": "Контактное лицо",
   "calendarAllDay": "Весь день",
   "calendarStart": "Начало",
   "calendarEnd": "Конец",

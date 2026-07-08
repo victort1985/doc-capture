@@ -57,6 +57,13 @@ export class CalendarEvent {
   @Column({ nullable: true })
   location?: string;
 
+  // Contact person for this event/task — searched from the shared phone
+  // book on the client, stored here as free text (same pattern as
+  // location) rather than a hard FK, since the contact might not be a
+  // phone book entry at all (a name jotted down by hand is still valid).
+  @Column({ nullable: true })
+  contactPerson?: string;
+
   // Optional override of the calendar's color for this specific event
   @Column({ nullable: true })
   color?: string;

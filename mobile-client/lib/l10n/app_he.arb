@@ -206,6 +206,7 @@
   "calendarDescription": "תיאור",
   "calendarDescriptionHint": "הוסף תיאור…",
   "calendarLocation": "מיקום",
+  "calendarContactPerson": "איש קשר",
   "calendarAllDay": "כל היום",
   "calendarStart": "התחלה",
   "calendarEnd": "סיום",

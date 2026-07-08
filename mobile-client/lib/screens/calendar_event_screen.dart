@@ -9,6 +9,11 @@ import '../l10n/app_localizations.dart';
 import '../models/calendar_event.dart';
 import '../services/calendar_service.dart';
 import '../widgets/media_thumbnail.dart';
+import '../widgets/location_search_field.dart';
+import '../widgets/phone_book_search_field.dart';
+import '../services/api_service.dart';
+import 'document_preview_screen.dart';
+import 'photo_viewer_screen.dart';
 
 /// Predefined color palette — white is the default (no color override).
 /// These show in the color picker as circular swatches.
@@ -47,6 +52,7 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
   final _titleCtrl   = TextEditingController();
   final _descCtrl    = TextEditingController();
   final _locationCtrl = TextEditingController();
+  final _contactPersonCtrl = TextEditingController();
   final _techCtrl    = TextEditingController();
   final _equipCtrl   = TextEditingController();
 
@@ -70,6 +76,7 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
     _titleCtrl.text    = e?.title    ?? '';
     _descCtrl.text     = e?.description  ?? '';
     _locationCtrl.text = e?.location ?? '';
+    _contactPersonCtrl.text = e?.contactPerson ?? '';
     _techCtrl.text     = e?.technicalRequirements ?? '';
     _equipCtrl.text    = e?.requiredEquipment     ?? '';
     _startAt = e?.startAt.toLocal() ?? DateTime(now.year, now.month, now.day, now.hour);
@@ -82,7 +89,7 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
 
   @override
   void dispose() {
-    for (final c in [_titleCtrl, _descCtrl, _locationCtrl, _techCtrl, _equipCtrl]) c.dispose();
+    for (final c in [_titleCtrl, _descCtrl, _locationCtrl, _contactPersonCtrl, _techCtrl, _equipCtrl]) c.dispose();
     super.dispose();
   }
 
@@ -120,6 +127,7 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
     'type': _type == CalendarEventType.task ? 'task' : 'event',
     'done': _done,
     if (_locationCtrl.text.trim().isNotEmpty) 'location': _locationCtrl.text.trim(),
+    if (_contactPersonCtrl.text.trim().isNotEmpty) 'contactPerson': _contactPersonCtrl.text.trim(),
     'color': _colorToHex(_selectedColor),
     'repeat': repeatToJson(_repeat),
     if (_techCtrl.text.trim().isNotEmpty) 'technicalRequirements': _techCtrl.text.trim(),
@@ -142,6 +150,7 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
           allDay: _allDay,
           type: _type,
           location: _locationCtrl.text.trim().isEmpty ? null : _locationCtrl.text.trim(),
+          contactPerson: _contactPersonCtrl.text.trim().isEmpty ? null : _contactPersonCtrl.text.trim(),
           color: _colorToHex(_selectedColor),
           repeat: _repeat,
           technicalRequirements: _techCtrl.text.trim().isEmpty ? null : _techCtrl.text.trim(),
@@ -184,6 +193,29 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
     if (file == null || !mounted) return;
     await context.read<CalendarService>().addAttachment(widget.event!.id, file);
     if (mounted) setState(() {});
+  }
+
+  /// Opens a tapped attachment thumbnail at full size — a photo gets a
+  /// pinch-to-zoom viewer, anything else (PDFs) reuses the same preview
+  /// (with print/share) shown right after a fresh document upload.
+  Future<void> _openAttachment(CalendarAttachment a, String downloadUrl) async {
+    if (a.isPhoto) {
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => PhotoViewerScreen(url: downloadUrl, title: a.originalName),
+      ));
+      return;
+    }
+    try {
+      final bytes = await context.read<ApiService>().getBytes(downloadUrl);
+      if (!mounted) return;
+      await Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => DocumentPreviewScreen(pdfBytes: bytes, filename: a.originalName),
+      ));
+    } catch (_) {
+      // Nothing to fall back to here beyond just not opening — the
+      // thumbnail itself already showed a broken-file icon if the
+      // download genuinely failed.
+    }
   }
 
   // ── UI helpers ────────────────────────────────────────────────────────────
@@ -261,9 +293,16 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
         _field(_equipCtrl, l10n.calendarRequiredEquipmentHint, maxLines: 3),
 
         _label(l10n.calendarLocation),
-        TextField(
+        LocationSearchField(
           controller: _locationCtrl,
-          decoration: const InputDecoration(prefixIcon: Icon(Icons.location_on_outlined, size: 18), hintText: ''),
+          label: '',
+        ),
+
+        _label(l10n.calendarContactPerson),
+        PhoneBookSearchField(
+          fieldKey: 'calendar.contactPerson',
+          controller: _contactPersonCtrl,
+          label: '',
         ),
 
         // ── Color picker ──────────────────────────────────────────────────
@@ -347,13 +386,17 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
           if (widget.event!.attachments.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: Wrap(spacing: 10, runSpacing: 10, children: widget.event!.attachments.map((a) =>
-                Stack(clipBehavior: Clip.none, children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: a.isPhoto
-                      ? MediaThumbnail.photo(url: '/calendar/attachments/${a.id}/download')
-                      : const MediaThumbnail.pdf(),
+              child: Wrap(spacing: 10, runSpacing: 10, children: widget.event!.attachments.map((a) {
+                final downloadUrl = '/calendar/attachments/${a.id}/download';
+                return Stack(clipBehavior: Clip.none, children: [
+                  GestureDetector(
+                    onTap: () => _openAttachment(a, downloadUrl),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
+                      child: a.isPhoto
+                        ? MediaThumbnail.photo(url: downloadUrl)
+                        : const MediaThumbnail.pdf(),
+                    ),
                   ),
                   Positioned(top: -6, right: -6, child: GestureDetector(
                     onTap: () async {
@@ -366,8 +409,8 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
                       child: const Icon(Icons.close, size: 13, color: Colors.white),
                     ),
                   )),
-                ]),
-              ).toList()),
+                ]);
+              }).toList()),
             ),
           Wrap(spacing: 8, runSpacing: 8, children: [
             OutlinedButton.icon(onPressed: () => _addAttachment(ImageSource.camera),  icon: const Icon(Icons.camera_alt_outlined, size: 15), label: Text(l10n.calendarCamera)),

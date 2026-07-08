@@ -58,6 +58,7 @@ class CalendarEvent {
   final bool allDay;
   final bool done;
   final String? location;
+  final String? contactPerson;
   final String? color;
   final CalendarEventRepeat repeat;
   final String? technicalRequirements;
@@ -76,6 +77,7 @@ class CalendarEvent {
     required this.allDay,
     required this.done,
     this.location,
+    this.contactPerson,
     this.color,
     required this.repeat,
     this.technicalRequirements,
@@ -95,6 +97,7 @@ class CalendarEvent {
         allDay: json['allDay'] ?? false,
         done: json['done'] ?? false,
         location: json['location'],
+        contactPerson: json['contactPerson'],
         color: json['color'],
         repeat: repeatFromJson(json['repeat'] ?? 'none'),
         technicalRequirements: json['technicalRequirements'],

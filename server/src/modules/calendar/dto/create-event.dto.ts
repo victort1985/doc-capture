@@ -30,6 +30,10 @@ export class CreateEventDto {
 
   @IsString()
   @IsOptional()
+  contactPerson?: string;
+
+  @IsString()
+  @IsOptional()
   color?: string;
 
   @IsEnum(CalendarEventRepeat)

@@ -206,6 +206,7 @@
   "calendarDescription": "Description",
   "calendarDescriptionHint": "Add description…",
   "calendarLocation": "Location",
+  "calendarContactPerson": "Contact person",
   "calendarAllDay": "All day",
   "calendarStart": "Start",
   "calendarEnd": "End",
