@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
@@ -192,6 +193,35 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
     }
     if (file == null || !mounted) return;
     await context.read<CalendarService>().addAttachment(widget.event!.id, file);
+    if (mounted) setState(() {});
+  }
+
+  /// Scans a document (crop/straighten + filter, same review screen as
+  /// the main upload flow) and attaches the finished file directly —
+  /// rather than committing to the document library like a normal scan
+  /// would, the rendered bytes go straight to this event's attachments.
+  Future<void> _scanAttachment() async {
+    if (!_isEdit) return;
+    final photo = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 90);
+    if (photo == null || !mounted) return;
+
+    final bytes = await Navigator.of(context).push<Uint8List>(
+      MaterialPageRoute(
+        builder: (_) => ScanReviewScreen(
+          imageFile: File(photo.path),
+          place: widget.event?.location ?? '',
+          docType: 'document',
+          mode: ScanReviewMode.returnBytes,
+        ),
+      ),
+    );
+    if (bytes == null || !mounted) return;
+
+    final tmpDir = await getTemporaryDirectory();
+    final tmpFile = await File('${tmpDir.path}/scan_${DateTime.now().millisecondsSinceEpoch}.pdf').create(recursive: true);
+    await tmpFile.writeAsBytes(bytes);
+
+    await context.read<CalendarService>().addAttachment(widget.event!.id, tmpFile);
     if (mounted) setState(() {});
   }
 
@@ -414,6 +444,7 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
             ),
           Wrap(spacing: 8, runSpacing: 8, children: [
             OutlinedButton.icon(onPressed: () => _addAttachment(ImageSource.camera),  icon: const Icon(Icons.camera_alt_outlined, size: 15), label: Text(l10n.calendarCamera)),
+            OutlinedButton.icon(onPressed: _scanAttachment, icon: const Icon(Icons.document_scanner_outlined, size: 15), label: Text(l10n.scanChooseSource)),
             OutlinedButton.icon(onPressed: () => _addAttachment(ImageSource.gallery), icon: const Icon(Icons.photo_library_outlined, size: 15), label: Text(l10n.calendarGallery)),
             OutlinedButton.icon(onPressed: () => _addAttachment(null),                icon: const Icon(Icons.attach_file, size: 15), label: Text(l10n.calendarFile)),
           ]),

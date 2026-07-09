@@ -40,11 +40,14 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
     _ => Colors.orange,
   };
 
-  String _statusLabel(DeliveryNoteStatus s) => switch (s) {
-    DeliveryNoteStatus.signed => 'Signed',
-    DeliveryNoteStatus.cancelled => 'Cancelled',
-    _ => 'Draft',
-  };
+  String _statusLabel(BuildContext context, DeliveryNoteStatus s) {
+    final l10n = AppLocalizations.of(context)!;
+    return switch (s) {
+      DeliveryNoteStatus.signed => l10n.dnStatusSigned,
+      DeliveryNoteStatus.cancelled => l10n.dnStatusCancelled,
+      _ => l10n.dnStatusDraft,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +71,7 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _notes.isEmpty
-                ? const Center(child: Text('No delivery notes yet', style: TextStyle(color: AppColors.inkSoft)))
+                ? Center(child: Text(AppLocalizations.of(context)!.dnNoNotesYet, style: const TextStyle(color: AppColors.inkSoft)))
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: ListView.separated(
@@ -100,7 +103,7 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
                                 color: _statusColor(n.status).withOpacity(0.12),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: Text(_statusLabel(n.status),
+                              child: Text(_statusLabel(context, n.status),
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _statusColor(n.status))),
                             ),
                           ),

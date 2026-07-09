@@ -18,6 +18,7 @@ import '../widgets/phone_book_search_field.dart';
 import '../widgets/client_search_field.dart';
 import '../widgets/item_row_widget.dart';
 import '../store/app_state.dart';
+import '../l10n/app_localizations.dart';
 
 class DeliveryNoteFormScreen extends StatefulWidget {
   const DeliveryNoteFormScreen({super.key, required this.svc, this.noteId});
@@ -110,7 +111,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
         sharePositionOrigin: rect,
       );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.dnError(e.toString()))));
     } finally {
       if (mounted) setState(() => _sendingLink = false);
     }
@@ -208,15 +209,16 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
         final updated = await widget.svc.update(_note!.id, dto);
         setState(() => _note = updated);
       }
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.dnSaved)));
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
   Future<void> _captureSignature({required bool isLessor}) async {
+    final l10n = AppLocalizations.of(context)!;
     final result = await Navigator.of(context).push<String>(
-      MaterialPageRoute(builder: (_) => _SignaturePadScreen(title: isLessor ? 'Lessor signature' : 'Lessee signature')),
+      MaterialPageRoute(builder: (_) => _SignaturePadScreen(title: isLessor ? l10n.dnLessorSignature : l10n.dnLesseeSignature)),
     );
     if (result != null) {
       setState(() {
@@ -243,7 +245,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     // Upload to server
     final b64 = base64Encode(bytes);
     await widget.svc.storePdf(_note!.id, b64);
-    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('PDF saved to server')));
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.dnPdfSavedToServer)));
   }
 
   /// Share the PDF via email, WhatsApp, etc.
@@ -271,7 +273,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
 
     await Share.shareXFiles(
       [XFile(file.path, mimeType: 'application/pdf')],
-      subject: 'Delivery Note #$noteNum',
+      subject: AppLocalizations.of(context)!.dnShareSubject(noteNum),
       sharePositionOrigin: rect,
     );
   }
@@ -537,31 +539,32 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     if (_loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
     final isSigned = _note?.status == DeliveryNoteStatus.signed;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_note == null ? 'New delivery note' : 'Note № ${_note!.noteNumber ?? ''}'),
+        title: Text(_note == null ? l10n.dnNewTitle : l10n.dnNoteNumberTitle(_note!.noteNumber ?? '')),
         actions: [
-          if (!isSigned) TextButton(onPressed: _saving ? null : _save, child: const Text('Save')),
+          if (!isSigned) TextButton(onPressed: _saving ? null : _save, child: Text(l10n.dnSave)),
           IconButton(
             icon: const Icon(Icons.picture_as_pdf_outlined),
             onPressed: _generateAndSendPdf,
-            tooltip: 'Print / PDF',
+            tooltip: l10n.dnPrintPdf,
           ),
           IconButton(
             icon: const Icon(Icons.share_outlined),
             onPressed: _sharePdf,
-            tooltip: 'Share (WhatsApp / Email)',
+            tooltip: l10n.dnShare,
           ),
           IconButton(
             icon: _sendingLink
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.draw_outlined),
             onPressed: _sendingLink ? null : _sendSigningLink,
-            tooltip: 'שלח לחתימה (WhatsApp / SMS)',
+            tooltip: l10n.dnSendForSigning,
           ),
         ],
       ),
@@ -588,7 +591,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
 
             // ── Document type selector ─────────────────────────────────────
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('DOCUMENT TYPE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.inkSoft)),
+              Text(l10n.dnDocumentType, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.inkSoft)),
               const SizedBox(height: 4),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
@@ -632,7 +635,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                   child: Row(children: [
                     const Icon(Icons.calendar_today_outlined, size: 16, color: AppColors.inkSoft),
                     const SizedBox(width: 8),
-                    Text(_dateCtrl.text.isEmpty ? 'Date' : _fmtDate(_dateCtrl.text),
+                    Text(_dateCtrl.text.isEmpty ? l10n.dnDate : _fmtDate(_dateCtrl.text),
                       style: TextStyle(fontSize: 15, color: _dateCtrl.text.isEmpty ? AppColors.inkSoft : null)),
                   ]),
                 ),
@@ -644,8 +647,8 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
 
             ClientSearchField(
               controller: _clientNameCtrl,
-              label: 'Client name',
-              hintText: 'Search contacts or locations…',
+              label: l10n.dnClientName,
+              hintText: l10n.dnSearchContactsOrLocations,
               includeLocations: true,
               onSelected: ({String? role, String? phone}) {
                 setState(() {
@@ -654,11 +657,11 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 });
               },
             ),
-            _field('Client address', _clientAddrCtrl, cacheKey: 'clientAddress'),
+            _field(l10n.dnClientAddress, _clientAddrCtrl, cacheKey: 'clientAddress'),
             ClientSearchField(
               controller: _deliveredToCtrl,
-              label: 'Delivered to',
-              hintText: 'Search contacts…',
+              label: l10n.dnDeliveredTo,
+              hintText: l10n.dnSearchContacts,
               includeLocations: false,
               onSelected: ({String? role, String? phone}) {
                 setState(() {
@@ -667,14 +670,14 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
               },
             ),
             Row(children: [
-              Expanded(child: _field('Role', _roleCtrl, cacheKey: 'role')),
+              Expanded(child: _field(l10n.dnRole, _roleCtrl, cacheKey: 'role')),
               const SizedBox(width: 12),
-              Expanded(child: _field('ID number', _idNumCtrl, cacheKey: 'idNumber', keyboardType: TextInputType.number)),
+              Expanded(child: _field(l10n.dnIdNumber, _idNumCtrl, cacheKey: 'idNumber', keyboardType: TextInputType.number)),
             ]),
 
             const SizedBox(height: 6),
             // Equipment table
-            const Text('EQUIPMENT', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.inkSoft)),
+            Text(l10n.dnEquipment, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.inkSoft)),
             const SizedBox(height: 6),
             Container(
               decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
@@ -683,11 +686,11 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                   decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: const BorderRadius.vertical(top: Radius.circular(7))),
-                  child: const Row(children: [
-                    SizedBox(width: 48, child: Text('Qty', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
-                    Expanded(child: Text('Item name', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
-                    SizedBox(width: 80, child: Text('Notes', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
-                    SizedBox(width: 30),
+                  child: Row(children: [
+                    SizedBox(width: 48, child: Text(l10n.dnQty, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
+                    Expanded(child: Text(l10n.dnItemName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
+                    SizedBox(width: 80, child: Text(l10n.dnNotes, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12))),
+                    const SizedBox(width: 30),
                   ]),
                 ),
                 const Divider(height: 1),
@@ -699,27 +702,27 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 TextButton.icon(
                   onPressed: () => setState(() => _items.add(ItemRow())),
                   icon: const Icon(Icons.add, size: 16),
-                  label: const Text('Add row', style: TextStyle(fontSize: 13)),
+                  label: Text(l10n.dnAddRow, style: const TextStyle(fontSize: 13)),
                 ),
               ]),
             ),
 
             const SizedBox(height: 16),
-            _field('Remarks', _remarksCtrl, maxLines: 3),
+            _field(l10n.dnRemarks, _remarksCtrl, maxLines: 3),
 
             // Signatures
             const SizedBox(height: 8),
-            const Text('SIGNATURES', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.inkSoft)),
+            Text(l10n.dnSignatures, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, letterSpacing: 0.4, color: AppColors.inkSoft)),
             const SizedBox(height: 8),
             Row(children: [
               Expanded(child: _SigBox(
-                label: 'Lessor signature',
+                label: l10n.dnLessorSignature,
                 sig: _lessorSig,
                 onTap: () => _captureSignature(isLessor: true),
               )),
               const SizedBox(width: 12),
               Expanded(child: _SigBox(
-                label: 'Lessee signature',
+                label: l10n.dnLesseeSignature,
                 sig: _lesseeSig,
                 onTap: () => _captureSignature(isLessor: false),
               )),
@@ -728,16 +731,16 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
             // Lessor name under signature — auto-filled from user profile
             TextField(
               controller: _lessorNameCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Lessor name',
-                hintText: 'Auto-filled from your profile',
+              decoration: InputDecoration(
+                labelText: l10n.dnLessorName,
+                hintText: l10n.dnAutoFilledFromProfile,
                 isDense: true,
               ),
             ),
 
             if (_lesseeSig != null) ...[
               const SizedBox(height: 10),
-              _field('Lessee ID number', _lesseeIdCtrl, keyboardType: TextInputType.number),
+              _field(l10n.dnLesseeIdNumber, _lesseeIdCtrl, keyboardType: TextInputType.number),
             ],
           ],
         ),
@@ -850,12 +853,13 @@ class _SignaturePadScreenState extends State<_SignaturePadScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
         actions: [
-          TextButton(onPressed: () => setState(() { _strokes.clear(); _current = []; _hasStrokes = false; }), child: const Text('Clear')),
-          FilledButton(onPressed: _hasStrokes ? _confirm : null, child: const Text('Confirm')),
+          TextButton(onPressed: () => setState(() { _strokes.clear(); _current = []; _hasStrokes = false; }), child: Text(l10n.dnClear)),
+          FilledButton(onPressed: _hasStrokes ? _confirm : null, child: Text(l10n.dnConfirm)),
           const SizedBox(width: 8),
         ],
       ),
@@ -881,7 +885,7 @@ class _SignaturePadScreenState extends State<_SignaturePadScreen> {
               ),
             ),
           ),
-          const Text('Sign above with your finger', style: TextStyle(color: AppColors.inkSoft, fontSize: 13)),
+          Text(l10n.dnSignHere, style: const TextStyle(color: AppColors.inkSoft, fontSize: 13)),
         ]),
       ),
     );

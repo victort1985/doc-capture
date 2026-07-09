@@ -46,6 +46,25 @@
   "scanRemoveShadows": "Remove shadows",
   "scanFinalizing": "Saving…",
   "scanConfirm": "Confirm",
+  "scanPageDone": "Done",
+  "scanAddAnotherPageTitle": "Add another page?",
+  "scanAddAnotherPageMessage": "Page {count} added. You can scan another page into this same document, or finish it now.",
+  "@scanAddAnotherPageMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanAddPage": "Add page",
+  "scanFinishDocument": "Finish document",
+  "scanDocumentNameTitle": "Document name",
+  "scanDocumentNameHint": "Optional — otherwise the default naming template is used",
+  "scanSaveDocument": "Save document",
+  "scanSkipNaming": "Skip (use default)",
+  "scanChooseSource": "Scan document",
+  "scanOptionCamera": "Scan with camera",
+  "scanCombineError": "Could not combine the pages. Please try again.",
   "uploadError": "Upload failed, please try again",
   "uploadMissingFields": "Add at least one photo and fill in the Place field before uploading",
   "historyTitle": "History",
@@ -298,6 +317,65 @@
   "scannerUse": "Use this code",
   "warehouseHistory": "Movement history",
   "deliveryNotesTitle": "Docs",
+  "dnNewTitle": "New delivery note",
+  "dnNoteNumberTitle": "Note № {num}",
+  "@dnNoteNumberTitle": {
+    "placeholders": {
+      "num": {
+        "type": "String"
+      }
+    }
+  },
+  "dnSave": "Save",
+  "dnPrintPdf": "Print / PDF",
+  "dnShare": "Share (WhatsApp / Email)",
+  "dnSendForSigning": "Send for signing",
+  "dnError": "Error: {error}",
+  "@dnError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "dnSaved": "Saved",
+  "dnLessorSignature": "Lessor signature",
+  "dnLesseeSignature": "Lessee signature",
+  "dnPdfSavedToServer": "PDF saved to server",
+  "dnDocumentType": "DOCUMENT TYPE",
+  "dnDate": "Date",
+  "dnClientName": "Client name",
+  "dnSearchContactsOrLocations": "Search contacts or locations…",
+  "dnClientAddress": "Client address",
+  "dnDeliveredTo": "Delivered to",
+  "dnSearchContacts": "Search contacts…",
+  "dnRole": "Role",
+  "dnIdNumber": "ID number",
+  "dnEquipment": "EQUIPMENT",
+  "dnQty": "Qty",
+  "dnItemName": "Item name",
+  "dnNotes": "Notes",
+  "dnAddRow": "Add row",
+  "dnRemarks": "Remarks",
+  "dnSignatures": "SIGNATURES",
+  "dnLessorName": "Lessor name",
+  "dnAutoFilledFromProfile": "Auto-filled from your profile",
+  "dnLesseeIdNumber": "Lessee ID number",
+  "dnClear": "Clear",
+  "dnConfirm": "Confirm",
+  "dnSignHere": "Sign above with your finger",
+  "dnShareSubject": "Delivery Note #{num}",
+  "@dnShareSubject": {
+    "placeholders": {
+      "num": {
+        "type": "String"
+      }
+    }
+  },
+  "dnStatusSigned": "Signed",
+  "dnStatusCancelled": "Cancelled",
+  "dnStatusDraft": "Draft",
+  "dnNoNotesYet": "No delivery notes yet",
   "warehouseInRepair": "In repair",
   "warehouseSendToRepair": "Send to repair",
   "warehouseSupplier": "Supplier",

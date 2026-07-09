@@ -46,6 +46,25 @@
   "scanRemoveShadows": "Убрать тени",
   "scanFinalizing": "Сохранение…",
   "scanConfirm": "Подтвердить",
+  "scanPageDone": "Готово",
+  "scanAddAnotherPageTitle": "Добавить ещё страницу?",
+  "scanAddAnotherPageMessage": "Страница {count} добавлена. Можно отсканировать ещё одну страницу в этот же документ, или завершить его.",
+  "@scanAddAnotherPageMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanAddPage": "Добавить страницу",
+  "scanFinishDocument": "Завершить документ",
+  "scanDocumentNameTitle": "Название документа",
+  "scanDocumentNameHint": "Необязательно — иначе будет использован шаблон по умолчанию",
+  "scanSaveDocument": "Сохранить документ",
+  "scanSkipNaming": "Пропустить (по шаблону)",
+  "scanChooseSource": "Сканировать документ",
+  "scanOptionCamera": "Сканировать камерой",
+  "scanCombineError": "Не удалось объединить страницы. Попробуйте ещё раз.",
   "uploadError": "Ошибка загрузки, попробуйте ещё раз",
   "uploadMissingFields": "Добавьте хотя бы одно фото и заполните поле «Место» перед загрузкой",
   "historyTitle": "История",
@@ -298,6 +317,65 @@
   "scannerUse": "Использовать код",
   "warehouseHistory": "История движений",
   "deliveryNotesTitle": "Накл.",
+  "dnNewTitle": "Новая накладная",
+  "dnNoteNumberTitle": "Накладная № {num}",
+  "@dnNoteNumberTitle": {
+    "placeholders": {
+      "num": {
+        "type": "String"
+      }
+    }
+  },
+  "dnSave": "Сохранить",
+  "dnPrintPdf": "Печать / PDF",
+  "dnShare": "Поделиться (WhatsApp / Email)",
+  "dnSendForSigning": "Отправить на подпись",
+  "dnError": "Ошибка: {error}",
+  "@dnError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "dnSaved": "Сохранено",
+  "dnLessorSignature": "Подпись арендодателя",
+  "dnLesseeSignature": "Подпись арендатора",
+  "dnPdfSavedToServer": "PDF сохранён на сервере",
+  "dnDocumentType": "ТИП ДОКУМЕНТА",
+  "dnDate": "Дата",
+  "dnClientName": "Имя клиента",
+  "dnSearchContactsOrLocations": "Поиск контактов или локаций…",
+  "dnClientAddress": "Адрес клиента",
+  "dnDeliveredTo": "Передано",
+  "dnSearchContacts": "Поиск контактов…",
+  "dnRole": "Роль",
+  "dnIdNumber": "Номер удост.",
+  "dnEquipment": "ОБОРУДОВАНИЕ",
+  "dnQty": "Кол-во",
+  "dnItemName": "Название товара",
+  "dnNotes": "Заметки",
+  "dnAddRow": "Добавить строку",
+  "dnRemarks": "Примечания",
+  "dnSignatures": "ПОДПИСИ",
+  "dnLessorName": "Имя арендодателя",
+  "dnAutoFilledFromProfile": "Автозаполнено из профиля",
+  "dnLesseeIdNumber": "Номер удост. арендатора",
+  "dnClear": "Очистить",
+  "dnConfirm": "Подтвердить",
+  "dnSignHere": "Распишитесь пальцем выше",
+  "dnShareSubject": "Накладная №{num}",
+  "@dnShareSubject": {
+    "placeholders": {
+      "num": {
+        "type": "String"
+      }
+    }
+  },
+  "dnStatusSigned": "Подписано",
+  "dnStatusCancelled": "Отменено",
+  "dnStatusDraft": "Черновик",
+  "dnNoNotesYet": "Пока нет накладных",
   "warehouseInRepair": "В ремонте",
   "warehouseSendToRepair": "Отправить в ремонт",
   "warehouseSupplier": "Поставщик",

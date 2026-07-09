@@ -26,6 +26,20 @@ export function sanitize(value: string): string {
   return value.replace(/[^a-zA-Z0-9-_]+/g, '_');
 }
 
+/** For a user-typed custom document name (as opposed to the template-
+ * generated names sanitize() above is for) — only strips characters
+ * that are genuinely invalid in a filename (path separators, control
+ * characters, the handful of characters Windows/NAS shares reject),
+ * preserving everything else including Hebrew/Russian/etc. text, so a
+ * name someone actually typed doesn't come out unrecognizable. */
+export function sanitizeFilenameComponent(value: string): string {
+  return value
+    .replace(/[/\\:*?"<>|\u0000-\u001f]/g, '_')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 150); // generous but bounded — avoids pathological filesystem-limit issues
+}
+
 export interface PhoneBookNamePatternContext {
   organization: string;
   city: string;

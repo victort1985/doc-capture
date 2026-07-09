@@ -46,6 +46,25 @@
   "scanRemoveShadows": "הסרת צללים",
   "scanFinalizing": "שומר…",
   "scanConfirm": "אישור",
+  "scanPageDone": "סיום",
+  "scanAddAnotherPageTitle": "להוסיף עמוד נוסף?",
+  "scanAddAnotherPageMessage": "עמוד {count} נוסף. אפשר לסרוק עמוד נוסף לאותו מסמך, או לסיים כעת.",
+  "@scanAddAnotherPageMessage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "scanAddPage": "הוסף עמוד",
+  "scanFinishDocument": "סיים מסמך",
+  "scanDocumentNameTitle": "שם המסמך",
+  "scanDocumentNameHint": "אופציונלי — אחרת תשמש תבנית ברירת המחדל",
+  "scanSaveDocument": "שמור מסמך",
+  "scanSkipNaming": "דלג (ברירת מחדל)",
+  "scanChooseSource": "סריקת מסמך",
+  "scanOptionCamera": "סרוק במצלמה",
+  "scanCombineError": "לא ניתן היה לאחד את העמודים. נסה שוב.",
   "uploadError": "ההעלאה נכשלה, נסה שוב",
   "uploadMissingFields": "הוסף לפחות תמונה אחת ומלא את שדה המקום לפני ההעלאה",
   "historyTitle": "היסטוריה",
@@ -298,6 +317,65 @@
   "scannerUse": "השתמש בקוד זה",
   "warehouseHistory": "היסטוריית תנועות",
   "deliveryNotesTitle": "מסמכים",
+  "dnNewTitle": "תעודת משלוח חדשה",
+  "dnNoteNumberTitle": "תעודה מס׳ {num}",
+  "@dnNoteNumberTitle": {
+    "placeholders": {
+      "num": {
+        "type": "String"
+      }
+    }
+  },
+  "dnSave": "שמור",
+  "dnPrintPdf": "הדפסה / PDF",
+  "dnShare": "שיתוף (וואטסאפ / אימייל)",
+  "dnSendForSigning": "שלח לחתימה",
+  "dnError": "שגיאה: {error}",
+  "@dnError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "dnSaved": "נשמר",
+  "dnLessorSignature": "חתימת המשכיר",
+  "dnLesseeSignature": "חתימת השוכר",
+  "dnPdfSavedToServer": "ה-PDF נשמר בשרת",
+  "dnDocumentType": "סוג מסמך",
+  "dnDate": "תאריך",
+  "dnClientName": "שם לקוח",
+  "dnSearchContactsOrLocations": "חיפוש אנשי קשר או מיקומים…",
+  "dnClientAddress": "כתובת לקוח",
+  "dnDeliveredTo": "נמסר ל",
+  "dnSearchContacts": "חיפוש אנשי קשר…",
+  "dnRole": "תפקיד",
+  "dnIdNumber": "מספר ת.ז.",
+  "dnEquipment": "ציוד",
+  "dnQty": "כמות",
+  "dnItemName": "שם הפריט",
+  "dnNotes": "הערות",
+  "dnAddRow": "הוסף שורה",
+  "dnRemarks": "הערות כלליות",
+  "dnSignatures": "חתימות",
+  "dnLessorName": "שם המשכיר",
+  "dnAutoFilledFromProfile": "מתמלא אוטומטית מהפרופיל שלך",
+  "dnLesseeIdNumber": "מספר ת.ז. של השוכר",
+  "dnClear": "נקה",
+  "dnConfirm": "אישור",
+  "dnSignHere": "חתום למעלה עם האצבע",
+  "dnShareSubject": "תעודה מספר {num}",
+  "@dnShareSubject": {
+    "placeholders": {
+      "num": {
+        "type": "String"
+      }
+    }
+  },
+  "dnStatusSigned": "חתום",
+  "dnStatusCancelled": "מבוטל",
+  "dnStatusDraft": "טיוטה",
+  "dnNoNotesYet": "אין עדיין תעודות משלוח",
   "warehouseInRepair": "בתיקון",
   "warehouseSendToRepair": "שלח לתיקון",
   "warehouseSupplier": "ספק",

@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ScanSessionsService } from './scan-sessions.service';
 import { StartScanDto } from './dto/start-scan.dto';
 import { RenderScanDto } from './dto/render-scan.dto';
+import { CombineScanDto } from './dto/combine-scan.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
@@ -66,6 +67,32 @@ export class ScanSessionsController {
     @CurrentUser() user: { id: number; username: string },
   ) {
     return this.scanSessions.finalize(id, user.id, user.username, dto);
+  }
+
+  /** Same rendering as finalize, but returns the finished file's bytes
+   * directly instead of committing to the user's document/photo storage
+   * — for callers that want the result somewhere else entirely (e.g.
+   * calendar attachments, which have their own storage endpoint). */
+  @Post(':id/render-final')
+  async renderFinal(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: RenderScanDto,
+    @CurrentUser() user: { id: number },
+    @Res() res: Response,
+  ) {
+    const { buffer, docType } = await this.scanSessions.renderFinal(id, user.id, dto);
+    res.set({
+      'Content-Type': docType === 'document' ? 'application/pdf' : 'image/jpeg',
+      'Cache-Control': 'no-store',
+    });
+    res.send(buffer);
+  }
+
+  /** Batch capture: merges multiple already-reviewed single-page scan
+   * sessions into one multi-page document. */
+  @Post('combine')
+  async combine(@Body() dto: CombineScanDto, @CurrentUser() user: { id: number; username: string }) {
+    return this.scanSessions.combine(user.id, user.username, dto);
   }
 
   @Delete(':id')

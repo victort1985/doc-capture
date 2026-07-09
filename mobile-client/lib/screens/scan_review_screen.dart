@@ -9,6 +9,16 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/scan_session_service.dart';
 
+/// Which of the three ways this screen's "confirm" action ends:
+/// commits straight to the document/photo library (the normal single-
+/// page flow), returns the finished file's bytes without committing
+/// anywhere (used when the caller wants to attach the result somewhere
+/// else, e.g. a calendar event), or just hands back this page's chosen
+/// settings without finalizing at all (batch capture — see
+/// scan_batch_flow.dart, which combines several of these into one
+/// multi-page document at the end).
+enum ScanReviewMode { finalizeToStorage, returnBytes, collectForBatch }
+
 /// The capture -> auto-detect -> review -> confirm-or-cancel flow for one
 /// captured photo: server auto-detects the document's corners on entry,
 /// the user can drag them, pick Original/B&W, adjust brightness and
@@ -17,20 +27,27 @@ import '../services/scan_session_service.dart';
 /// ScanSessionService and the server's ScanSession for the buffer this
 /// backs.
 ///
-/// Returns the finalized upload result map via
-/// `Navigator.pop(context, Map<String, dynamic>)` on confirm, or null on
-/// cancel/back.
+/// Pops with a result whose type depends on [mode]: a
+/// `Map<String, dynamic>` upload result (finalizeToStorage), raw
+/// `Uint8List` bytes (returnBytes), or a `ScanPageResult` (collectForBatch)
+/// — or null on cancel/back in any mode.
 class ScanReviewScreen extends StatefulWidget {
   const ScanReviewScreen({
     super.key,
     required this.imageFile,
     required this.place,
     required this.docType,
+    this.mode = ScanReviewMode.finalizeToStorage,
+    this.pageLabel,
   });
 
   final File imageFile;
   final String place;
   final String docType; // 'document' | 'photo'
+  final ScanReviewMode mode;
+  // e.g. "Page 2" — shown in the app bar during batch capture so it's
+  // clear which page is being edited.
+  final String? pageLabel;
 
   @override
   State<ScanReviewScreen> createState() => _ScanReviewScreenState();
@@ -159,12 +176,27 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
 
   Future<void> _confirm() async {
     if (_sessionId == null) return;
+
+    if (widget.mode == ScanReviewMode.collectForBatch) {
+      // Nothing to render/commit yet — the session stays alive
+      // server-side until the whole batch is combined (or the batch
+      // flow cancels it) at the end.
+      Navigator.of(context).pop(ScanPageResult(_sessionId!, _currentSettings));
+      return;
+    }
+
     setState(() => _finalizing = true);
     try {
       final scanService = context.read<ScanSessionService>();
-      final result = await scanService.finalize(_sessionId!, _currentSettings);
-      if (!mounted) return;
-      Navigator.of(context).pop(result);
+      if (widget.mode == ScanReviewMode.returnBytes) {
+        final bytes = await scanService.renderFinal(_sessionId!, _currentSettings);
+        if (!mounted) return;
+        Navigator.of(context).pop(bytes);
+      } else {
+        final result = await scanService.finalize(_sessionId!, _currentSettings);
+        if (!mounted) return;
+        Navigator.of(context).pop(result);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _finalizing = false);
@@ -200,7 +232,10 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
           backgroundColor: Colors.black,
           foregroundColor: Colors.white,
           toolbarHeight: 44,
-          title: Text(l10n.scanReviewTitle, style: const TextStyle(fontSize: 17)),
+          title: Text(
+            widget.pageLabel != null ? '${l10n.scanReviewTitle} · ${widget.pageLabel}' : l10n.scanReviewTitle,
+            style: const TextStyle(fontSize: 17),
+          ),
           leading: IconButton(icon: const Icon(Icons.close), onPressed: _finalizing ? null : _cancel),
         ),
         body: GestureDetector(
@@ -441,7 +476,7 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
                 icon: _finalizing
                     ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                     : const Icon(Icons.check, size: 18),
-                label: Text(_finalizing ? l10n.scanFinalizing : l10n.scanConfirm),
+                label: Text(_finalizing ? l10n.scanFinalizing : (widget.mode == ScanReviewMode.collectForBatch ? l10n.scanPageDone : l10n.scanConfirm)),
                 onPressed: _finalizing ? null : _confirm,
               ),
             ),

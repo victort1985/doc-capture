@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { processDocument } from './processors/document.processor';
 import { processPhoto } from './processors/photo.processor';
-import { resolveNamePattern } from '../templates/name-pattern.util';
+import { resolveNamePattern, sanitizeFilenameComponent } from '../templates/name-pattern.util';
 import { StorageService } from '../storage/storage.service';
 import { TemplatesService } from '../templates/templates.service';
 import { FileRecordType } from '../templates/entities/file-record.entity';
@@ -90,6 +90,7 @@ export class FilesService {
     processed: Buffer,
     originalFilename: string,
     counter: number,
+    customName?: string,
   ): Promise<UploadResult> {
     const settings = await this.storageService.getClientSettings(userId);
 
@@ -116,7 +117,9 @@ export class FilesService {
     const namePattern = template?.pattern || DEFAULT_PATTERN;
 
     const extension = docType === 'document' ? 'pdf' : 'jpg';
-    const baseName = resolveNamePattern(namePattern, { place, username, docType, counter });
+    const baseName = customName?.trim()
+      ? sanitizeFilenameComponent(customName.trim())
+      : resolveNamePattern(namePattern, { place, username, docType, counter });
     // Encryption happens after naming so the on-disk/on-NAS file gets a
     // visibly different extension (.enc) instead of looking like a normal,
     // openable PDF/JPG that just happens to be corrupt.

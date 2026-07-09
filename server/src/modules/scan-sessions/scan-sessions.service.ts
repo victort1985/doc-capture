@@ -7,6 +7,7 @@ import { PDFDocument } from 'pdf-lib';
 import { ScanSession } from './entities/scan-session.entity';
 import { StartScanDto } from './dto/start-scan.dto';
 import { RenderScanDto } from './dto/render-scan.dto';
+import { CombineScanDto } from './dto/combine-scan.dto';
 import { detectDocumentCorners, warpDocument, applyFilters, A4_RATIO, Quad, Point } from '../files/processors/document-scanner';
 import { FilesService, UploadResult } from '../files/files.service';
 import { TemplatesService } from '../templates/templates.service';
@@ -132,10 +133,61 @@ export class ScanSessionsService {
     const counter = (await this.templatesService.countTodayRecords(session.place, fileRecordType)) + 1;
 
     const result = await this.filesService.commitProcessedFile(
-      userId, username, session.place, docType, finalBuffer, session.originalFilename, counter,
+      userId, username, session.place, docType, finalBuffer, session.originalFilename, counter, dto.customName,
     );
 
     await this.repo.delete(sessionId);
+    return result;
+  }
+
+  /** Same rendering as finalize() (full quality wrap — a real PDF for
+   * documents, a size-capped JPEG for photos) but returns the bytes
+   * directly instead of committing to the user's configured storage —
+   * for callers that want the file somewhere *other* than the normal
+   * document/photo library, e.g. calendar attachments, which have their
+   * own storage endpoint. Still deletes the session either way; this is
+   * still the terminal step for it, just not the one that writes to
+   * general storage. */
+  async renderFinal(sessionId: number, userId: number, dto: RenderScanDto): Promise<{ buffer: Buffer; docType: 'document' | 'photo' }> {
+    const session = await this.getOwned(sessionId, userId);
+    const filtered = await this.render(sessionId, userId, dto);
+    const docType = session.docType as 'document' | 'photo';
+    const buffer = docType === 'document'
+      ? await this.wrapAsSizedPdf(filtered)
+      : await this.capJpegSize(filtered, MAX_PHOTO_BYTES);
+
+    await this.repo.delete(sessionId);
+    return { buffer, docType };
+  }
+
+  /** Merges multiple already-reviewed pages (each its own scan session)
+   * into a single multi-page PDF and commits that as one document —
+   * batch capture, spec: "в один файл можно было сканировать несколько
+   * страниц документа". Each page keeps its own corners/filter settings
+   * from review; only the crop+filter step runs per page here (not the
+   * single-page PDF wrap finalize()/renderFinal() do), then all pages
+   * are assembled into one PDF together. */
+  async combine(userId: number, username: string, dto: CombineScanDto): Promise<UploadResult> {
+    const sessions = await Promise.all(
+      dto.pages.map((p) => this.getOwned(p.sessionId, userId)),
+    );
+
+    const pageImages: Buffer[] = [];
+    for (let i = 0; i < dto.pages.length; i++) {
+      pageImages.push(await this.render(dto.pages[i].sessionId, userId, dto.pages[i]));
+    }
+
+    const finalBuffer = await this.wrapMultiPageSizedPdf(pageImages);
+
+    const fileRecordType = dto.docType === 'document' ? FileRecordType.DOCUMENT : FileRecordType.PHOTO;
+    const counter = (await this.templatesService.countTodayRecords(dto.place, fileRecordType)) + 1;
+    const originalFilename = sessions[0]?.originalFilename ?? 'scan.pdf';
+
+    const result = await this.filesService.commitProcessedFile(
+      userId, username, dto.place, dto.docType, finalBuffer, originalFilename, counter, dto.customName,
+    );
+
+    await this.repo.delete(dto.pages.map((p) => p.sessionId));
     return result;
   }
 
@@ -181,6 +233,43 @@ export class ScanSessionsService {
       if (Math.abs(corners[i].y - session.detectedCorners[i].y) > eps) return false;
     }
     return true;
+  }
+
+  /** Fits every page to A4 and assembles one multi-page PDF, uniformly
+   * reducing per-page JPEG quality until the whole document fits a
+   * budget that scales with page count — a 5-page scan reasonably needs
+   * more room than a 1-page one, so this isn't the flat single-page
+   * MAX_PDF_BYTES cap. */
+  private async wrapMultiPageSizedPdf(pageImages: Buffer[]): Promise<Buffer> {
+    const targetHeight = Math.round(A4_TARGET_WIDTH * A4_RATIO);
+    const fitted = await Promise.all(
+      pageImages.map((img) =>
+        sharp(img)
+          .resize(A4_TARGET_WIDTH, targetHeight, { fit: 'contain', background: { r: 255, g: 255, b: 255 } })
+          .toBuffer(),
+      ),
+    );
+
+    const maxBytes = MAX_PDF_BYTES * pageImages.length;
+    const build = async (quality: number): Promise<Buffer> => {
+      const pdfDoc = await PDFDocument.create();
+      for (const page of fitted) {
+        const jpegBuffer = await sharp(page).jpeg({ quality }).toBuffer();
+        const { width, height } = await sharp(jpegBuffer).metadata();
+        const image = await pdfDoc.embedJpg(jpegBuffer);
+        const pdfPage = pdfDoc.addPage([width || image.width, height || image.height]);
+        pdfPage.drawImage(image, { x: 0, y: 0, width: width || image.width, height: height || image.height });
+      }
+      return Buffer.from(await pdfDoc.save());
+    };
+
+    let quality = 90;
+    let pdfBytes = await build(quality);
+    while (pdfBytes.length > maxBytes && quality > 25) {
+      quality -= 10;
+      pdfBytes = await build(quality);
+    }
+    return pdfBytes;
   }
 
   private async wrapAsSizedPdf(imageBuffer: Buffer): Promise<Buffer> {

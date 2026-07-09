@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { ArrayMaxSize, ArrayMinSize, IsBoolean, IsIn, IsNumber, IsOptional, Max, Min, ValidateNested } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsBoolean, IsIn, IsNumber, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { PointDto } from './point.dto';
 
 /** Shared body shape for both the live-preview and finalize endpoints —
@@ -31,4 +31,12 @@ export class RenderScanDto {
   @IsOptional()
   @IsBoolean()
   removeShadows?: boolean;
+
+  // Only meaningful on finalize/renderFinal — if left blank, the
+  // existing template-based naming pattern is used instead. Preview
+  // ignores this field entirely.
+  @IsOptional()
+  @IsString()
+  @MaxLength(150)
+  customName?: string;
 }

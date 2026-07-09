@@ -15,6 +15,7 @@ import '../widgets/search_picker_field.dart';
 import '../widgets/org_switcher_bar.dart';
 import 'document_preview_screen.dart';
 import 'scan_review_screen.dart';
+import 'scan_batch_flow.dart';
 
 /// Everything that existed before the Calls feature (upload / history /
 /// settings) now lives together under the "Переучет" (Inventory) tab —
@@ -57,8 +58,53 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
     final result = await Navigator.of(context).push<List<File>>(
       MaterialPageRoute(builder: (_) => const CameraScreen()),
     );
-    if (result != null && result.isNotEmpty) {
-      setState(() => _selectedFiles = [..._selectedFiles, ...result]);
+    if (result == null || result.isEmpty) return;
+
+    if (_docType == 'document') {
+      // A document scan combines everything captured in this one camera
+      // session into a single (possibly multi-page) file, rather than
+      // sitting in the picker as separate pending files the way a photo
+      // selection would — see runScanBatchFlow.
+      final l10n = AppLocalizations.of(context)!;
+      if (_placeController.text.trim().isEmpty) {
+        setState(() { _statusMessage = l10n.uploadMissingFields; _statusIsError = true; });
+        return;
+      }
+      FocusScope.of(context).unfocus();
+      SystemChannels.textInput.invokeMethod('TextInput.hide');
+      await Future.delayed(const Duration(milliseconds: 150));
+      await _scanAndUpload(result);
+      return;
+    }
+
+    setState(() => _selectedFiles = [..._selectedFiles, ...result]);
+  }
+
+  Future<void> _scanAndUpload(List<File> photos) async {
+    if (!mounted) return;
+    final l10n = AppLocalizations.of(context)!;
+    final place = _placeController.text.trim();
+    final fileService = context.read<FileService>();
+
+    final result = await runScanBatchFlow(context, photos: photos, place: place, docType: 'document');
+    if (!mounted || result == null) return;
+
+    setState(() { _statusMessage = l10n.uploadSuccess; _statusIsError = false; });
+    _placeController.clear();
+
+    final id = result['id'] as int?;
+    final name = result['generatedName'] as String? ?? 'document.pdf';
+    if (id != null) {
+      try {
+        final bytes = await fileService.downloadFile(id);
+        if (!mounted) return;
+        await Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => DocumentPreviewScreen(pdfBytes: bytes, filename: name),
+        ));
+      } catch (_) {
+        // The document was already saved successfully — a preview-fetch
+        // hiccup here shouldn't be reported as a failure.
+      }
     }
   }
 
