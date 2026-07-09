@@ -15,6 +15,7 @@ import '../widgets/phone_book_search_field.dart';
 import '../services/api_service.dart';
 import 'document_preview_screen.dart';
 import 'photo_viewer_screen.dart';
+import 'scan_review_screen.dart';
 
 /// Predefined color palette — white is the default (no color override).
 /// These show in the color picker as circular swatches.
