@@ -83,6 +83,8 @@ export class ScanSessionsService {
       detectedCorners: detected?.corners ?? null,
       detectedTopCurve: detected?.topCurve ?? null,
       detectedBottomCurve: detected?.bottomCurve ?? null,
+      detectedLeftCurve: detected?.leftCurve ?? null,
+      detectedRightCurve: detected?.rightCurve ?? null,
       place: dto.place,
       docType: dto.docType,
       originalFilename: file.originalname,
@@ -104,7 +106,10 @@ export class ScanSessionsService {
     const corners = dto.corners.map((p) => ({ x: p.x, y: p.y })) as Quad;
 
     const curves = this.matchesDetected(session, corners)
-      ? { topCurve: session.detectedTopCurve!, bottomCurve: session.detectedBottomCurve! }
+      ? {
+          topCurve: session.detectedTopCurve!, bottomCurve: session.detectedBottomCurve!,
+          leftCurve: session.detectedLeftCurve!, rightCurve: session.detectedRightCurve!,
+        }
       : undefined;
     const targetRatio = session.docType === 'document' ? A4_RATIO : undefined;
 

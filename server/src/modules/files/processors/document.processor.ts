@@ -30,7 +30,7 @@ export async function processDocument(buffer: Buffer): Promise<Buffer> {
       cropped = await warpDocument(
         rotated,
         detected.corners,
-        { topCurve: detected.topCurve, bottomCurve: detected.bottomCurve },
+        { topCurve: detected.topCurve, bottomCurve: detected.bottomCurve, leftCurve: detected.leftCurve, rightCurve: detected.rightCurve },
         A4_RATIO,
       );
     } else {

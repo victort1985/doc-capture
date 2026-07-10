@@ -55,12 +55,15 @@ export type Quad = [Point, Point, Point, Point];
 
 export interface DetectedDocument {
   corners: Quad;
-  /** Per full-resolution-column traced top/bottom boundary y position —
-   * only meaningful when passed back into warpDocument() alongside the
-   * *same, unmodified* corners; a manually-edited quad should omit
-   * these and get a plain 4-point transform instead. */
+  /** Traced boundary curves for all 4 edges (not just top/bottom) — only
+   * meaningful when passed back into warpDocument() alongside the *same,
+   * unmodified* corners; a manually-edited quad should omit these and
+   * get a plain 4-point transform instead. top/bottom are indexed by
+   * full-resolution x (column), left/right by full-resolution y (row). */
   topCurve: number[];
   bottomCurve: number[];
+  leftCurve: number[];
+  rightCurve: number[];
   imageWidth: number;
   imageHeight: number;
 }
@@ -309,59 +312,81 @@ function findCorners(regionIn: Uint8Array, width: number, height: number): Quad 
   return [tl, tr, br, bl];
 }
 
-function traceTopBottomCurves(region: Uint8Array, width: number, height: number): { top: Float64Array; bottom: Float64Array } {
-  const top = new Float64Array(width).fill(-1);
-  const bottom = new Float64Array(width).fill(-1);
+/** Traces one boundary edge as a curve — e.g. for the top edge, the
+ * topmost region pixel in each column (y as a function of x); for the
+ * left edge, the leftmost region pixel in each row (x as a function of
+ * y). `axis` picks which way to scan (by column or by row), `pick`
+ * picks which extreme along that scan to record. */
+function traceEdgeCurve(
+  region: Uint8Array, width: number, height: number,
+  axis: 'byColumn' | 'byRow', pick: 'first' | 'last',
+): Float64Array {
+  const outer = axis === 'byColumn' ? width : height;
+  const inner = axis === 'byColumn' ? height : width;
+  const curve = new Float64Array(outer).fill(-1);
 
-  for (let x = 0; x < width; x++) {
-    let first = -1, last = -1;
-    for (let y = 0; y < height; y++) {
-      if (region[y * width + x]) {
-        if (first === -1) first = y;
-        last = y;
+  for (let o = 0; o < outer; o++) {
+    let found = -1;
+    for (let i = 0; i < inner; i++) {
+      const idx = axis === 'byColumn' ? i * width + o : o * width + i;
+      if (region[idx]) {
+        found = i;
+        if (pick === 'first') break;
       }
     }
-    top[x] = first;
-    bottom[x] = last;
+    curve[o] = found;
   }
 
-  const fillGaps = (arr: Float64Array) => {
-    let lastValid = -1;
-    for (let x = 0; x < width; x++) {
-      if (arr[x] !== -1) lastValid = arr[x];
-      else if (lastValid !== -1) arr[x] = lastValid;
-    }
-    lastValid = -1;
-    for (let x = width - 1; x >= 0; x--) {
-      if (arr[x] !== -1) lastValid = arr[x];
-      else if (lastValid !== -1 && arr[x] === -1) arr[x] = lastValid;
-    }
-  };
-  fillGaps(top);
-  fillGaps(bottom);
-
-  for (let x = 0; x < width; x++) {
-    const localHeight = bottom[x] - top[x];
-    const margin = localHeight * 0.012;
-    top[x] += margin;
-    bottom[x] -= margin;
+  // Fill any gaps (an outer index with no region pixels at all) from the
+  // nearest valid neighbor, then smooth to remove per-index jaggedness
+  // from the mask's own edge noise while still tracking genuine,
+  // gradual curvature.
+  let lastValid = -1;
+  for (let o = 0; o < outer; o++) {
+    if (curve[o] !== -1) lastValid = curve[o];
+    else if (lastValid !== -1) curve[o] = lastValid;
+  }
+  lastValid = -1;
+  for (let o = outer - 1; o >= 0; o--) {
+    if (curve[o] !== -1) lastValid = curve[o];
+    else if (lastValid !== -1 && curve[o] === -1) curve[o] = lastValid;
   }
 
-  const smooth = (arr: Float64Array) => {
-    const radius = Math.max(3, Math.round(width * 0.04));
-    const out = new Float64Array(width);
-    let acc = 0;
-    for (let x = -radius; x <= radius; x++) acc += arr[Math.min(width - 1, Math.max(0, x))];
-    for (let x = 0; x < width; x++) {
-      out[x] = acc / (radius * 2 + 1);
-      const addX = Math.min(width - 1, x + radius + 1);
-      const subX = Math.max(0, x - radius);
-      acc += arr[addX] - arr[subX];
-    }
-    return out;
-  };
+  const radius = Math.max(3, Math.round(outer * 0.04));
+  const smoothed = new Float64Array(outer);
+  let acc = 0;
+  for (let o = -radius; o <= radius; o++) acc += curve[Math.min(outer - 1, Math.max(0, o))];
+  for (let o = 0; o < outer; o++) {
+    smoothed[o] = acc / (radius * 2 + 1);
+    const add = Math.min(outer - 1, o + radius + 1);
+    const sub = Math.max(0, o - radius);
+    acc += curve[add] - curve[sub];
+  }
 
-  return { top: smooth(top), bottom: smooth(bottom) };
+  // Small inward safety margin — detection tends to catch a thin sliver
+  // of background/shadow right at the true edge. 'first' (top/left)
+  // moves inward by increasing the index; 'last' (bottom/right) moves
+  // inward by decreasing it.
+  const margin = inner * 0.012;
+  for (let o = 0; o < outer; o++) {
+    smoothed[o] += pick === 'first' ? margin : -margin;
+  }
+
+  return smoothed;
+}
+
+/** Traces all 4 edges of the document region — not just top/bottom.
+ * Earlier versions of this only corrected vertical curvature (a
+ * straight line for left/right); tracing all four sides and blending
+ * them (see warpGrid's Coons patch) corrects genuine distortion along
+ * either axis instead of just one. */
+function traceAllBoundaryCurves(region: Uint8Array, width: number, height: number) {
+  return {
+    top: traceEdgeCurve(region, width, height, 'byColumn', 'first'),
+    bottom: traceEdgeCurve(region, width, height, 'byColumn', 'last'),
+    left: traceEdgeCurve(region, width, height, 'byRow', 'first'),
+    right: traceEdgeCurve(region, width, height, 'byRow', 'last'),
+  };
 }
 
 /**
@@ -409,18 +434,30 @@ export async function detectDocumentCorners(imageBuffer: Buffer): Promise<Detect
   const smallCorners = findCorners(region, smallW, smallH);
   if (!smallCorners) return null;
 
-  const { top: topCurveSmall, bottom: bottomCurveSmall } = traceTopBottomCurves(region, smallW, smallH);
+  const curvesSmall = traceAllBoundaryCurves(region, smallW, smallH);
   const topCurveFull = new Array<number>(width);
   const bottomCurveFull = new Array<number>(width);
   for (let x = 0; x < width; x++) {
     const sx = Math.min(smallW - 1, Math.max(0, Math.round(x * scale)));
-    topCurveFull[x] = topCurveSmall[sx] / scale;
-    bottomCurveFull[x] = bottomCurveSmall[sx] / scale;
+    topCurveFull[x] = curvesSmall.top[sx] / scale;
+    bottomCurveFull[x] = curvesSmall.bottom[sx] / scale;
+  }
+  const leftCurveFull = new Array<number>(height);
+  const rightCurveFull = new Array<number>(height);
+  for (let y = 0; y < height; y++) {
+    const sy = Math.min(smallH - 1, Math.max(0, Math.round(y * scale)));
+    leftCurveFull[y] = curvesSmall.left[sy] / scale;
+    rightCurveFull[y] = curvesSmall.right[sy] / scale;
   }
 
   const corners = smallCorners.map((p) => ({ x: p.x / scale, y: p.y / scale })) as Quad;
 
-  return { corners, topCurve: topCurveFull, bottomCurve: bottomCurveFull, imageWidth: width, imageHeight: height };
+  return {
+    corners,
+    topCurve: topCurveFull, bottomCurve: bottomCurveFull,
+    leftCurve: leftCurveFull, rightCurve: rightCurveFull,
+    imageWidth: width, imageHeight: height,
+  };
 }
 
 // ---------------------------------------------------------------------
@@ -494,38 +531,95 @@ function warpStraight(rgba: Buffer, srcWidth: number, srcHeight: number, quad: Q
   return out;
 }
 
-function warpCurved(
+/**
+ * Warps by blending all 4 traced boundary curves (a Coons patch) rather
+ * than just following top/bottom curves for vertical position and a
+ * straight line for horizontal. A real photographed page can be
+ * distorted along either axis — a slight physical curl top-to-bottom,
+ * but also sometimes left-to-right (the camera not held quite
+ * perpendicular, or the page itself bowing sideways) — and correcting
+ * only one axis leaves the other's distortion in the output. The Coons
+ * patch is the standard way to interpolate a deformed rectangle's
+ * *interior* from its 4 *boundary* curves: blend what the top and
+ * bottom curves say your vertical position should be, blend what the
+ * left and right curves say your horizontal position should be, then
+ * subtract the double-counted corner contribution.
+ *
+ * Each curve is clamped against what a straight line between the
+ * relevant 2 corners would predict, capped at a fraction of the page's
+ * size — genuine physical curvature deviates mildly and gradually; a
+ * broken or noisy region mask (a real failure mode on a difficult,
+ * low-contrast photo) can instead produce wild jumps that would
+ * scramble the warp into nonsense if trusted outright.
+ */
+function warpGrid(
   rgba: Buffer, srcWidth: number, srcHeight: number, quad: Quad, outWidth: number, outHeight: number,
-  topCurve: number[], bottomCurve: number[],
+  curves: { topCurve: number[]; bottomCurve: number[]; leftCurve: number[]; rightCurve: number[] },
 ): Buffer {
   const [tl, tr, br, bl] = quad;
+  const avgWidth = (Math.hypot(tr.x - tl.x, tr.y - tl.y) + Math.hypot(br.x - bl.x, br.y - bl.y)) / 2;
   const avgHeight = (Math.hypot(bl.x - tl.x, bl.y - tl.y) + Math.hypot(br.x - tr.x, br.y - tr.y)) / 2;
-  const maxDeviation = avgHeight * 0.06;
+  const maxDevY = avgHeight * 0.06;
+  const maxDevX = avgWidth * 0.06;
 
-  const topCurveClamped = new Float64Array(srcWidth);
-  const bottomCurveClamped = new Float64Array(srcWidth);
+  // Pre-clamp each curve, indexed by its natural axis, against the
+  // straight-line prediction between its 2 corners.
+  const topClamped = new Float64Array(srcWidth);
+  const bottomClamped = new Float64Array(srcWidth);
   for (let x = 0; x < srcWidth; x++) {
     const frac = Math.max(0, Math.min(1, (x - tl.x) / Math.max(1, tr.x - tl.x)));
     const straightTop = tl.y + (tr.y - tl.y) * frac;
     const straightBottom = bl.y + (br.y - bl.y) * frac;
-    const rawTop = topCurve[x] ?? straightTop;
-    const rawBottom = bottomCurve[x] ?? straightBottom;
-    topCurveClamped[x] = Math.max(straightTop - maxDeviation, Math.min(straightTop + maxDeviation, rawTop));
-    bottomCurveClamped[x] = Math.max(straightBottom - maxDeviation, Math.min(straightBottom + maxDeviation, rawBottom));
+    const rawTop = curves.topCurve[x] ?? straightTop;
+    const rawBottom = curves.bottomCurve[x] ?? straightBottom;
+    topClamped[x] = Math.max(straightTop - maxDevY, Math.min(straightTop + maxDevY, rawTop));
+    bottomClamped[x] = Math.max(straightBottom - maxDevY, Math.min(straightBottom + maxDevY, rawBottom));
+  }
+  const leftClamped = new Float64Array(srcHeight);
+  const rightClamped = new Float64Array(srcHeight);
+  for (let y = 0; y < srcHeight; y++) {
+    const frac = Math.max(0, Math.min(1, (y - tl.y) / Math.max(1, bl.y - tl.y)));
+    const straightLeft = tl.x + (bl.x - tl.x) * frac;
+    const straightRight = tr.x + (br.x - tr.x) * frac;
+    const rawLeft = curves.leftCurve[y] ?? straightLeft;
+    const rawRight = curves.rightCurve[y] ?? straightRight;
+    leftClamped[y] = Math.max(straightLeft - maxDevX, Math.min(straightLeft + maxDevX, rawLeft));
+    rightClamped[y] = Math.max(straightRight - maxDevX, Math.min(straightRight + maxDevX, rawRight));
   }
 
   const out = Buffer.alloc(outWidth * outHeight * 4);
   for (let oy = 0; oy < outHeight; oy++) {
-    const fracY = oy / (outHeight - 1 || 1);
-    const leftX = tl.x + (bl.x - tl.x) * fracY;
-    const rightX = tr.x + (br.x - tr.x) * fracY;
+    const v = oy / (outHeight - 1 || 1);
     for (let ox = 0; ox < outWidth; ox++) {
-      const fracX = ox / (outWidth - 1 || 1);
-      const sx = leftX + (rightX - leftX) * fracX;
-      const cx = Math.max(0, Math.min(srcWidth - 1, Math.round(sx)));
-      const yTop = topCurveClamped[cx];
-      const yBottom = bottomCurveClamped[cx];
-      const sy = yTop + (yBottom - yTop) * fracY;
+      const u = ox / (outWidth - 1 || 1);
+
+      // Top/bottom curves are indexed by x — approximate which source x
+      // this column corresponds to via the straight corner blend first.
+      const approxTopX = tl.x + (tr.x - tl.x) * u;
+      const approxBottomX = bl.x + (br.x - bl.x) * u;
+      const cTopX = Math.max(0, Math.min(srcWidth - 1, Math.round(approxTopX)));
+      const cBottomX = Math.max(0, Math.min(srcWidth - 1, Math.round(approxBottomX)));
+      const cTop = { x: approxTopX, y: topClamped[cTopX] };
+      const cBottom = { x: approxBottomX, y: bottomClamped[cBottomX] };
+
+      // Left/right curves are indexed by y — approximate which source y
+      // this row corresponds to via the straight corner blend.
+      const approxLeftY = tl.y + (bl.y - tl.y) * v;
+      const approxRightY = tr.y + (br.y - tr.y) * v;
+      const cLeftY = Math.max(0, Math.min(srcHeight - 1, Math.round(approxLeftY)));
+      const cRightY = Math.max(0, Math.min(srcHeight - 1, Math.round(approxRightY)));
+      const cLeft = { x: leftClamped[cLeftY], y: approxLeftY };
+      const cRight = { x: rightClamped[cRightY], y: approxRightY };
+
+      // Coons patch: blend the 4 boundary curves, subtract the
+      // double-counted bilinear corner term.
+      const sx =
+        (1 - v) * cTop.x + v * cBottom.x + (1 - u) * cLeft.x + u * cRight.x -
+        ((1 - u) * (1 - v) * tl.x + u * (1 - v) * tr.x + (1 - u) * v * bl.x + u * v * br.x);
+      const sy =
+        (1 - v) * cTop.y + v * cBottom.y + (1 - u) * cLeft.y + u * cRight.y -
+        ((1 - u) * (1 - v) * tl.y + u * (1 - v) * tr.y + (1 - u) * v * bl.y + u * v * br.y);
+
       bilinearSample(rgba, srcWidth, srcHeight, sx, sy, out, (oy * outWidth + ox) * 4);
     }
   }
@@ -534,16 +628,17 @@ function warpCurved(
 
 /**
  * Crops and straightens the document given its 4 corners. If `curves`
- * is supplied, follows the traced boundary shape (corrects physical
- * page curvature); otherwise (e.g. the corners were manually dragged by
- * the user) does a plain 4-point perspective transform.
+ * is supplied, follows the traced boundary shape on all 4 edges
+ * (corrects physical page curvature/distortion on either axis);
+ * otherwise (e.g. the corners were manually dragged by the user) does a
+ * plain 4-point perspective transform.
  *
  * `imageBuffer` should already be EXIF-rotated.
  */
 export async function warpDocument(
   imageBuffer: Buffer,
   quad: Quad,
-  curves?: { topCurve: number[]; bottomCurve: number[] },
+  curves?: { topCurve: number[]; bottomCurve: number[]; leftCurve: number[]; rightCurve: number[] },
   targetRatio?: number,
 ): Promise<Buffer> {
   const { data: rgba, info } = await sharp(imageBuffer).raw().ensureAlpha().toBuffer({ resolveWithObject: true });
@@ -564,7 +659,7 @@ export async function warpDocument(
   }
 
   const warped = curves
-    ? warpCurved(rgba, width, height, quad, outWidth, outHeight, curves.topCurve, curves.bottomCurve)
+    ? warpGrid(rgba, width, height, quad, outWidth, outHeight, curves)
     : warpStraight(rgba, width, height, quad, outWidth, outHeight);
 
   return sharp(warped, { raw: { width: outWidth, height: outHeight, channels: 4 } }).png().toBuffer();

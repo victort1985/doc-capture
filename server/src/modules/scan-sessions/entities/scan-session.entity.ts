@@ -42,6 +42,12 @@ export class ScanSession {
   @Column({ type: 'jsonb', nullable: true })
   detectedBottomCurve: number[] | null;
 
+  @Column({ type: 'jsonb', nullable: true })
+  detectedLeftCurve: number[] | null;
+
+  @Column({ type: 'jsonb', nullable: true })
+  detectedRightCurve: number[] | null;
+
   @Column()
   place: string;
 
