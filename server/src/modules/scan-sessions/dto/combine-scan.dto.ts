@@ -1,10 +1,11 @@
 import { Type } from 'class-transformer';
-import { ArrayMinSize, IsArray, IsIn, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
+import { ArrayMinSize, IsArray, IsIn, IsInt, IsOptional, IsString, MaxLength, ValidateNested } from 'class-validator';
 import { RenderScanDto } from './render-scan.dto';
 
 /** One page's session id plus whatever corners/filter settings the user
  * landed on for that specific page during review. */
 export class CombinePageDto extends RenderScanDto {
+  @IsInt()
   sessionId: number;
 }
 

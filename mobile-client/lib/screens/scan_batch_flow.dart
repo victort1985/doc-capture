@@ -49,10 +49,13 @@ Future<Map<String, dynamic>?> runScanBatchFlow(
   try {
     final scanService = context.read<ScanSessionService>();
     return await scanService.combine(pages: pages, place: place, docType: docType, customName: customName);
-  } catch (_) {
+  } catch (e) {
+    debugPrint('[scan_batch_flow] combine failed: $e');
     if (context.mounted) {
       final l10n = AppLocalizations.of(context)!;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.scanCombineError)));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l10n.scanCombineError), duration: const Duration(seconds: 5)),
+      );
     }
     return null;
   }
