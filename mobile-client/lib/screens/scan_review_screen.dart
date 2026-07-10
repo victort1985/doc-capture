@@ -71,10 +71,22 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
   bool _removeShadows = false;
 
   bool _showingPreview = false;
-  Uint8List? _previewBytes;
-  bool _previewLoading = false;
-  String? _previewError;
-  Timer? _debounce;
+  // The server-rendered crop with NO colour adjustments applied (filter:
+  // 'original', brightness/contrast: 0) — brightness, contrast, and the
+  // B&W toggle are then rendered live on-device on top of this via
+  // ColorFiltered, using the device's own GPU instead of a network round
+  // trip on every slider tick, so the person sees the effect the instant
+  // they move it. Only the crop geometry (corners) and shadow removal
+  // (a spatially-varying operation, not a simple colour matrix) still
+  // need an actual server re-render — see _fetchBaseCrop.
+  Uint8List? _baseCropBytes;
+  bool _baseCropLoading = false;
+  String? _baseCropError;
+  // Which corners/shadow-toggle state _baseCropBytes was rendered for —
+  // if either has since changed, the cached crop is stale and needs a
+  // fresh server render before it's trustworthy again.
+  List<Offset>? _baseCropForCorners;
+  bool? _baseCropForShadows;
 
   @override
   void initState() {
@@ -87,12 +99,6 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
     SystemChannels.textInput.invokeMethod('TextInput.hide');
     _filter = widget.docType == 'document' ? 'bw' : 'original';
     _start();
-  }
-
-  @override
-  void dispose() {
-    _debounce?.cancel();
-    super.dispose();
   }
 
   Future<void> _start() async {
@@ -138,40 +144,63 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
     setState(() {
       _corners = _detectedCorners!.map((p) => Offset(p.x, p.y)).toList();
     });
-    if (_showingPreview) _schedulePreviewRefresh();
+    if (_showingPreview) _fetchBaseCrop();
   }
 
-  void _schedulePreviewRefresh() {
-    _debounce?.cancel();
-    _debounce = Timer(const Duration(milliseconds: 350), _fetchPreview);
+  /// True if the cached base crop no longer matches the current corners
+  /// or shadow-removal toggle — brightness/contrast/B&W don't affect
+  /// this (they're applied live on-device instead), only actual
+  /// server-side re-render inputs do.
+  bool get _baseCropIsStale {
+    if (_baseCropBytes == null) return true;
+    if (_baseCropForShadows != _removeShadows) return true;
+    final forCorners = _baseCropForCorners;
+    if (forCorners == null || forCorners.length != _corners.length) return true;
+    for (int i = 0; i < _corners.length; i++) {
+      if ((forCorners[i] - _corners[i]).distance > 0.5) return true;
+    }
+    return false;
   }
 
-  Future<void> _fetchPreview() async {
+  Future<void> _fetchBaseCrop() async {
     if (_sessionId == null) return;
+    final cornersAtRequestTime = List<Offset>.from(_corners);
+    final shadowsAtRequestTime = _removeShadows;
     setState(() {
-      _previewLoading = true;
-      _previewError = null;
+      _baseCropLoading = true;
+      _baseCropError = null;
     });
     try {
       final scanService = context.read<ScanSessionService>();
-      final bytes = await scanService.preview(_sessionId!, _currentSettings);
+      final bytes = await scanService.preview(
+        _sessionId!,
+        ScanRenderSettings(
+          corners: cornersAtRequestTime.map((c) => ScanPoint(c.dx, c.dy)).toList(),
+          filter: 'original',
+          brightness: 0,
+          contrast: 0,
+          removeShadows: shadowsAtRequestTime,
+        ),
+      );
       if (!mounted) return;
       setState(() {
-        _previewBytes = bytes;
-        _previewLoading = false;
+        _baseCropBytes = bytes;
+        _baseCropForCorners = cornersAtRequestTime;
+        _baseCropForShadows = shadowsAtRequestTime;
+        _baseCropLoading = false;
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _previewError = e.toString();
-        _previewLoading = false;
+        _baseCropError = e.toString();
+        _baseCropLoading = false;
       });
     }
   }
 
   void _togglePreview() {
     setState(() => _showingPreview = !_showingPreview);
-    if (_showingPreview) _fetchPreview();
+    if (_showingPreview && _baseCropIsStale) _fetchBaseCrop();
   }
 
   Future<void> _confirm() async {
@@ -349,23 +378,65 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
   }
 
   Widget _buildPreviewArea() {
-    if (_previewLoading && _previewBytes == null) {
+    if (_baseCropLoading && _baseCropBytes == null) {
       return const Center(child: CircularProgressIndicator(color: Colors.white));
     }
-    if (_previewError != null && _previewBytes == null) {
+    if (_baseCropError != null && _baseCropBytes == null) {
       final l10n = AppLocalizations.of(context)!;
-      return Center(child: Text(l10n.scanPreviewError, style: const TextStyle(color: Colors.white70)));
+      return Center(
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Text(l10n.scanPreviewError, style: const TextStyle(color: Colors.white70)),
+          const SizedBox(height: 8),
+          TextButton(onPressed: _fetchBaseCrop, child: Text(l10n.retry)),
+        ]),
+      );
     }
-    if (_previewBytes == null) return const SizedBox();
+    if (_baseCropBytes == null) return const SizedBox();
+
+    Widget image = Image.memory(_baseCropBytes!, fit: BoxFit.contain);
+    // Brightness/contrast, rendered live on-device (GPU colour matrix —
+    // instant, no network round trip) instead of re-fetching a server
+    // render on every slider tick. Matches the server's own formula:
+    // v = (input - 128) * contrastFactor + 128 + brightness.
+    final contrastFactor = (100 + _contrast) / 100;
+    final brightnessOffset = _brightness * 1.27;
+    final translate = 128 * (1 - contrastFactor) + brightnessOffset;
+    image = ColorFiltered(
+      colorFilter: ColorFilter.matrix(<double>[
+        contrastFactor, 0, 0, 0, translate,
+        0, contrastFactor, 0, 0, translate,
+        0, 0, contrastFactor, 0, translate,
+        0, 0, 0, 1, 0,
+      ]),
+      child: image,
+    );
+    // B&W, rendered live the same way — a plain luminance-preserving
+    // grayscale, close to (but not pixel-identical to) the server's
+    // actual Sauvola adaptive binarization, which only a real render can
+    // reproduce exactly. Good enough to know at a glance whether B&W or
+    // colour reads better for this document; the exact final look is
+    // whatever gets rendered at confirm.
+    if (_filter == 'bw') {
+      image = ColorFiltered(
+        colorFilter: const ColorFilter.matrix(<double>[
+          0.299, 0.587, 0.114, 0, 0,
+          0.299, 0.587, 0.114, 0, 0,
+          0.299, 0.587, 0.114, 0, 0,
+          0, 0, 0, 1, 0,
+        ]),
+        child: image,
+      );
+    }
+
     return Stack(
       alignment: Alignment.center,
       children: [
         InteractiveViewer(
           minScale: 1,
           maxScale: 4,
-          child: Image.memory(_previewBytes!, fit: BoxFit.contain),
+          child: image,
         ),
-        if (_previewLoading)
+        if (_baseCropLoading)
           Container(
             color: Colors.black26,
             child: const Center(child: CircularProgressIndicator(color: Colors.white)),
@@ -419,7 +490,6 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
               selected: {_filter},
               onSelectionChanged: (s) {
                 setState(() => _filter = s.first);
-                if (_showingPreview) _schedulePreviewRefresh();
               },
               style: const ButtonStyle(visualDensity: VisualDensity.compact),
             ),
@@ -434,18 +504,12 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
                   _buildSlider(
                     label: l10n.scanBrightness,
                     value: _brightness,
-                    onChanged: (v) {
-                      setState(() => _brightness = v);
-                      if (_showingPreview) _schedulePreviewRefresh();
-                    },
+                    onChanged: (v) => setState(() => _brightness = v),
                   ),
                   _buildSlider(
                     label: l10n.scanContrast,
                     value: _contrast,
-                    onChanged: (v) {
-                      setState(() => _contrast = v);
-                      if (_showingPreview) _schedulePreviewRefresh();
-                    },
+                    onChanged: (v) => setState(() => _contrast = v),
                   ),
                 ],
               ),
@@ -462,7 +526,7 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
                     activeColor: AppColors.primary,
                     onChanged: (v) {
                       setState(() => _removeShadows = v);
-                      if (_showingPreview) _schedulePreviewRefresh();
+                      if (_showingPreview) _fetchBaseCrop();
                     },
                   ),
                 ),

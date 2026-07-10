@@ -14,7 +14,6 @@ import 'settings_screen.dart';
 import '../widgets/search_picker_field.dart';
 import '../widgets/org_switcher_bar.dart';
 import 'document_preview_screen.dart';
-import 'scan_review_screen.dart';
 import 'scan_batch_flow.dart';
 
 /// Everything that existed before the Calls feature (upload / history /
@@ -128,29 +127,39 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
 
     // Documents go through the interactive review screen (auto-detect ->
     // drag corners / pick a filter / adjust brightness+contrast / toggle
-    // shadow removal, previewing each change -> confirm) — but only for
-    // actual photos; an already-finished PDF picked from the file
-    // manager has nothing to crop or filter, so it skips straight to
-    // direct upload like before.
+    // shadow removal, previewing each change -> optionally combine
+    // multiple pages into one document with a custom name -> confirm) —
+    // but only for actual photos; an already-finished PDF picked from
+    // the file manager has nothing to crop or filter, so it skips
+    // straight to direct upload like before. Whether the photos came
+    // from the camera or were picked from the file manager/gallery goes
+    // through the exact same batch flow either way.
     if (_docType == 'document') {
       final pdfFiles = _selectedFiles.where((f) => f.path.toLowerCase().endsWith('.pdf')).toList();
       final imageFiles = _selectedFiles.where((f) => !f.path.toLowerCase().endsWith('.pdf')).toList();
       setState(() => _selectedFiles = []);
 
-      var anySucceeded = false;
       if (imageFiles.isNotEmpty) {
-        anySucceeded = await _uploadViaReview(imageFiles) || anySucceeded;
-      }
-      if (pdfFiles.isNotEmpty) {
-        anySucceeded = await _uploadDirectly(fileService, pdfFiles) || anySucceeded;
+        if (_placeController.text.trim().isEmpty) {
+          setState(() { _statusMessage = l10n.uploadMissingFields; _statusIsError = true; });
+          return;
+        }
+        FocusScope.of(context).unfocus();
+        SystemChannels.textInput.invokeMethod('TextInput.hide');
+        await Future.delayed(const Duration(milliseconds: 150));
+        await _scanAndUpload(imageFiles);
       }
 
-      if (!mounted) return;
-      setState(() {
-        _statusMessage = anySucceeded ? l10n.uploadSuccess : null;
-        _statusIsError = false;
-      });
-      if (anySucceeded) _placeController.clear();
+      var anySucceeded = false;
+      if (pdfFiles.isNotEmpty) {
+        anySucceeded = await _uploadDirectly(fileService, pdfFiles) || anySucceeded;
+        if (!mounted) return;
+        setState(() {
+          _statusMessage = anySucceeded ? l10n.uploadSuccess : _statusMessage;
+          _statusIsError = false;
+        });
+        if (anySucceeded) _placeController.clear();
+      }
       return;
     }
 
@@ -171,42 +180,6 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   }
 
   /// Returns true if at least one file was successfully saved.
-  Future<bool> _uploadViaReview(List<File> files) async {
-    final fileService = context.read<FileService>();
-    final place = _placeController.text.trim();
-    FocusScope.of(context).unfocus(); // otherwise the Place field's keyboard can stay up and squeeze the review screen's layout
-    SystemChannels.textInput.invokeMethod('TextInput.hide');
-    await Future.delayed(const Duration(milliseconds: 150)); // give the OS keyboard-dismiss animation a moment to actually finish before the new screen appears underneath it
-
-    var succeeded = 0;
-    for (final file in files) {
-      if (!mounted) return succeeded > 0;
-      final result = await Navigator.of(context).push<Map<String, dynamic>>(
-        MaterialPageRoute(
-          builder: (_) => ScanReviewScreen(imageFile: file, place: place, docType: 'document'),
-        ),
-      );
-      if (result == null) continue; // user cancelled that one — the rest still get their turn
-      succeeded++;
-
-      final id = result['id'] as int?;
-      final name = result['generatedName'] as String? ?? 'document.pdf';
-      if (id != null && mounted) {
-        try {
-          final bytes = await fileService.downloadFile(id);
-          if (!mounted) return succeeded > 0;
-          await Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => DocumentPreviewScreen(pdfBytes: bytes, filename: name),
-          ));
-        } catch (_) {
-          // The document was already saved successfully — a preview-
-          // fetch hiccup here shouldn't be reported as a failure.
-        }
-      }
-    }
-    return succeeded > 0;
-  }
-
   /// Already-finished PDFs picked from the file manager — nothing to
   /// crop or filter, so straight to storage like the pre-review flow.
   Future<bool> _uploadDirectly(FileService fileService, List<File> files) async {
