@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Pencil, X, Save, Phone, Search } from 'lucide-react';
+import { Plus, Trash2, Pencil, X, Save, Phone, Search, Upload, Check } from 'lucide-react';
 import { apiFetch, BASE_URL, getToken } from '../services/api';
 
 interface City { id: number; name: string; region?: { id: number; name: string } }
@@ -16,6 +16,15 @@ interface Contact {
   email?: string;
   notes?: string;
   photoRelativePath?: string;
+}
+interface ParsedContact {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email?: string;
+  organization?: string;
+  city?: string;
+  notes?: string;
 }
 
 const EMPTY_FORM = {
@@ -35,6 +44,14 @@ export default function PhoneBookPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  const [showImport, setShowImport] = useState(false);
+  const [importParsing, setImportParsing] = useState(false);
+  const [importParsed, setImportParsed] = useState<ParsedContact[] | null>(null);
+  const [importSelected, setImportSelected] = useState<Set<number>>(new Set());
+  const [importCategory, setImportCategory] = useState('client');
+  const [importSubmitting, setImportSubmitting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
 
   async function load() {
     try {
@@ -110,6 +127,75 @@ export default function PhoneBookPage() {
     setContacts((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
 
+  function openImport() {
+    setShowImport(true);
+    setImportParsed(null);
+    setImportSelected(new Set());
+    setImportResult(null);
+    setError(null);
+  }
+
+  function closeImport() {
+    setShowImport(false);
+    setImportParsed(null);
+    setImportSelected(new Set());
+    setImportResult(null);
+  }
+
+  async function handleVcfFile(file: File) {
+    setImportParsing(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const parsed = await apiFetch<ParsedContact[]>('/phonebook/import/parse', {
+        method: 'POST',
+        body: formData,
+      });
+      setImportParsed(parsed);
+      // Pre-select everything with a phone number — the admin already
+      // curated this file on their phone by choosing which contacts to
+      // export, so defaulting to "all selected" saves re-clicking
+      // through the same list; anything missing a phone (can't be
+      // saved — the schema requires one) starts unchecked instead.
+      setImportSelected(new Set(parsed.map((_, i) => i).filter((i) => parsed[i].phone?.trim())));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to parse the file');
+    } finally {
+      setImportParsing(false);
+    }
+  }
+
+  function toggleImportSelected(index: number) {
+    setImportSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }
+
+  async function submitImport() {
+    if (!importParsed) return;
+    const contacts = [...importSelected].map((i) => importParsed[i]);
+    if (contacts.length === 0) return;
+    setImportSubmitting(true);
+    setError(null);
+    try {
+      const result = await apiFetch<{ imported: number; skipped: number }>('/phonebook/import/commit', {
+        method: 'POST',
+        body: JSON.stringify({ category: importCategory, contacts }),
+      });
+      setImportResult(result);
+      setImportParsed(null);
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to import contacts');
+    } finally {
+      setImportSubmitting(false);
+    }
+  }
+
   return (
     <div>
       <div className="topbar">
@@ -117,9 +203,14 @@ export default function PhoneBookPage() {
           <span className="eyebrow">Directory</span>
           <h1 className="page-title">Phone book</h1>
         </div>
-        <button onClick={() => (showForm ? cancelForm() : setShowForm(true))}>
-          {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New contact</>}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="ghost" onClick={openImport}>
+            <Upload size={16} /> Import from vCard
+          </button>
+          <button onClick={() => (showForm ? cancelForm() : setShowForm(true))}>
+            {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New contact</>}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
@@ -141,6 +232,112 @@ export default function PhoneBookPage() {
       </div>
 
       {error && <div className="error-banner">{error}</div>}
+
+      {showImport && (
+        <div className="card form-card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3 style={{ marginTop: 0 }}>Import contacts from vCard (.vcf)</h3>
+            <button className="ghost" onClick={closeImport}><X size={16} /></button>
+          </div>
+
+          {!importResult && (
+            <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginTop: -6 }}>
+              On the iPhone, open Contacts, select the contacts to bring over, tap Share, then
+              "Save to Files" (or AirDrop/email to yourself) — that produces a .vcf file. Upload
+              it here, then pick which of those contacts to actually import.
+            </p>
+          )}
+
+          {!importParsed && !importResult && (
+            <div>
+              <input
+                type="file"
+                accept=".vcf,text/vcard"
+                disabled={importParsing}
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVcfFile(f); }}
+              />
+              {importParsing && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Parsing…</p>}
+            </div>
+          )}
+
+          {importParsed && (
+            <>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
+                <label style={{ margin: 0 }}>Category for all imported contacts</label>
+                <select value={importCategory} onChange={(e) => setImportCategory(e.target.value)} style={{ width: 180 }}>
+                  <option value="client">Client</option>
+                  <option value="technician">Technician</option>
+                  <option value="supplier">Supplier</option>
+                </select>
+              </div>
+
+              <div style={{ maxHeight: 340, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 32 }} />
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Email</th>
+                      <th>Organization</th>
+                      <th>City</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importParsed.map((c, i) => {
+                      const noPhone = !c.phone?.trim();
+                      return (
+                        <tr key={i} style={noPhone ? { opacity: 0.5 } : undefined}>
+                          <td>
+                            <input
+                              type="checkbox"
+                              checked={importSelected.has(i)}
+                              disabled={noPhone}
+                              onChange={() => toggleImportSelected(i)}
+                            />
+                          </td>
+                          <td>{c.firstName} {c.lastName}</td>
+                          <td className="mono">{c.phone || '— no phone, can\'t import —'}</td>
+                          <td>{c.email ?? '—'}</td>
+                          <td>{c.organization ?? '—'}</td>
+                          <td>{c.city ?? '—'}</td>
+                        </tr>
+                      );
+                    })}
+                    {importParsed.length === 0 && (
+                      <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 24 }}>
+                        No contacts found in that file
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  disabled={importSelected.size === 0 || importSubmitting}
+                  onClick={submitImport}
+                >
+                  <Check size={15} /> {importSubmitting ? 'Importing…' : `Import selected (${importSelected.size})`}
+                </button>
+              </div>
+            </>
+          )}
+
+          {importResult && (
+            <div>
+              <p>
+                Imported {importResult.imported} contact{importResult.imported === 1 ? '' : 's'}.
+                {importResult.skipped > 0 && ` Skipped ${importResult.skipped} without a phone number.`}
+              </p>
+              <div className="form-actions">
+                <button type="button" onClick={closeImport}>Done</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {showForm && (
         <form className="card form-card" onSubmit={submitContact}>

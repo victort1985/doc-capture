@@ -1,13 +1,17 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { PhoneBookContact, ContactCategory } from './entities/phonebook-contact.entity';
+import { City } from '../locations/entities/city.entity';
+import { Location } from '../locations/entities/location.entity';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
+import { ParsedContactDto } from './dto/import-contacts.dto';
 import { StorageService } from '../storage/storage.service';
 import { LocationsService } from '../locations/locations.service';
 import { TemplatesService } from '../templates/templates.service';
 import { processPhoto } from '../files/processors/photo.processor';
+import { parseVCard, ParsedVCardContact } from './vcard-parser.util';
 import {
   DEFAULT_PHONEBOOK_PATTERN,
   resolvePhoneBookNamePattern,
@@ -18,6 +22,10 @@ export class PhoneBookService {
   constructor(
     @InjectRepository(PhoneBookContact)
     private readonly contactsRepo: Repository<PhoneBookContact>,
+    @InjectRepository(City)
+    private readonly citiesRepo: Repository<City>,
+    @InjectRepository(Location)
+    private readonly locationsRepo: Repository<Location>,
     private readonly storageService: StorageService,
     private readonly locationsService: LocationsService,
     private readonly templatesService: TemplatesService,
@@ -161,6 +169,93 @@ export class PhoneBookService {
     const adapter = await this.storageService.getAdapter(contact.photoStorageConnection.id);
     const bytes = await adapter.read(contact.photoRelativePath);
     return { buffer: bytes, mimetype: 'image/jpeg' };
+  }
+
+  /**
+   * Parses an uploaded .vcf file into a preview list — nothing is saved
+   * yet. The admin panel shows this as a checkbox table so the admin
+   * can pick which contacts actually get imported (spec: "не все
+   * контакты, а выборочно").
+   */
+  parseVCardFile(buffer: Buffer): ParsedVCardContact[] {
+    return parseVCard(buffer.toString('utf-8'));
+  }
+
+  /**
+   * Creates a PhoneBookContact for each of the admin-selected parsed
+   * contacts. vCard has no equivalent of this app's category
+   * (client/technician/supplier), so one category applies to the whole
+   * batch. city/organization are matched by name against existing
+   * records (case-insensitive) rather than auto-creating new
+   * City/Location entries from arbitrary imported text, which could
+   * otherwise pollute that shared, curated directory with near-duplicate
+   * or malformed entries — an unmatched name is preserved in Notes
+   * instead of silently dropped, so nothing from the vCard is lost even
+   * without a match.
+   */
+  async importContacts(
+    userId: number,
+    tenantId: number | null,
+    category: ContactCategory,
+    contacts: ParsedContactDto[],
+  ): Promise<{ imported: number; skipped: number }> {
+    let imported = 0;
+    let skipped = 0;
+
+    for (const c of contacts) {
+      if (!c.phone?.trim()) {
+        // Schema requires a phone number — vCard entries without one
+        // (email-only contacts, for instance) can't become a valid
+        // record here.
+        skipped++;
+        continue;
+      }
+
+      const city = c.city ? await this.findCityByName(c.city) : undefined;
+      const organization = c.organization ? await this.findLocationByName(c.organization, tenantId) : undefined;
+
+      let notes = c.notes;
+      if (c.organization && !organization) {
+        notes = [notes, `Организация (из импорта): ${c.organization}`].filter(Boolean).join('\n');
+      }
+      if (c.city && !city) {
+        notes = [notes, `Город (из импорта): ${c.city}`].filter(Boolean).join('\n');
+      }
+
+      const contact = this.contactsRepo.create({
+        category,
+        firstName: c.firstName,
+        lastName: c.lastName || '',
+        city,
+        organization,
+        phone: c.phone,
+        email: c.email,
+        notes,
+        createdBy: { id: userId } as any,
+        tenant: tenantId != null ? ({ id: tenantId } as any) : undefined,
+      });
+      const saved = await this.contactsRepo.save(contact);
+      await this.writeContactFiles(saved, userId);
+      imported++;
+    }
+
+    return { imported, skipped };
+  }
+
+  private async findCityByName(name: string): Promise<City | undefined> {
+    const trimmed = name.trim();
+    if (!trimmed) return undefined;
+    return (await this.citiesRepo.findOne({ where: { name: ILike(trimmed) } })) ?? undefined;
+  }
+
+  private async findLocationByName(name: string, tenantId: number | null): Promise<Location | undefined> {
+    const trimmed = name.trim();
+    if (!trimmed) return undefined;
+    const qb = this.locationsRepo.createQueryBuilder('l').where('l.name ILIKE :name', { name: trimmed });
+    if (tenantId != null) {
+      qb.andWhere('(l."organizationId" = :tenantId OR l."organizationId" IS NULL)', { tenantId });
+    }
+    return (await qb.getOne()) ?? undefined;
   }
 
   /**
