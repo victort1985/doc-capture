@@ -155,6 +155,40 @@ export class PhoneBookService {
     await this.contactsRepo.remove(contact);
   }
 
+  /** Moves every given contact into one category at once — spec:
+   * "перенос между группами (категориями)" for a multi-selected set. */
+  async bulkUpdateCategory(
+    ids: number[],
+    tenantId: number | null,
+    category: ContactCategory,
+  ): Promise<{ updated: number }> {
+    const qb = this.contactsRepo
+      .createQueryBuilder()
+      .update(PhoneBookContact)
+      .set({ category })
+      .where('id IN (:...ids)', { ids });
+    if (tenantId != null) {
+      qb.andWhere('("tenantId" = :tenantId OR "tenantId" IS NULL)', { tenantId });
+    }
+    const result = await qb.execute();
+    return { updated: result.affected ?? 0 };
+  }
+
+  /** Deletes every given contact at once. Scoped to the caller's tenant
+   * the same way every other write here is — a selection can only ever
+   * contain ids the admin could already see in their own filtered list,
+   * but re-checking here means a stale/tampered id list can't delete
+   * something out of scope. */
+  async bulkRemove(ids: number[], tenantId: number | null): Promise<{ deleted: number }> {
+    const qb = this.contactsRepo.createQueryBuilder('c').where('c.id IN (:...ids)', { ids });
+    if (tenantId != null) {
+      qb.andWhere('(c."tenantId" = :tenantId OR c."tenantId" IS NULL)', { tenantId });
+    }
+    const contacts = await qb.getMany();
+    await this.contactsRepo.remove(contacts);
+    return { deleted: contacts.length };
+  }
+
   /** Streams a contact's photo back. @param tenantId same out-of-scope-is-404 pattern as the other methods (null-tenant contacts are treated as shared, not off-limits). */
   async downloadPhoto(id: number, tenantId?: number | null): Promise<{ buffer: Buffer; mimetype: string }> {
     const contact = await this.contactsRepo.findOne({

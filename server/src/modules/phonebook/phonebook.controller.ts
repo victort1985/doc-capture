@@ -20,6 +20,7 @@ import { PhoneBookService } from './phonebook.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { CommitImportDto } from './dto/import-contacts.dto';
+import { BulkUpdateCategoryDto, BulkDeleteDto } from './dto/bulk-contacts.dto';
 import { ContactCategory } from './entities/phonebook-contact.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -129,6 +130,22 @@ export class PhoneBookController {
     @UploadedFile() photo?: { buffer: Buffer; mimetype: string },
   ) {
     return this.phoneBookService.update(id, user.organizationId, dto, user.id, photo);
+  }
+
+  /** Moves every selected contact into one category at once. */
+  @Post('bulk/category')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  bulkUpdateCategory(@Body() dto: BulkUpdateCategoryDto, @CurrentUser() user: RequestUser) {
+    return this.phoneBookService.bulkUpdateCategory(dto.ids, user.organizationId, dto.category);
+  }
+
+  /** Deletes every selected contact at once. */
+  @Post('bulk/delete')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  bulkDelete(@Body() dto: BulkDeleteDto, @CurrentUser() user: RequestUser) {
+    return this.phoneBookService.bulkRemove(dto.ids, user.organizationId);
   }
 
   @Delete(':id')

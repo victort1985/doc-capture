@@ -53,6 +53,10 @@ export default function PhoneBookPage() {
   const [importSubmitting, setImportSubmitting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
 
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [bulkCategory, setBulkCategory] = useState('client');
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   async function load() {
     try {
       const params = new URLSearchParams();
@@ -64,6 +68,7 @@ export default function PhoneBookPage() {
         apiFetch<Location[]>('/locations'),
       ]);
       setContacts(c);
+      setSelectedIds(new Set());
       setCities(ci);
       setLocations(lo);
     } catch (err) {
@@ -174,6 +179,57 @@ export default function PhoneBookPage() {
     if (!confirm('Delete this contact?')) return;
     await apiFetch(`/phonebook/${id}`, { method: 'DELETE' });
     setContacts((prev: any[]) => prev.filter((x: any) => x.id !== id));
+    setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
+  }
+
+  function toggleSelected(id: number) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelectedIds((prev) =>
+      prev.size === contacts.length ? new Set() : new Set(contacts.map((c) => c.id)),
+    );
+  }
+
+  async function applyBulkCategory() {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    setError(null);
+    try {
+      await apiFetch('/phonebook/bulk/category', {
+        method: 'POST',
+        body: JSON.stringify({ ids: [...selectedIds], category: bulkCategory }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to move contacts');
+    } finally {
+      setBulkBusy(false);
+    }
+  }
+
+  async function applyBulkDelete() {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} contact${selectedIds.size === 1 ? '' : 's'}? This can't be undone.`)) return;
+    setBulkBusy(true);
+    setError(null);
+    try {
+      await apiFetch('/phonebook/bulk/delete', {
+        method: 'POST',
+        body: JSON.stringify({ ids: [...selectedIds] }),
+      });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete contacts');
+    } finally {
+      setBulkBusy(false);
+    }
   }
 
   function openImport() {
@@ -455,10 +511,43 @@ export default function PhoneBookPage() {
         </form>
       )}
 
+      {selectedIds.size > 0 && (
+        <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, padding: '10px 16px' }}>
+          <strong>{selectedIds.size} selected</strong>
+          <select value={bulkCategory} onChange={(e) => setBulkCategory(e.target.value)} style={{ width: 160 }}>
+            <option value="client">Client</option>
+            <option value="technician">Technician</option>
+            <option value="supplier">Supplier</option>
+          </select>
+          <button type="button" className="ghost" disabled={bulkBusy} onClick={applyBulkCategory}>
+            Move to category
+          </button>
+          <button
+            type="button"
+            className="ghost"
+            disabled={bulkBusy}
+            onClick={applyBulkDelete}
+            style={{ color: 'var(--danger)' }}
+          >
+            <Trash2 size={15} /> Delete selected
+          </button>
+          <button type="button" className="ghost" onClick={() => setSelectedIds(new Set())} style={{ marginLeft: 'auto' }}>
+            Clear selection
+          </button>
+        </div>
+      )}
+
       <div className="card">
         <table>
           <thead>
             <tr>
+              <th style={{ width: 32 }}>
+                <input
+                  type="checkbox"
+                  checked={contacts.length > 0 && selectedIds.size === contacts.length}
+                  onChange={toggleSelectAll}
+                />
+              </th>
               <th>Name</th>
               <th>Category</th>
               <th>Organization</th>
@@ -470,6 +559,9 @@ export default function PhoneBookPage() {
           <tbody>
             {contacts.map((c) => (
               <tr key={c.id}>
+                <td>
+                  <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelected(c.id)} />
+                </td>
                 <td>
                   {c.firstName} {c.lastName}
                   {c.position && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{c.position}</div>}
@@ -487,7 +579,7 @@ export default function PhoneBookPage() {
               </tr>
             ))}
             {contacts.length === 0 && (
-              <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 24 }}>No contacts</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 24 }}>No contacts</td></tr>
             )}
           </tbody>
         </table>
