@@ -22,8 +22,15 @@ export function resolveNamePattern(pattern: string, ctx: NamePatternContext): st
     .replace('{uuid}', uuid());
 }
 
+/** Used for template-generated filename/subfolder segments ({place},
+ * {username}, etc). Only strips characters that are genuinely invalid
+ * in a filename/path segment — previously this stripped to ASCII-only,
+ * which collapsed any Hebrew/Russian/etc. place or username (this
+ * business's everyday working languages) into a single generic
+ * underscore, making every such subfolder look the same/effectively
+ * blank instead of showing the actual name. */
 export function sanitize(value: string): string {
-  return value.replace(/[^a-zA-Z0-9-_]+/g, '_');
+  return sanitizeFilenameComponent(value) || '_';
 }
 
 /** For a user-typed custom document name (as opposed to the template-
