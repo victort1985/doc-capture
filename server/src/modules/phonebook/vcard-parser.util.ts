@@ -13,23 +13,15 @@
  * this import actually uses.
  */
 
-export interface ParsedVCardContact {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email?: string;
-  organization?: string;
-  city?: string;
-  notes?: string;
-}
+import { ParsedContact } from './phonebook.types';
 
-export function parseVCard(content: string): ParsedVCardContact[] {
+export function parseVCard(content: string): ParsedContact[] {
   // RFC 6350 line folding: a continuation line starts with a single
   // space or tab and should be joined onto the previous line.
   const unfolded = content.replace(/\r\n[ \t]/g, '').replace(/\n[ \t]/g, '');
   const lines = unfolded.split(/\r\n|\n|\r/);
 
-  const contacts: ParsedVCardContact[] = [];
+  const contacts: ParsedContact[] = [];
   let current: Record<string, string[]> = {};
   let inCard = false;
 

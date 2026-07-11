@@ -11,7 +11,8 @@ import { StorageService } from '../storage/storage.service';
 import { LocationsService } from '../locations/locations.service';
 import { TemplatesService } from '../templates/templates.service';
 import { processPhoto } from '../files/processors/photo.processor';
-import { parseVCard, ParsedVCardContact } from './vcard-parser.util';
+import { parseVCard } from './vcard-parser.util';
+import { ParsedContact } from './phonebook.types';
 import {
   DEFAULT_PHONEBOOK_PATTERN,
   resolvePhoneBookNamePattern,
@@ -177,7 +178,7 @@ export class PhoneBookService {
    * can pick which contacts actually get imported (spec: "не все
    * контакты, а выборочно").
    */
-  parseVCardFile(buffer: Buffer): ParsedVCardContact[] {
+  parseVCardFile(buffer: Buffer): ParsedContact[] {
     return parseVCard(buffer.toString('utf-8'));
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Pencil, X, Save, Phone, Search, Upload, Check } from 'lucide-react';
+import { Plus, Trash2, Pencil, X, Save, Phone, Search, Upload, Check, Globe } from 'lucide-react';
 import { apiFetch, BASE_URL, getToken } from '../services/api';
 
 interface City { id: number; name: string; region?: { id: number; name: string } }
@@ -72,6 +72,55 @@ export default function PhoneBookPage() {
   }
 
   useEffect(() => { load(); }, [categoryFilter]);
+
+  // Picks up where the Google OAuth flow left off: Google redirects the
+  // whole browser back here (not an XHR, so there's no other way to get
+  // the fetched contact list into this page) with either a one-time
+  // session id to read the parsed contacts from, or an error message.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const sessionId = params.get('googleImportSession');
+    const googleError = params.get('googleImportError');
+    if (!sessionId && !googleError) return;
+
+    window.history.replaceState({}, '', window.location.pathname);
+    setShowImport(true);
+    setImportResult(null);
+
+    if (googleError) {
+      setError(`Google Contacts import failed: ${googleError}`);
+      return;
+    }
+    (async () => {
+      setImportParsing(true);
+      try {
+        const data = await apiFetch<{ contacts: ParsedContact[]; error?: string }>(
+          `/phonebook/import/google/${sessionId}`,
+        );
+        if (data.error) {
+          setError(`Google Contacts import failed: ${data.error}`);
+        } else {
+          setImportParsed(data.contacts);
+          setImportSelected(new Set(data.contacts.map((_, i) => i).filter((i) => data.contacts[i].phone?.trim())));
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load Google contacts');
+      } finally {
+        setImportParsing(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function connectGoogleContacts() {
+    setError(null);
+    try {
+      const { url } = await apiFetch<{ url: string }>('/phonebook/import/google/auth-url');
+      window.location.href = url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to start Google connection');
+    }
+  }
   useEffect(() => {
     const t = setTimeout(load, 250);
     return () => clearTimeout(t);
@@ -205,7 +254,7 @@ export default function PhoneBookPage() {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="ghost" onClick={openImport}>
-            <Upload size={16} /> Import from vCard
+            <Upload size={16} /> Import contacts
           </button>
           <button onClick={() => (showForm ? cancelForm() : setShowForm(true))}>
             {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New contact</>}
@@ -236,27 +285,37 @@ export default function PhoneBookPage() {
       {showImport && (
         <div className="card form-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ marginTop: 0 }}>Import contacts from vCard (.vcf)</h3>
+            <h3 style={{ marginTop: 0 }}>Import contacts</h3>
             <button className="ghost" onClick={closeImport}><X size={16} /></button>
           </div>
 
           {!importResult && (
             <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginTop: -6 }}>
-              On the iPhone, open Contacts, select the contacts to bring over, tap Share, then
-              "Save to Files" (or AirDrop/email to yourself) — that produces a .vcf file. Upload
-              it here, then pick which of those contacts to actually import.
+              Import selectively from either source — on iPhone, open Contacts, select the
+              contacts to bring over, tap Share, then "Save to Files" (or AirDrop/email to
+              yourself) to get a .vcf file; or connect a Google account directly. Either way,
+              nothing is saved until you pick which contacts to actually import below.
             </p>
           )}
 
           {!importParsed && !importResult && (
-            <div>
-              <input
-                type="file"
-                accept=".vcf,text/vcard"
-                disabled={importParsing}
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVcfFile(f); }}
-              />
-              {importParsing && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Parsing…</p>}
+            <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4 }}>From a .vcf file</label>
+                <input
+                  type="file"
+                  accept=".vcf,text/vcard"
+                  disabled={importParsing}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleVcfFile(f); }}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 4 }}>From Google Contacts</label>
+                <button type="button" className="ghost" disabled={importParsing} onClick={connectGoogleContacts}>
+                  <Globe size={15} /> Connect Google account
+                </button>
+              </div>
+              {importParsing && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Loading contacts…</p>}
             </div>
           )}
 
