@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
@@ -110,6 +111,16 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   Future<void> _pickFromFiles(FileService fileService) async {
     final files = await fileService.pickFromFileManager();
     if (files.isNotEmpty) setState(() => _selectedFiles = files);
+  }
+
+  /// Photos and screenshots picked straight from the phone's photo
+  /// library — added to the pending list the same way file-manager
+  /// picks are (processed on "Upload", same document/photo handling
+  /// either way based on _docType).
+  Future<void> _pickFromGallery() async {
+    final picked = await ImagePicker().pickMultiImage(imageQuality: 90);
+    if (picked.isEmpty) return;
+    setState(() => _selectedFiles = [..._selectedFiles, ...picked.map((x) => File(x.path))]);
   }
 
   Future<void> _upload(FileService fileService) async {
@@ -295,16 +306,24 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
                     children: [
                       Expanded(
                         child: OutlinedButton.icon(
-                          icon: const Icon(Icons.camera_alt_outlined, size: 19),
-                          label: Text(l10n.sourceCamera),
+                          icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                          label: Text(l10n.sourceCamera, overflow: TextOverflow.ellipsis),
                           onPressed: _openCamera,
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: OutlinedButton.icon(
-                          icon: const Icon(Icons.folder_open_outlined, size: 19),
-                          label: Text(l10n.sourceFiles),
+                          icon: const Icon(Icons.photo_library_outlined, size: 18),
+                          label: Text(l10n.calendarGallery, overflow: TextOverflow.ellipsis),
+                          onPressed: _pickFromGallery,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.folder_open_outlined, size: 18),
+                          label: Text(l10n.sourceFiles, overflow: TextOverflow.ellipsis),
                           onPressed: () => _pickFromFiles(fileService),
                         ),
                       ),
