@@ -1,4 +1,5 @@
 import sharp from 'sharp';
+import { detectDocumentCornersViaEdges } from './document-scanner-edges';
 
 /**
  * Pure-JavaScript document scanner — zero WASM/native dependencies (see
@@ -405,34 +406,57 @@ export async function detectDocumentCorners(imageBuffer: Buffer): Promise<Detect
   const smallW = Math.round(width * scale), smallH = Math.round(height * scale);
   const graySmall = await sharp(imageBuffer).resize(smallW, smallH).greyscale().raw().toBuffer();
 
-  const stretchedSmall = stretchContrast(graySmall, 2, 2);
-
-  const openRadius = Math.max(6, Math.round(Math.min(smallW, smallH) * 0.05));
-
-  const blurredFine = boxBlur(stretchedSmall, smallW, smallH, 8, 3);
-  const thresholdFine = otsuThreshold(blurredFine);
-  const binaryFine = new Uint8Array(blurredFine.length);
-  for (let i = 0; i < blurredFine.length; i++) binaryFine[i] = blurredFine[i] > thresholdFine ? 1 : 0;
-  const openedFine = binaryDilate(binaryErode(binaryFine, smallW, smallH, openRadius), smallW, smallH, openRadius);
-  const fineCore = largestConnectedComponent(openedFine, smallW, smallH);
-  const seed = fineCore.indexOf(1);
-
-  let region: Uint8Array;
-  if (seed === -1) {
-    region = openedFine;
-  } else {
-    const blurredCoarse = boxBlur(stretchedSmall, smallW, smallH, 50, 2);
-    const thresholdCoarse = otsuThreshold(blurredCoarse);
-    const combined = new Uint8Array(blurredFine.length);
-    for (let i = 0; i < blurredFine.length; i++) {
-      combined[i] = (binaryFine[i] || blurredCoarse[i] > thresholdCoarse) ? 1 : 0;
+  // Edge-based detection (Canny + "does this region's shape actually
+  // look like a quadrilateral" check — see document-scanner-edges.ts)
+  // is tried first: it succeeds on low page/background-contrast photos
+  // the brightness-based approach below structurally can't (verified
+  // directly against 5 real photos where many detected corners showed
+  // under a 10-point brightness difference between "inside" and
+  // "outside"). It's deliberately conservative and declines (returns
+  // null) whenever it isn't confident, in which case this falls through
+  // to the brightness-based pipeline exactly as it worked before this
+  // was added. SCANNER_EDGE_DETECTION_ENABLED=false disables this
+  // entirely without a redeploy, for a full rollback to prior behavior
+  // if it causes problems in a case not covered by testing.
+  let smallCorners: Quad | null = null;
+  let region: Uint8Array | null = null;
+  if (process.env.SCANNER_EDGE_DETECTION_ENABLED !== 'false') {
+    const edgeResult = detectDocumentCornersViaEdges(graySmall, smallW, smallH);
+    if (edgeResult) {
+      smallCorners = edgeResult.corners;
+      region = edgeResult.region;
     }
-    const openedCombined = binaryDilate(binaryErode(combined, smallW, smallH, openRadius), smallW, smallH, openRadius);
-    region = connectedComponentFrom(openedCombined, smallW, smallH, seed);
   }
 
-  const smallCorners = findCorners(region, smallW, smallH);
-  if (!smallCorners) return null;
+  if (!smallCorners || !region) {
+    const stretchedSmall = stretchContrast(graySmall, 2, 2);
+
+    const openRadius = Math.max(6, Math.round(Math.min(smallW, smallH) * 0.05));
+
+    const blurredFine = boxBlur(stretchedSmall, smallW, smallH, 8, 3);
+    const thresholdFine = otsuThreshold(blurredFine);
+    const binaryFine = new Uint8Array(blurredFine.length);
+    for (let i = 0; i < blurredFine.length; i++) binaryFine[i] = blurredFine[i] > thresholdFine ? 1 : 0;
+    const openedFine = binaryDilate(binaryErode(binaryFine, smallW, smallH, openRadius), smallW, smallH, openRadius);
+    const fineCore = largestConnectedComponent(openedFine, smallW, smallH);
+    const seed = fineCore.indexOf(1);
+
+    if (seed === -1) {
+      region = openedFine;
+    } else {
+      const blurredCoarse = boxBlur(stretchedSmall, smallW, smallH, 50, 2);
+      const thresholdCoarse = otsuThreshold(blurredCoarse);
+      const combined = new Uint8Array(blurredFine.length);
+      for (let i = 0; i < blurredFine.length; i++) {
+        combined[i] = (binaryFine[i] || blurredCoarse[i] > thresholdCoarse) ? 1 : 0;
+      }
+      const openedCombined = binaryDilate(binaryErode(combined, smallW, smallH, openRadius), smallW, smallH, openRadius);
+      region = connectedComponentFrom(openedCombined, smallW, smallH, seed);
+    }
+
+    smallCorners = findCorners(region, smallW, smallH);
+    if (!smallCorners) return null;
+  }
 
   const curvesSmall = traceAllBoundaryCurves(region, smallW, smallH);
   const topCurveFull = new Array<number>(width);
