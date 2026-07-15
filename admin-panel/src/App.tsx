@@ -20,6 +20,7 @@ import DeliveryNoteSettingsPage from './pages/DeliveryNoteSettingsPage';
 import DeliveryNotesPage from './pages/DeliveryNotesPage';
 import ErrorBoundary from './components/ErrorBoundary';
 import CalendarSyncPage from './pages/CalendarSyncPage';
+import OrdersEmailSettingsPage from './pages/OrdersEmailSettingsPage';
 
 export default function App() {
   return (
@@ -44,6 +45,7 @@ export default function App() {
           <Route path="/delivery-settings" element={<DeliveryNoteSettingsPage />} />
           <Route path="/delivery-notes" element={<DeliveryNotesPage />} />
           <Route path="/calendar-sync" element={<CalendarSyncPage />} />
+          <Route path="/orders-email-settings" element={<OrdersEmailSettingsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />
