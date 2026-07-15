@@ -384,18 +384,20 @@ export function detectDocumentCornersViaEdges(graySmallU8: Uint8ClampedArray | B
     const { mag, dir } = sobel(blurred, width, height);
     const nms = nonMaxSuppression(mag, dir, width, height);
 
-    // Try the standard (conservative) threshold first; if the resulting
-    // closed region is too small, that can mean the true boundary has a
-    // real but weak/inconsistent gradient the standard threshold missed
-    // outright (confirmed directly: measured gradient magnitude along
-    // one real photo's actual left edge — strong near the top, then
-    // dropping to near-zero further down the same edge) rather than
-    // there being no document there at all. Retrying with a
-    // progressively more sensitive (lower percentile) threshold gives
-    // that weak signal a chance; the shape checks in
-    // findQuadByRadialProfile still have to pass regardless, so a more
-    // sensitive pass that just picks up more background noise still
-    // gets rejected the same as before.
+    // Try progressively more sensitive thresholds and keep every
+    // attempt that passes all checks, rather than stopping at the
+    // first one that merely clears the bar — a real, confirmed case:
+    // one photo's standard (0.88) pass already produced a large-enough,
+    // valid-shaped region, so the loop never got to a more sensitive
+    // pass at all, even though the standard pass's region started well
+    // below the page's actual top edge (a real gradient there, ~60
+    // magnitude, just weaker than other edges elsewhere in the same
+    // photo). Trying every level and keeping the *largest* valid region
+    // instead favors whichever pass captured the most complete page
+    // boundary, since a truncated capture is — all else equal — always
+    // going to be smaller than a complete one.
+    let best: EdgeDetectionResult | null = null;
+    let bestFraction = 0;
     for (const highPercentile of [0.88, 0.78, 0.68]) {
       const edges = hysteresis(nms, width, height, highPercentile);
       const closedEdges = binaryDilate(edges, width, height, 9);
@@ -411,9 +413,27 @@ export function detectDocumentCornersViaEdges(graySmallU8: Uint8ClampedArray | B
 
       const corners = findQuadByRadialProfile(region, width, height);
       if (!corners) continue;
-      return { corners, region };
+
+      // Solidity check: a genuine page's region should be almost
+      // entirely inside its own 4-corner quad — a real, confirmed
+      // failure mode of the more sensitive passes above is a noise-
+      // driven bulge or appendage on the mask (background texture or a
+      // shadow the lower threshold let through) that pulls one corner
+      // out towards it. That distorts the quad enough that a large
+      // chunk of the *actual* region ends up outside the 4 chosen
+      // corners, even though every other check above still passes.
+      let shoelace = 0;
+      for (let i = 0; i < 4; i++) {
+        const p0 = corners[i], p1 = corners[(i + 1) % 4];
+        shoelace += p0.x * p1.y - p1.x * p0.y;
+      }
+      const quadArea = Math.abs(shoelace) / 2;
+      const solidity = filled / quadArea;
+      if (solidity < 0.85 || solidity > 1.15) continue;
+
+      if (fraction > bestFraction) { bestFraction = fraction; best = { corners, region }; }
     }
-    return null;
+    return best;
   } catch {
     // Never let a bug in this experimental path take down a real
     // upload — treat any failure exactly like "not confident enough".
