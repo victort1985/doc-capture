@@ -36,7 +36,7 @@ export class Order {
 
   /** Null/unset until a delivery note is attached — filename uses
    * "0000" as a placeholder in that state. */
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   invoiceNumber?: string | null;
 
   @Column({ type: 'enum', enum: OrderSource, default: OrderSource.MANUAL })
@@ -50,7 +50,7 @@ export class Order {
   /** The subject line of the source email, kept for troubleshooting
    * when automatic field extraction gets something wrong — null for
    * manually-uploaded orders. */
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   sourceEmailSubject?: string | null;
 
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })

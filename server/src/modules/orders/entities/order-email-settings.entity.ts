@@ -16,13 +16,13 @@ export class OrderEmailSettings {
   @Column({ default: false })
   enabled: boolean;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   emailAddress?: string | null;
 
   /** A Gmail "app password" (myaccount.google.com/apppasswords), not
    * the account's real login password — stored as-is like other
    * connection secrets in this codebase (see StorageConnection). */
-  @Column({ nullable: true, select: false })
+  @Column({ type: 'varchar', nullable: true, select: false })
   appPassword?: string | null;
 
   @Column({ default: 'imap.gmail.com' })
@@ -31,9 +31,9 @@ export class OrderEmailSettings {
   @Column({ default: 993 })
   imapPort: number;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   lastCheckedAt?: Date | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   lastError?: string | null;
 }
