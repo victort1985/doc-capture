@@ -312,14 +312,15 @@ function findQuadByRadialProfile(region: Uint8Array, width: number, height: numb
     });
     if (!tooClose) chosen.push(c);
   }
-  if (chosen.length < 4) return null;
+  if (chosen.length < 4) { return null; }
 
   // The 4 peaks should be meaningfully more prominent than the profile's
   // low points (the edge midpoints) — otherwise this is closer to an
   // ellipse/blob than an actual quadrilateral, and shouldn't be trusted.
   const minR = Math.min(...Array.from(smoothed));
   const avgPeakR = chosen.reduce((s, c) => s + c.r, 0) / chosen.length;
-  if (avgPeakR - minR < avgPeakR * 0.12) return null;
+  if (minR < avgPeakR * 0.15) { return null; }
+  if (avgPeakR - minR < avgPeakR * 0.12) { return null; }
 
   chosen.sort((a, b) => a.angle - b.angle);
   const points: Point[] = chosen.map((c) => {
@@ -337,7 +338,7 @@ function findQuadByRadialProfile(region: Uint8Array, width: number, height: numb
     const s = Math.sign(cross);
     if (s === 0) continue;
     if (sign === 0) sign = s;
-    else if (s !== sign) return null;
+    else if (s !== sign) { return null; }
   }
 
   const tl = points.reduce((best, p) => (p.x + p.y < best.x + best.y ? p : best));
@@ -359,7 +360,7 @@ function findQuadByRadialProfile(region: Uint8Array, width: number, height: numb
   }
   const quadArea = Math.abs(shoelace) / 2;
   const frameArea = width * height;
-  if (quadArea < frameArea * 0.05 || quadArea > frameArea * 0.97) return null;
+  if (quadArea < frameArea * 0.05 || quadArea > frameArea * 0.97) { return null; }
 
   return [tl, tr, br, bl];
 }
@@ -383,7 +384,7 @@ export function detectDocumentCornersViaEdges(graySmallU8: Uint8ClampedArray | B
     const { mag, dir } = sobel(blurred, width, height);
     const nms = nonMaxSuppression(mag, dir, width, height);
     const edges = hysteresis(nms, width, height);
-    const closedEdges = binaryDilate(edges, width, height, 3);
+    const closedEdges = binaryDilate(edges, width, height, 9);
 
     let region = floodFillFromBorder(closedEdges, width, height);
     for (let i = 0; i < region.length; i++) if (closedEdges[i]) region[i] = 1;
@@ -392,11 +393,10 @@ export function detectDocumentCornersViaEdges(graySmallU8: Uint8ClampedArray | B
     let filled = 0;
     for (let i = 0; i < region.length; i++) if (region[i]) filled++;
     const fraction = filled / (width * height);
-    if (fraction < 0.05 || fraction > 0.95) return null;
+    if (fraction < 0.25 || fraction > 0.95) { return null; }
 
     const corners = findQuadByRadialProfile(region, width, height);
-    if (!corners) return null;
-
+    if (!corners) { return null; }
     return { corners, region };
   } catch {
     // Never let a bug in this experimental path take down a real
