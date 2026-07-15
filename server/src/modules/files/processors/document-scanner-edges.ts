@@ -112,7 +112,7 @@ function nonMaxSuppression(mag: Float32Array, dir: Float32Array, width: number, 
 /** Auto-picks Canny's high/low thresholds from the gradient histogram
  * rather than fixed constants, so this adapts to how strong the page/
  * background contrast actually is in a given photo. */
-function hysteresis(nms: Float32Array, width: number, height: number): Uint8Array {
+function hysteresis(nms: Float32Array, width: number, height: number, highPercentile = 0.88): Uint8Array {
   let maxMag = 0;
   for (let i = 0; i < nms.length; i++) if (nms[i] > maxMag) maxMag = nms[i];
   if (maxMag === 0) return new Uint8Array(width * height);
@@ -126,7 +126,7 @@ function hysteresis(nms: Float32Array, width: number, height: number): Uint8Arra
   let cum = 0, highBin = bins - 1;
   for (let b = 0; b < bins; b++) {
     cum += hist[b];
-    if (cum / total >= 0.88) { highBin = b; break; }
+    if (cum / total >= highPercentile) { highBin = b; break; }
   }
   const highThresh = (highBin / (bins - 1)) * maxMag;
   const lowThresh = highThresh * 0.4;
@@ -383,21 +383,37 @@ export function detectDocumentCornersViaEdges(graySmallU8: Uint8ClampedArray | B
     const blurred = boxBlur(graySmallU8, width, height, 2, 1);
     const { mag, dir } = sobel(blurred, width, height);
     const nms = nonMaxSuppression(mag, dir, width, height);
-    const edges = hysteresis(nms, width, height);
-    const closedEdges = binaryDilate(edges, width, height, 9);
 
-    let region = floodFillFromBorder(closedEdges, width, height);
-    for (let i = 0; i < region.length; i++) if (closedEdges[i]) region[i] = 1;
-    region = largestConnectedComponent(region, width, height);
+    // Try the standard (conservative) threshold first; if the resulting
+    // closed region is too small, that can mean the true boundary has a
+    // real but weak/inconsistent gradient the standard threshold missed
+    // outright (confirmed directly: measured gradient magnitude along
+    // one real photo's actual left edge — strong near the top, then
+    // dropping to near-zero further down the same edge) rather than
+    // there being no document there at all. Retrying with a
+    // progressively more sensitive (lower percentile) threshold gives
+    // that weak signal a chance; the shape checks in
+    // findQuadByRadialProfile still have to pass regardless, so a more
+    // sensitive pass that just picks up more background noise still
+    // gets rejected the same as before.
+    for (const highPercentile of [0.88, 0.78, 0.68]) {
+      const edges = hysteresis(nms, width, height, highPercentile);
+      const closedEdges = binaryDilate(edges, width, height, 9);
 
-    let filled = 0;
-    for (let i = 0; i < region.length; i++) if (region[i]) filled++;
-    const fraction = filled / (width * height);
-    if (fraction < 0.25 || fraction > 0.95) { return null; }
+      let region = floodFillFromBorder(closedEdges, width, height);
+      for (let i = 0; i < region.length; i++) if (closedEdges[i]) region[i] = 1;
+      region = largestConnectedComponent(region, width, height);
 
-    const corners = findQuadByRadialProfile(region, width, height);
-    if (!corners) { return null; }
-    return { corners, region };
+      let filled = 0;
+      for (let i = 0; i < region.length; i++) if (region[i]) filled++;
+      const fraction = filled / (width * height);
+      if (fraction < 0.25 || fraction > 0.95) continue;
+
+      const corners = findQuadByRadialProfile(region, width, height);
+      if (!corners) continue;
+      return { corners, region };
+    }
+    return null;
   } catch {
     // Never let a bug in this experimental path take down a real
     // upload — treat any failure exactly like "not confident enough".
