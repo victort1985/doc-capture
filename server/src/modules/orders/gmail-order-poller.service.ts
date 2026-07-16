@@ -34,7 +34,10 @@ export class GmailOrderPollerService {
   @Cron('*/5 * * * *')
   async poll(): Promise<void> {
     const settings = await this.settingsService.getWithSecret();
-    if (!settings?.enabled || !settings.emailAddress || !settings.appPassword) return;
+    if (!settings?.enabled || !settings.emailAddress || !settings.appPassword) {
+      this.logger.debug('Poll skipped: not enabled or not fully configured');
+      return;
+    }
 
     const client = new ImapFlow({
       host: settings.imapHost,
@@ -72,7 +75,7 @@ export class GmailOrderPollerService {
       await this.settingsService.recordCheckResult(err?.message ?? 'Unknown error');
     }
 
-    if (processedCount > 0) this.logger.log(`Processed ${processedCount} order email(s)`);
+    this.logger.log(`Poll complete: ${processedCount} message(s) checked`);
   }
 
   private async processMessage(client: ImapFlow, uid: number): Promise<void> {
