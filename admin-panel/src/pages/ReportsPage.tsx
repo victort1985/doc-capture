@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Printer } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'all';
@@ -99,6 +100,20 @@ function DomainSection({
   );
 }
 
+function tabLabel(tab: 'overview' | 'work' | 'fuel' | 'warehouse') {
+  return tab === 'overview' ? 'Overview' : tab === 'work' ? 'Work report' : tab === 'fuel' ? 'Fuel report' : 'Warehouse report';
+}
+
+function dimensionLabel(dimension: Dimension, dimId: string, users: User[], locations: LocationOpt[], orgs: OrgOpt[]) {
+  if (dimension === 'none') return 'Overall';
+  const list = dimension === 'user' ? users : dimension === 'location' ? locations : orgs;
+  const label = dimension === 'user' ? 'user' : dimension === 'location' ? 'client/location' : 'firm';
+  if (!dimId) return `By ${label} — all (breakdown)`;
+  const entity = list.find((x: any) => String(x.id) === dimId) as any;
+  const name = entity ? (entity.username ?? entity.name) : `#${dimId}`;
+  return `By ${label} — ${name}`;
+}
+
 function fmt(sec: number) {
   if (!sec) return '—';
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
@@ -158,14 +173,35 @@ export default function ReportsPage() {
   const periods: Period[] = ['day', 'week', 'month', 'year', 'all'];
   const periodLabel: Record<Period, string> = { day: 'Day', week: 'Week', month: 'Month', year: 'Year', all: 'All time' };
 
+  function handlePrint() {
+    const originalTitle = document.title;
+    const parts = ['Vixor ERP', tabLabel(tab), periodLabel[period]];
+    if (tab === 'overview') parts.push(dimensionLabel(dimension, dimId, users, locations, orgs));
+    document.title = parts.join(' - ');
+    window.print();
+    setTimeout(() => { document.title = originalTitle; }, 500);
+  }
+
   return (
     <div>
-      <div className="topbar">
+      <div className="topbar no-print">
         <div><span className="eyebrow">Admin</span><h1 className="page-title">Reports</h1></div>
+        <button type="button" onClick={handlePrint}>
+          <Printer size={15} /> Export / Print
+        </button>
+      </div>
+
+      <div className="print-header">
+        <h1>Vixor ERP — {tabLabel(tab)}</h1>
+        <p>
+          Period: {periodLabel[period]}
+          {tab === 'overview' && ` · ${dimensionLabel(dimension, dimId, users, locations, orgs)}`}
+          {' · '}Generated {new Date().toLocaleString()}
+        </p>
       </div>
 
       {/* Tab + Filters */}
-      <div className="card" style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="card no-print" style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 0 }}>
           {(['overview', 'work', 'fuel', 'warehouse'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}

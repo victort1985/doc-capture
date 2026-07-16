@@ -655,3 +655,30 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
 @media (min-width: 1400px) {
   .main { padding: 36px 56px 80px; }
 }
+
+/* ── PRINT / EXPORT TO PDF ────────────────────────────────── */
+/* Used by the "Export / Print" button on report pages: window.print()
+ * — on mobile Safari/Chrome this opens the native print sheet, whose
+ * preview can be saved as a PDF or shared directly (AirDrop, Mail,
+ * WhatsApp, etc.) via the share icon, so one implementation covers
+ * both "export to PDF" and "share/print" without any new dependency. */
+.print-header { display: none; }
+@media print {
+  .no-print, .sidebar, .mobile-topbar, .sidebar-overlay { display: none !important; }
+  .layout { display: block !important; }
+  .main { padding: 0 !important; }
+  body { background: #fff !important; }
+  .card {
+    box-shadow: none !important;
+    border: 1px solid #ddd !important;
+    break-inside: avoid;
+  }
+  table { break-inside: auto; }
+  tr { break-inside: avoid; }
+  .print-header {
+    display: block !important;
+    margin-bottom: 16px;
+  }
+  .print-header h1 { font-size: 18px; margin: 0 0 2px; }
+  .print-header p { font-size: 12px; color: #666; margin: 0; }
+}
