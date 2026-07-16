@@ -168,6 +168,9 @@ export class ReportsController {
       ORDER BY "txCount" DESC
     `, params).catch(() => []);
 
+    return { period, from, to, rows, summary };
+  }
+
   /**
    * Cross-domain "logistics operations" report. `dimension` selects how
    * to slice every domain: 'none' = one overall summary across
