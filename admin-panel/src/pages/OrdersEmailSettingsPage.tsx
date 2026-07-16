@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Save, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Save, Mail, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
 interface EmailSettings {
@@ -18,6 +18,7 @@ export default function OrdersEmailSettingsPage() {
   const [appPassword, setAppPassword] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [syncing, setSyncing] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,6 +51,19 @@ export default function OrdersEmailSettingsPage() {
       setError(e instanceof Error ? e.message : 'Save failed');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function syncNow() {
+    setSyncing(true);
+    setError(null);
+    try {
+      const updated = await apiFetch<EmailSettings>('/orders/email-settings/sync-now', { method: 'POST' });
+      setSettings(updated);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Sync failed');
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -142,6 +156,9 @@ export default function OrdersEmailSettingsPage() {
         <div className="form-actions">
           <button type="button" disabled={saving} onClick={save}>
             <Save size={15} /> {saving ? 'Saving…' : 'Save'}
+          </button>
+          <button type="button" disabled={syncing || !settings.enabled} onClick={syncNow} title={!settings.enabled ? 'Enable and save first' : undefined}>
+            <RefreshCw size={15} /> {syncing ? 'Syncing…' : 'Sync now'}
           </button>
         </div>
       </div>
