@@ -2,8 +2,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, AlertCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import StampMark from '../components/StampMark';
 import CopyrightFooter from '../components/CopyrightFooter';
+import logo from '../assets/logo.png';
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -30,7 +30,7 @@ export default function LoginPage() {
   return (
     <div className="login-screen">
       <div className="login-card">
-        <StampMark size={40} animated />
+        <img src={logo} alt="Vixor ERP" className="login-logo" />
         <div className="wordmark">
           <span style={{ fontWeight: 800, letterSpacing: '0.15em' }}>VIXOR</span>
           <span style={{ fontWeight: 300, color: '#F2701C', letterSpacing: '0.1em' }}> ERP</span>
