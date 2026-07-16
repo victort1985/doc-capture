@@ -136,6 +136,12 @@ export class OrderPdfParserService {
       .map((l) => l.words.join(' ').trim())
       .filter((t) => t.includes('בע"מ') || t.includes('בעמ'));
 
-    return candidates[0] ?? null;
+    const line = candidates[0];
+    if (!line) return null;
+
+    // The letterhead line is "{legal entity name} - {ordering org}" —
+    // only the part after the dash is the organization we want.
+    const dashIdx = line.indexOf('-');
+    return dashIdx === -1 ? line : line.slice(dashIdx + 1).trim();
   }
 }

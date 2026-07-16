@@ -26,10 +26,12 @@ export class OrdersService {
     private readonly parserService: OrderPdfParserService,
   ) {}
 
-  /** "{date} - {organization} - רכש{poNumberLast4} - תמ({invoiceNumber|0000})" */
-  generateName(order: Pick<Order, 'orderDate' | 'organization' | 'poNumberLast4' | 'invoiceNumber'>): string {
+  /** "{date} - {organization} - רכש {poNumberLast4} - תמ {invoiceNumber|0000}[ - {invoiceDescription}]" */
+  generateName(order: Pick<Order, 'orderDate' | 'organization' | 'poNumberLast4' | 'invoiceNumber' | 'invoiceDescription'>): string {
     const invoicePart = order.invoiceNumber?.trim() || '0000';
-    return `${order.orderDate} - ${order.organization} - רכש${order.poNumberLast4} - תמ(${invoicePart})`;
+    const base = `${order.orderDate} - ${order.organization} - רכש ${order.poNumberLast4} - תמ ${invoicePart}`;
+    const description = order.invoiceDescription?.trim();
+    return description ? `${base} - ${description}` : base;
   }
 
   toListItem(o: Order): OrderListItem {
@@ -109,7 +111,13 @@ export class OrdersService {
    * PDF, sets the real invoice number in place of the "0000"
    * placeholder, and renames the stored file to match — this is the
    * one point where an order transitions from pending to complete. */
-  async addInvoicePage(id: number, tenantId: number | null, invoiceNumber: string, invoicePdfBuffer: Buffer): Promise<Order> {
+  async addInvoicePage(
+    id: number,
+    tenantId: number | null,
+    invoiceNumber: string,
+    invoicePdfBuffer: Buffer,
+    description?: string,
+  ): Promise<Order> {
     const order = await this.findOne(id, tenantId);
     const existingBuffer = await this.getPdfBuffer(order);
 
@@ -125,6 +133,7 @@ export class OrdersService {
     const mergedBytes = Buffer.from(await merged.save());
 
     order.invoiceNumber = invoiceNumber;
+    order.invoiceDescription = description?.trim() || null;
     const newPath = await this.writeOrderPdf(order, mergedBytes);
     await this.deleteStoredFile(order.storagePath).catch(() => {});
     order.storagePath = newPath;
@@ -139,7 +148,7 @@ export class OrdersService {
   }
 
   private async writeOrderPdf(
-    fields: Pick<Order, 'orderDate' | 'organization' | 'poNumberLast4' | 'invoiceNumber'>,
+    fields: Pick<Order, 'orderDate' | 'organization' | 'poNumberLast4' | 'invoiceNumber' | 'invoiceDescription'>,
     buffer: Buffer,
   ): Promise<string> {
     const name = this.generateName(fields);

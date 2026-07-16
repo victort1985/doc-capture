@@ -16,7 +16,7 @@ export enum OrderSource {
  *
  * The generated filename encodes the 3 fields extracted from the PO
  * document (see OrderPdfParserService) plus completion state:
- * "{date} - {organization} - רכש{poNumberLast4} - תמ({invoiceNumber|0000})"
+ * "{date} - {organization} - רכש {poNumberLast4} - תמ {invoiceNumber|0000}[ - {invoiceDescription}]"
  * — see OrdersService.generateName().
  */
 @Entity('orders')
@@ -38,6 +38,12 @@ export class Order {
    * "0000" as a placeholder in that state. */
   @Column({ type: 'varchar', nullable: true })
   invoiceNumber?: string | null;
+
+  /** Free-text note entered alongside the invoice number when
+   * completing the order (e.g. what the delivery note covers) —
+   * appended to the generated filename after the invoice number. */
+  @Column({ type: 'varchar', nullable: true })
+  invoiceDescription?: string | null;
 
   @Column({ type: 'enum', enum: OrderSource, default: OrderSource.MANUAL })
   source: OrderSource;

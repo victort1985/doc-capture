@@ -64,9 +64,10 @@ class OrderService {
 
   /// Appends the scanned delivery note as page 2+ of the order PDF and
   /// sets the real invoice number in place of the "0000" placeholder.
-  Future<OrderListItem> addInvoice(int orderId, String invoiceNumber, Uint8List invoicePdfBytes) async {
+  Future<OrderListItem> addInvoice(int orderId, String invoiceNumber, Uint8List invoicePdfBytes, {String? description}) async {
     final formData = FormData.fromMap({
       'invoiceNumber': invoiceNumber,
+      if (description != null && description.trim().isNotEmpty) 'description': description.trim(),
       'file': MultipartFile.fromBytes(invoicePdfBytes, filename: 'invoice.pdf'),
     });
     final response = await _api.postFormData('/orders/$orderId/invoice', formData);

@@ -68,7 +68,7 @@ export class OrdersController {
     @CurrentUser() user: RequestUser,
   ) {
     if (!file) throw new BadRequestException('No file provided');
-    const order = await this.ordersService.addInvoicePage(id, user.organizationId, dto.invoiceNumber, file.buffer);
+    const order = await this.ordersService.addInvoicePage(id, user.organizationId, dto.invoiceNumber, file.buffer, dto.description);
     return this.ordersService.toListItem(order);
   }
 

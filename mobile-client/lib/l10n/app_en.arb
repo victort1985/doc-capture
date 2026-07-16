@@ -100,6 +100,7 @@
   "orderDetailAddInvoice": "Add delivery note",
   "orderInvoiceNumberPrompt": "Delivery note number",
   "orderInvoiceNumberHint": "Enter the delivery note number",
+  "orderInvoiceDescriptionHint": "Description (optional)",
   "orderMarkDone": "Done",
   "orderShare": "Share",
   "orderPrint": "Print",

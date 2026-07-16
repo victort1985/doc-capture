@@ -100,6 +100,7 @@
   "orderDetailAddInvoice": "Добавить накладную",
   "orderInvoiceNumberPrompt": "Номер накладной",
   "orderInvoiceNumberHint": "Введите номер накладной",
+  "orderInvoiceDescriptionHint": "Описание (необязательно)",
   "orderMarkDone": "Выполнено",
   "orderShare": "Поделиться",
   "orderPrint": "Печать",

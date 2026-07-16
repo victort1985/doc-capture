@@ -49,25 +49,37 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     }
   }
 
-  Future<String?> _askInvoiceNumber() {
+  Future<(String, String)?> _askInvoiceNumber() {
     final l10n = AppLocalizations.of(context)!;
-    final controller = TextEditingController();
-    return showDialog<String>(
+    final numberController = TextEditingController();
+    final descController = TextEditingController();
+    return showDialog<(String, String)>(
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(l10n.orderInvoiceNumberPrompt),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.text,
-          decoration: InputDecoration(hintText: l10n.orderInvoiceNumberHint),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: numberController,
+              autofocus: true,
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(hintText: l10n.orderInvoiceNumberHint),
+            ),
+            TextField(
+              controller: descController,
+              keyboardType: TextInputType.text,
+              decoration: InputDecoration(hintText: l10n.orderInvoiceDescriptionHint),
+            ),
+          ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.of(dialogContext).pop(null), child: Text(l10n.cancel)),
           FilledButton(
             onPressed: () {
-              final value = controller.text.trim();
-              Navigator.of(dialogContext).pop(value.isEmpty ? null : value);
+              final number = numberController.text.trim();
+              if (number.isEmpty) return;
+              Navigator.of(dialogContext).pop((number, descController.text.trim()));
             },
             child: Text(l10n.orderMarkDone),
           ),
@@ -93,13 +105,14 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
 
   Future<void> _completeWithBytes(Uint8List bytes) async {
     if (!mounted) return;
-    final invoiceNumber = await _askInvoiceNumber();
-    if (invoiceNumber == null || !mounted) return;
+    final result = await _askInvoiceNumber();
+    if (result == null || !mounted) return;
+    final (invoiceNumber, description) = result;
 
     final l10n = AppLocalizations.of(context)!;
     setState(() => _busy = true);
     try {
-      await context.read<OrderService>().addInvoice(widget.orderId, invoiceNumber, bytes);
+      await context.read<OrderService>().addInvoice(widget.orderId, invoiceNumber, bytes, description: description);
       if (!mounted) return;
       await _loadPdf();
     } catch (e) {
