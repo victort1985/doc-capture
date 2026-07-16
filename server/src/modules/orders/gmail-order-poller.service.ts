@@ -13,13 +13,11 @@ import { OrderPdfParserService } from './order-pdf-parser.service';
  * Contacts where each user's own Google account needed delegated
  * access.
  *
- * Only ever reads unseen messages and marks each one \Seen once
- * processed (successfully or not) so a message already looked at never
- * gets re-imported as a duplicate order on the next poll -- a message
- * whose PDF fails to parse still gets marked seen, since retrying
- * automatically wouldn't get a different result and would otherwise
- * loop forever; OrderEmailSettings.lastError records what happened for
- * the admin to check.
+ * Tracks progress via a UID watermark (lastProcessedUid) rather than
+ * the \Seen flag: \Seen just reflects whether a human read the email,
+ * which can happen independently of this poller and would otherwise
+ * cause messages to be silently skipped forever. This also avoids
+ * mutating flags in what's someone's real mailbox.
  */
 @Injectable()
 export class GmailOrderPollerService {
@@ -48,31 +46,41 @@ export class GmailOrderPollerService {
     });
 
     let processedCount = 0;
+    let maxUid = settings.lastProcessedUid;
     try {
       await client.connect();
       const lock = await client.getMailboxLock('INBOX');
       try {
-        const uids = await client.search({ seen: false }, { uid: true });
+        if (settings.lastProcessedUid === 0 && client.mailbox && typeof client.mailbox !== 'boolean') {
+          // First-ever run: don't process the whole mailbox history,
+          // just start watching from here on.
+          maxUid = Math.max(0, (client.mailbox.uidNext ?? 1) - 1);
+        } else {
+        // All messages after the last one we've already processed —
+        // not seen:false, since a message can get marked \Seen by
+        // something other than this poller (see entity doc comment).
+        const range = `${settings.lastProcessedUid + 1}:*`;
+        const uids = await client.search({ uid: range }, { uid: true });
         for (const uid of Array.isArray(uids) ? uids : []) {
+          if (uid <= settings.lastProcessedUid) continue; // '*' can repeat the last existing UID when the range's start is beyond it
           try {
             await this.processMessage(client, uid);
           } catch (err: any) {
             this.logger.error(`Failed processing message uid=${uid}: ${err?.message}`);
           } finally {
-            // Mark seen regardless of outcome -- see class doc comment
-            // for why a failed parse still shouldn't be retried forever.
-            await client.messageFlagsAdd(uid, ['\\Seen'], { uid: true });
+            maxUid = Math.max(maxUid, uid);
             processedCount++;
           }
+        }
         }
       } finally {
         lock.release();
       }
       await client.logout();
-      await this.settingsService.recordCheckResult(null);
+      await this.settingsService.recordCheckResult(null, maxUid);
     } catch (err: any) {
       this.logger.error(`Gmail poll failed: ${err?.message}`);
-      await this.settingsService.recordCheckResult(err?.message ?? 'Unknown error');
+      await this.settingsService.recordCheckResult(err?.message ?? 'Unknown error', maxUid);
     }
 
     this.logger.log(`Poll complete: ${processedCount} message(s) checked`);

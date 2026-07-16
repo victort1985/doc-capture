@@ -37,10 +37,11 @@ export class OrderEmailSettingsService {
     return this.repo.save(settings);
   }
 
-  async recordCheckResult(error: string | null): Promise<void> {
+  async recordCheckResult(error: string | null, lastProcessedUid?: number): Promise<void> {
     const settings = await this.get();
     settings.lastCheckedAt = new Date();
     settings.lastError = error;
+    if (lastProcessedUid !== undefined) settings.lastProcessedUid = lastProcessedUid;
     await this.repo.save(settings);
   }
 }

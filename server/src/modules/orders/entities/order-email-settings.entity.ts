@@ -36,4 +36,14 @@ export class OrderEmailSettings {
 
   @Column({ type: 'varchar', nullable: true })
   lastError?: string | null;
+
+  /** Highest IMAP UID already processed. Using UID watermark instead of
+   * the \Seen flag: \Seen reflects whether a human has read the email
+   * (which can happen independently, e.g. someone opens it in Gmail's
+   * own app before the poller runs), not whether the poller itself has
+   * handled it — relying on \Seen meant such messages were silently
+   * skipped forever. This also avoids mutating flags in what's someone's
+   * real mailbox. */
+  @Column({ type: 'integer', default: 0 })
+  lastProcessedUid: number;
 }
