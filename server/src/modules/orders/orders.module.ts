@@ -24,7 +24,7 @@ import { StorageModule } from '../storage/storage.module';
  */
 @Module({
   imports: [TypeOrmModule.forFeature([Order, OrderEmailSettings]), StorageModule],
-  controllers: [OrdersController, OrderEmailSettingsController],
+  controllers: [OrderEmailSettingsController, OrdersController],
   providers: [OrdersService, OrderEmailSettingsService, OrderPdfParserService, GmailOrderPollerService],
 })
 export class OrdersModule {}
