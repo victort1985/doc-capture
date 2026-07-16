@@ -46,4 +46,15 @@ export class OrderEmailSettings {
    * real mailbox. */
   @Column({ type: 'integer', default: 0 })
   lastProcessedUid: number;
+
+  /** When true, completing an order (adding the invoice/delivery note
+   * page) sends the final PDF to notifyEmails automatically. Reuses
+   * this same Gmail account + app password over SMTP — one dedicated
+   * inbox handles both receiving POs and sending completed ones. */
+  @Column({ default: false })
+  notifyOnCompleteEnabled: boolean;
+
+  /** Comma-separated recipient addresses for the completion email. */
+  @Column({ type: 'varchar', nullable: true })
+  notifyEmails?: string | null;
 }

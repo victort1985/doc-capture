@@ -34,6 +34,8 @@ export class OrderEmailSettingsService {
     if (dto.appPassword) settings.appPassword = dto.appPassword;
     if (dto.imapHost) settings.imapHost = dto.imapHost;
     if (dto.imapPort) settings.imapPort = dto.imapPort;
+    if (dto.notifyOnCompleteEnabled !== undefined) settings.notifyOnCompleteEnabled = dto.notifyOnCompleteEnabled;
+    if (dto.notifyEmails !== undefined) settings.notifyEmails = dto.notifyEmails;
     return this.repo.save(settings);
   }
 

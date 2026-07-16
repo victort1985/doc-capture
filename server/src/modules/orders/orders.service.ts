@@ -5,6 +5,7 @@ import { PDFDocument } from 'pdf-lib';
 import { Order, OrderSource } from './entities/order.entity';
 import { StorageService } from '../storage/storage.service';
 import { OrderPdfParserService, ParsedOrderFields } from './order-pdf-parser.service';
+import { OrderNotificationService } from './order-notification.service';
 
 export interface OrderListItem {
   id: number;
@@ -24,6 +25,7 @@ export class OrdersService {
     private readonly ordersRepo: Repository<Order>,
     private readonly storageService: StorageService,
     private readonly parserService: OrderPdfParserService,
+    private readonly notificationService: OrderNotificationService,
   ) {}
 
   /** "{date} - {organization} - רכש {poNumberLast4} - תמ {invoiceNumber|0000}[ - {invoiceDescription}]" */
@@ -138,7 +140,9 @@ export class OrdersService {
     await this.deleteStoredFile(order.storagePath).catch(() => {});
     order.storagePath = newPath;
 
-    return this.ordersRepo.save(order);
+    const saved = await this.ordersRepo.save(order);
+    await this.notificationService.sendCompletionEmail(this.generateName(saved), mergedBytes);
+    return saved;
   }
 
   async remove(id: number, tenantId: number | null): Promise<void> {

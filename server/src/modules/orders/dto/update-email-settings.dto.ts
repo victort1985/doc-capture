@@ -24,4 +24,14 @@ export class UpdateEmailSettingsDto {
   @Min(1)
   @Max(65535)
   imapPort?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  notifyOnCompleteEnabled?: boolean;
+
+  // Comma-separated addresses; validated for shape server-side rather
+  // than per-address here since it's a free-text field in the admin UI.
+  @IsOptional()
+  @IsString()
+  notifyEmails?: string;
 }

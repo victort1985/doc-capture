@@ -9,9 +9,18 @@ interface EmailSettings {
   imapPort: number;
   lastCheckedAt?: string | null;
   lastError?: string | null;
+  notifyOnCompleteEnabled?: boolean;
+  notifyEmails?: string | null;
 }
 
-const EMPTY: EmailSettings = { enabled: false, emailAddress: '', imapHost: 'imap.gmail.com', imapPort: 993 };
+const EMPTY: EmailSettings = {
+  enabled: false,
+  emailAddress: '',
+  imapHost: 'imap.gmail.com',
+  imapPort: 993,
+  notifyOnCompleteEnabled: false,
+  notifyEmails: '',
+};
 
 export default function OrdersEmailSettingsPage() {
   const [settings, setSettings] = useState<EmailSettings>(EMPTY);
@@ -41,6 +50,8 @@ export default function OrdersEmailSettingsPage() {
           emailAddress: settings.emailAddress,
           imapHost: settings.imapHost,
           imapPort: settings.imapPort,
+          notifyOnCompleteEnabled: settings.notifyOnCompleteEnabled ?? false,
+          notifyEmails: settings.notifyEmails ?? '',
           ...(appPassword.trim() ? { appPassword: appPassword.trim() } : {}),
         }),
       });
@@ -133,6 +144,29 @@ export default function OrdersEmailSettingsPage() {
             />
           </div>
         </div>
+
+        <hr style={{ margin: '20px 0', border: 'none', borderTop: '1px solid var(--border, #e5e5e5)' }} />
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <input
+            type="checkbox"
+            checked={!!settings.notifyOnCompleteEnabled}
+            onChange={(e) => setSettings({ ...settings, notifyOnCompleteEnabled: e.target.checked })}
+          />
+          Email the finished order when a delivery note is added
+        </label>
+        <p style={{ color: 'var(--ink-soft)', fontSize: 13, maxWidth: 560 }}>
+          Sends the completed PDF (PO + delivery note) to the addresses below as soon as an
+          order is marked done. The subject line is the generated filename (e.g. "2026-07-15 -
+          Company Ltd - רכש 1234 - תמ 5678.pdf").
+        </p>
+
+        <label>Recipient emails (comma-separated)</label>
+        <input
+          value={settings.notifyEmails ?? ''}
+          onChange={(e) => setSettings({ ...settings, notifyEmails: e.target.value })}
+          placeholder="accounting@yourcompany.com, manager@yourcompany.com"
+        />
 
         {settings.lastCheckedAt && (
           <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>

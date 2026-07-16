@@ -8,6 +8,7 @@ import { OrderEmailSettingsService } from './order-email-settings.service';
 import { OrderEmailSettingsController } from './order-email-settings.controller';
 import { OrderPdfParserService } from './order-pdf-parser.service';
 import { GmailOrderPollerService } from './gmail-order-poller.service';
+import { OrderNotificationService } from './order-notification.service';
 import { StorageModule } from '../storage/storage.module';
 
 /**
@@ -25,6 +26,6 @@ import { StorageModule } from '../storage/storage.module';
 @Module({
   imports: [TypeOrmModule.forFeature([Order, OrderEmailSettings]), StorageModule],
   controllers: [OrderEmailSettingsController, OrdersController],
-  providers: [OrdersService, OrderEmailSettingsService, OrderPdfParserService, GmailOrderPollerService],
+  providers: [OrdersService, OrderEmailSettingsService, OrderPdfParserService, GmailOrderPollerService, OrderNotificationService],
 })
 export class OrdersModule {}

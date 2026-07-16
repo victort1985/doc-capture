@@ -37,6 +37,7 @@
     "helmet": "^8.2.0",
     "imapflow": "^1.4.7",
     "mailparser": "^3.9.14",
+    "nodemailer": "^6.9.16",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pdf-lib": "^1.17.1",
