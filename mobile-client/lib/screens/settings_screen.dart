@@ -14,7 +14,9 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return ListView(
+    return Scaffold(
+      appBar: AppBar(title: Text(l10n.settingsTitle)),
+      body: ListView(
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
       children: [
         Card(
@@ -74,6 +76,7 @@ class SettingsScreen extends StatelessWidget {
           },
         ),
       ],
+      ),
     );
   }
 }
