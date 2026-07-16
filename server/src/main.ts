@@ -1,4 +1,9 @@
 import * as fs from 'fs';
+import * as dns from 'dns';
+// This server has no working IPv6 route; without this, outbound connections
+// (e.g. the Gmail IMAP poller) can pick an AAAA record and fail with
+// "Сеть недоступна" / EAI_AGAIN instead of falling back to IPv4.
+dns.setDefaultResultOrder('ipv4first');
 import { DeliveryNotesService } from './modules/delivery-notes/delivery-notes.service';
 import * as path from 'path';
 import { loadEnvFile, ensureJwtSecret, ensureEncryptionKey } from './config/bootstrap-env';
