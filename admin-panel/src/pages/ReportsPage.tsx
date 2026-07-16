@@ -2,9 +2,27 @@ import { useEffect, useState } from 'react';
 import { apiFetch } from '../services/api';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'all';
+type Dimension = 'none' | 'user' | 'location' | 'organization';
 
 interface User { id: number; username: string; }
 interface Vehicle { id: number; make: string; model: string; licensePlate: string; }
+interface LocationOpt { id: number; name: string; }
+interface OrgOpt { id: number; name: string; }
+
+interface DomainResult {
+  supported: boolean;
+  summary: Record<string, any> | null;
+  breakdown: Record<string, any>[] | null;
+}
+interface OverviewReport {
+  dimension: Dimension;
+  id: number | null;
+  calls: DomainResult;
+  orders: DomainResult;
+  deliveryNotes: DomainResult;
+  fleet: DomainResult;
+  warehouse: DomainResult;
+}
 
 interface WorkReport {
   totals: Record<string, number>;
@@ -17,6 +35,70 @@ interface FuelReport {
   summary: { vehicleId: number; make: string; model: string; licensePlate: string; refuelCount: number; totalLiters: string; totalCost: string }[];
 }
 
+function DomainSection({
+  title, result, dimension, fields,
+}: {
+  title: string;
+  result: DomainResult;
+  dimension: Dimension;
+  fields: [string, string, ((v: any) => string)?][];
+}) {
+  if (!result.supported) {
+    return (
+      <div className="card" style={{ marginBottom: 16, opacity: 0.6 }}>
+        <h3 style={{ margin: '0 0 4px' }}>{title}</h3>
+        <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>Not tracked by client/location — no location field on this data.</div>
+      </div>
+    );
+  }
+
+  const fmt = (key: string, v: any, f?: (v: any) => string) => {
+    if (v === null || v === undefined) return '—';
+    return f ? f(v) : v;
+  };
+
+  const dimLabel = dimension === 'user' ? 'User' : dimension === 'location' ? 'Location' : dimension === 'organization' ? 'Firm' : '';
+
+  return (
+    <div className="card" style={{ marginBottom: 16 }}>
+      <h3 style={{ margin: '0 0 12px' }}>{title}</h3>
+
+      {result.summary && (
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: result.breakdown ? 16 : 0 }}>
+          {fields.map(([key, label, f]) => (
+            <div key={key} style={{ flex: '1 0 100px', textAlign: 'center', padding: '10px 6px', background: 'var(--surface-muted)', borderRadius: 8 }}>
+              <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--primary)' }}>{fmt(key, result.summary![key], f)}</div>
+              <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {result.breakdown && (
+        <table>
+          <thead>
+            <tr>
+              <th>{dimLabel}</th>
+              {fields.map(([key, label]) => <th key={key}>{label}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {result.breakdown.map((row) => (
+              <tr key={row.id}>
+                <td>{row.name}</td>
+                {fields.map(([key, , f]) => <td key={key}>{fmt(key, row[key], f)}</td>)}
+              </tr>
+            ))}
+            {result.breakdown.length === 0 && (
+              <tr><td colSpan={fields.length + 1} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data for this period</td></tr>
+            )}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
 function fmt(sec: number) {
   if (!sec) return '—';
   const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60);
@@ -24,12 +106,17 @@ function fmt(sec: number) {
 }
 
 export default function ReportsPage() {
-  const [tab, setTab] = useState<'work' | 'fuel' | 'warehouse'>('work');
+  const [tab, setTab] = useState<'overview' | 'work' | 'fuel' | 'warehouse'>('overview');
   const [period, setPeriod] = useState<Period>('month');
   const [users, setUsers] = useState<User[]>([]);
   const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [locations, setLocations] = useState<LocationOpt[]>([]);
+  const [orgs, setOrgs] = useState<OrgOpt[]>([]);
   const [selUser, setSelUser] = useState('');
   const [selVehicle, setSelVehicle] = useState('');
+  const [dimension, setDimension] = useState<Dimension>('none');
+  const [dimId, setDimId] = useState('');
+  const [overview, setOverview] = useState<OverviewReport | null>(null);
   const [workData, setWorkData] = useState<WorkReport | null>(null);
   const [fuelData, setFuelData] = useState<FuelReport | null>(null);
   const [warehouseData, setWarehouseData] = useState<{rows: any[]; summary: any[]} | null>(null);
@@ -38,12 +125,18 @@ export default function ReportsPage() {
   useEffect(() => {
     apiFetch<User[]>('/users').then(setUsers).catch(() => {});
     apiFetch<Vehicle[]>('/fleet/vehicles').then(setVehicles).catch(() => {});
+    apiFetch<LocationOpt[]>('/locations').then(setLocations).catch(() => {});
+    apiFetch<OrgOpt[]>('/organizations').then(setOrgs).catch(() => {});
   }, []);
 
   async function load() {
     setLoading(true);
     try {
-      if (tab === 'work') {
+      if (tab === 'overview') {
+        const q = new URLSearchParams({ period, dimension });
+        if (dimId) q.set('id', dimId);
+        setOverview(await apiFetch(`/reports/overview?${q}`));
+      } else if (tab === 'work') {
         const q = new URLSearchParams({ period });
         if (selUser) q.set('userId', selUser);
         setWorkData(await apiFetch(`/reports/work?${q}`));
@@ -59,7 +152,8 @@ export default function ReportsPage() {
     } finally { setLoading(false); }
   }
 
-  useEffect(() => { load(); }, [tab, period, selUser, selVehicle]);
+  useEffect(() => { setDimId(''); }, [dimension]);
+  useEffect(() => { load(); }, [tab, period, selUser, selVehicle, dimension, dimId]);
 
   const periods: Period[] = ['day', 'week', 'month', 'year', 'all'];
   const periodLabel: Record<Period, string> = { day: 'Day', week: 'Week', month: 'Month', year: 'Year', all: 'All time' };
@@ -73,11 +167,11 @@ export default function ReportsPage() {
       {/* Tab + Filters */}
       <div className="card" style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 0 }}>
-          {(['work', 'fuel', 'warehouse'] as const).map(t => (
+          {(['overview', 'work', 'fuel', 'warehouse'] as const).map(t => (
             <button key={t} onClick={() => setTab(t)}
               style={{ padding: '7px 18px', background: tab === t ? 'var(--primary)' : 'var(--surface-muted)', color: tab === t ? '#fff' : 'var(--ink)', border: 'none', cursor: 'pointer',
-                borderRadius: t === 'work' ? '6px 0 0 6px' : t === 'warehouse' ? '0 6px 6px 0' : '0' }}>
-              {t === 'work' ? 'Work report' : t === 'fuel' ? 'Fuel report' : 'Warehouse'}
+                borderRadius: t === 'overview' ? '6px 0 0 6px' : t === 'warehouse' ? '0 6px 6px 0' : '0' }}>
+              {t === 'overview' ? 'Overview' : t === 'work' ? 'Work report' : t === 'fuel' ? 'Fuel report' : 'Warehouse'}
             </button>
           ))}
         </div>
@@ -89,10 +183,41 @@ export default function ReportsPage() {
           ))}
         </div>
 
+        {tab === 'overview' && (
+          <>
+            <select value={dimension} onChange={e => setDimension(e.target.value as Dimension)} style={{ minWidth: 160 }}>
+              <option value="none">Overall (everything)</option>
+              <option value="user">By user</option>
+              <option value="location">By client / location</option>
+              <option value="organization">By firm</option>
+            </select>
+            {dimension === 'user' && (
+              <select value={dimId} onChange={e => setDimId(e.target.value)} style={{ minWidth: 160 }}>
+                <option value="">All users (breakdown)</option>
+                {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
+              </select>
+            )}
+            {dimension === 'location' && (
+              <select value={dimId} onChange={e => setDimId(e.target.value)} style={{ minWidth: 160 }}>
+                <option value="">All locations (breakdown)</option>
+                {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            )}
+            {dimension === 'organization' && (
+              <select value={dimId} onChange={e => setDimId(e.target.value)} style={{ minWidth: 160 }}>
+                <option value="">All firms (breakdown)</option>
+                {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            )}
+          </>
+        )}
+
+        {tab !== 'overview' && (
         <select value={selUser} onChange={e => setSelUser(e.target.value)} style={{ minWidth: 140 }}>
           <option value="">All users</option>
           {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
         </select>
+        )}
 
         {tab === 'fuel' && (
           <select value={selVehicle} onChange={e => setSelVehicle(e.target.value)} style={{ minWidth: 160 }}>
@@ -103,6 +228,33 @@ export default function ReportsPage() {
       </div>
 
       {loading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink-soft)' }}>Loading…</div>}
+
+      {/* Overview */}
+      {tab === 'overview' && overview && !loading && (
+        <>
+          <DomainSection title="Service calls" result={overview.calls} dimension={dimension}
+            fields={[
+              ['total', 'Total'], ['open', 'Open'], ['inProgress', 'In progress'], ['closed', 'Closed'],
+              ['urgent', 'Urgent'], ['avgResolutionHours', 'Avg. resolution (h)'],
+            ]} />
+          <DomainSection title="Orders" result={overview.orders} dimension={dimension}
+            fields={[
+              ['total', 'Total'], ['completed', 'Completed'], ['pending', 'Pending'], ['avgCompletionHours', 'Avg. completion (h)'],
+            ]} />
+          <DomainSection title="Delivery notes" result={overview.deliveryNotes} dimension={dimension}
+            fields={[['total', 'Total'], ['signed', 'Signed'], ['draft', 'Draft'], ['cancelled', 'Cancelled']]} />
+          <DomainSection title="Fleet / fuel" result={overview.fleet} dimension={dimension}
+            fields={[
+              ['refuelCount', 'Refuels'],
+              ['totalLiters', 'Total liters', (v) => v ? `${parseFloat(v).toFixed(1)} L` : '—'],
+              ['totalCost', 'Total cost', (v) => v ? `₪${parseFloat(v).toFixed(0)}` : '—'],
+            ]} />
+          <DomainSection title="Warehouse" result={overview.warehouse} dimension={dimension}
+            fields={[
+              ['txCount', 'Transactions'], ['totalIn', 'Total in'], ['totalOut', 'Total out'], ['transferCount', 'Transfers'],
+            ]} />
+        </>
+      )}
 
       {/* Work Report */}
       {tab === 'work' && workData && !loading && (
