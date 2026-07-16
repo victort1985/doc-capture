@@ -6,7 +6,7 @@ import {
   FileText, CalendarDays, Menu, X, Mail, ReceiptText,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import StampMark from './StampMark';
+import logo from '../assets/logo.png';
 import CopyrightFooter from './CopyrightFooter';
 
 const BASE_NAV = [
@@ -79,7 +79,7 @@ export default function Layout() {
         </button>
 
         <div className="mobile-brand">
-          <StampMark size={22} />
+          <img src={logo} alt="" className="brand-logo brand-logo--sm" />
           <span className="mobile-brand-name">VIXOR <span style={{ color: '#F2701C', fontWeight: 300 }}>ERP</span></span>
         </div>
 
@@ -103,7 +103,7 @@ export default function Layout() {
         aria-label="Navigation"
       >
         <div className="sidebar-brand">
-          <StampMark size={30} />
+          <img src={logo} alt="" className="brand-logo" />
           <div className="wordmark">
             <span style={{ fontWeight: 800, letterSpacing: '0.12em' }}>VIXOR</span>
             <span style={{ fontWeight: 300, color: '#F2701C', letterSpacing: '0.08em' }}> ERP</span>
