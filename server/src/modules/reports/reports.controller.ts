@@ -354,7 +354,7 @@ export class ReportsController {
     const txConds = ['t."createdAt" >= $1', 't."createdAt" <= $2'];
     if (orgScope) { txParams.push(orgScope); txConds.push(`i."organizationId" = $${txParams.length}`); }
     if (dimId && dimension === 'user') { txParams.push(dimId); txConds.push(`t."registeredById" = $${txParams.length}`); }
-    if (dimId && dimension === 'location') { txParams.push(dimId); txConds.push(`i."locationId" = $${txParams.length}`); }
+    if (dimId && dimension === 'location') { txParams.push(dimId); txConds.push(`i."warehouseLocationId" = $${txParams.length}`); }
     if (dimId && dimension === 'organization') { txParams.push(dimId); txConds.push(`i."organizationId" = $${txParams.length}`); }
     const txWhere = txConds.join(' AND ');
 
@@ -397,12 +397,12 @@ export class ReportsController {
         `, txParams);
       } else if (dimension === 'location') {
         breakdown = await this.whTxRepo.query(`
-          SELECT i."locationId" AS id, d.name AS name, ${txMetrics}
+          SELECT i."warehouseLocationId" AS id, d.name AS name, ${txMetrics}
           FROM warehouse_transactions t
           JOIN warehouse_items i ON i.id = t."itemId"
-          JOIN locations d ON d.id = i."locationId"
+          JOIN locations d ON d.id = i."warehouseLocationId"
           WHERE ${txWhere}
-          GROUP BY i."locationId", d.name
+          GROUP BY i."warehouseLocationId", d.name
           ORDER BY "txCount" DESC
         `, txParams);
       } else {

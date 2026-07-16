@@ -6,6 +6,7 @@ import { WarehouseItem } from './entities/warehouse-item.entity';
 import { WarehouseTransaction, TransactionType } from './entities/warehouse-transaction.entity';
 import { WarehouseRepair } from './entities/warehouse-repair.entity';
 import { WarehouseTransfer } from './entities/warehouse-transfer.entity';
+import { ServiceCall } from '../calls/entities/service-call.entity';
 
 @Injectable()
 export class WarehouseService {
@@ -15,6 +16,7 @@ export class WarehouseService {
     @InjectRepository(WarehouseTransaction) private readonly txRepo: Repository<WarehouseTransaction>,
     @InjectRepository(WarehouseRepair) private readonly repairsRepo: Repository<WarehouseRepair>,
     @InjectRepository(WarehouseTransfer) private readonly transfersRepo: Repository<WarehouseTransfer>,
+    @InjectRepository(ServiceCall) private readonly callsRepo: Repository<ServiceCall>,
   ) {}
 
   // ── Barcode generation ─────────────────────────────────────────────
@@ -233,5 +235,81 @@ export class WarehouseService {
       order: { createdAt: 'DESC' },
       take: 100,
     });
+  }
+
+  // ── Unified per-item service history ────────────────────────────────
+  /**
+   * One chronological timeline for a single piece of equipment —
+   * stock in/out (with the service call it was used on, if any),
+   * repairs sent/returned, and cross-location transfers. Per-client
+   * warehouse reports already exist (movement summary by item); this
+   * is the complementary "life story of this specific unit" view,
+   * useful for rental/service equipment where what matters is this
+   * exact barcode's history, not just aggregate stock movement.
+   */
+  async getItemHistory(itemId: number) {
+    const item = await this.itemsRepo.findOne({
+      where: { id: itemId },
+      relations: ['category', 'warehouseLocation', 'organization'],
+    });
+    if (!item) throw new NotFoundException('Item not found');
+
+    const [transactions, repairs, transferRows] = await Promise.all([
+      this.txRepo.find({ where: { item: { id: itemId } }, relations: ['registeredBy'], order: { createdAt: 'DESC' } }),
+      this.repairsRepo.find({ where: { itemId }, order: { sentAt: 'DESC' } }),
+      this.transfersRepo.query(
+        `
+        SELECT x.id, x."createdAt", x.notes,
+               fl.name AS "fromLocationName", tl.name AS "toLocationName",
+               u.username AS "createdByName"
+        FROM warehouse_transfers x
+        LEFT JOIN locations fl ON fl.id = x."fromLocationId"
+        LEFT JOIN locations tl ON tl.id = x."toLocationId"
+        LEFT JOIN users u ON u.id = x."createdById"
+        WHERE EXISTS (
+          SELECT 1 FROM jsonb_array_elements(x.items) elem
+          WHERE (elem->>'warehouseItemId')::int = $1
+        )
+        ORDER BY x."createdAt" DESC
+        `,
+        [itemId],
+      ),
+    ]);
+
+    const callIds = [...new Set(transactions.map((t) => t.referenceCallId).filter((x): x is number => !!x))];
+    const calls = callIds.length
+      ? await this.callsRepo.find({ where: { id: In(callIds) }, select: ['id', 'place', 'status', 'createdAt'] })
+      : [];
+    const callsById = new Map(calls.map((c) => [c.id, c]));
+
+    const events = [
+      ...transactions.map((t) => ({
+        kind: 'transaction' as const,
+        date: t.createdAt,
+        transactionType: t.type,
+        quantity: t.quantity,
+        reason: t.reason ?? null,
+        byUser: t.registeredBy?.username ?? null,
+        call: t.referenceCallId ? callsById.get(t.referenceCallId) ?? null : null,
+      })),
+      ...repairs.map((r) => ({
+        kind: 'repair' as const,
+        date: r.sentAt,
+        returnedAt: r.returnedAt ?? null,
+        supplierName: r.supplierName ?? null,
+        reason: r.reason ?? null,
+        notes: r.notes ?? null,
+      })),
+      ...transferRows.map((x: any) => ({
+        kind: 'transfer' as const,
+        date: x.createdAt,
+        fromLocationName: x.fromLocationName ?? null,
+        toLocationName: x.toLocationName ?? null,
+        byUser: x.createdByName ?? null,
+        notes: x.notes ?? null,
+      })),
+    ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    return { item, events };
   }
 }

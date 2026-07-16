@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, Pencil, X, Save, Package, ArrowUp, ArrowDown } from 'lucide-react';
+import { Plus, Trash2, Pencil, X, Save, Package, ArrowUp, ArrowDown, History } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
 interface Category { id: number; name: string; }
@@ -7,6 +7,21 @@ interface Item {
   id: number; name: string; barcode: string; description?: string;
   category?: Category; quantity: number; unit?: string; location?: string; notes?: string;
   warehouseLocation?: { id: number; name: string };
+}
+
+interface HistoryEvent {
+  kind: 'transaction' | 'repair' | 'transfer';
+  date: string;
+  transactionType?: 'in' | 'out';
+  quantity?: number;
+  reason?: string | null;
+  byUser?: string | null;
+  call?: { id: number; place: string; status: string } | null;
+  returnedAt?: string | null;
+  supplierName?: string | null;
+  notes?: string | null;
+  fromLocationName?: string | null;
+  toLocationName?: string | null;
 }
 
 export default function WarehousePage() {
@@ -23,6 +38,24 @@ export default function WarehousePage() {
   const [txQty, setTxQty] = useState('1');
   const [txReason, setTxReason] = useState('');
   const [filter, setFilter] = useState('');
+  const [historyItem, setHistoryItem] = useState<Item | null>(null);
+  const [historyEvents, setHistoryEvents] = useState<HistoryEvent[] | null>(null);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  async function openHistory(item: Item) {
+    setHistoryItem(item);
+    setHistoryEvents(null);
+    setHistoryLoading(true);
+    try {
+      const res = await apiFetch<{ events: HistoryEvent[] }>(`/warehouse/items/${item.id}/history`);
+      setHistoryEvents(res.events);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load history');
+      setHistoryItem(null);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }
 
   async function load() {
     try {
@@ -170,6 +203,7 @@ export default function WarehousePage() {
                 </td>
                 <td>
                   <div className="row-actions">
+                    <button className="ghost" title="Service history" onClick={() => openHistory(item)}><History size={15} /></button>
                     <button className="ghost" title="Add to stock" onClick={() => setTxModal({ item, type: 'in' })} style={{ color: 'green' }}><ArrowDown size={15} /></button>
                     <button className="ghost" title="Remove from stock" onClick={() => setTxModal({ item, type: 'out' })} style={{ color: 'red' }}><ArrowUp size={15} /></button>
                     <button className="ghost" onClick={() => { setEditingId(item.id); setForm({ ...item, categoryId: item.category?.id }); setShowForm(true); }}><Pencil size={15} /></button>
@@ -197,6 +231,61 @@ export default function WarehousePage() {
               <button className="ghost" onClick={() => setTxModal(null)}>Cancel</button>
               <button onClick={doTx}><Save size={15} /> Confirm</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* History modal */}
+      {historyItem && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
+          onClick={() => setHistoryItem(null)}>
+          <div className="card" style={{ width: 480, maxHeight: '80vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h3 style={{ margin: 0 }}>{historyItem.name}</h3>
+                <div className="mono" style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{historyItem.barcode}</div>
+              </div>
+              <button className="ghost" onClick={() => setHistoryItem(null)}><X size={16} /></button>
+            </div>
+
+            {historyLoading && <p style={{ color: 'var(--ink-soft)', marginTop: 16 }}>Loading…</p>}
+
+            {historyEvents && (
+              <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {historyEvents.map((ev, i) => (
+                  <div key={i} style={{ borderLeft: '2px solid var(--border, #e5e5e5)', paddingLeft: 12, fontSize: 13 }}>
+                    <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{new Date(ev.date).toLocaleString()}</div>
+                    {ev.kind === 'transaction' && (
+                      <div>
+                        <span style={{ color: ev.transactionType === 'in' ? 'green' : 'red', fontWeight: 600 }}>
+                          {ev.transactionType === 'in' ? `+${ev.quantity} in` : `-${ev.quantity} out`}
+                        </span>
+                        {ev.reason && <> — {ev.reason}</>}
+                        {ev.byUser && <span style={{ color: 'var(--ink-soft)' }}> · {ev.byUser}</span>}
+                        {ev.call && <div style={{ color: 'var(--ink-soft)' }}>Used on call #{ev.call.id} — {ev.call.place} ({ev.call.status})</div>}
+                      </div>
+                    )}
+                    {ev.kind === 'repair' && (
+                      <div>
+                        <span style={{ fontWeight: 600, color: ev.returnedAt ? 'green' : 'var(--stamp, orange)' }}>
+                          {ev.returnedAt ? 'Returned from repair' : 'Sent to repair'}
+                        </span>
+                        {ev.supplierName && <> — {ev.supplierName}</>}
+                        {ev.reason && <div style={{ color: 'var(--ink-soft)' }}>{ev.reason}</div>}
+                        {ev.returnedAt && <div style={{ color: 'var(--ink-soft)' }}>Returned {new Date(ev.returnedAt).toLocaleDateString()}</div>}
+                      </div>
+                    )}
+                    {ev.kind === 'transfer' && (
+                      <div>
+                        <span style={{ fontWeight: 600 }}>Transferred</span>: {ev.fromLocationName ?? '—'} → {ev.toLocationName ?? '—'}
+                        {ev.byUser && <span style={{ color: 'var(--ink-soft)' }}> · {ev.byUser}</span>}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {historyEvents.length === 0 && <p style={{ color: 'var(--ink-soft)' }}>No history yet for this item.</p>}
+              </div>
+            )}
           </div>
         </div>
       )}

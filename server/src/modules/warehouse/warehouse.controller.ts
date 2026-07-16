@@ -121,6 +121,14 @@ export class WarehouseController {
     return this.warehouseService.getItemRepairs(id);
   }
 
+  /** Full chronological history for one piece of equipment: stock
+   * in/out (with the service call it was used on, if any), repairs
+   * sent/returned, and cross-location transfers — one timeline. */
+  @Get('items/:id/history')
+  getItemHistory(@Param('id', ParseIntPipe) id: number) {
+    return this.warehouseService.getItemHistory(id);
+  }
+
   // ── Location-to-location transfers ────────────────────────────────
 
   /** History of equipment transfers between locations. */
