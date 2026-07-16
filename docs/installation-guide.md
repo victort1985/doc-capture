@@ -45,6 +45,10 @@
 
 ### 1.3 Установка сервера и админ-панели (Setup.exe)
 
+`Setup.exe` теперь собирается автоматически в CI при push тега вида
+`server-v1.0.0` (workflow `.github/workflows/server-windows-build.yml`)
+и публикуется в GitHub Releases — скачать оттуда, вместо ручной сборки.
+
 1. Запустить `installer/Setup.exe` из переданного архива.
 2. Указать папку установки (по умолчанию
    `C:\Program Files\DocCapture`) и нажать "Install".
@@ -111,6 +115,17 @@ nssm install DocCaptureServer "C:\Program Files\nodejs\node.exe" "C:\Program Fil
 ---
 
 ## 2. Сервер на Linux (Ubuntu/Debian)
+
+**Быстрый путь:** шаги 2.1–2.8 ниже автоматизированы в одном скрипте —
+`server/scripts/install-linux-server.sh`. Запустить из корня репозитория:
+```bash
+sudo ./server/scripts/install-linux-server.sh
+```
+Скрипт ставит Node.js/PostgreSQL при необходимости, создаёт БД и
+сервисного пользователя, собирает сервер и админ-панель, разворачивает
+файлы и включает systemd-сервис. Безопасен для повторного запуска —
+существующий `.env` не перезаписывается. Ручные шаги ниже остаются как
+справочник и для случаев, когда что-то нужно сделать по отдельности.
 
 ### 2.1 Установка Node.js
 

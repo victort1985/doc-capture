@@ -1,0 +1,49 @@
+name: Server Windows Installer
+
+on:
+  push:
+    tags: ['server-v*']
+
+jobs:
+  build-windows-installer:
+    name: Build Setup.exe (NSIS)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Build admin panel
+        working-directory: admin-panel
+        run: |
+          npm install
+          npm run build
+
+      - name: Install server dependencies
+        working-directory: server
+        run: npm install
+
+      - name: Package Windows payload (server + admin panel)
+        working-directory: server
+        run: |
+          chmod +x scripts/package-windows.sh
+          ./scripts/package-windows.sh
+
+      - name: Install NSIS
+        run: sudo apt-get update -q && sudo apt-get install -y -q nsis
+
+      - name: Build Setup.exe
+        working-directory: installer
+        run: makensis installer.nsi
+
+      - name: Upload to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ github.ref_name }}"
+          gh release create "$tag" --title "Vixor ERP Server $tag" --notes "Windows server installer" 2>/dev/null || true
+          gh release upload "$tag" installer/Setup.exe --clobber --repo "${{ github.repository }}"
