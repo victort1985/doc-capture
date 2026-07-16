@@ -146,7 +146,8 @@ export class OrdersService {
     const safeName = name.replace(/[/\\:*?"<>|\x00-\x1f]/g, '_');
     const storagePath = `Orders/${safeName}.pdf`;
     const { adapter } = await this.storageService.getAdapterWithMeta(this.defaultConnectionId());
-    return adapter.write(storagePath, buffer);
+    await adapter.write(storagePath, buffer);
+    return storagePath;
   }
 
   private async deleteStoredFile(storagePath: string): Promise<void> {
