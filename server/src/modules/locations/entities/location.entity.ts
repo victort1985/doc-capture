@@ -46,6 +46,6 @@ export class Location {
    * /portal/:token) — this location's service-call status, generated
    * on demand from the admin panel. Null = portal not enabled for
    * this location. */
-  @Column({ unique: true, nullable: true })
+  @Column({ type: 'varchar', unique: true, nullable: true })
   portalToken?: string | null;
 }
