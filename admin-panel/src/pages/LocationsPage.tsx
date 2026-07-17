@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Trash2, MapPin } from 'lucide-react';
+import { Plus, Trash2, MapPin, Link2, Copy } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
 interface Region {
@@ -16,6 +16,7 @@ interface Location {
   name: string;
   city: City;
   isMainWarehouse: boolean;
+  portalToken?: string | null;
 }
 
 export default function LocationsPage() {
@@ -126,6 +127,32 @@ export default function LocationsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update main warehouse');
     }
+  }
+
+  async function generatePortalLink(id: number) {
+    setError(null);
+    try {
+      await apiFetch(`/locations/${id}/portal-token`, { method: 'POST' });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to generate portal link');
+    }
+  }
+
+  async function revokePortalLink(id: number) {
+    if (!confirm('Revoke this client portal link? The current link will stop working immediately.')) return;
+    setError(null);
+    try {
+      await apiFetch(`/locations/${id}/portal-token`, { method: 'DELETE' });
+      load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to revoke portal link');
+    }
+  }
+
+  function copyPortalLink(token: string) {
+    const url = `${window.location.origin}/portal/${token}`;
+    navigator.clipboard.writeText(url);
   }
 
   return (
@@ -280,6 +307,40 @@ export default function LocationsPage() {
                   />
                   <span>{l.name} <span style={{ color: 'var(--ink-soft)', fontSize: 12 }}>({l.city?.name})</span></span>
                 </label>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Client portal — a read-only public link per location where a
+          client can check their own service-call status without
+          logging in. */}
+      <div className="card" style={{ marginTop: 20 }}>
+        <h3 style={{ marginTop: 0 }}>Client portal</h3>
+        <p style={{ color: 'var(--ink-soft)', marginTop: -6, marginBottom: 14, maxWidth: 640 }}>
+          Generate a link for a location's client to check their service-call status —
+          no login required. Revoking invalidates the link immediately.
+        </p>
+        {locations.length === 0 ? (
+          <div className="empty-state" style={{ padding: 16 }}>
+            <Link2 size={24} strokeWidth={1.5} />
+            <span>No locations yet</span>
+          </div>
+        ) : (
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {locations.map((l) => (
+              <li key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '6px 0' }}>
+                <span style={{ minWidth: 200 }}>{l.name} <span style={{ color: 'var(--ink-soft)', fontSize: 12 }}>({l.city?.name})</span></span>
+                {l.portalToken ? (
+                  <>
+                    <code style={{ fontSize: 12, color: 'var(--ink-soft)' }}>/portal/{l.portalToken.slice(0, 10)}…</code>
+                    <button type="button" onClick={() => copyPortalLink(l.portalToken!)} title="Copy link"><Copy size={14} /> Copy link</button>
+                    <button type="button" onClick={() => revokePortalLink(l.id)} title="Revoke" style={{ color: 'var(--danger)' }}><Trash2 size={14} /></button>
+                  </>
+                ) : (
+                  <button type="button" onClick={() => generatePortalLink(l.id)}><Link2 size={14} /> Generate link</button>
+                )}
               </li>
             ))}
           </ul>

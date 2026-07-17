@@ -25,6 +25,8 @@ import OrdersEmailSettingsPage from './pages/OrdersEmailSettingsPage';
 import OrdersListPage from './pages/OrdersListPage';
 import QuotesPage from './pages/QuotesPage';
 import InvoicesPage from './pages/InvoicesPage';
+import PortalPage from './pages/PortalPage';
+import MaintenancePage from './pages/MaintenancePage';
 
 export default function App() {
   return (
@@ -32,6 +34,7 @@ export default function App() {
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/portal/:token" element={<PortalPage />} />
         <Route
           element={
             <ProtectedRoute>
@@ -54,6 +57,7 @@ export default function App() {
           <Route path="/orders" element={<OrdersListPage />} />
           <Route path="/quotes" element={<QuotesPage />} />
           <Route path="/invoices" element={<InvoicesPage />} />
+          <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />

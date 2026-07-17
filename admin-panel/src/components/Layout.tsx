@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall,
   Building2, Contact, Car, Package, BarChart2, ShieldCheck, FileSignature,
-  FileText, CalendarDays, Menu, X, Mail, ReceiptText, Users2, FileSpreadsheet, Banknote,
+  FileText, CalendarDays, Menu, X, Mail, ReceiptText, Users2, FileSpreadsheet, Banknote, CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.png';
@@ -25,6 +25,7 @@ const BASE_NAV = [
   { to: '/orders',            label: 'Orders',          icon: ReceiptText },
   { to: '/quotes',            label: 'Quotes',          icon: FileSpreadsheet },
   { to: '/invoices',          label: 'Invoices',        icon: Banknote },
+  { to: '/maintenance',       label: 'Maintenance',     icon: CalendarClock },
   { to: '/orders-email-settings', label: 'Order intake email', icon: Mail },
   { to: '/storage',           label: 'Storage',         icon: HardDrive },
   { to: '/storage-routing',   label: 'Routing',         icon: Route },
