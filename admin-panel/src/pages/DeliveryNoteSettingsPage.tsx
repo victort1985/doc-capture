@@ -3,6 +3,7 @@ import { Save, Upload, X, Building2 } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
 interface Organization { id: number; name: string; }
+interface StorageConnection { id: number; name: string; }
 
 interface Settings {
   id?: number;
@@ -18,15 +19,18 @@ interface Settings {
   notePrefix?: string;
   startingNumber?: number;
   termsText?: string;
+  storageConnection?: StorageConnection;
 }
 
 export default function DeliveryNoteSettingsPage() {
   const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [connections, setConnections] = useState<StorageConnection[]>([]);
   const [selOrgId, setSelOrgId] = useState<number | null>(null);
   const [settings, setSettings] = useState<Settings>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [storageConnectionId, setStorageConnectionId] = useState<number | ''>('');
   const logoRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -34,13 +38,14 @@ export default function DeliveryNoteSettingsPage() {
       setOrgs(os);
       if (os.length) { setSelOrgId(os[0].id); }
     }).catch(() => {});
+    apiFetch<StorageConnection[]>('/storage/connections').then(setConnections).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!selOrgId) return;
     apiFetch<Settings>(`/delivery-note-settings/${selOrgId}`)
-      .then(s => setSettings(s ?? {}))
-      .catch(() => setSettings({}));
+      .then(s => { setSettings(s ?? {}); setStorageConnectionId(s?.storageConnection?.id ?? ''); })
+      .catch(() => { setSettings({}); setStorageConnectionId(''); });
   }, [selOrgId]);
 
   async function save() {
@@ -49,7 +54,7 @@ export default function DeliveryNoteSettingsPage() {
     try {
       await apiFetch(`/delivery-note-settings/${selOrgId}`, {
         method: 'PUT',
-        body: JSON.stringify(settings),
+        body: JSON.stringify({ ...settings, storageConnectionId: storageConnectionId || null }),
       });
       setSaved(true);
     } catch (e) {
@@ -172,6 +177,16 @@ export default function DeliveryNoteSettingsPage() {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Storage */}
+            <div className="card" style={{ marginBottom: 14 }}>
+              <h3 style={{ margin: '0 0 12px' }}>Document storage</h3>
+              <label>Save generated delivery notes to</label>
+              <select value={storageConnectionId} onChange={e => setStorageConnectionId(e.target.value ? Number(e.target.value) : '')}>
+                <option value="">Not configured</option>
+                {connections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
             </div>
 
             {/* Terms */}

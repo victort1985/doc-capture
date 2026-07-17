@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import {
   Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall,
   Building2, Contact, Car, Package, BarChart2, ShieldCheck, FileSignature,
-  FileText, CalendarDays, Menu, X, Mail, ReceiptText, Users2, FileSpreadsheet, Banknote, CalendarClock,
+  FileText, CalendarDays, Menu, X, Mail, ReceiptText, Users2, FileSpreadsheet, Banknote, CalendarClock, Settings2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.png';
@@ -24,7 +24,9 @@ const BASE_NAV = [
   { to: '/calendar-sync',     label: 'Calendar sync',   icon: CalendarDays },
   { to: '/orders',            label: 'Orders',          icon: ReceiptText },
   { to: '/quotes',            label: 'Quotes',          icon: FileSpreadsheet },
+  { to: '/quote-settings',    label: 'Quote settings',  icon: Settings2 },
   { to: '/invoices',          label: 'Invoices',        icon: Banknote },
+  { to: '/invoice-settings',  label: 'Invoice settings', icon: Settings2 },
   { to: '/maintenance',       label: 'Maintenance',     icon: CalendarClock },
   { to: '/orders-email-settings', label: 'Order intake email', icon: Mail },
   { to: '/storage',           label: 'Storage',         icon: HardDrive },

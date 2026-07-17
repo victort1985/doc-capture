@@ -27,6 +27,8 @@ import QuotesPage from './pages/QuotesPage';
 import InvoicesPage from './pages/InvoicesPage';
 import PortalPage from './pages/PortalPage';
 import MaintenancePage from './pages/MaintenancePage';
+import QuoteSettingsPage from './pages/QuoteSettingsPage';
+import InvoiceSettingsPage from './pages/InvoiceSettingsPage';
 
 export default function App() {
   return (
@@ -58,6 +60,8 @@ export default function App() {
           <Route path="/quotes" element={<QuotesPage />} />
           <Route path="/invoices" element={<InvoicesPage />} />
           <Route path="/maintenance" element={<MaintenancePage />} />
+          <Route path="/quote-settings" element={<QuoteSettingsPage />} />
+          <Route path="/invoice-settings" element={<InvoiceSettingsPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />
