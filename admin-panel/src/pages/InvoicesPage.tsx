@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Trash2, RefreshCw, Send, CheckCircle2 } from 'lucide-react';
-import { apiFetch } from '../services/api';
+import { Trash2, RefreshCw, Send, CheckCircle2, FileText } from 'lucide-react';
+import { apiFetch, apiFetchBlob } from '../services/api';
 
 interface InvoiceItem { description: string; quantity: number; unitPrice: number; }
 interface InvoiceRow {
@@ -39,6 +39,11 @@ export default function InvoicesPage() {
   async function send(id: number) {
     await apiFetch(`/invoices/${id}/send`, { method: 'POST' });
     load();
+  }
+  async function viewPdf(id: number) {
+    const url = await apiFetchBlob(`/invoices/${id}/pdf`);
+    if (url) window.open(url, '_blank');
+    else alert('No PDF available — check that a storage connection is configured in Invoice settings.');
   }
   async function markPaid(id: number) {
     await apiFetch(`/invoices/${id}/mark-paid`, { method: 'POST' });
@@ -79,6 +84,7 @@ export default function InvoicesPage() {
                 <td style={{ padding: '8px 12px' }}>₪{inv.total.toFixed(2)}</td>
                 <td style={{ padding: '8px 12px', color: statusColor[inv.status] }}>{inv.status}</td>
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                  <button type="button" onClick={() => viewPdf(inv.id)} title="View PDF" style={{ marginRight: 8 }}><FileText size={15} /></button>
                   {inv.status === 'draft' && (
                     <button type="button" onClick={() => send(inv.id)} title="Mark sent" style={{ marginRight: 8 }}><Send size={15} /></button>
                   )}

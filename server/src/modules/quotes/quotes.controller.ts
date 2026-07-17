@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { QuotesService } from './quotes.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -20,6 +21,14 @@ export class QuotesController {
   @UseGuards(JwtAuthGuard)
   findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
     return this.quotesService.findOne(id, user.organizationId);
+  }
+
+  @Get(':id/pdf')
+  @UseGuards(JwtAuthGuard)
+  async getPdf(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Res() res: Response) {
+    const buffer = await this.quotesService.getPdfBuffer(id, user.organizationId);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="quote-${id}.pdf"` });
+    res.send(buffer);
   }
 
   @Post()

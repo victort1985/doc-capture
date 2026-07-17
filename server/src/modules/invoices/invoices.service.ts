@@ -4,12 +4,17 @@ import { Repository } from 'typeorm';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoiceSettings } from './entities/invoice-settings.entity';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
+import { StorageService } from '../storage/storage.service';
+import { generateDocumentPdf } from '../documents/document-pdf.util';
 
 @Injectable()
 export class InvoicesService {
   constructor(
     @InjectRepository(Invoice) private readonly repo: Repository<Invoice>,
     @InjectRepository(InvoiceSettings) private readonly settingsRepo: Repository<InvoiceSettings>,
+    @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
+    private readonly storageService: StorageService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -62,7 +67,48 @@ export class InvoicesService {
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
-    return this.repo.save(invoice);
+    const saved = await this.repo.save(invoice);
+    saved.storagePath = await this.tryGeneratePdf(saved, organizationId);
+    return this.repo.save(saved);
+  }
+
+  private async tryGeneratePdf(invoice: Invoice, organizationId: number | null): Promise<string | null> {
+    if (organizationId == null) return null;
+    const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
+    if (!settings?.storageConnection) return null;
+
+    try {
+      const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
+      const pdfBytes = await generateDocumentPdf({
+        docTypeLabel: 'חשבונית',
+        docNumber: invoice.invoiceNumber ?? `#${invoice.id}`,
+        date: invoice.date ?? new Date().toISOString().slice(0, 10),
+        clientName: invoice.clientName,
+        clientEmail: invoice.clientEmail,
+        items: invoice.items,
+        total: invoice.total,
+        footerText: settings.footerText,
+        header,
+      });
+      const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+      const relativePath = `Invoices/${invoice.invoiceNumber ?? invoice.id}.pdf`;
+      await adapter.write(relativePath, pdfBytes);
+      return relativePath;
+    } catch {
+      return null;
+    }
+  }
+
+  async getPdfBuffer(id: number, organizationId: number | null): Promise<Buffer> {
+    const invoice = await this.findOne(id, organizationId);
+    if (!invoice.storagePath) throw new NotFoundException('No PDF has been generated for this invoice yet');
+    const settings = await this.settingsRepo.findOne({
+      where: { organization: { id: invoice.organization?.id } },
+      relations: ['storageConnection'],
+    });
+    if (!settings?.storageConnection) throw new NotFoundException('Storage connection is no longer configured');
+    const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+    return adapter.read(invoice.storagePath);
   }
 
   async markSent(id: number, organizationId: number | null): Promise<Invoice> {

@@ -6,9 +6,11 @@ import { QuotesService } from './quotes.service';
 import { QuotesController } from './quotes.controller';
 import { QuoteSettingsController } from './quote-settings.controller';
 import { UsersModule } from '../users/users.module';
+import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Quote, QuoteSettings]), UsersModule],
+  imports: [TypeOrmModule.forFeature([Quote, QuoteSettings, DeliveryNoteSettings]), UsersModule, StorageModule],
   controllers: [QuotesController, QuoteSettingsController],
   providers: [QuotesService],
 })

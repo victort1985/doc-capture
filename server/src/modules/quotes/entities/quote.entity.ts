@@ -64,6 +64,12 @@ export class Quote {
   @Column({ type: 'timestamp', nullable: true })
   respondedAt?: Date;
 
+  /** Relative path (within the configured storage connection) to the
+   * generated PDF, set once at creation. Null if no storage
+   * connection is configured for the org yet. */
+  @Column({ type: 'varchar', nullable: true })
+  storagePath?: string | null;
+
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   organization?: Organization;
 

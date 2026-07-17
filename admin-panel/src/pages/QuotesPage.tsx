@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Trash2, RefreshCw, Send } from 'lucide-react';
-import { apiFetch } from '../services/api';
+import { Trash2, RefreshCw, Send, FileText } from 'lucide-react';
+import { apiFetch, apiFetchBlob } from '../services/api';
 
 interface QuoteItem { description: string; quantity: number; unitPrice: number; }
 interface QuoteRow {
@@ -40,6 +40,11 @@ export default function QuotesPage() {
     await apiFetch(`/quotes/${id}/send`, { method: 'POST' });
     load();
   }
+  async function viewPdf(id: number) {
+    const url = await apiFetchBlob(`/quotes/${id}/pdf`);
+    if (url) window.open(url, '_blank');
+    else alert('No PDF available — check that a storage connection is configured in Quote settings.');
+  }
   async function remove(id: number, name: string) {
     if (!confirm(`Delete the quote for "${name}"? This cannot be undone.`)) return;
     await apiFetch(`/quotes/${id}`, { method: 'DELETE' });
@@ -72,6 +77,7 @@ export default function QuotesPage() {
                 <td style={{ padding: '8px 12px' }}>₪{q.total.toFixed(2)}</td>
                 <td style={{ padding: '8px 12px', color: statusColor[q.status] }}>{q.status}</td>
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                  <button type="button" onClick={() => viewPdf(q.id)} title="View PDF" style={{ marginRight: 8 }}><FileText size={15} /></button>
                   {q.status === 'draft' && (
                     <button type="button" onClick={() => send(q.id)} title="Mark sent" style={{ marginRight: 8 }}><Send size={15} /></button>
                   )}

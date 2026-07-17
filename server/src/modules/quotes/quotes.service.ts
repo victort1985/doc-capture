@@ -4,12 +4,17 @@ import { Repository } from 'typeorm';
 import { Quote, QuoteStatus } from './entities/quote.entity';
 import { QuoteSettings } from './entities/quote-settings.entity';
 import { CreateQuoteDto } from './dto/create-quote.dto';
+import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
+import { StorageService } from '../storage/storage.service';
+import { generateDocumentPdf } from '../documents/document-pdf.util';
 
 @Injectable()
 export class QuotesService {
   constructor(
     @InjectRepository(Quote) private readonly repo: Repository<Quote>,
     @InjectRepository(QuoteSettings) private readonly settingsRepo: Repository<QuoteSettings>,
+    @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
+    private readonly storageService: StorageService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -70,7 +75,40 @@ export class QuotesService {
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
-    return this.repo.save(quote);
+    const saved = await this.repo.save(quote);
+    saved.storagePath = await this.tryGeneratePdf(saved, organizationId);
+    return this.repo.save(saved);
+  }
+
+  /** Best-effort: a missing storage connection or a PDF rendering
+   * error shouldn't block creating the quote record itself — the
+   * document can be regenerated/retried later once settings are
+   * fixed. Returns null on any failure. */
+  private async tryGeneratePdf(quote: Quote, organizationId: number | null): Promise<string | null> {
+    if (organizationId == null) return null;
+    const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
+    if (!settings?.storageConnection) return null;
+
+    try {
+      const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
+      const pdfBytes = await generateDocumentPdf({
+        docTypeLabel: 'הצעת מחיר',
+        docNumber: quote.quoteNumber ?? `#${quote.id}`,
+        date: quote.date ?? new Date().toISOString().slice(0, 10),
+        clientName: quote.clientName,
+        clientEmail: quote.clientEmail,
+        items: quote.items,
+        total: quote.total,
+        footerText: settings.footerText,
+        header,
+      });
+      const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+      const relativePath = `Quotes/${quote.quoteNumber ?? quote.id}.pdf`;
+      await adapter.write(relativePath, pdfBytes);
+      return relativePath;
+    } catch {
+      return null;
+    }
   }
 
   async markSent(id: number, organizationId: number | null): Promise<Quote> {
@@ -94,5 +132,17 @@ export class QuotesService {
   async remove(id: number, organizationId: number | null): Promise<void> {
     const quote = await this.findOne(id, organizationId);
     await this.repo.remove(quote);
+  }
+
+  async getPdfBuffer(id: number, organizationId: number | null): Promise<Buffer> {
+    const quote = await this.findOne(id, organizationId);
+    if (!quote.storagePath) throw new NotFoundException('No PDF has been generated for this quote yet');
+    const settings = await this.settingsRepo.findOne({
+      where: { organization: { id: quote.organization?.id } },
+      relations: ['storageConnection'],
+    });
+    if (!settings?.storageConnection) throw new NotFoundException('Storage connection is no longer configured');
+    const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+    return adapter.read(quote.storagePath);
   }
 }

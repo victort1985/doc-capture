@@ -62,6 +62,12 @@ export class Invoice {
   @Column({ type: 'timestamp', nullable: true })
   paidAt?: Date;
 
+  /** Relative path (within the configured storage connection) to the
+   * generated PDF, set once at creation. Null if no storage
+   * connection is configured for the org yet. */
+  @Column({ type: 'varchar', nullable: true })
+  storagePath?: string | null;
+
   /** Optional link back to the quote this invoice was raised from. */
   @Column({ nullable: true })
   quoteId?: number;
