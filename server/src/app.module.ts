@@ -26,6 +26,7 @@ import { QuotesModule } from './modules/quotes/quotes.module';
 import { InvoicesModule } from './modules/invoices/invoices.module';
 import { PortalModule } from './modules/portal/portal.module';
 import { MaintenanceModule } from './modules/maintenance/maintenance.module';
+import { LicenseModule } from './modules/license/license.module';
 import { DocumentStorageSettingsModule } from './modules/document-storage-settings/document-storage-settings.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -75,6 +76,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     InvoicesModule,
     PortalModule,
     MaintenanceModule,
+    LicenseModule,
     DocumentStorageSettingsModule,
     ReportsModule,
     DeliveryNotesModule,
