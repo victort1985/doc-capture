@@ -23,5 +23,6 @@ import { PushModule } from '../push/push.module';
   ],
   controllers: [CallsController],
   providers: [CallsService],
+  exports: [CallsService],
 })
 export class CallsModule {}

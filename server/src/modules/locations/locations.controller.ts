@@ -87,6 +87,21 @@ export class LocationsController {
     return this.locationsService.setMainWarehouse(id, !!body.isMainWarehouse);
   }
 
+  /** Enables the client portal for this location, (re)generating its token. */
+  @Post(':id/portal-token')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  generatePortalToken(@Param('id', ParseIntPipe) id: number) {
+    return this.locationsService.generatePortalToken(id);
+  }
+
+  @Delete(':id/portal-token')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  revokePortalToken(@Param('id', ParseIntPipe) id: number) {
+    return this.locationsService.revokePortalToken(id);
+  }
+
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)

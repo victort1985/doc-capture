@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, IsNull, Repository } from 'typeorm';
+import { randomBytes } from 'crypto';
 import { Region } from './entities/region.entity';
 import { City } from './entities/city.entity';
 import { Location } from './entities/location.entity';
@@ -120,6 +121,22 @@ export class LocationsService {
     const location = await this.locationsRepo.findOne({ where: { id } });
     if (!location) throw new NotFoundException('Location not found');
     location.isMainWarehouse = isMainWarehouse;
+    return this.locationsRepo.save(location);
+  }
+
+  /** Enables the public client portal for this location by generating
+   * an unguessable token — see PortalService for the read side. */
+  async generatePortalToken(id: number): Promise<Location> {
+    const location = await this.locationsRepo.findOne({ where: { id } });
+    if (!location) throw new NotFoundException('Location not found');
+    location.portalToken = randomBytes(20).toString('hex');
+    return this.locationsRepo.save(location);
+  }
+
+  async revokePortalToken(id: number): Promise<Location> {
+    const location = await this.locationsRepo.findOne({ where: { id } });
+    if (!location) throw new NotFoundException('Location not found');
+    location.portalToken = null;
     return this.locationsRepo.save(location);
   }
 
