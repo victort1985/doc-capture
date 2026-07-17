@@ -7,8 +7,8 @@ import 'calls/calls_list_screen.dart';
 import 'phonebook_screen.dart';
 import 'calendar_screen.dart';
 import 'management_screen.dart';
-import 'delivery_notes_screen.dart';
-import '../services/delivery_notes_service.dart';
+import 'office_screen.dart';
+import '../store/app_state.dart';
 import 'calls_stats_screen.dart';
 import '../widgets/organization_logo_background.dart';
 
@@ -69,6 +69,10 @@ class _RootScreenState extends State<RootScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final user = context.watch<AppState>().currentUser;
+    final hasOfficeAccess = (user?.hasPermission('office.delivery_notes') ?? false) ||
+        (user?.hasPermission('office.quotes') ?? false) ||
+        (user?.hasPermission('office.invoices') ?? false);
 
     final screens = [
       const InventoryScreen(),
@@ -76,7 +80,7 @@ class _RootScreenState extends State<RootScreen> {
       const PhoneBookScreen(),
       const CalendarScreen(),
       const ManagementScreen(),
-      DeliveryNotesScreen(),
+      if (hasOfficeAccess) const OfficeScreen(),
     ];
 
     final destinations = [
@@ -85,8 +89,14 @@ class _RootScreenState extends State<RootScreen> {
       (Icons.contacts_outlined, Icons.contacts, l10n.phoneBookTitle),
       (Icons.calendar_month_outlined, Icons.calendar_month, l10n.calendarTitle),
       (Icons.build_outlined, Icons.build, l10n.managementTitle),
-      (Icons.assignment_outlined, Icons.assignment, l10n.deliveryNotesTitle),
+      if (hasOfficeAccess) (Icons.apartment_outlined, Icons.apartment, l10n.officeTitle),
     ];
+
+    // A user without Office access might currently be sitting on an
+    // index that no longer exists once their permissions change
+    // (e.g. an admin revokes access while this screen is alive) —
+    // clamp rather than crash.
+    if (_index >= screens.length) _index = 0;
 
     if (isDesktop) {
       // ── Desktop layout: NavigationRail sidebar + content ──────────────────
