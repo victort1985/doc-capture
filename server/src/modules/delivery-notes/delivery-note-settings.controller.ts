@@ -25,7 +25,7 @@ export class DeliveryNoteSettingsController {
   /** Get settings for the caller's organization (or by orgId for super-admin) */
   @Get(':orgId')
   async getByOrg(@Param('orgId', ParseIntPipe) orgId: number) {
-    return this.repo.findOne({ where: { organization: { id: orgId } } }) ?? {};
+    return this.repo.findOne({ where: { organization: { id: orgId } }, relations: ['storageConnection'] }) ?? {};
   }
 
   /** Get settings for the currently ACTIVE organization (respects X-Active-Org header) */
@@ -33,20 +33,24 @@ export class DeliveryNoteSettingsController {
   async getMine(@CurrentUser() user: ReqUser, @Req() req: Request) {
     const orgId = getActiveOrgId(user, req);
     if (orgId == null) return {};
-    return this.repo.findOne({ where: { organization: { id: orgId } } }) ?? {};
+    return this.repo.findOne({ where: { organization: { id: orgId } }, relations: ['storageConnection'] }) ?? {};
   }
 
   /** Create or update settings for an org */
   @Put(':orgId')
   async upsert(
     @Param('orgId', ParseIntPipe) orgId: number,
-    @Body() dto: Partial<DeliveryNoteSettings>,
+    @Body() dto: Partial<DeliveryNoteSettings> & { storageConnectionId?: number | null },
   ) {
-    let settings = await this.repo.findOne({ where: { organization: { id: orgId } } });
+    let settings = await this.repo.findOne({ where: { organization: { id: orgId } }, relations: ['storageConnection'] });
     if (!settings) {
       settings = this.repo.create({ organization: { id: orgId } as any });
     }
-    Object.assign(settings, dto);
+    const { storageConnectionId, ...rest } = dto;
+    Object.assign(settings, rest);
+    if (storageConnectionId !== undefined) {
+      settings.storageConnection = storageConnectionId == null ? undefined : ({ id: storageConnectionId } as any);
+    }
     return this.repo.save(settings);
   }
 
@@ -60,7 +64,7 @@ export class DeliveryNoteSettingsController {
     @Param('orgId', ParseIntPipe) orgId: number,
     @UploadedFile() file: { buffer: Buffer; mimetype: string },
   ) {
-    let settings = await this.repo.findOne({ where: { organization: { id: orgId } } });
+    let settings = await this.repo.findOne({ where: { organization: { id: orgId } }, relations: ['storageConnection'] });
     if (!settings) settings = this.repo.create({ organization: { id: orgId } as any });
     settings.logoBase64 = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
     settings.logoMimetype = file.mimetype;

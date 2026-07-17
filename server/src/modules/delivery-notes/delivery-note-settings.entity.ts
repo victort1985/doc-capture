@@ -3,6 +3,7 @@ import {
   PrimaryGeneratedColumn, UpdateDateColumn,
 } from 'typeorm';
 import { Organization } from '../organizations/entities/organization.entity';
+import { StorageConnection } from '../storage/entities/storage-connection.entity';
 
 /**
  * Per-organization delivery note template settings.
@@ -65,6 +66,10 @@ export class DeliveryNoteSettings {
   /** Fixed text to print at the bottom of every note (terms & conditions) */
   @Column({ type: 'text', nullable: true })
   termsText?: string;
+
+  /** Where generated delivery-note PDFs are saved for this organization. */
+  @ManyToOne(() => StorageConnection, { nullable: true, onDelete: 'SET NULL' })
+  storageConnection?: StorageConnection;
 
   @CreateDateColumn()
   createdAt: Date;

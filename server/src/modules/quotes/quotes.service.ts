@@ -2,14 +2,34 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Quote, QuoteStatus } from './entities/quote.entity';
+import { QuoteSettings } from './entities/quote-settings.entity';
 import { CreateQuoteDto } from './dto/create-quote.dto';
 
 @Injectable()
 export class QuotesService {
-  constructor(@InjectRepository(Quote) private readonly repo: Repository<Quote>) {}
+  constructor(
+    @InjectRepository(Quote) private readonly repo: Repository<Quote>,
+    @InjectRepository(QuoteSettings) private readonly settingsRepo: Repository<QuoteSettings>,
+  ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
     return Math.round(items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0) * 100) / 100;
+  }
+
+  /** "{prefix}{startingNumber + count so far}" once numbering is
+   * locked for the org; otherwise just "#{count+1}" (no prefix, starts
+   * at 1) — a usable placeholder before an admin has set the real
+   * series, since a quote still has to have *some* number. */
+  private async generateQuoteNumber(organizationId: number | null): Promise<string> {
+    const orgWhere = organizationId != null ? { organization: { id: organizationId } } : {};
+    const count = await this.repo.count({ where: orgWhere });
+    const settings = organizationId != null
+      ? await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } })
+      : null;
+    if (settings?.numberLocked && settings.startingNumber != null) {
+      return `${settings.numberPrefix ?? ''}${settings.startingNumber + count}`;
+    }
+    return `#${count + 1}`;
   }
 
   async findAll(organizationId: number | null): Promise<Quote[]> {
@@ -38,6 +58,7 @@ export class QuotesService {
 
   async create(organizationId: number | null, userId: number, dto: CreateQuoteDto): Promise<Quote> {
     const quote = this.repo.create({
+      quoteNumber: await this.generateQuoteNumber(organizationId),
       clientName: dto.clientName,
       clientEmail: dto.clientEmail,
       date: dto.date,

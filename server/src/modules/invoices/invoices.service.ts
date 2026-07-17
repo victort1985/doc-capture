@@ -2,14 +2,34 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
+import { InvoiceSettings } from './entities/invoice-settings.entity';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 
 @Injectable()
 export class InvoicesService {
-  constructor(@InjectRepository(Invoice) private readonly repo: Repository<Invoice>) {}
+  constructor(
+    @InjectRepository(Invoice) private readonly repo: Repository<Invoice>,
+    @InjectRepository(InvoiceSettings) private readonly settingsRepo: Repository<InvoiceSettings>,
+  ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
     return Math.round(items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0) * 100) / 100;
+  }
+
+  /** "{prefix}{startingNumber + count so far}" once numbering is
+   * locked for the org (see entity doc comment on why this is
+   * deliberately not compliance-grade sequential numbering);
+   * otherwise a plain "#{count+1}" placeholder. */
+  private async generateInvoiceNumber(organizationId: number | null): Promise<string> {
+    const orgWhere = organizationId != null ? { organization: { id: organizationId } } : {};
+    const count = await this.repo.count({ where: orgWhere });
+    const settings = organizationId != null
+      ? await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } })
+      : null;
+    if (settings?.numberLocked && settings.startingNumber != null) {
+      return `${settings.numberPrefix ?? ''}${settings.startingNumber + count}`;
+    }
+    return `#${count + 1}`;
   }
 
   async findAll(organizationId: number | null): Promise<Invoice[]> {
@@ -29,13 +49,8 @@ export class InvoicesService {
   }
 
   async create(organizationId: number | null, userId: number, dto: CreateInvoiceDto): Promise<Invoice> {
-    // Simple per-organization running number: "INV-{count+1}". Not
-    // gap-free/compliance-grade — see entity doc comment.
-    const count = await this.repo.count({
-      where: organizationId != null ? { organization: { id: organizationId } } : {},
-    });
     const invoice = this.repo.create({
-      invoiceNumber: `INV-${1000 + count + 1}`,
+      invoiceNumber: await this.generateInvoiceNumber(organizationId),
       clientName: dto.clientName,
       clientEmail: dto.clientEmail,
       date: dto.date ?? new Date().toISOString().slice(0, 10),

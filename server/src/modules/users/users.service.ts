@@ -48,6 +48,15 @@ export class UsersService {
     return user;
   }
 
+  /** Re-verifies a user's own password — used for high-stakes confirm
+   * dialogs (e.g. locking quote/invoice numbering permanently) where a
+   * valid session isn't considered enough on its own. */
+  async verifyPassword(userId: number, password: string): Promise<boolean> {
+    const user = await this.usersRepo.findOne({ where: { id: userId }, select: { id: true, passwordHash: true } });
+    if (!user) return false;
+    return bcrypt.compare(password, user.passwordHash);
+  }
+
   /** Used only for login — explicitly pulls passwordHash (hidden by default via select:false). */
   async findByUsername(username: string): Promise<User | null> {
     return this.usersRepo.findOne({
