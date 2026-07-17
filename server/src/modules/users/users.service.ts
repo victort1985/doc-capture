@@ -7,6 +7,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { User } from './entities/user.entity';
+import { UserGroup } from './entities/user-group.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { LocationsService } from '../locations/locations.service';
@@ -17,12 +18,13 @@ export interface Requester {
   organizationId: number | null;
 }
 
-const RELATIONS = ['city', 'city.region', 'regions', 'organization'];
+const RELATIONS = ['city', 'city.region', 'regions', 'organization', 'group'];
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User) private readonly usersRepo: Repository<User>,
+    @InjectRepository(UserGroup) private readonly groupsRepo: Repository<UserGroup>,
     private readonly locationsService: LocationsService,
     private readonly organizationsService: OrganizationsService,
   ) {}
@@ -50,7 +52,7 @@ export class UsersService {
   async findByUsername(username: string): Promise<User | null> {
     return this.usersRepo.findOne({
       where: { username },
-      relations: ['organization'],
+      relations: ['organization', 'group'],
       select: {
         id: true,
         username: true,
@@ -99,6 +101,14 @@ export class UsersService {
     return { city, regions };
   }
 
+  private async resolveGroup(groupId: number | null | undefined): Promise<UserGroup | null | undefined> {
+    if (groupId === undefined) return undefined; // not touched
+    if (groupId === null) return null; // explicitly cleared
+    const group = await this.groupsRepo.findOne({ where: { id: groupId } });
+    if (!group) throw new NotFoundException('Group not found');
+    return group;
+  }
+
   /**
    * Resolves which organization a new/updated user should belong to.
    * An org-scoped admin can only ever create/edit users within their own
@@ -121,6 +131,7 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const { city, regions } = await this.resolveCityAndRegions(dto);
     const organization = await this.resolveOrganization(requester, dto);
+    const group = await this.resolveGroup(dto.groupId);
     const user = this.usersRepo.create({
       username: dto.username,
       email: dto.email,
@@ -136,6 +147,7 @@ export class UsersService {
       regions,
       isGlobal: dto.isGlobal ?? false,
       organization,
+      group: group ?? undefined,
       allowedOrganizationIds: dto.allowedOrganizationIds ?? [],
       permissions: dto.permissions ?? {},
     });
@@ -152,6 +164,7 @@ export class UsersService {
       dto.organizationId !== undefined || requester.organizationId != null
         ? await this.resolveOrganization(requester, dto)
         : user.organization;
+    const group = await this.resolveGroup(dto.groupId);
     Object.assign(user, {
       username: dto.username ?? user.username,
       email: dto.email ?? user.email,
@@ -166,6 +179,7 @@ export class UsersService {
       regions: dto.regionIds !== undefined ? regions : user.regions,
       isGlobal: dto.isGlobal ?? user.isGlobal,
       organization,
+      group: group !== undefined ? group : user.group,
       allowedOrganizationIds: dto.allowedOrganizationIds ?? user.allowedOrganizationIds,
       permissions: dto.permissions ? { ...user.permissions, ...dto.permissions } : user.permissions,
     });

@@ -11,6 +11,7 @@ import {
 import { Region } from '../../locations/entities/region.entity';
 import { City } from '../../locations/entities/city.entity';
 import { Organization } from '../../organizations/entities/organization.entity';
+import { UserGroup } from './user-group.entity';
 
 export enum UserRole {
   ADMIN = 'admin',
@@ -38,9 +39,16 @@ export class User {
   isActive: boolean;
 
   /** Per-user permission overrides. Keys are feature names, values are
-   * true (granted), false (denied), or absent (inherit from role). */
+   * true (granted), false (denied), or absent (inherit from group,
+   * then role). See resolveEffectivePermissions(). */
   @Column({ type: 'jsonb', default: {} })
   permissions: Record<string, boolean>;
+
+  /** Optional group whose permissions apply between the role default
+   * and this user's own overrides. Lets an admin manage permissions
+   * for a whole team at once instead of user-by-user. */
+  @ManyToOne(() => UserGroup, { nullable: true, onDelete: 'SET NULL' })
+  group?: UserGroup;
 
   // Default language is Hebrew per spec; client falls back to this on login.
   @Column({ default: 'he' })

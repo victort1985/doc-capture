@@ -29,6 +29,11 @@ interface UserRow {
   organization?: { id: number; name: string };
   allowedOrganizationIds?: number[];
   permissions?: Record<string, boolean>;
+  group?: { id: number; name: string };
+}
+interface Group {
+  id: number;
+  name: string;
 }
 interface Org {
   id: number;
@@ -41,6 +46,7 @@ const EMPTY_FORM = {
   cityId: '', regionIds: [] as number[], isGlobal: false, organizationId: '',
   allowedOrganizationIds: [] as number[],
   permissions: {} as Record<string, boolean>,
+  groupId: '',
 };
 
 export default function UsersPage() {
@@ -50,6 +56,7 @@ export default function UsersPage() {
   const [cities, setCities] = useState<City[]>([]);
   const [regions, setRegions] = useState<Region[]>([]);
   const [orgs, setOrgs] = useState<Org[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [showForm, setShowForm] = useState(false);
@@ -57,14 +64,16 @@ export default function UsersPage() {
 
   async function load() {
     try {
-      const [u, c, r] = await Promise.all([
+      const [u, c, r, g] = await Promise.all([
         apiFetch<UserRow[]>('/users'),
         apiFetch<City[]>('/locations/cities'),
         apiFetch<Region[]>('/locations/regions'),
+        apiFetch<Group[]>('/groups'),
       ]);
       setUsers(u);
       setCities(c);
       setRegions(r);
+      setGroups(g);
       // Org dropdown is only meaningful for the super-admin — an
       // org-scoped admin's new users are auto-assigned their own
       // organization server-side regardless of what's sent, so org-admins
@@ -86,6 +95,7 @@ export default function UsersPage() {
       ...form,
       cityId: form.cityId ? Number(form.cityId) : undefined,
       organizationId: form.organizationId ? Number(form.organizationId) : undefined,
+      groupId: form.groupId ? Number(form.groupId) : null,
     };
     // Editing: an empty password field means "leave it unchanged" — don't
     // force re-entering a password just to fix someone's specialization.
@@ -122,6 +132,7 @@ export default function UsersPage() {
       organizationId: u.organization ? String(u.organization.id) : '',
       allowedOrganizationIds: u.allowedOrganizationIds ?? [],
       permissions: u.permissions ?? {},
+      groupId: u.group ? String(u.group.id) : '',
     });
     setShowForm(true);
   }
@@ -194,6 +205,13 @@ export default function UsersPage() {
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                 <option value="user">user</option>
                 <option value="admin">admin</option>
+              </select>
+            </div>
+            <div>
+              <label>Group</label>
+              <select value={form.groupId} onChange={(e) => setForm({ ...form, groupId: e.target.value })}>
+                <option value="">No group</option>
+                {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
             <div>

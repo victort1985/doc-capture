@@ -32,6 +32,9 @@ const FEATURES: { key: string; label: string; group: string }[] = [
   { key: 'reports.fuel', label: 'View fuel reports', group: 'Reports' },
   { key: 'phonebook.edit', label: 'Edit phone book', group: 'Phone book' },
   { key: 'orgs.switch', label: 'Switch between organizations', group: 'Organizations' },
+  { key: 'office.delivery_notes', label: 'Delivery notes', group: 'Office (mobile)' },
+  { key: 'office.quotes', label: 'Quotes', group: 'Office (mobile)' },
+  { key: 'office.invoices', label: 'Invoices', group: 'Office (mobile)' },
 ];
 
 const ROLE_DEFAULTS: Record<string, Record<string, boolean>> = {
@@ -45,6 +48,7 @@ const ROLE_DEFAULTS: Record<string, Record<string, boolean>> = {
     'phonebook.edit': false,
     'calls.edit': false, 'calls.delete': false,
     'orgs.switch': false,
+    'office.delivery_notes': false, 'office.quotes': false, 'office.invoices': false,
   },
 };
 

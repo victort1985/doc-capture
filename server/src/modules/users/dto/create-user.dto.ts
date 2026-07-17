@@ -73,4 +73,10 @@ export class CreateUserDto {
   /** Per-user feature permission overrides, e.g. { warehouseTransfer: true }. */
   @IsOptional()
   permissions?: Record<string, boolean>;
+
+  /** Group whose permissions apply beneath this user's own overrides.
+   * Pass null to remove from any group. */
+  @IsInt()
+  @IsOptional()
+  groupId?: number | null;
 }

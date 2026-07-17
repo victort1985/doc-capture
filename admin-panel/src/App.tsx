@@ -16,6 +16,7 @@ import FleetPage from './pages/FleetPage';
 import WarehousePage from './pages/WarehousePage';
 import ReportsPage from './pages/ReportsPage';
 import PermissionsPage from './pages/PermissionsPage';
+import GroupsPage from './pages/GroupsPage';
 import DeliveryNoteSettingsPage from './pages/DeliveryNoteSettingsPage';
 import DeliveryNotesPage from './pages/DeliveryNotesPage';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/warehouse" element={<WarehousePage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/permissions" element={<PermissionsPage />} />
+          <Route path="/groups" element={<GroupsPage />} />
           <Route path="/delivery-settings" element={<DeliveryNoteSettingsPage />} />
           <Route path="/delivery-notes" element={<DeliveryNotesPage />} />
           <Route path="/calendar-sync" element={<CalendarSyncPage />} />

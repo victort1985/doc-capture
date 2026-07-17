@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
+import { resolveEffectivePermissions } from '../users/permissions.constants';
 
 @Injectable()
 export class AuthService {
@@ -34,7 +35,10 @@ export class AuthService {
         role: user.role,
         organizationId: user.organization?.id ?? null,
         allowedOrganizationIds: user.allowedOrganizationIds ?? [],
-        permissions: user.permissions ?? {},
+        // Fully resolved (role default -> group -> user override), not
+        // the raw override map — the client shouldn't need to know
+        // about role defaults or groups to answer "can this user see X".
+        permissions: resolveEffectivePermissions(user.role, user.group?.permissions, user.permissions),
         firstName: user.firstName ?? null,
         lastName: user.lastName ?? null,
       },
