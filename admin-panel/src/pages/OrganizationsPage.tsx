@@ -29,10 +29,11 @@ function LogoThumb({ orgId, version }: { orgId: number; version: number }) {
   return (
     <div style={{
       width: 40, height: 40, borderRadius: 8, overflow: 'hidden',
-      background: 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      background: url ? '#fff' : 'var(--surface-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      border: url ? '1px solid var(--border, #e5e5e5)' : undefined,
     }}>
       {url ? (
-        <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+        <img src={url} alt="" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
       ) : (
         <Building2 size={18} color="var(--ink-soft)" />
       )}
