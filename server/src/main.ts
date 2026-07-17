@@ -187,6 +187,12 @@ async function bootstrap() {
           // 'unsafe-inline' — script-src stays locked down).
           'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
           'font-src': ["'self'", 'https://fonts.gstatic.com'],
+          // apiFetchBlob() (org logos, contact photos, etc.) renders fetched
+          // bytes via URL.createObjectURL() -> <img src="blob:...">. The
+          // default img-src ('self' data:) doesn't include blob:, so the
+          // browser silently blocks those images — no console error, just
+          // a broken-image icon, since the fetch itself already succeeded.
+          'img-src': ["'self'", 'data:', 'blob:'],
           // script-src: unsafe-inline needed for signing page (server-injected data script)
           'script-src': ["'self'", "'unsafe-inline'"],
           // Prevent clickjacking attacks
