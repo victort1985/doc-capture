@@ -33,6 +33,7 @@ import PortalPage from './pages/PortalPage';
 import MaintenancePage from './pages/MaintenancePage';
 import QuoteSettingsPage from './pages/QuoteSettingsPage';
 import InvoiceSettingsPage from './pages/InvoiceSettingsPage';
+import DevicesPage from './pages/DevicesPage';
 
 function LicenseGate({ children }: { children: ReactNode }) {
   const { status, loading } = useLicense();
@@ -85,6 +86,7 @@ export default function App() {
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/quote-settings" element={<QuoteSettingsPage />} />
           <Route path="/invoice-settings" element={<InvoiceSettingsPage />} />
+          <Route path="/devices" element={<DevicesPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />

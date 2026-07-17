@@ -47,6 +47,8 @@
       <h3 style="margin-top:0">New license</h3>
       <input id="newCustomer" placeholder="Customer name">
       <input id="newNotes" placeholder="Notes (optional)">
+      <label style="font-size:12px;color:var(--ink-soft)">Max devices</label>
+      <input id="newMaxDevices" type="number" value="5" min="1">
       <button onclick="createLicense()">Generate key</button>
       <div id="newKeyResult" style="margin-top:12px;"></div>
     </div>
@@ -54,7 +56,7 @@
     <div class="card">
       <h3 style="margin-top:0">Licenses</h3>
       <table>
-        <thead><tr><th>Customer</th><th>Key</th><th>Status</th><th>Last check</th><th></th></tr></thead>
+        <thead><tr><th>Customer</th><th>Key</th><th>Status</th><th>Max devices</th><th>Last check</th><th></th></tr></thead>
         <tbody id="licenseRows"></tbody>
       </table>
     </div>
@@ -104,11 +106,12 @@ document.getElementById('logoutBtn').onclick = () => {
 async function createLicense() {
   const customerName = document.getElementById('newCustomer').value.trim();
   const notes = document.getElementById('newNotes').value.trim();
+  const maxDevices = Number(document.getElementById('newMaxDevices').value) || 5;
   if (!customerName) return;
   try {
-    const lic = await api('/admin/licenses', { method: 'POST', body: JSON.stringify({ customerName, notes }) });
+    const lic = await api('/admin/licenses', { method: 'POST', body: JSON.stringify({ customerName, notes, maxDevices }) });
     document.getElementById('newKeyResult').innerHTML =
-      `Key for <b>${lic.customer_name}</b>:<br><code style="font-size:13px;">${lic.key}</code>`;
+      `Key for <b>${lic.customer_name}</b> (max ${lic.max_devices} devices):<br><code style="font-size:13px;">${lic.key}</code>`;
     document.getElementById('newCustomer').value = '';
     document.getElementById('newNotes').value = '';
     loadLicenses();
@@ -129,6 +132,10 @@ async function loadLicenses() {
       <td>${l.customer_name}${l.notes ? `<div style="color:var(--ink-soft);font-size:11px">${l.notes}</div>` : ''}</td>
       <td><code>${l.key.slice(0, 12)}…</code></td>
       <td class="status-${l.status}">${l.status}</td>
+      <td>
+        <input type="number" min="1" value="${l.max_devices}" style="width:60px;margin:0;padding:4px 6px;"
+          onchange="updateMaxDevices(${l.id}, this.value)">
+      </td>
       <td>${timeAgo(l.last_checked_at)}</td>
       <td>
         ${l.status === 'active'
@@ -137,6 +144,12 @@ async function loadLicenses() {
       </td>
     </tr>
   `).join('');
+}
+
+async function updateMaxDevices(id, value) {
+  try {
+    await api(`/admin/licenses/${id}/max-devices`, { method: 'POST', body: JSON.stringify({ maxDevices: Number(value) }) });
+  } catch (e) { alert(e.message); loadLicenses(); }
 }
 
 async function revoke(id) {

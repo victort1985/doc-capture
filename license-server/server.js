@@ -41,7 +41,7 @@ app.post('/verify', (req, res) => {
     WHERE id = ?
   `).run(checkedAt, req.ip, checkedAt, license.id);
 
-  const { payloadJson, signature } = signPayload({ valid: true, checkedAt, customerName: license.customer_name });
+  const { payloadJson, signature } = signPayload({ valid: true, checkedAt, customerName: license.customer_name, maxDevices: license.max_devices });
   res.json({ payloadJson, signature });
 });
 
@@ -75,11 +75,19 @@ app.get('/admin/licenses', requireAdmin, (req, res) => {
 });
 
 app.post('/admin/licenses', requireAdmin, (req, res) => {
-  const { customerName, notes } = req.body || {};
+  const { customerName, notes, maxDevices } = req.body || {};
   if (!customerName) return res.status(400).json({ error: 'customerName is required' });
   const key = crypto.randomBytes(32).toString('hex'); // hex64
-  const info = db.prepare('INSERT INTO licenses (key, customer_name, notes) VALUES (?, ?, ?)').run(key, customerName, notes || null);
+  const info = db.prepare('INSERT INTO licenses (key, customer_name, notes, max_devices) VALUES (?, ?, ?, ?)')
+    .run(key, customerName, notes || null, Number(maxDevices) > 0 ? Number(maxDevices) : 5);
   res.json(db.prepare('SELECT * FROM licenses WHERE id = ?').get(info.lastInsertRowid));
+});
+
+app.post('/admin/licenses/:id/max-devices', requireAdmin, (req, res) => {
+  const { maxDevices } = req.body || {};
+  if (!(Number(maxDevices) > 0)) return res.status(400).json({ error: 'maxDevices must be a positive number' });
+  db.prepare('UPDATE licenses SET max_devices = ? WHERE id = ?').run(Number(maxDevices), req.params.id);
+  res.json(db.prepare('SELECT * FROM licenses WHERE id = ?').get(req.params.id));
 });
 
 app.post('/admin/licenses/:id/revoke', requireAdmin, (req, res) => {

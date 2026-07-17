@@ -10,6 +10,7 @@ db.exec(`
     key TEXT NOT NULL UNIQUE,
     customer_name TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'active',      -- 'active' | 'revoked'
+    max_devices INTEGER NOT NULL DEFAULT 5,
     created_at TEXT NOT NULL DEFAULT (datetime('now')),
     activated_at TEXT,                           -- set on first successful verify
     last_checked_at TEXT,                         -- updated on every successful verify
@@ -23,5 +24,9 @@ db.exec(`
     password_hash TEXT NOT NULL
   );
 `);
+
+// Safe to re-run: fails harmlessly if the column already exists (fresh
+// installs get it from the CREATE TABLE above already).
+try { db.exec('ALTER TABLE licenses ADD COLUMN max_devices INTEGER NOT NULL DEFAULT 5'); } catch {}
 
 module.exports = db;

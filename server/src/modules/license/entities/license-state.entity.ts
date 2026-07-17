@@ -22,6 +22,9 @@ export class LicenseState {
   @Column({ type: 'varchar', nullable: true })
   customerName?: string | null;
 
+  @Column({ type: 'integer', default: 5 })
+  maxDevices: number;
+
   @UpdateDateColumn()
   updatedAt: Date;
 }

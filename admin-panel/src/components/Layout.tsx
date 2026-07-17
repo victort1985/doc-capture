@@ -5,7 +5,7 @@ import {
   Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall,
   Building2, Contact, Car, Package, BarChart2, ShieldCheck, FileSignature,
   FileText, CalendarDays, Menu, X, Mail, ReceiptText, Users2, FileSpreadsheet, Banknote, CalendarClock, Settings2,
-  ChevronDown, Settings, Globe,
+  ChevronDown, Settings, Globe, Smartphone,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.png';
@@ -34,6 +34,7 @@ const BASE_NAV = [
   { to: '/storage-routing',   labelKey: 'nav.routing',         icon: Route },
   { to: '/templates',         labelKey: 'nav.templates',       icon: FileSliders },
   { to: '/files',             labelKey: 'nav.fileLog',         icon: FileStack },
+  { to: '/devices',           labelKey: 'nav.devices',         icon: Smartphone },
 ];
 
 const OFFICE_GROUP = [

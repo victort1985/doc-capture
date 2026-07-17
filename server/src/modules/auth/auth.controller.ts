@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
@@ -11,8 +11,9 @@ export class AuthController {
 
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.username, dto.password);
+  login(@Body() dto: LoginDto, @Headers('x-client-type') clientType?: string) {
+    const isMobile = clientType === 'mobile';
+    return this.authService.login(dto.username, dto.password, isMobile ? dto.deviceId : undefined, dto.platform);
   }
 
   @Get('me')

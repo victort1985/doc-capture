@@ -1,6 +1,8 @@
+import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_service.dart';
+import 'device_id.dart';
 
 class AuthUser {
   final int id;
@@ -59,9 +61,12 @@ class AuthService {
   static const _savedPasswordKey = 'saved_password';
 
   Future<AuthUser> login(String username, String password) async {
+    final deviceId = await getOrCreateDeviceId();
     final response = await _api.post('/auth/login', {
       'username': username,
       'password': password,
+      'deviceId': deviceId,
+      'platform': Platform.operatingSystem,
     });
     final token = response['token'] as String;
     await _storage.write(key: _tokenKey, value: token);

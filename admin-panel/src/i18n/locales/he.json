@@ -24,7 +24,8 @@
     "storage": "אחסון",
     "routing": "ניתוב",
     "templates": "תבניות",
-    "fileLog": "יומן קבצים"
+    "fileLog": "יומן קבצים",
+    "devices": "מכשירים"
   },
   "app": {
     "adminConsole": "פאנל ניהול",

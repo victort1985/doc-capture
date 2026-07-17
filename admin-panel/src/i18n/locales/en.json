@@ -24,7 +24,8 @@
     "storage": "Storage",
     "routing": "Routing",
     "templates": "Templates",
-    "fileLog": "File log"
+    "fileLog": "File log",
+    "devices": "Devices"
   },
   "app": {
     "adminConsole": "admin console",

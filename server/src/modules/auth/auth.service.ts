@@ -3,12 +3,14 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { UsersService } from '../users/users.service';
 import { resolveEffectivePermissions } from '../users/permissions.constants';
+import { DevicesService } from '../license/devices.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly devicesService: DevicesService,
   ) {}
 
   async validateUser(username: string, password: string) {
@@ -23,8 +25,16 @@ export class AuthService {
     return user;
   }
 
-  async login(username: string, password: string) {
+  async login(username: string, password: string, deviceId?: string, platform?: string) {
     const user = await this.validateUser(username, password);
+
+    // Mobile logins only (deviceId is only ever passed for
+    // X-Client-Type: mobile — see AuthController) — a rejected device
+    // throws before any token is issued, same as a wrong password.
+    if (deviceId) {
+      await this.devicesService.registerOrTouch(deviceId, user.id, platform);
+    }
+
     const payload = { sub: user.id, username: user.username, role: user.role };
     return {
       token: this.jwtService.sign(payload),

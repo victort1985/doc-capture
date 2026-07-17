@@ -19,6 +19,7 @@ export interface LicenseStatus {
   hoursSinceCheck: number | null;
   /** ISO timestamp of the next threshold this install will cross if no successful check happens before then. */
   nextDeadline: string | null;
+  maxDevices: number;
 }
 
 const publicKey = crypto.createPublicKey(LICENSE_PUBLIC_KEY_PEM);
@@ -39,7 +40,7 @@ export class LicenseService {
    * before trusting anything in the response — without this, anyone
    * who can intercept/spoof the HTTP response (bad DNS, compromised
    * network) could just answer "valid:true" themselves. */
-  private async callLicenseServer(key: string): Promise<{ valid: boolean; reason?: string; customerName?: string; checkedAt: string }> {
+  private async callLicenseServer(key: string): Promise<{ valid: boolean; reason?: string; customerName?: string; maxDevices?: number; checkedAt: string }> {
     const res = await fetch(`${LICENSE_SERVER_URL}/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -65,6 +66,7 @@ export class LicenseService {
     row.lastVerifiedAt = new Date(result.checkedAt);
     row.revoked = false;
     row.customerName = result.customerName ?? null;
+    if (result.maxDevices) row.maxDevices = result.maxDevices;
     await this.repo.save(row);
     this.logger.log(`License activated for "${result.customerName}"`);
     return this.getStatus();
@@ -87,6 +89,7 @@ export class LicenseService {
         row.lastVerifiedAt = new Date(result.checkedAt);
         row.revoked = false;
         if (result.customerName) row.customerName = result.customerName;
+        if (result.maxDevices) row.maxDevices = result.maxDevices;
         await this.repo.save(row);
       } else if (result.reason === 'revoked' || result.reason === 'not_found') {
         row.revoked = true;
@@ -98,14 +101,19 @@ export class LicenseService {
     }
   }
 
+  async getMaxDevices(): Promise<number> {
+    const row = await this.getOrCreateRow();
+    return row.maxDevices;
+  }
+
   async getStatus(): Promise<LicenseStatus> {
     const row = await this.getOrCreateRow();
 
     if (!row.encryptedKey) {
-      return { state: 'NOT_ACTIVATED', customerName: null, lastVerifiedAt: null, hoursSinceCheck: null, nextDeadline: null };
+      return { state: 'NOT_ACTIVATED', customerName: null, lastVerifiedAt: null, hoursSinceCheck: null, nextDeadline: null, maxDevices: 0 };
     }
     if (row.revoked) {
-      return { state: 'FULL_LOCKED', customerName: row.customerName ?? null, lastVerifiedAt: row.lastVerifiedAt?.toISOString() ?? null, hoursSinceCheck: null, nextDeadline: null };
+      return { state: 'FULL_LOCKED', customerName: row.customerName ?? null, lastVerifiedAt: row.lastVerifiedAt?.toISOString() ?? null, hoursSinceCheck: null, nextDeadline: null, maxDevices: row.maxDevices };
     }
 
     const hoursSince = row.lastVerifiedAt ? (Date.now() - row.lastVerifiedAt.getTime()) / 3_600_000 : Infinity;
@@ -133,6 +141,7 @@ export class LicenseService {
       lastVerifiedAt: row.lastVerifiedAt?.toISOString() ?? null,
       hoursSinceCheck: Number.isFinite(hoursSince) ? Math.round(hoursSince * 10) / 10 : null,
       nextDeadline: nextDeadline?.toISOString() ?? null,
+      maxDevices: row.maxDevices,
     };
   }
 }

@@ -5,10 +5,12 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { UsersModule } from '../users/users.module';
+import { LicenseModule } from '../license/license.module';
 
 @Module({
   imports: [
     UsersModule,
+    LicenseModule,
     PassportModule,
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'change_me',
