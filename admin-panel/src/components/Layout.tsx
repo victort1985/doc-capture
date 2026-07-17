@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import logo from '../assets/logo.png';
 import CopyrightFooter from './CopyrightFooter';
+import LicenseWarningBanner from './LicenseWarningBanner';
 
 // Flat top-level items. `officeGroup` is rendered separately as a
 // collapsible section — delivery notes / quotes / invoices and their
@@ -106,7 +107,9 @@ export default function Layout() {
   }, [open]);
 
   return (
-    <div className="layout">
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+      <LicenseWarningBanner />
+      <div className="layout" style={{ flex: 1, minHeight: 0 }}>
 
       {/* ── Mobile topbar ── */}
       <header className="mobile-topbar" role="banner">
@@ -220,6 +223,7 @@ export default function Layout() {
         <CopyrightFooter />
       </main>
 
+    </div>
     </div>
   );
 }

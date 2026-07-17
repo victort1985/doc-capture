@@ -10,12 +10,20 @@ export function setToken(token: string | null) {
 }
 
 let onUnauthorized: (() => void) | null = null;
+let onLicenseLocked: ((code: string, message: string) => void) | null = null;
 
 /** AuthProvider registers a callback here to clear the session and bounce
  * to the login screen whenever any request comes back 401 — covers token
  * expiry/revocation happening mid-session, not just at page load. */
 export function setUnauthorizedHandler(handler: (() => void) | null) {
   onUnauthorized = handler;
+}
+
+/** Fires when the API returns 403 with a LICENSE_LOCKED /
+ * LICENSE_ADMIN_LOCKED code — LicenseGate uses this to show the lock
+ * screen immediately instead of waiting for the next status poll. */
+export function setLicenseLockedHandler(handler: ((code: string, message: string) => void) | null) {
+  onLicenseLocked = handler;
 }
 
 export async function apiFetch<T>(
@@ -31,6 +39,7 @@ export async function apiFetch<T>(
     headers: {
       ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Client-Type': 'admin-panel',
       ...(options.headers || {}),
     },
   });
@@ -40,12 +49,16 @@ export async function apiFetch<T>(
     if (res.status === 401) {
       onUnauthorized?.();
     }
+    const code = body?.code ?? body?.message?.code;
+    if (res.status === 403 && (code === 'LICENSE_LOCKED' || code === 'LICENSE_ADMIN_LOCKED')) {
+      onLicenseLocked?.(code, body?.message?.message ?? body?.message ?? 'License locked');
+    }
     const message =
       typeof body.message === 'string'
         ? body.message
         : Array.isArray(body.message)
           ? body.message.join(', ')
-          : `Request failed (${res.status})`;
+          : body?.message?.message ?? `Request failed (${res.status})`;
     throw new Error(message);
   }
 
@@ -67,7 +80,7 @@ export async function apiFetch<T>(
 export async function apiFetchBlob(path: string): Promise<string | null> {
   const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Client-Type': 'admin-panel' },
   });
   if (!res.ok) return null;
   const blob = await res.blob();

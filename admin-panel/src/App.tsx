@@ -1,5 +1,9 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { AuthProvider } from './context/AuthContext';
+import { LicenseProvider, useLicense } from './context/LicenseContext';
+import LicenseActivationPage from './pages/LicenseActivationPage';
+import LicenseLockedPage from './pages/LicenseLockedPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
@@ -30,9 +34,28 @@ import MaintenancePage from './pages/MaintenancePage';
 import QuoteSettingsPage from './pages/QuoteSettingsPage';
 import InvoiceSettingsPage from './pages/InvoiceSettingsPage';
 
+function LicenseGate({ children }: { children: ReactNode }) {
+  const { status, loading } = useLicense();
+  const location = useLocation();
+
+  // The client portal is for the customer's OWN end clients (e.g. a
+  // hotel checking their service-call status) — showing them "this
+  // installation is locked, contact your provider" would be
+  // confusing and unprofessional; let that page render and handle
+  // its own failure state if the API happens to be locked too.
+  if (location.pathname.startsWith('/portal/')) return <>{children}</>;
+
+  if (loading || !status) return null;
+  if (status.state === 'NOT_ACTIVATED') return <LicenseActivationPage />;
+  if (status.state === 'FULL_LOCKED' || status.state === 'ADMIN_LOCKED') return <LicenseLockedPage />;
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <ErrorBoundary>
+    <LicenseProvider>
+    <LicenseGate>
     <AuthProvider>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -72,6 +95,8 @@ export default function App() {
         <Route path="*" element={<Navigate to="/users" replace />} />
       </Routes>
     </AuthProvider>
+    </LicenseGate>
+    </LicenseProvider>
     </ErrorBoundary>
   );
 }
