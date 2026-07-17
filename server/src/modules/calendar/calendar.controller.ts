@@ -137,17 +137,19 @@ export class CalendarController {
 
   /** GET /calendar/ics-token — returns token and URL for calendar subscription */
   @Get('ics-token')
-  async getIcsToken(@CurrentUser() user: RequestUser) {
-    if (user.organizationId == null) return { token: null, url: null };
-    const token = await this.calendarService.getIcsToken(user.organizationId);
+  async getIcsToken(@CurrentUser() user: RequestUser, @Query('organizationId') orgIdParam?: string) {
+    const orgId = (user.organizationId == null && orgIdParam) ? parseInt(orgIdParam, 10) : user.organizationId;
+    if (orgId == null) return { token: null, url: null };
+    const token = await this.calendarService.getIcsToken(orgId);
     return { token, url: `/api/ics/${token}` };
   }
 
   /** POST /calendar/ics-token/rotate — invalidates old subscription URLs */
   @Post('ics-token/rotate')
-  async rotateIcsToken(@CurrentUser() user: RequestUser) {
-    if (user.organizationId == null) return { token: null };
-    const token = await this.calendarService.rotateIcsToken(user.organizationId);
+  async rotateIcsToken(@CurrentUser() user: RequestUser, @Query('organizationId') orgIdParam?: string) {
+    const orgId = (user.organizationId == null && orgIdParam) ? parseInt(orgIdParam, 10) : user.organizationId;
+    if (orgId == null) return { token: null };
+    const token = await this.calendarService.rotateIcsToken(orgId);
     return { token, url: `/api/ics/${token}` };
   }
 }

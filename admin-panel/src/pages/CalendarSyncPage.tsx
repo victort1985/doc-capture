@@ -38,8 +38,16 @@ export default function CalendarSyncPage() {
     }
   }, []);
 
+  // Fires for a super-admin once they have (or change) an org selection —
+  // a regular org-scoped admin never gets a selOrgId at all (the
+  // organizations list is super-admin only), so their ics-token/
+  // Google-status already came from the unconditional load() above,
+  // scoped server-side to their own org via the JWT.
   useEffect(() => {
-    if (selOrgId != null) loadGoogleStatus();
+    if (selOrgId != null) {
+      load();
+      loadGoogleStatus();
+    }
   }, [selOrgId]);
 
   async function loadGoogleStatus() {
@@ -87,7 +95,8 @@ export default function CalendarSyncPage() {
   async function load() {
     try {
       setError(null);
-      const d = await apiFetch<IcsData>('/calendar/ics-token');
+      const qs = selOrgId != null ? `?organizationId=${selOrgId}` : '';
+      const d = await apiFetch<IcsData>(`/calendar/ics-token${qs}`);
       setData(d);
     } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
   }
@@ -106,7 +115,8 @@ export default function CalendarSyncPage() {
     if (!confirm('This will invalidate all existing calendar subscriptions. Continue?')) return;
     setRotating(true);
     try {
-      const d = await apiFetch<IcsData>('/calendar/ics-token/rotate', { method: 'POST' });
+      const qs = selOrgId != null ? `?organizationId=${selOrgId}` : '';
+      const d = await apiFetch<IcsData>(`/calendar/ics-token/rotate${qs}`, { method: 'POST' });
       setData(d);
     } finally { setRotating(false); }
   }
@@ -175,6 +185,8 @@ export default function CalendarSyncPage() {
                   <RefreshCw size={12} /> {rotating ? 'Rotating…' : 'Rotate token'}
                 </button>
               </>
+            ) : error ? (
+              <div style={{ color: 'var(--danger, crimson)', fontSize: 13 }}>{error}</div>
             ) : <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Loading…</div>}
           </div>
 
