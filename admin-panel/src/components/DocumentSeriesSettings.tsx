@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { Building2, Lock, Save, TriangleAlert, X } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
@@ -18,7 +19,8 @@ interface SeriesSettings {
   storageConnection?: StorageConnection;
 }
 
-export default function DocumentSeriesSettings({ kind, label }: { kind: 'quote' | 'invoice'; label: string }) {
+export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'quote' | 'invoice'; navLabelKey: string }) {
+  const { t } = useTranslation();
   const apiBase = `/${kind}-settings`;
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
@@ -104,14 +106,14 @@ export default function DocumentSeriesSettings({ kind, label }: { kind: 'quote' 
   return (
     <div>
       <div className="topbar">
-        <div><span className="eyebrow">{label}</span><h1 className="page-title">Document settings</h1></div>
+        <div><span className="eyebrow">{t(navLabelKey)}</span><h1 className="page-title">{t('documentSeries.numbering')}</h1></div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
         <div className="card" style={{ width: 200, flexShrink: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>Organization</div>
+          <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>{t('documentSeries.organization')}</div>
           {orgs.map(o => (
             <div key={o.id} onClick={() => setSelOrgId(o.id)}
               style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: selOrgId === o.id ? 'var(--primary)' : 'transparent', color: selOrgId === o.id ? '#fff' : 'inherit', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -125,14 +127,14 @@ export default function DocumentSeriesSettings({ kind, label }: { kind: 'quote' 
           <div style={{ flex: 1 }}>
             {/* Header preview — read-only, pulled from Delivery note settings */}
             <div className="card" style={{ marginBottom: 14 }}>
-              <h3 style={{ margin: '0 0 6px' }}>Document header</h3>
+              <h3 style={{ margin: '0 0 6px' }}>{t('documentSeries.header')}</h3>
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 0, marginBottom: 12 }}>
-                Pulled automatically from this organization's Delivery note settings — edit it there, not here.
+                {t('documentSeries.headerHint')}
               </p>
               <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 14, background: '#fff', display: 'flex', gap: 14, alignItems: 'center' }}>
                 {header.logoBase64 && <img src={header.logoBase64} alt="" style={{ height: 48 }} />}
                 <div>
-                  <div style={{ fontWeight: 700 }}>{header.companyName || 'No company name set yet'}</div>
+                  <div style={{ fontWeight: 700 }}>{header.companyName || t('documentSeries.headerEmpty')}</div>
                   {header.companySubtitle && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{header.companySubtitle}</div>}
                   {header.companyAddress && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{header.companyAddress}</div>}
                 </div>
@@ -141,32 +143,32 @@ export default function DocumentSeriesSettings({ kind, label }: { kind: 'quote' 
 
             {/* Numbering */}
             <div className="card" style={{ marginBottom: 14 }}>
-              <h3 style={{ margin: '0 0 12px' }}>Document numbering</h3>
+              <h3 style={{ margin: '0 0 12px' }}>{t('documentSeries.numbering')}</h3>
               {settings.numberLocked ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--surface-muted)', borderRadius: 8 }}>
                   <Lock size={16} />
                   <div>
                     <div style={{ fontWeight: 700 }}>{settings.numberPrefix}{settings.startingNumber}</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>Locked — this series can no longer be changed.</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--ink-soft)' }}>{t('documentSeries.numberingLocked')}</div>
                   </div>
                 </div>
               ) : (
                 <>
                   <div className="form-grid">
                     <div>
-                      <label>Prefix</label>
-                      <input value={prefixDraft} onChange={e => setPrefixDraft(e.target.value)} placeholder="e.g. Q- or leave empty" />
+                      <label>{t('documentSeries.prefix')}</label>
+                      <input value={prefixDraft} onChange={e => setPrefixDraft(e.target.value)} placeholder={t('documentSeries.prefixPlaceholder')} />
                     </div>
                     <div>
-                      <label>Starting number</label>
-                      <input type="number" value={startingNumberDraft} onChange={e => setStartingNumberDraft(e.target.value)} placeholder="e.g. 1000" />
+                      <label>{t('documentSeries.startingNumber')}</label>
+                      <input type="number" value={startingNumberDraft} onChange={e => setStartingNumberDraft(e.target.value)} placeholder={t('documentSeries.startingNumberPlaceholder')} />
                     </div>
                   </div>
                   <p style={{ fontSize: 12, color: 'var(--ink-soft)' }}>
-                    Can only be set once — applying it locks the series permanently.
+                    {t('documentSeries.numberingHint')}
                   </p>
                   <button type="button" onClick={openConfirm} disabled={!startingNumberValid}>
-                    <Lock size={15} /> Apply &amp; lock
+                    <Lock size={15} /> {t('documentSeries.applyAndLock')}
                   </button>
                 </>
               )}
@@ -174,28 +176,28 @@ export default function DocumentSeriesSettings({ kind, label }: { kind: 'quote' 
 
             {/* Storage */}
             <div className="card" style={{ marginBottom: 14 }}>
-              <h3 style={{ margin: '0 0 12px' }}>Document storage</h3>
-              <label>Save generated {kind}s to</label>
+              <h3 style={{ margin: '0 0 12px' }}>{t('documentSeries.storage')}</h3>
+              <label>{t('documentSeries.storageLabel', { kind })}</label>
               <select value={storageConnectionId} onChange={e => setStorageConnectionId(e.target.value ? Number(e.target.value) : '')}>
-                <option value="">Not configured</option>
+                <option value="">{t('documentSeries.storageNotConfigured')}</option>
                 {connections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
 
             {/* Footer */}
             <div className="card" style={{ marginBottom: 14 }}>
-              <h3 style={{ margin: '0 0 12px' }}>Footer text (printed on every {kind})</h3>
+              <h3 style={{ margin: '0 0 12px' }}>{t('documentSeries.footer', { kind })}</h3>
               <textarea
                 value={footerText}
                 onChange={e => setFooterText(e.target.value)}
                 rows={6}
                 style={{ width: '100%', fontFamily: 'var(--font-ui)', fontSize: 13, resize: 'vertical' }}
-                placeholder={`Terms, agreement text, or notes to print at the bottom of every ${kind}…`}
+                placeholder={t('documentSeries.footerPlaceholder', { kind })}
               />
             </div>
 
             <button onClick={saveEveryday} disabled={saving}>
-              <Save size={15} /> {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
+              <Save size={15} /> {saving ? t('documentSeries.saving') : saved ? t('documentSeries.saved') : t('documentSeries.save')}
             </button>
           </div>
         )}
@@ -211,13 +213,13 @@ export default function DocumentSeriesSettings({ kind, label }: { kind: 'quote' 
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginTop: -10 }}>
               <TriangleAlert size={56} color="var(--danger, crimson)" strokeWidth={1.5} />
-              <h3 style={{ margin: '14px 0 6px', color: 'var(--danger, crimson)' }}>This cannot be undone</h3>
+              <h3 style={{ margin: '14px 0 6px', color: 'var(--danger, crimson)' }}>{t('documentSeries.confirmTitle')}</h3>
               <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginBottom: 4 }}>
-                You're about to permanently set the numbering series for <b>{orgs.find(o => o.id === selOrgId)?.name}</b> to:
+                <Trans i18nKey="documentSeries.confirmBody" values={{ org: orgs.find(o => o.id === selOrgId)?.name }} components={{ b: <b /> }} />
               </p>
               <p style={{ fontSize: 20, fontWeight: 800, margin: '4px 0 14px' }}>{prefixDraft}{startingNumberDraft || '0'}</p>
               <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginBottom: 16 }}>
-                Once applied, the prefix and starting number can never be changed again — not even by an admin.
+                {t('documentSeries.confirmWarning')}
               </p>
             </div>
 
@@ -225,10 +227,10 @@ export default function DocumentSeriesSettings({ kind, label }: { kind: 'quote' 
 
             <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, marginBottom: 14, cursor: 'pointer' }}>
               <input type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} style={{ marginTop: 2 }} />
-              I understand this is permanent and cannot be changed later.
+              {t('documentSeries.confirmCheckbox')}
             </label>
 
-            <label>Confirm with your admin password</label>
+            <label>{t('documentSeries.confirmPasswordLabel')}</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} autoFocus />
 
             <button
@@ -236,7 +238,7 @@ export default function DocumentSeriesSettings({ kind, label }: { kind: 'quote' 
               disabled={!agreed || !password || locking}
               style={{ width: '100%', marginTop: 14, background: 'var(--danger, crimson)', borderColor: 'var(--danger, crimson)' }}
             >
-              <Lock size={15} /> {locking ? 'Applying…' : 'Apply permanently'}
+              <Lock size={15} /> {locking ? t('documentSeries.confirmApplying') : t('documentSeries.confirmApply')}
             </button>
           </div>
         </div>

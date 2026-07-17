@@ -167,12 +167,19 @@ label { font-size: 12px; color: var(--ink-soft); margin-bottom: 5px; display: bl
   font-weight: 500;
   font-size: 13px;
   margin-bottom: 2px;
-  border-left: 2px solid transparent;
+  border-inline-start: 2px solid transparent;
   transition: background-color 0.15s ease, color 0.15s ease;
 }
 .sidebar nav a svg { opacity: 0.85; flex-shrink: 0; }
 .sidebar nav a:hover { background: rgba(255,255,255,0.08); color: #fff; }
-.sidebar nav a.active { background: rgba(255,255,255,0.13); color: #fff; border-left-color: var(--stamp); }
+.sidebar nav a.active { background: rgba(255,255,255,0.13); color: #fff; border-inline-start-color: var(--stamp); }
+
+/* ---------- RTL (Hebrew) ---------- */
+html[dir="rtl"] body { text-align: right; }
+html[dir="rtl"] .form-grid label,
+html[dir="rtl"] label { text-align: right; }
+html[dir="rtl"] .topbar { flex-direction: row-reverse; }
+html[dir="rtl"] table { text-align: right; }
 
 .sidebar-footer {
   border-top: 1px solid rgba(255,255,255,0.14);

@@ -1,5 +1,5 @@
 import DocumentSeriesSettings from '../components/DocumentSeriesSettings';
 
 export default function InvoiceSettingsPage() {
-  return <DocumentSeriesSettings kind="invoice" label="Invoices" />;
+  return <DocumentSeriesSettings kind="invoice" navLabelKey="nav.invoices" />;
 }
