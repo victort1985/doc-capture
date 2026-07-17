@@ -22,6 +22,8 @@ import { StatsModule } from './modules/stats/stats.module';
 import { FleetModule } from './modules/fleet/fleet.module';
 import { WarehouseModule } from './modules/warehouse/warehouse.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { QuotesModule } from './modules/quotes/quotes.module';
+import { InvoicesModule } from './modules/invoices/invoices.module';
 import { DocumentStorageSettingsModule } from './modules/document-storage-settings/document-storage-settings.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ReportsModule } from './modules/reports/reports.module';
@@ -67,6 +69,8 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     FleetModule,
     WarehouseModule,
     OrdersModule,
+    QuotesModule,
+    InvoicesModule,
     DocumentStorageSettingsModule,
     ReportsModule,
     DeliveryNotesModule,
