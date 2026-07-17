@@ -14,7 +14,7 @@ import 'dns_lookup.dart';
 class ApiService {
   ApiService({String baseUrl = 'https://app.doc-capture.app/api'})
       : _baseUrl = baseUrl,
-        _dio = Dio(BaseOptions(baseUrl: baseUrl)) {
+        _dio = Dio(BaseOptions(baseUrl: baseUrl, headers: {'X-Client-Type': 'mobile'})) {
     // Resolves via lookupWithRetry (IPv4-preferring, with DNS-over-HTTPS
     // fallback) AND — critically — manually upgrades the connection to
     // TLS for https:// requests. That second part isn't optional: a

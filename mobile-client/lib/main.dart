@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'firebase_init.dart';
+import 'license_gate.dart';
 
 import 'l10n/app_localizations.dart';
 import 'app/theme.dart';
@@ -124,9 +125,11 @@ class _AppRootState extends State<_AppRoot> {
           }
           final loggedIn = appState.currentUser != null;
           // Show EULA before login — once accepted it's stored in SharedPreferences
-          return _EulaGate(
-            languageCode: appState.languageCode,
-            child: loggedIn ? const RootScreen() : const LoginScreen(),
+          return LicenseGate(
+            child: _EulaGate(
+              languageCode: appState.languageCode,
+              child: loggedIn ? const RootScreen() : const LoginScreen(),
+            ),
           );
         },
       ),
