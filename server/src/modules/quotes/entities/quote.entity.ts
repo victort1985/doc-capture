@@ -2,8 +2,8 @@ import {
   Column, CreateDateColumn, Entity, ManyToOne,
   PrimaryGeneratedColumn, UpdateDateColumn,
 } from 'typeorm';
-import { Organization } from '../organizations/entities/organization.entity';
-import { User } from '../users/entities/user.entity';
+import { Organization } from '../../organizations/entities/organization.entity';
+import { User } from '../../users/entities/user.entity';
 import { randomBytes } from 'crypto';
 
 export enum QuoteStatus {
