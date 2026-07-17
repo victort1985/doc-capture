@@ -1,0 +1,26 @@
+# Instanced systemd unit — install once as /etc/systemd/system/doc-capture@.service
+# Start/stop a specific tenant with e.g.:
+#   sudo systemctl enable --now doc-capture@company-a
+#   sudo systemctl restart doc-capture@company-a
+#
+# All instances share the SAME compiled code (WorkingDirectory below) —
+# only the .env file differs per instance (%i = the tenant slug you
+# pass after the @). This is what makes deploy-all-tenants.sh cheap:
+# build once, restart every instance to pick up the new dist/.
+
+[Unit]
+Description=Vixor ERP Server (%i)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/doc-capture/app
+ExecStart=/usr/bin/node dist/main.js
+Restart=on-failure
+RestartSec=5
+EnvironmentFile=/opt/doc-capture/tenants/%i/.env
+User=doccapture
+Group=doccapture
+
+[Install]
+WantedBy=multi-user.target
