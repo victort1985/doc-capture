@@ -215,6 +215,27 @@ export class FilesService {
     await this.templatesService.removeRecord(recordId);
   }
 
+  /** Bulk "Clear" for the admin File log page. Reuses deleteFile per
+   * record (same underlying-storage cleanup + safety) rather than a
+   * raw bulk DB delete, so a record whose file can't be removed from
+   * storage is left in place (reported as failed) instead of silently
+   * orphaning the file. Accepts the same filters as the list view so
+   * clearing can be scoped to what's currently shown. */
+  async clearAll(filters: { userId?: number; type?: string; from?: string; to?: string }): Promise<{ deleted: number; failed: number }> {
+    const records = await this.templatesService.findFileRecords(filters);
+    let deleted = 0;
+    let failed = 0;
+    for (const record of records) {
+      try {
+        await this.deleteFile(record.id);
+        deleted++;
+      } catch {
+        failed++;
+      }
+    }
+    return { deleted, failed };
+  }
+
   /** Reject obviously-wrong file types before they ever reach sharp/pdf-lib. */
   private assertFileTypeAllowed(
     file: { originalname: string; mimetype: string },

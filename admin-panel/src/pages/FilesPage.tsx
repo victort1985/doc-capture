@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { FileStack, FileText, Image } from 'lucide-react';
+import { FileStack, FileText, Image, Trash2 } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
 interface FileRecord {
@@ -16,6 +16,7 @@ export default function FilesPage() {
   const [records, setRecords] = useState<FileRecord[]>([]);
   const [typeFilter, setTypeFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   async function load() {
     try {
@@ -23,6 +24,23 @@ export default function FilesPage() {
       setRecords(await apiFetch<FileRecord[]>(`/files${qs}`));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load file log');
+    }
+  }
+
+  async function clearAll() {
+    const scope = typeFilter ? `all "${typeFilter}" entries` : 'the entire file log';
+    if (!confirm(`Clear ${scope}? This deletes the underlying files too — this cannot be undone.`)) return;
+    setClearing(true);
+    setError(null);
+    try {
+      const qs = typeFilter ? `?type=${typeFilter}` : '';
+      const res = await apiFetch<{ deleted: number; failed: number }>(`/files${qs}`, { method: 'DELETE' });
+      if (res.failed) setError(`Cleared ${res.deleted}, but ${res.failed} file(s) could not be removed from storage and were kept.`);
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to clear file log');
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -35,11 +53,16 @@ export default function FilesPage() {
           <span className="eyebrow">Activity</span>
           <h1 className="page-title">File log</h1>
         </div>
-        <select style={{ width: 170 }} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-          <option value="">All types</option>
-          <option value="document">Document</option>
-          <option value="photo">Photo</option>
-        </select>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <select style={{ width: 170 }} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
+            <option value="">All types</option>
+            <option value="document">Document</option>
+            <option value="photo">Photo</option>
+          </select>
+          <button type="button" onClick={clearAll} disabled={clearing || records.length === 0} title="Clear file log">
+            <Trash2 size={15} /> {clearing ? 'Clearing…' : 'Clear'}
+          </button>
+        </div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}

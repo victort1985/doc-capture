@@ -92,6 +92,25 @@ export class FilesController {
     res.send(file.buffer);
   }
 
+  /** Bulk "Clear" button on the admin File log page. Same filters as
+   * the list (GET) — omit them to clear everything. */
+  @Delete()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async clearAll(
+    @Query('userId') userId?: string,
+    @Query('type') type?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+  ) {
+    return this.filesService.clearAll({
+      userId: userId ? parseInt(userId, 10) : undefined,
+      type,
+      from,
+      to,
+    });
+  }
+
   @Delete(':id')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
