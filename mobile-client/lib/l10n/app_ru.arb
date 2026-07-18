@@ -83,6 +83,7 @@
   "connectionClientSecretLabel": "Client Secret",
   "connectionSaveButton": "Сохранить",
   "connectionImportButton": "Импорт из файла",
+  "connectionImportHint": "Выберите файл подключения, который вам дал администратор — всё настроится автоматически, вводить ничего не нужно.",
   "connectionImportError": "Не удалось прочитать файл настроек. Убедитесь, что это корректный JSON-файл, созданный для Doc Capture",
   "connectionExportButton": "Экспорт в файл",
   "connectionExportSuccess": "Настройки сохранены в файл",
