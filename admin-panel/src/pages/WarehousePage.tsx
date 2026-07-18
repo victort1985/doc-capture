@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Pencil, X, Save, Package, ArrowUp, ArrowDown, History } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../services/api';
 
 interface Category { id: number; name: string; }
@@ -25,6 +26,7 @@ interface HistoryEvent {
 }
 
 export default function WarehousePage() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<Category[]>([]);
   const [items, setItems] = useState<Item[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -124,9 +126,9 @@ export default function WarehousePage() {
   return (
     <div>
       <div className="topbar">
-        <div><span className="eyebrow">Management</span><h1 className="page-title">Warehouse</h1></div>
+        <div><span className="eyebrow">{t('warehouse.eyebrow')}</span><h1 className="page-title">{t('warehouse.title')}</h1></div>
         <button onClick={() => { setShowForm(s => !s); setForm({}); setEditingId(null); }}>
-          {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> Add item</>}
+          {showForm ? <><X size={16} /> {t('common.cancel')}</> : <><Plus size={16} /> {t('warehouse.addItem')}</>}
         </button>
       </div>
 
@@ -135,13 +137,13 @@ export default function WarehousePage() {
       {/* Categories */}
       <div className="card" style={{ marginBottom: 16 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-          <strong>Categories</strong>
-          <button className="ghost" onClick={() => setShowCatForm(s => !s)} style={{ fontSize: 12 }}><Plus size={13} /> Add</button>
+          <strong>{t('warehouse.categories')}</strong>
+          <button className="ghost" onClick={() => setShowCatForm(s => !s)} style={{ fontSize: 12 }}><Plus size={13} /> {t('warehouse.add')}</button>
         </div>
         {showCatForm && (
           <form onSubmit={addCategory} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <input value={catForm} onChange={e => setCatForm(e.target.value)} placeholder="Category name" required style={{ flex: 1 }} />
-            <button type="submit" style={{ padding: '6px 14px' }}>Add</button>
+            <input value={catForm} onChange={e => setCatForm(e.target.value)} placeholder={t('warehouse.categoryName')} required style={{ flex: 1 }} />
+            <button type="submit" style={{ padding: '6px 14px' }}>{t('warehouse.add')}</button>
           </form>
         )}
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
@@ -151,45 +153,45 @@ export default function WarehousePage() {
               <button className="ghost" onClick={() => setConfirmDelete({ kind: 'category', id: c.id, label: c.name })} style={{ padding: 0, color: 'var(--danger)' }}><X size={12} /></button>
             </span>
           ))}
-          {categories.length === 0 && <span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>No categories yet</span>}
+          {categories.length === 0 && <span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{t('warehouse.noCategories')}</span>}
         </div>
       </div>
 
       {/* Add/Edit item form */}
       {showForm && (
         <form className="card form-card" onSubmit={submitItem} style={{ maxWidth: 600, marginBottom: 16 }}>
-          <h3 style={{ marginTop: 0 }}>{editingId ? 'Edit item' : 'New item'}</h3>
+          <h3 style={{ marginTop: 0 }}>{editingId ? t('warehouse.editItem') : t('warehouse.newItem')}</h3>
           <div className="form-grid">
-            <div><label>Name *</label><input value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
+            <div><label>{t('common.name')} *</label><input value={form.name ?? ''} onChange={e => setForm({ ...form, name: e.target.value })} required /></div>
             <div>
-              <label>Barcode</label>
+              <label>{t('warehouse.barcode')}</label>
               <div style={{ display: 'flex', gap: 6 }}>
-                <input value={form.barcode ?? ''} onChange={e => setForm({ ...form, barcode: e.target.value })} placeholder="Auto-generate" style={{ flex: 1 }} />
-                <button type="button" onClick={generateBarcode} style={{ padding: '6px 10px', fontSize: 12 }}>Generate</button>
+                <input value={form.barcode ?? ''} onChange={e => setForm({ ...form, barcode: e.target.value })} placeholder={t('warehouse.autoGenerate')} style={{ flex: 1 }} />
+                <button type="button" onClick={generateBarcode} style={{ padding: '6px 10px', fontSize: 12 }}>{t('warehouse.generate')}</button>
               </div>
             </div>
             <div>
-              <label>Category</label>
+              <label>{t('warehouse.category')}</label>
               <select value={form.categoryId ?? ''} onChange={e => setForm({ ...form, categoryId: e.target.value ? Number(e.target.value) : undefined })}>
                 <option value="">—</option>
                 {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div><label>Unit</label><input value={form.unit ?? ''} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="pcs, kg, m…" /></div>
-            <div><label>Location / shelf</label><input value={form.location ?? ''} onChange={e => setForm({ ...form, location: e.target.value })} /></div>
-            <div style={{ gridColumn: '1/-1' }}><label>Description</label><textarea value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} style={{ width: '100%' }} /></div>
+            <div><label>{t('warehouse.unit')}</label><input value={form.unit ?? ''} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="pcs, kg, m…" /></div>
+            <div><label>{t('warehouse.locationShelf')}</label><input value={form.location ?? ''} onChange={e => setForm({ ...form, location: e.target.value })} /></div>
+            <div style={{ gridColumn: '1/-1' }}><label>{t('warehouse.description')}</label><textarea value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} style={{ width: '100%' }} /></div>
           </div>
-          <div className="form-actions"><button type="submit"><Save size={15} /> {editingId ? 'Save' : 'Add item'}</button></div>
+          <div className="form-actions"><button type="submit"><Save size={15} /> {editingId ? t('common.save') : t('warehouse.addItem')}</button></div>
         </form>
       )}
 
       {/* Items table */}
       <div className="card">
         <div style={{ marginBottom: 12 }}>
-          <input value={filter} onChange={e => setFilter(e.target.value)} placeholder="Search by name or barcode…" style={{ width: 280 }} />
+          <input value={filter} onChange={e => setFilter(e.target.value)} placeholder={t('warehouse.searchPlaceholder')} style={{ width: 280 }} />
         </div>
         <table>
-          <thead><tr><th>Name</th><th>Barcode</th><th>Category</th><th>Warehouse</th><th>Location</th><th style={{ textAlign: 'right' }}>Qty</th><th /></tr></thead>
+          <thead><tr><th>{t('common.name')}</th><th>{t('warehouse.barcode')}</th><th>{t('warehouse.category')}</th><th>{t('warehouse.warehouse')}</th><th>{t('warehouse.location')}</th><th style={{ textAlign: 'right' }}>{t('warehouse.qty')}</th><th /></tr></thead>
           <tbody>
             {filtered.map(item => (
               <tr key={item.id}>
@@ -203,16 +205,16 @@ export default function WarehousePage() {
                 </td>
                 <td>
                   <div className="row-actions">
-                    <button className="ghost" title="Service history" onClick={() => openHistory(item)}><History size={15} /></button>
-                    <button className="ghost" title="Add to stock" onClick={() => setTxModal({ item, type: 'in' })} style={{ color: 'green' }}><ArrowDown size={15} /></button>
-                    <button className="ghost" title="Remove from stock" onClick={() => setTxModal({ item, type: 'out' })} style={{ color: 'red' }}><ArrowUp size={15} /></button>
+                    <button className="ghost" title={t('warehouse.serviceHistory')} onClick={() => openHistory(item)}><History size={15} /></button>
+                    <button className="ghost" title={t('warehouse.addToStock')} onClick={() => setTxModal({ item, type: 'in' })} style={{ color: 'green' }}><ArrowDown size={15} /></button>
+                    <button className="ghost" title={t('warehouse.removeFromStock')} onClick={() => setTxModal({ item, type: 'out' })} style={{ color: 'red' }}><ArrowUp size={15} /></button>
                     <button className="ghost" onClick={() => { setEditingId(item.id); setForm({ ...item, categoryId: item.category?.id }); setShowForm(true); }}><Pencil size={15} /></button>
                     <button className="ghost" onClick={() => setConfirmDelete({ kind: 'item', id: item.id, label: `${item.name} (${item.barcode})` })} style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                   </div>
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--ink-soft)' }}><Package size={28} strokeWidth={1.5} /><br />No items</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--ink-soft)' }}><Package size={28} strokeWidth={1.5} /><br />{t('warehouse.noItems')}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -222,14 +224,14 @@ export default function WarehousePage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
           onClick={() => setTxModal(null)}>
           <div className="card" style={{ width: 360 }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>{txModal.type === 'in' ? '➕ Add to stock' : '➖ Remove from stock'} — {txModal.item.name}</h3>
-            <label>Quantity</label>
+            <h3 style={{ marginTop: 0 }}>{txModal.type === 'in' ? `➕ ${t('warehouse.addToStock')}` : `➖ ${t('warehouse.removeFromStock')}`} — {txModal.item.name}</h3>
+            <label>{t('warehouse.quantity')}</label>
             <input type="number" min="1" value={txQty} onChange={e => setTxQty(e.target.value)} style={{ marginBottom: 10 }} />
-            <label>Reason (optional)</label>
-            <input value={txReason} onChange={e => setTxReason(e.target.value)} placeholder="e.g. Purchase, Used in call #5…" />
+            <label>{t('warehouse.reasonOptional')}</label>
+            <input value={txReason} onChange={e => setTxReason(e.target.value)} placeholder={t('warehouse.reasonPlaceholder')} />
             <div className="form-actions" style={{ marginTop: 14 }}>
-              <button className="ghost" onClick={() => setTxModal(null)}>Cancel</button>
-              <button onClick={doTx}><Save size={15} /> Confirm</button>
+              <button className="ghost" onClick={() => setTxModal(null)}>{t('common.cancel')}</button>
+              <button onClick={doTx}><Save size={15} /> {t('warehouse.confirm')}</button>
             </div>
           </div>
         </div>
@@ -248,7 +250,7 @@ export default function WarehousePage() {
               <button className="ghost" onClick={() => setHistoryItem(null)}><X size={16} /></button>
             </div>
 
-            {historyLoading && <p style={{ color: 'var(--ink-soft)', marginTop: 16 }}>Loading…</p>}
+            {historyLoading && <p style={{ color: 'var(--ink-soft)', marginTop: 16 }}>{t('common.loading')}</p>}
 
             {historyEvents && (
               <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -258,32 +260,32 @@ export default function WarehousePage() {
                     {ev.kind === 'transaction' && (
                       <div>
                         <span style={{ color: ev.transactionType === 'in' ? 'green' : 'red', fontWeight: 600 }}>
-                          {ev.transactionType === 'in' ? `+${ev.quantity} in` : `-${ev.quantity} out`}
+                          {ev.transactionType === 'in' ? `+${ev.quantity} ${t('warehouse.in')}` : `-${ev.quantity} ${t('warehouse.out')}`}
                         </span>
                         {ev.reason && <> — {ev.reason}</>}
                         {ev.byUser && <span style={{ color: 'var(--ink-soft)' }}> · {ev.byUser}</span>}
-                        {ev.call && <div style={{ color: 'var(--ink-soft)' }}>Used on call #{ev.call.id} — {ev.call.place} ({ev.call.status})</div>}
+                        {ev.call && <div style={{ color: 'var(--ink-soft)' }}>{t('warehouse.usedOnCall')} #{ev.call.id} — {ev.call.place} ({ev.call.status})</div>}
                       </div>
                     )}
                     {ev.kind === 'repair' && (
                       <div>
                         <span style={{ fontWeight: 600, color: ev.returnedAt ? 'green' : 'var(--stamp, orange)' }}>
-                          {ev.returnedAt ? 'Returned from repair' : 'Sent to repair'}
+                          {ev.returnedAt ? t('warehouse.returnedFromRepair') : t('warehouse.sentToRepair')}
                         </span>
                         {ev.supplierName && <> — {ev.supplierName}</>}
                         {ev.reason && <div style={{ color: 'var(--ink-soft)' }}>{ev.reason}</div>}
-                        {ev.returnedAt && <div style={{ color: 'var(--ink-soft)' }}>Returned {new Date(ev.returnedAt).toLocaleDateString()}</div>}
+                        {ev.returnedAt && <div style={{ color: 'var(--ink-soft)' }}>{t('warehouse.returned')} {new Date(ev.returnedAt).toLocaleDateString()}</div>}
                       </div>
                     )}
                     {ev.kind === 'transfer' && (
                       <div>
-                        <span style={{ fontWeight: 600 }}>Transferred</span>: {ev.fromLocationName ?? '—'} → {ev.toLocationName ?? '—'}
+                        <span style={{ fontWeight: 600 }}>{t('warehouse.transferred')}</span>: {ev.fromLocationName ?? '—'} → {ev.toLocationName ?? '—'}
                         {ev.byUser && <span style={{ color: 'var(--ink-soft)' }}> · {ev.byUser}</span>}
                       </div>
                     )}
                   </div>
                 ))}
-                {historyEvents.length === 0 && <p style={{ color: 'var(--ink-soft)' }}>No history yet for this item.</p>}
+                {historyEvents.length === 0 && <p style={{ color: 'var(--ink-soft)' }}>{t('warehouse.noHistory')}</p>}
               </div>
             )}
           </div>
@@ -297,10 +299,10 @@ export default function WarehousePage() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}
           onClick={() => setConfirmDelete(null)}>
           <div className="card" style={{ width: 360 }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ marginTop: 0 }}>Delete {confirmDelete.kind}?</h3>
+            <h3 style={{ marginTop: 0 }}>{t('warehouse.deleteConfirmTitle', { kind: confirmDelete.kind })}</h3>
             <p style={{ color: 'var(--ink-soft)' }}>{confirmDelete.label}</p>
             <div className="form-actions" style={{ marginTop: 14 }}>
-              <button className="ghost" onClick={() => setConfirmDelete(null)}>Cancel</button>
+              <button className="ghost" onClick={() => setConfirmDelete(null)}>{t('common.cancel')}</button>
               <button
                 style={{ background: 'var(--danger)' }}
                 onClick={async () => {
@@ -310,7 +312,7 @@ export default function WarehousePage() {
                   else await removeCategory(id);
                 }}
               >
-                <Trash2 size={15} /> Delete
+                <Trash2 size={15} /> {t('common.delete')}
               </button>
             </div>
           </div>
