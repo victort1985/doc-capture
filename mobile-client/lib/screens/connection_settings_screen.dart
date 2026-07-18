@@ -38,10 +38,15 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
   Future<void> _importFromFile() async {
     setState(() { _error = null; _loading = true; });
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['vxconn'],
-      );
+      // FileType.custom + allowedExtensions relies on the OS
+      // recognizing the extension (a registered UTI on iOS) — an
+      // invented extension like .vxconn often isn't, and the file
+      // shows up greyed out/unselectable in the native picker even
+      // though it's right there. FileType.any sidesteps that
+      // entirely; decryptConnectionFile() below already rejects
+      // anything that isn't a valid connection file with a clear
+      // error, so there's no real validation lost.
+      final result = await FilePicker.platform.pickFiles(type: FileType.any);
       final path = result?.files.single.path;
       if (path == null) { setState(() => _loading = false); return; } // user cancelled
 
