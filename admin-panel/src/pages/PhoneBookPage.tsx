@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, Pencil, X, Save, Phone, Search, Upload, Check, Globe } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiFetch, BASE_URL, getToken } from '../services/api';
 
 interface City { id: number; name: string; region?: { id: number; name: string } }
@@ -32,9 +33,9 @@ const EMPTY_FORM = {
   position: '', phone: '', email: '', notes: '',
 };
 
-const CATEGORY_LABEL: Record<string, string> = { client: 'Client', technician: 'Technician', supplier: 'Supplier' };
-
 export default function PhoneBookPage() {
+  const { t } = useTranslation();
+  const CATEGORY_LABEL: Record<string, string> = { client: t('phonebook.client'), technician: t('phonebook.technician'), supplier: t('phonebook.supplier') };
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -93,7 +94,7 @@ export default function PhoneBookPage() {
     setImportResult(null);
 
     if (googleError) {
-      setError(`Google Contacts import failed: ${googleError}`);
+      setError(t('phonebook.googleImportFailed', { error: googleError }));
       return;
     }
     (async () => {
@@ -103,7 +104,7 @@ export default function PhoneBookPage() {
           `/phonebook/import/google/${sessionId}`,
         );
         if (data.error) {
-          setError(`Google Contacts import failed: ${data.error}`);
+          setError(t('phonebook.googleImportFailed', { error: data.error }));
         } else {
           setImportParsed(data.contacts);
           setImportSelected(new Set(data.contacts.map((_, i) => i).filter((i) => data.contacts[i].phone?.trim())));
@@ -127,8 +128,8 @@ export default function PhoneBookPage() {
     }
   }
   useEffect(() => {
-    const t = setTimeout(load, 250);
-    return () => clearTimeout(t);
+    const timeoutId = setTimeout(load, 250);
+    return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
@@ -176,7 +177,7 @@ export default function PhoneBookPage() {
   }
 
   async function removeContact(id: number) {
-    if (!confirm('Delete this contact?')) return;
+    if (!confirm(t('phonebook.deleteContactConfirm'))) return;
     await apiFetch(`/phonebook/${id}`, { method: 'DELETE' });
     setContacts((prev: any[]) => prev.filter((x: any) => x.id !== id));
     setSelectedIds((prev) => { const next = new Set(prev); next.delete(id); return next; });
@@ -216,7 +217,7 @@ export default function PhoneBookPage() {
 
   async function applyBulkDelete() {
     if (selectedIds.size === 0) return;
-    if (!confirm(`Delete ${selectedIds.size} contact${selectedIds.size === 1 ? '' : 's'}? This can't be undone.`)) return;
+    if (!confirm(t('phonebook.bulkDeleteConfirm', { count: selectedIds.size }))) return;
     setBulkBusy(true);
     setError(null);
     try {
@@ -305,15 +306,15 @@ export default function PhoneBookPage() {
     <div>
       <div className="topbar">
         <div>
-          <span className="eyebrow">Directory</span>
-          <h1 className="page-title">Phone book</h1>
+          <span className="eyebrow">{t('phonebook.eyebrow')}</span>
+          <h1 className="page-title">{t('nav.phonebook')}</h1>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="ghost" onClick={openImport}>
-            <Upload size={16} /> Import contacts
+            <Upload size={16} /> {t('phonebook.importContacts')}
           </button>
           <button onClick={() => (showForm ? cancelForm() : setShowForm(true))}>
-            {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New contact</>}
+            {showForm ? <><X size={16} /> {t('common.cancel')}</> : <><Plus size={16} /> {t('phonebook.newContact')}</>}
           </button>
         </div>
       </div>
@@ -322,17 +323,17 @@ export default function PhoneBookPage() {
         <div style={{ position: 'relative', flex: 1, maxWidth: 320 }}>
           <Search size={15} style={{ position: 'absolute', left: 10, top: 11, color: 'var(--ink-soft)' }} />
           <input
-            placeholder="Search by name…"
+            placeholder={t('phonebook.searchByName')}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             style={{ paddingLeft: 32, width: '100%' }}
           />
         </div>
         <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} style={{ width: 180 }}>
-          <option value="">All categories</option>
-          <option value="client">Clients</option>
-          <option value="technician">Technicians</option>
-          <option value="supplier">Suppliers</option>
+          <option value="">{t('phonebook.allCategories')}</option>
+          <option value="client">{t('phonebook.clients')}</option>
+          <option value="technician">{t('phonebook.technicians')}</option>
+          <option value="supplier">{t('phonebook.suppliers')}</option>
         </select>
       </div>
 
@@ -341,23 +342,20 @@ export default function PhoneBookPage() {
       {showImport && (
         <div className="card form-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ marginTop: 0 }}>Import contacts</h3>
+            <h3 style={{ marginTop: 0 }}>{t('phonebook.importContacts')}</h3>
             <button className="ghost" onClick={closeImport}><X size={16} /></button>
           </div>
 
           {!importResult && (
             <p style={{ color: 'var(--ink-soft)', fontSize: 13, marginTop: -6 }}>
-              Import selectively from either source — on iPhone, open Contacts, select the
-              contacts to bring over, tap Share, then "Save to Files" (or AirDrop/email to
-              yourself) to get a .vcf file; or connect a Google account directly. Either way,
-              nothing is saved until you pick which contacts to actually import below.
+              {t('phonebook.importExplanation')}
             </p>
           )}
 
           {!importParsed && !importResult && (
             <div style={{ display: 'flex', gap: 20, alignItems: 'flex-start', flexWrap: 'wrap' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: 4 }}>From a .vcf file</label>
+                <label style={{ display: 'block', marginBottom: 4 }}>{t('phonebook.fromVcf')}</label>
                 <input
                   type="file"
                   accept=".vcf,text/vcard"
@@ -366,23 +364,23 @@ export default function PhoneBookPage() {
                 />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: 4 }}>From Google Contacts</label>
+                <label style={{ display: 'block', marginBottom: 4 }}>{t('phonebook.fromGoogle')}</label>
                 <button type="button" className="ghost" disabled={importParsing} onClick={connectGoogleContacts}>
-                  <Globe size={15} /> Connect Google account
+                  <Globe size={15} /> {t('phonebook.connectGoogle')}
                 </button>
               </div>
-              {importParsing && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Loading contacts…</p>}
+              {importParsing && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{t('phonebook.loadingContacts')}</p>}
             </div>
           )}
 
           {importParsed && (
             <>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 10 }}>
-                <label style={{ margin: 0 }}>Category for all imported contacts</label>
+                <label style={{ margin: 0 }}>{t('phonebook.categoryForAll')}</label>
                 <select value={importCategory} onChange={(e) => setImportCategory(e.target.value)} style={{ width: 180 }}>
-                  <option value="client">Client</option>
-                  <option value="technician">Technician</option>
-                  <option value="supplier">Supplier</option>
+                  <option value="client">{t('phonebook.client')}</option>
+                  <option value="technician">{t('phonebook.technician')}</option>
+                  <option value="supplier">{t('phonebook.supplier')}</option>
                 </select>
               </div>
 
@@ -391,11 +389,11 @@ export default function PhoneBookPage() {
                   <thead>
                     <tr>
                       <th style={{ width: 32 }} />
-                      <th>Name</th>
-                      <th>Phone</th>
-                      <th>Email</th>
-                      <th>Organization</th>
-                      <th>City</th>
+                      <th>{t('common.name')}</th>
+                      <th>{t('phonebook.phone')}</th>
+                      <th>{t('phonebook.email')}</th>
+                      <th>{t('phonebook.organization')}</th>
+                      <th>{t('users.city')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -412,7 +410,7 @@ export default function PhoneBookPage() {
                             />
                           </td>
                           <td>{c.firstName} {c.lastName}</td>
-                          <td className="mono">{c.phone || '— no phone, can\'t import —'}</td>
+                          <td className="mono">{c.phone || t('phonebook.noPhoneCantImport')}</td>
                           <td>{c.email ?? '—'}</td>
                           <td>{c.organization ?? '—'}</td>
                           <td>{c.city ?? '—'}</td>
@@ -421,7 +419,7 @@ export default function PhoneBookPage() {
                     })}
                     {importParsed.length === 0 && (
                       <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 24 }}>
-                        No contacts found in that file
+                        {t('phonebook.noContactsInFile')}
                       </td></tr>
                     )}
                   </tbody>
@@ -434,7 +432,7 @@ export default function PhoneBookPage() {
                   disabled={importSelected.size === 0 || importSubmitting}
                   onClick={submitImport}
                 >
-                  <Check size={15} /> {importSubmitting ? 'Importing…' : `Import selected (${importSelected.size})`}
+                  <Check size={15} /> {importSubmitting ? t('phonebook.importing') : t('phonebook.importSelected', { count: importSelected.size })}
                 </button>
               </div>
             </>
@@ -443,11 +441,11 @@ export default function PhoneBookPage() {
           {importResult && (
             <div>
               <p>
-                Imported {importResult.imported} contact{importResult.imported === 1 ? '' : 's'}.
-                {importResult.skipped > 0 && ` Skipped ${importResult.skipped} without a phone number.`}
+                {t('phonebook.importedCount', { count: importResult.imported })}
+                {importResult.skipped > 0 && ` ${t('phonebook.skippedCount', { count: importResult.skipped })}`}
               </p>
               <div className="form-actions">
-                <button type="button" onClick={closeImport}>Done</button>
+                <button type="button" onClick={closeImport}>{t('phonebook.done')}</button>
               </div>
             </div>
           )}
@@ -456,71 +454,71 @@ export default function PhoneBookPage() {
 
       {showForm && (
         <form className="card form-card" onSubmit={submitContact}>
-          <h3 style={{ marginTop: 0 }}>{editingId ? 'Edit contact' : 'New contact'}</h3>
+          <h3 style={{ marginTop: 0 }}>{editingId ? t('phonebook.editContact') : t('phonebook.newContact')}</h3>
           <div className="form-grid">
             <div>
-              <label>Category</label>
+              <label>{t('phonebook.category')}</label>
               <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                <option value="client">Client</option>
-                <option value="technician">Technician</option>
-                <option value="supplier">Supplier</option>
+                <option value="client">{t('phonebook.client')}</option>
+                <option value="technician">{t('phonebook.technician')}</option>
+                <option value="supplier">{t('phonebook.supplier')}</option>
               </select>
             </div>
             <div>
-              <label>First name</label>
+              <label>{t('users.firstName')}</label>
               <input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} required />
             </div>
             <div>
-              <label>Last name</label>
+              <label>{t('users.lastName')}</label>
               <input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} required />
             </div>
             <div>
-              <label>City</label>
+              <label>{t('users.city')}</label>
               <select value={form.cityId} onChange={(e) => setForm({ ...form, cityId: e.target.value })}>
                 <option value="">—</option>
                 {cities.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.region?.name})</option>)}
               </select>
             </div>
             <div>
-              <label>Organization</label>
+              <label>{t('phonebook.organization')}</label>
               <select value={form.organizationId} onChange={(e) => setForm({ ...form, organizationId: e.target.value })}>
                 <option value="">—</option>
                 {locations.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.city?.name})</option>)}
               </select>
             </div>
             <div>
-              <label>Position</label>
+              <label>{t('phonebook.position')}</label>
               <input value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })} />
             </div>
             <div>
-              <label>Phone</label>
+              <label>{t('phonebook.phone')}</label>
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required />
             </div>
             <div>
-              <label>E-mail</label>
+              <label>{t('phonebook.emailLabel')}</label>
               <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
-              <label>Notes</label>
+              <label>{t('phonebook.notes')}</label>
               <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} style={{ width: '100%' }} />
             </div>
           </div>
           <div className="form-actions">
-            <button type="submit"><Save size={15} /> {editingId ? 'Save changes' : 'Create contact'}</button>
+            <button type="submit"><Save size={15} /> {editingId ? t('calls.saveChanges') : t('phonebook.createContact')}</button>
           </div>
         </form>
       )}
 
       {selectedIds.size > 0 && (
         <div className="card" style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12, padding: '10px 16px' }}>
-          <strong>{selectedIds.size} selected</strong>
+          <strong>{t('phonebook.selectedCount', { count: selectedIds.size })}</strong>
           <select value={bulkCategory} onChange={(e) => setBulkCategory(e.target.value)} style={{ width: 160 }}>
-            <option value="client">Client</option>
-            <option value="technician">Technician</option>
-            <option value="supplier">Supplier</option>
+            <option value="client">{t('phonebook.client')}</option>
+            <option value="technician">{t('phonebook.technician')}</option>
+            <option value="supplier">{t('phonebook.supplier')}</option>
           </select>
           <button type="button" className="ghost" disabled={bulkBusy} onClick={applyBulkCategory}>
-            Move to category
+            {t('phonebook.moveToCategory')}
           </button>
           <button
             type="button"
@@ -529,10 +527,10 @@ export default function PhoneBookPage() {
             onClick={applyBulkDelete}
             style={{ color: 'var(--danger)' }}
           >
-            <Trash2 size={15} /> Delete selected
+            <Trash2 size={15} /> {t('phonebook.deleteSelected')}
           </button>
           <button type="button" className="ghost" onClick={() => setSelectedIds(new Set())} style={{ marginLeft: 'auto' }}>
-            Clear selection
+            {t('phonebook.clearSelection')}
           </button>
         </div>
       )}
@@ -548,11 +546,11 @@ export default function PhoneBookPage() {
                   onChange={toggleSelectAll}
                 />
               </th>
-              <th>Name</th>
-              <th>Category</th>
-              <th>Organization</th>
-              <th>City</th>
-              <th>Phone</th>
+              <th>{t('common.name')}</th>
+              <th>{t('phonebook.category')}</th>
+              <th>{t('phonebook.organization')}</th>
+              <th>{t('users.city')}</th>
+              <th>{t('phonebook.phone')}</th>
               <th />
             </tr>
           </thead>
@@ -572,14 +570,14 @@ export default function PhoneBookPage() {
                 <td className="mono"><Phone size={12} style={{ marginRight: 4, verticalAlign: -1 }} />{c.phone}</td>
                 <td>
                   <div className="row-actions">
-                    <button className="ghost" onClick={() => openEditForm(c)} title="Edit"><Pencil size={15} /></button>
-                    <button className="ghost" onClick={() => removeContact(c.id)} title="Delete" style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
+                    <button className="ghost" onClick={() => openEditForm(c)} title={t('common.edit')}><Pencil size={15} /></button>
+                    <button className="ghost" onClick={() => removeContact(c.id)} title={t('common.delete')} style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                   </div>
                 </td>
               </tr>
             ))}
             {contacts.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 24 }}>No contacts</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 24 }}>{t('phonebook.noContacts')}</td></tr>
             )}
           </tbody>
         </table>
