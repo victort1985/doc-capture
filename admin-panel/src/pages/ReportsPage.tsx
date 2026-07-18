@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Printer } from 'lucide-react';
+import { useTranslation, TFunction } from 'react-i18next';
 import { apiFetch } from '../services/api';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'all';
@@ -44,11 +45,12 @@ function DomainSection({
   dimension: Dimension;
   fields: [string, string, ((v: any) => string)?][];
 }) {
+  const { t } = useTranslation();
   if (!result.supported) {
     return (
       <div className="card" style={{ marginBottom: 16, opacity: 0.6 }}>
         <h3 style={{ margin: '0 0 4px' }}>{title}</h3>
-        <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>Not tracked by client/location — no location field on this data.</div>
+        <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{t('reports.notTracked')}</div>
       </div>
     );
   }
@@ -58,7 +60,7 @@ function DomainSection({
     return f ? f(v) : v;
   };
 
-  const dimLabel = dimension === 'user' ? 'User' : dimension === 'location' ? 'Location' : dimension === 'organization' ? 'Firm' : '';
+  const dimLabel = dimension === 'user' ? t('reports.user') : dimension === 'location' ? t('reports.location') : dimension === 'organization' ? t('reports.firm') : '';
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
@@ -91,7 +93,7 @@ function DomainSection({
               </tr>
             ))}
             {result.breakdown.length === 0 && (
-              <tr><td colSpan={fields.length + 1} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data for this period</td></tr>
+              <tr><td colSpan={fields.length + 1} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>{t('reports.noDataForPeriod')}</td></tr>
             )}
           </tbody>
         </table>
@@ -100,18 +102,18 @@ function DomainSection({
   );
 }
 
-function tabLabel(tab: 'overview' | 'work' | 'fuel' | 'warehouse') {
-  return tab === 'overview' ? 'Overview' : tab === 'work' ? 'Work report' : tab === 'fuel' ? 'Fuel report' : 'Warehouse report';
+function tabLabel(tab: 'overview' | 'work' | 'fuel' | 'warehouse', t: TFunction) {
+  return tab === 'overview' ? t('reports.overview') : tab === 'work' ? t('reports.workReport') : tab === 'fuel' ? t('reports.fuelReport') : t('reports.warehouseReport');
 }
 
-function dimensionLabel(dimension: Dimension, dimId: string, users: User[], locations: LocationOpt[], orgs: OrgOpt[]) {
-  if (dimension === 'none') return 'Overall';
+function dimensionLabel(dimension: Dimension, dimId: string, users: User[], locations: LocationOpt[], orgs: OrgOpt[], t: TFunction) {
+  if (dimension === 'none') return t('reports.overall');
   const list = dimension === 'user' ? users : dimension === 'location' ? locations : orgs;
-  const label = dimension === 'user' ? 'user' : dimension === 'location' ? 'client/location' : 'firm';
-  if (!dimId) return `By ${label} — all (breakdown)`;
+  const label = dimension === 'user' ? t('reports.user') : dimension === 'location' ? t('reports.clientLocation') : t('reports.firm');
+  if (!dimId) return t('reports.byDimAll', { label });
   const entity = list.find((x: any) => String(x.id) === dimId) as any;
   const name = entity ? (entity.username ?? entity.name) : `#${dimId}`;
-  return `By ${label} — ${name}`;
+  return t('reports.byDimName', { label, name });
 }
 
 function fmt(sec: number) {
@@ -121,6 +123,7 @@ function fmt(sec: number) {
 }
 
 export default function ReportsPage() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<'overview' | 'work' | 'fuel' | 'warehouse'>('overview');
   const [period, setPeriod] = useState<Period>('month');
   const [users, setUsers] = useState<User[]>([]);
@@ -171,12 +174,12 @@ export default function ReportsPage() {
   useEffect(() => { load(); }, [tab, period, selUser, selVehicle, dimension, dimId]);
 
   const periods: Period[] = ['day', 'week', 'month', 'year', 'all'];
-  const periodLabel: Record<Period, string> = { day: 'Day', week: 'Week', month: 'Month', year: 'Year', all: 'All time' };
+  const periodLabel: Record<Period, string> = { day: t('reports.day'), week: t('reports.week'), month: t('reports.month'), year: t('reports.year'), all: t('reports.allTime') };
 
   function handlePrint() {
     const originalTitle = document.title;
-    const parts = ['Vixor ERP', tabLabel(tab), periodLabel[period]];
-    if (tab === 'overview') parts.push(dimensionLabel(dimension, dimId, users, locations, orgs));
+    const parts = ['Vixor ERP', tabLabel(tab, t), periodLabel[period]];
+    if (tab === 'overview') parts.push(dimensionLabel(dimension, dimId, users, locations, orgs, t));
     document.title = parts.join(' - ');
     window.print();
     setTimeout(() => { document.title = originalTitle; }, 500);
@@ -185,29 +188,29 @@ export default function ReportsPage() {
   return (
     <div>
       <div className="topbar no-print">
-        <div><span className="eyebrow">Admin</span><h1 className="page-title">Reports</h1></div>
+        <div><span className="eyebrow">{t('reports.eyebrow')}</span><h1 className="page-title">{t('reports.title')}</h1></div>
         <button type="button" onClick={handlePrint}>
-          <Printer size={15} /> Export / Print
+          <Printer size={15} /> {t('reports.exportPrint')}
         </button>
       </div>
 
       <div className="print-header">
-        <h1>Vixor ERP — {tabLabel(tab)}</h1>
+        <h1>Vixor ERP — {tabLabel(tab, t)}</h1>
         <p>
-          Period: {periodLabel[period]}
-          {tab === 'overview' && ` · ${dimensionLabel(dimension, dimId, users, locations, orgs)}`}
-          {' · '}Generated {new Date().toLocaleString()}
+          {t('reports.period')}: {periodLabel[period]}
+          {tab === 'overview' && ` · ${dimensionLabel(dimension, dimId, users, locations, orgs, t)}`}
+          {' · '}{t('reports.generated')} {new Date().toLocaleString()}
         </p>
       </div>
 
       {/* Tab + Filters */}
       <div className="card no-print" style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: 0 }}>
-          {(['overview', 'work', 'fuel', 'warehouse'] as const).map(t => (
-            <button key={t} onClick={() => setTab(t)}
-              style={{ padding: '7px 18px', background: tab === t ? 'var(--primary)' : 'var(--surface-muted)', color: tab === t ? '#fff' : 'var(--ink)', border: 'none', cursor: 'pointer',
-                borderRadius: t === 'overview' ? '6px 0 0 6px' : t === 'warehouse' ? '0 6px 6px 0' : '0' }}>
-              {t === 'overview' ? 'Overview' : t === 'work' ? 'Work report' : t === 'fuel' ? 'Fuel report' : 'Warehouse'}
+          {(['overview', 'work', 'fuel', 'warehouse'] as const).map(tabKey => (
+            <button key={tabKey} onClick={() => setTab(tabKey)}
+              style={{ padding: '7px 18px', background: tab === tabKey ? 'var(--primary)' : 'var(--surface-muted)', color: tab === tabKey ? '#fff' : 'var(--ink)', border: 'none', cursor: 'pointer',
+                borderRadius: tabKey === 'overview' ? '6px 0 0 6px' : tabKey === 'warehouse' ? '0 6px 6px 0' : '0' }}>
+              {tabKey === 'overview' ? t('reports.overview') : tabKey === 'work' ? t('reports.workReport') : tabKey === 'fuel' ? t('reports.fuelReport') : t('reports.warehouse')}
             </button>
           ))}
         </div>
@@ -222,26 +225,26 @@ export default function ReportsPage() {
         {tab === 'overview' && (
           <>
             <select value={dimension} onChange={e => setDimension(e.target.value as Dimension)} style={{ minWidth: 160 }}>
-              <option value="none">Overall (everything)</option>
-              <option value="user">By user</option>
-              <option value="location">By client / location</option>
-              <option value="organization">By firm</option>
+              <option value="none">{t('reports.overallEverything')}</option>
+              <option value="user">{t('reports.byUser')}</option>
+              <option value="location">{t('reports.byClientLocation')}</option>
+              <option value="organization">{t('reports.byFirm')}</option>
             </select>
             {dimension === 'user' && (
               <select value={dimId} onChange={e => setDimId(e.target.value)} style={{ minWidth: 160 }}>
-                <option value="">All users (breakdown)</option>
+                <option value="">{t('reports.allUsersBreakdown')}</option>
                 {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
               </select>
             )}
             {dimension === 'location' && (
               <select value={dimId} onChange={e => setDimId(e.target.value)} style={{ minWidth: 160 }}>
-                <option value="">All locations (breakdown)</option>
+                <option value="">{t('reports.allLocationsBreakdown')}</option>
                 {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
               </select>
             )}
             {dimension === 'organization' && (
               <select value={dimId} onChange={e => setDimId(e.target.value)} style={{ minWidth: 160 }}>
-                <option value="">All firms (breakdown)</option>
+                <option value="">{t('reports.allFirmsBreakdown')}</option>
                 {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
               </select>
             )}
@@ -250,44 +253,44 @@ export default function ReportsPage() {
 
         {tab !== 'overview' && (
         <select value={selUser} onChange={e => setSelUser(e.target.value)} style={{ minWidth: 140 }}>
-          <option value="">All users</option>
+          <option value="">{t('reports.allUsers')}</option>
           {users.map(u => <option key={u.id} value={u.id}>{u.username}</option>)}
         </select>
         )}
 
         {tab === 'fuel' && (
           <select value={selVehicle} onChange={e => setSelVehicle(e.target.value)} style={{ minWidth: 160 }}>
-            <option value="">All vehicles</option>
+            <option value="">{t('reports.allVehicles')}</option>
             {vehicles.map(v => <option key={v.id} value={v.id}>{v.make} {v.model} ({v.licensePlate})</option>)}
           </select>
         )}
       </div>
 
-      {loading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink-soft)' }}>Loading…</div>}
+      {loading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--ink-soft)' }}>{t('common.loading')}</div>}
 
       {/* Overview */}
       {tab === 'overview' && overview && !loading && (
         <>
-          <DomainSection title="Service calls" result={overview.calls} dimension={dimension}
+          <DomainSection title={t('reports.serviceCalls')} result={overview.calls} dimension={dimension}
             fields={[
-              ['total', 'Total'], ['open', 'Open'], ['inProgress', 'In progress'], ['closed', 'Closed'],
-              ['urgent', 'Urgent'], ['avgResolutionHours', 'Avg. resolution (h)'],
+              ['total', t('stats.totalCalls')], ['open', t('stats.open')], ['inProgress', t('stats.inProgress')], ['closed', t('stats.closed')],
+              ['urgent', t('calls.urgent')], ['avgResolutionHours', t('reports.avgResolutionHours')],
             ]} />
-          <DomainSection title="Orders" result={overview.orders} dimension={dimension}
+          <DomainSection title={t('nav.orders')} result={overview.orders} dimension={dimension}
             fields={[
-              ['total', 'Total'], ['completed', 'Completed'], ['pending', 'Pending'], ['avgCompletionHours', 'Avg. completion (h)'],
+              ['total', t('reports.total')], ['completed', t('orders.completed')], ['pending', t('orders.pending')], ['avgCompletionHours', t('reports.avgCompletionHours')],
             ]} />
-          <DomainSection title="Delivery notes" result={overview.deliveryNotes} dimension={dimension}
-            fields={[['total', 'Total'], ['signed', 'Signed'], ['draft', 'Draft'], ['cancelled', 'Cancelled']]} />
-          <DomainSection title="Fleet / fuel" result={overview.fleet} dimension={dimension}
+          <DomainSection title={t('nav.deliveryNotes')} result={overview.deliveryNotes} dimension={dimension}
+            fields={[['total', t('reports.total')], ['signed', t('reports.signed')], ['draft', t('reports.draft')], ['cancelled', t('invoices.statusCancelled')]]} />
+          <DomainSection title={t('reports.fleetFuel')} result={overview.fleet} dimension={dimension}
             fields={[
-              ['refuelCount', 'Refuels'],
-              ['totalLiters', 'Total liters', (v) => v ? `${parseFloat(v).toFixed(1)} L` : '—'],
-              ['totalCost', 'Total cost', (v) => v ? `₪${parseFloat(v).toFixed(0)}` : '—'],
+              ['refuelCount', t('reports.refuels')],
+              ['totalLiters', t('reports.totalLiters'), (v) => v ? `${parseFloat(v).toFixed(1)} L` : '—'],
+              ['totalCost', t('reports.totalCost'), (v) => v ? `₪${parseFloat(v).toFixed(0)}` : '—'],
             ]} />
-          <DomainSection title="Warehouse" result={overview.warehouse} dimension={dimension}
+          <DomainSection title={t('warehouse.warehouse')} result={overview.warehouse} dimension={dimension}
             fields={[
-              ['txCount', 'Transactions'], ['totalIn', 'Total in'], ['totalOut', 'Total out'], ['transferCount', 'Transfers'],
+              ['txCount', t('reports.transactions')], ['totalIn', t('reports.totalIn')], ['totalOut', t('reports.totalOut')], ['transferCount', t('reports.transfers')],
             ]} />
         </>
       )}
@@ -296,10 +299,10 @@ export default function ReportsPage() {
       {tab === 'work' && workData && !loading && (
         <>
           <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
-            {[['Total', Object.values(workData.totals).reduce((a, b) => a + b, 0)],
-              ['Open', workData.totals['open'] ?? 0],
-              ['In Progress', workData.totals['in_progress'] ?? 0],
-              ['Closed', workData.totals['closed'] ?? 0]].map(([l, v]) => (
+            {[[t('reports.total'), Object.values(workData.totals).reduce((a, b) => a + b, 0)],
+              [t('stats.open'), workData.totals['open'] ?? 0],
+              [t('reports.inProgressLabel'), workData.totals['in_progress'] ?? 0],
+              [t('stats.closed'), workData.totals['closed'] ?? 0]].map(([l, v]) => (
               <div key={l} className="card" style={{ flex: 1, textAlign: 'center', padding: '12px 8px' }}>
                 <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary)' }}>{v}</div>
                 <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{l}</div>
@@ -308,9 +311,9 @@ export default function ReportsPage() {
           </div>
 
           <div className="card" style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: '0 0 12px' }}>By technician</h3>
+            <h3 style={{ margin: '0 0 12px' }}>{t('stats.byTechnician')}</h3>
             <table>
-              <thead><tr><th>Technician</th><th>Calls worked</th><th>Calls closed</th><th>Total time</th></tr></thead>
+              <thead><tr><th>{t('reports.technician')}</th><th>{t('stats.callsWorked')}</th><th>{t('reports.callsClosed')}</th><th>{t('reports.totalTimeShort')}</th></tr></thead>
               <tbody>
                 {workData.byUser.map(u => (
                   <tr key={u.userId}>
@@ -320,14 +323,14 @@ export default function ReportsPage() {
                     <td>{fmt(u.totalSeconds)}</td>
                   </tr>
                 ))}
-                {workData.byUser.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data for this period</td></tr>}
+                {workData.byUser.length === 0 && <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>{t('reports.noDataForPeriod')}</td></tr>}
               </tbody>
             </table>
           </div>
 
           {workData.byDay.length > 0 && (
             <div className="card">
-              <h3 style={{ margin: '0 0 12px' }}>Calls per day</h3>
+              <h3 style={{ margin: '0 0 12px' }}>{t('stats.callsPerDay')}</h3>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
                 {workData.byDay.map((d, i) => {
                   const max = Math.max(...workData.byDay.map(x => x.count), 1);
@@ -349,9 +352,9 @@ export default function ReportsPage() {
       {tab === 'fuel' && fuelData && !loading && (
         <>
           <div className="card" style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: '0 0 12px' }}>Summary by vehicle</h3>
+            <h3 style={{ margin: '0 0 12px' }}>{t('reports.summaryByVehicle')}</h3>
             <table>
-              <thead><tr><th>Vehicle</th><th>License plate</th><th>Refuels</th><th>Total liters</th><th>Total cost (₪)</th></tr></thead>
+              <thead><tr><th>{t('fleet.vehicle')}</th><th>{t('fleet.licensePlate')}</th><th>{t('reports.refuels')}</th><th>{t('reports.totalLiters')}</th><th>{t('reports.totalCostIls')}</th></tr></thead>
               <tbody>
                 {fuelData.summary.map(s => (
                   <tr key={s.vehicleId}>
@@ -362,15 +365,15 @@ export default function ReportsPage() {
                     <td>{s.totalCost ? `₪${parseFloat(s.totalCost).toFixed(0)}` : '—'}</td>
                   </tr>
                 ))}
-                {fuelData.summary.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data</td></tr>}
+                {fuelData.summary.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>{t('reports.noData')}</td></tr>}
               </tbody>
             </table>
           </div>
 
           <div className="card">
-            <h3 style={{ margin: '0 0 12px' }}>All refuels</h3>
+            <h3 style={{ margin: '0 0 12px' }}>{t('reports.allRefuels')}</h3>
             <table>
-              <thead><tr><th>Date</th><th>Vehicle</th><th>Liters</th><th>Cost</th><th>Odometer</th><th>Station</th><th>Registered by</th></tr></thead>
+              <thead><tr><th>{t('orders.date')}</th><th>{t('fleet.vehicle')}</th><th>{t('reports.liters')}</th><th>{t('reports.cost')}</th><th>{t('reports.odometer')}</th><th>{t('reports.station')}</th><th>{t('reports.registeredBy')}</th></tr></thead>
               <tbody>
                 {fuelData.rows.map((r, i) => (
                   <tr key={i}>
@@ -383,7 +386,7 @@ export default function ReportsPage() {
                     <td>{r.registeredBy ?? '—'}</td>
                   </tr>
                 ))}
-                {fuelData.rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data</td></tr>}
+                {fuelData.rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>{t('reports.noData')}</td></tr>}
               </tbody>
             </table>
           </div>
@@ -393,9 +396,9 @@ export default function ReportsPage() {
       {tab === 'warehouse' && warehouseData && !loading && (
         <>
           <div className="card" style={{ marginBottom: 16 }}>
-            <h3 style={{ margin: '0 0 12px' }}>Movement summary by item</h3>
+            <h3 style={{ margin: '0 0 12px' }}>{t('reports.movementSummaryByItem')}</h3>
             <table>
-              <thead><tr><th>Item</th><th>Barcode</th><th>In</th><th>Out</th><th>Transactions</th></tr></thead>
+              <thead><tr><th>{t('reports.item')}</th><th>{t('warehouse.barcode')}</th><th>{t('warehouse.in')}</th><th>{t('warehouse.out')}</th><th>{t('reports.transactions')}</th></tr></thead>
               <tbody>
                 {warehouseData.summary.map((s: any, i: number) => (
                   <tr key={i}>
@@ -406,27 +409,27 @@ export default function ReportsPage() {
                     <td>{s.txCount}</td>
                   </tr>
                 ))}
-                {warehouseData.summary.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data</td></tr>}
+                {warehouseData.summary.length === 0 && <tr><td colSpan={5} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>{t('reports.noData')}</td></tr>}
               </tbody>
             </table>
           </div>
           <div className="card">
-            <h3 style={{ margin: '0 0 12px' }}>All movements</h3>
+            <h3 style={{ margin: '0 0 12px' }}>{t('reports.allMovements')}</h3>
             <table>
-              <thead><tr><th>Date</th><th>Item</th><th>Barcode</th><th>Type</th><th>Qty</th><th>Reason</th><th>By</th></tr></thead>
+              <thead><tr><th>{t('orders.date')}</th><th>{t('reports.item')}</th><th>{t('warehouse.barcode')}</th><th>{t('reports.type')}</th><th>{t('warehouse.qty')}</th><th>{t('reports.reason')}</th><th>{t('reports.by')}</th></tr></thead>
               <tbody>
                 {warehouseData.rows.map((r: any, i: number) => (
                   <tr key={i}>
                     <td style={{ fontSize: 12 }}>{r.createdAt?.substring(0, 16)}</td>
                     <td>{r.itemName}</td>
                     <td className="mono" style={{ fontSize: 11 }}>{r.barcode}</td>
-                    <td><span style={{ color: r.type === 'in' ? 'green' : 'red', fontWeight: 600 }}>{r.type === 'in' ? '▼ In' : '▲ Out'}</span></td>
+                    <td><span style={{ color: r.type === 'in' ? 'green' : 'red', fontWeight: 600 }}>{r.type === 'in' ? `▼ ${t('warehouse.in')}` : `▲ ${t('warehouse.out')}`}</span></td>
                     <td style={{ fontWeight: 700 }}>{r.quantity}</td>
                     <td>{r.reason ?? '—'}</td>
                     <td>{r.byUser ?? '—'}</td>
                   </tr>
                 ))}
-                {warehouseData.rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>No data</td></tr>}
+                {warehouseData.rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 16 }}>{t('reports.noData')}</td></tr>}
               </tbody>
             </table>
           </div>
