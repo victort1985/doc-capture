@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Printer } from 'lucide-react';
-import { useTranslation, TFunction } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { apiFetch } from '../services/api';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'all';
