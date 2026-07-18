@@ -485,5 +485,30 @@
       "fleet": "Автопарк",
       "warehouse": "Склад"
     }
+  },
+  "deliveryNotes": {
+    "eyebrow": "Документы",
+    "deleteTitle": "Удалить накладную?",
+    "noteHash": "Накладная №",
+    "cannotUndo": "Это действие необратимо.",
+    "deleting": "Удаление…",
+    "editNote": "Изменить накладную",
+    "newNote": "Новая накладная",
+    "documentType": "Тип документа",
+    "clientName": "Имя клиента",
+    "deliveredTo": "Кому доставлено",
+    "remarks": "Примечания",
+    "items": "Позиции",
+    "itemName": "Название позиции",
+    "itemNotes": "Примечания",
+    "addItem": "Добавить позицию",
+    "adminRequired": "Требуются права администратора",
+    "colNumber": "№",
+    "searchPlaceholder": "Поиск по клиенту, номеру накладной…",
+    "allOrganizations": "Все организации",
+    "yourOrganization": "Ваша организация",
+    "notesPlural": "накладных",
+    "notesSingular": "накладная",
+    "noneFound": "Накладные не найдены"
   }
 }

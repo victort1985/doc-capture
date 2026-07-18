@@ -485,5 +485,30 @@
       "fleet": "רכבים",
       "warehouse": "מחסן"
     }
+  },
+  "deliveryNotes": {
+    "eyebrow": "מסמכים",
+    "deleteTitle": "למחוק תעודת משלוח?",
+    "noteHash": "תעודה מס' ",
+    "cannotUndo": "פעולה זו אינה הפיכה.",
+    "deleting": "מוחק…",
+    "editNote": "עריכת תעודה",
+    "newNote": "תעודה חדשה",
+    "documentType": "סוג מסמך",
+    "clientName": "שם הלקוח",
+    "deliveredTo": "נמסר ל",
+    "remarks": "הערות",
+    "items": "פריטים",
+    "itemName": "שם הפריט",
+    "itemNotes": "הערות",
+    "addItem": "הוספת פריט",
+    "adminRequired": "נדרשת גישת מנהל",
+    "colNumber": "#",
+    "searchPlaceholder": "חיפוש לפי לקוח, מספר תעודה…",
+    "allOrganizations": "כל הארגונים",
+    "yourOrganization": "הארגון שלכם",
+    "notesPlural": "תעודות",
+    "notesSingular": "תעודה",
+    "noneFound": "לא נמצאו תעודות"
   }
 }

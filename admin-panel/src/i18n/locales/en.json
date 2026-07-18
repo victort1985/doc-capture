@@ -485,5 +485,30 @@
       "fleet": "Fleet",
       "warehouse": "Warehouse"
     }
+  },
+  "deliveryNotes": {
+    "eyebrow": "Documents",
+    "deleteTitle": "Delete delivery note?",
+    "noteHash": "Note #",
+    "cannotUndo": "This action cannot be undone.",
+    "deleting": "Deleting…",
+    "editNote": "Edit note",
+    "newNote": "New note",
+    "documentType": "Document type",
+    "clientName": "Client name",
+    "deliveredTo": "Delivered to",
+    "remarks": "Remarks",
+    "items": "Items",
+    "itemName": "Item name",
+    "itemNotes": "Notes",
+    "addItem": "Add item",
+    "adminRequired": "Admin access required",
+    "colNumber": "#",
+    "searchPlaceholder": "Search by client, note number…",
+    "allOrganizations": "All organizations",
+    "yourOrganization": "Your organization",
+    "notesPlural": "notes",
+    "notesSingular": "note",
+    "noneFound": "No notes found"
   }
 }
