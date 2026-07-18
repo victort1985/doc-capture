@@ -24,6 +24,18 @@
   .status-revoked{ color:#b3261e; font-weight:700; }
   .hidden{ display:none; }
   .stale{ color:#c95c11; }
+  .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -20px; padding:0 20px; }
+  table{ min-width:640px; }
+  .actions{ display:flex; gap:6px; flex-wrap:wrap; }
+  .copy-btn{ background:transparent; color:var(--navy); border:1px solid var(--line); padding:4px 8px; font-size:11px; }
+  .key-cell{ display:flex; align-items:center; gap:6px; white-space:nowrap; }
+  @media (max-width: 640px) {
+    .wrap{ padding:14px; }
+    .card{ padding:14px; }
+    header{ padding:12px 14px; }
+    header span{ font-size:14px; }
+    input, button{ font-size:14px; }
+  }
 </style>
 </head>
 <body>
@@ -81,10 +93,12 @@
 
     <div class="card">
       <h3 style="margin-top:0">Licenses &amp; tenants</h3>
+      <div class="table-scroll">
       <table>
-        <thead><tr><th>Customer</th><th>Slug / Port</th><th>Key</th><th>Status</th><th>Max devices</th><th>Last check</th><th></th></tr></thead>
+        <thead><tr><th>Customer</th><th>Slug / Port</th><th>Key</th><th>Created</th><th>Status</th><th>Max devices</th><th>Last check</th><th></th></tr></thead>
         <tbody id="licenseRows"></tbody>
       </table>
+      </div>
     </div>
   </div>
 </div>
@@ -180,6 +194,28 @@ async function createLicense() {
   } catch (e) { alert(e.message); }
 }
 
+function formatDate(iso) {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+async function copyKey(key, btn) {
+  try {
+    await navigator.clipboard.writeText(key);
+  } catch {
+    // Clipboard API needs HTTPS/localhost — fall back to a manual-select trick.
+    const ta = document.createElement('textarea');
+    ta.value = key;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+  }
+  const original = btn.textContent;
+  btn.textContent = 'Copied ✓';
+  setTimeout(() => { btn.textContent = original; }, 1500);
+}
+
 function timeAgo(iso) {
   if (!iso) return '<span class="stale">never</span>';
   const days = (Date.now() - new Date(iso).getTime()) / 86400000;
@@ -193,7 +229,13 @@ async function loadLicenses() {
     <tr>
       <td>${l.customer_name}${l.notes ? `<div style="color:var(--ink-soft);font-size:11px">${l.notes}</div>` : ''}</td>
       <td>${l.slug ? `<code>${l.slug}</code>:${l.port}${l.provisioned ? '' : ' <span class="stale">(not provisioned)</span>'}` : '<span style="color:var(--ink-soft)">—</span>'}</td>
-      <td><code>${l.key.slice(0, 12)}…</code></td>
+      <td>
+        <div class="key-cell">
+          <code>${l.key.slice(0, 12)}…</code>
+          <button type="button" class="copy-btn" onclick="copyKey('${l.key}', this)">Copy</button>
+        </div>
+      </td>
+      <td>${formatDate(l.created_at)}</td>
       <td class="status-${l.status}">${l.status}</td>
       <td>
         <input type="number" min="1" value="${l.max_devices}" style="width:60px;margin:0;padding:4px 6px;"
@@ -201,10 +243,12 @@ async function loadLicenses() {
       </td>
       <td>${timeAgo(l.last_checked_at)}</td>
       <td>
+        <div class="actions">
         ${l.status === 'active'
           ? `<button class="danger" onclick="revoke(${l.id})">Revoke</button>`
           : `<button onclick="reactivate(${l.id})">Reactivate</button>`}
-        <button class="danger" onclick="deleteLicense(${l.id}, '${l.customer_name.replace(/'/g, "\\'")}', ${l.provisioned ? 'true' : 'false'})" style="margin-left:6px;">Delete</button>
+        <button class="danger" onclick="deleteLicense(${l.id}, '${l.customer_name.replace(/'/g, "\\'")}', ${l.provisioned ? 'true' : 'false'})">Delete</button>
+        </div>
       </td>
     </tr>
   `).join('');
