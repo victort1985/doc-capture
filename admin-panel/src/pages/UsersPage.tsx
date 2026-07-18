@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, X, Power, Trash2, UserRound, Pencil } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -50,6 +51,7 @@ const EMPTY_FORM = {
 };
 
 export default function UsersPage() {
+  const { t } = useTranslation();
   const { user: me } = useAuth();
   const isSuperAdmin = me?.organizationId == null;
   const [users, setUsers] = useState<UserRow[]>([]);
@@ -159,7 +161,7 @@ export default function UsersPage() {
   }
 
   async function removeUser(id: number) {
-    if (!confirm('Delete this user? This cannot be undone.')) return;
+    if (!confirm(t('users.deleteConfirm'))) return;
     await apiFetch(`/users/${id}`, { method: 'DELETE' });
     setUsers((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
@@ -168,11 +170,11 @@ export default function UsersPage() {
     <div>
       <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className="eyebrow">Access control</span>
-          <h1 className="page-title">Users</h1>
+          <span className="eyebrow">{t('users.eyebrow')}</span>
+          <h1 className="page-title">{t('nav.users')}</h1>
         </div>
         <button onClick={() => (showForm ? cancelForm() : setShowForm(true))}>
-          {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New user</>}
+          {showForm ? <><X size={16} /> {t('common.cancel')}</> : <><Plus size={16} /> {t('users.newUser')}</>}
         </button>
       </div>
 
@@ -180,10 +182,10 @@ export default function UsersPage() {
 
       {showForm && (
         <form className="card form-card" onSubmit={submitUser}>
-          <h3 style={{ marginTop: 0 }}>{editingId ? `Edit user — ${form.username}` : 'New user'}</h3>
+          <h3 style={{ marginTop: 0 }}>{editingId ? t('users.editUser', { username: form.username }) : t('users.newUser')}</h3>
           <div className="form-grid">
             <div>
-              <label>Username</label>
+              <label>{t('users.username')}</label>
               <input
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
@@ -191,7 +193,7 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <label>Password {editingId && <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>(leave blank to keep current)</span>}</label>
+              <label>{t('users.password')} {editingId && <span style={{ fontWeight: 400, color: 'var(--ink-soft)' }}>{t('users.leaveBlank')}</span>}</label>
               <input
                 type="password"
                 value={form.password}
@@ -201,21 +203,21 @@ export default function UsersPage() {
               />
             </div>
             <div>
-              <label>Role</label>
+              <label>{t('users.role')}</label>
               <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                 <option value="user">user</option>
                 <option value="admin">admin</option>
               </select>
             </div>
             <div>
-              <label>Group</label>
+              <label>{t('users.group')}</label>
               <select value={form.groupId} onChange={(e) => setForm({ ...form, groupId: e.target.value })}>
-                <option value="">No group</option>
+                <option value="">{t('users.noGroup')}</option>
                 {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             </div>
             <div>
-              <label>Default language</label>
+              <label>{t('users.defaultLanguage')}</label>
               <select
                 value={form.language}
                 onChange={(e) => setForm({ ...form, language: e.target.value })}
@@ -227,7 +229,7 @@ export default function UsersPage() {
             </div>
             {isSuperAdmin && (
               <div>
-                <label>Organizations</label>
+                <label>{t('users.organizations')}</label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 6 }}>
                   {/* No organization = super-admin */}
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400, cursor: 'pointer',
@@ -242,8 +244,8 @@ export default function UsersPage() {
                       onChange={() => setForm(f => ({ ...f, organizationId: '', allowedOrganizationIds: [] }))}
                     />
                     <span>
-                      <strong>Super-admin</strong>
-                      <small style={{ display: 'block', color: 'var(--ink-soft)', fontWeight: 400 }}>No organization — sees everything</small>
+                      <strong>{t('users.superAdmin')}</strong>
+                      <small style={{ display: 'block', color: 'var(--ink-soft)', fontWeight: 400 }}>{t('users.superAdminHint')}</small>
                     </span>
                   </label>
 
@@ -292,7 +294,7 @@ export default function UsersPage() {
                           {isPrimary && (
                             <span style={{ marginLeft: 8, fontSize: 11, color: 'var(--primary)', fontWeight: 600,
                               background: 'var(--primary-wash)', padding: '2px 6px', borderRadius: 4 }}>
-                              PRIMARY
+                              {t('users.primary')}
                             </span>
                           )}
                         </div>
@@ -315,7 +317,7 @@ export default function UsersPage() {
                                 }));
                               }}
                             />
-                            Set primary
+                            {t('users.setPrimary')}
                           </label>
                         )}
                       </div>
@@ -323,28 +325,28 @@ export default function UsersPage() {
                   })}
                 </div>
                 <small style={{ color: 'var(--ink-soft)', marginTop: 6, display: 'block' }}>
-                  ✓ Check organizations to assign. PRIMARY = home org (data scope). Others = can switch into.
+                  {t('users.orgCheckboxHint')}
                 </small>
               </div>
             )}
             <div>
-              <label>First name</label>
+              <label>{t('users.firstName')}</label>
               <input value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} />
             </div>
             <div>
-              <label>Last name</label>
+              <label>{t('users.lastName')}</label>
               <input value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} />
             </div>
             <div>
-              <label>Specialization</label>
+              <label>{t('users.specialization')}</label>
               <input value={form.specialization} onChange={(e) => setForm({ ...form, specialization: e.target.value })} />
             </div>
             <div>
-              <label>Phone</label>
+              <label>{t('users.phone')}</label>
               <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             </div>
             <div>
-              <label>City</label>
+              <label>{t('users.city')}</label>
               <select value={form.cityId} onChange={(e) => setForm({ ...form, cityId: e.target.value })}>
                 <option value="">—</option>
                 {cities.map((c) => (
@@ -360,7 +362,7 @@ export default function UsersPage() {
                   onChange={(e) => setForm({ ...form, isGlobal: e.target.checked })}
                   style={{ marginRight: 6 }}
                 />
-                Global (notified about every call, any region)
+                {t('users.globalHint')}
               </label>
             </div>
             <div>
@@ -371,11 +373,11 @@ export default function UsersPage() {
                   onChange={(e) => setForm({ ...form, permissions: { ...form.permissions, warehouseTransfer: e.target.checked } })}
                   style={{ marginRight: 6 }}
                 />
-                Can transfer warehouse equipment between locations
+                {t('users.warehouseTransferHint')}
               </label>
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
-              <label>Covers regions (call notification routing)</label>
+              <label>{t('users.coversRegions')}</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                 {regions.map((r) => (
                   <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 400 }}>
@@ -387,12 +389,12 @@ export default function UsersPage() {
                     {r.name}
                   </label>
                 ))}
-                {regions.length === 0 && <span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>No regions defined yet — see Locations.</span>}
+                {regions.length === 0 && <span style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{t('users.noRegionsYet')}</span>}
               </div>
             </div>
           </div>
           <div className="form-actions">
-            <button type="submit">{editingId ? <><Plus size={16} /> Save changes</> : <><Plus size={16} /> Create user</>}</button>
+            <button type="submit">{editingId ? <><Plus size={16} /> {t('calls.saveChanges')}</> : <><Plus size={16} /> {t('users.createUser')}</>}</button>
           </div>
         </form>
       )}
@@ -401,19 +403,19 @@ export default function UsersPage() {
         {users.length === 0 ? (
           <div className="empty-state">
             <UserRound size={32} strokeWidth={1.5} />
-            <strong>No users yet</strong>
-            <span>Create the first account to let staff sign in from the mobile app.</span>
+            <strong>{t('users.emptyTitle')}</strong>
+            <span>{t('users.emptyBody')}</span>
           </div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Username</th>
-                <th>Role</th>
-                <th>Language</th>
-                {isSuperAdmin && <th>Organization</th>}
-                <th>Regions</th>
-                <th>Status</th>
+                <th>{t('users.username')}</th>
+                <th>{t('users.role')}</th>
+                <th>{t('users.language')}</th>
+                {isSuperAdmin && <th>{t('users.organization')}</th>}
+                <th>{t('users.regions')}</th>
+                <th>{t('common.status')}</th>
                 <th />
               </tr>
             </thead>
@@ -432,11 +434,11 @@ export default function UsersPage() {
                   <td className="mono">{u.role}</td>
                   <td className="mono">{u.language}</td>
                   {isSuperAdmin && (
-                    <td>{u.organization?.name ?? <span style={{ color: 'var(--ink-soft)' }}>super-admin</span>}</td>
+                    <td>{u.organization?.name ?? <span style={{ color: 'var(--ink-soft)' }}>{t('users.superAdminLower')}</span>}</td>
                   )}
                   <td>
                     {u.isGlobal ? (
-                      <span className="stamp-badge on">global</span>
+                      <span className="stamp-badge on">{t('users.globalBadge')}</span>
                     ) : u.regions?.length ? (
                       u.regions.map((r) => r.name).join(', ')
                     ) : (
@@ -445,18 +447,18 @@ export default function UsersPage() {
                   </td>
                   <td>
                     <span className={`stamp-badge ${u.isActive ? 'on' : 'off'}`}>
-                      {u.isActive ? 'active' : 'disabled'}
+                      {u.isActive ? t('users.active') : t('users.disabled')}
                     </span>
                   </td>
                   <td>
                     <div className="row-actions">
-                      <button className="ghost" onClick={() => openEditForm(u)} title="Edit">
+                      <button className="ghost" onClick={() => openEditForm(u)} title={t('common.edit')}>
                         <Pencil size={15} />
                       </button>
-                      <button className="ghost" onClick={() => toggleActive(u)} title={u.isActive ? 'Disable' : 'Enable'}>
+                      <button className="ghost" onClick={() => toggleActive(u)} title={u.isActive ? t('users.disable') : t('users.enable')}>
                         <Power size={15} />
                       </button>
-                      <button className="ghost" onClick={() => removeUser(u.id)} title="Delete" style={{ color: 'var(--danger)' }}>
+                      <button className="ghost" onClick={() => removeUser(u.id)} title={t('common.delete')} style={{ color: 'var(--danger)' }}>
                         <Trash2 size={15} />
                       </button>
                     </div>
