@@ -106,7 +106,7 @@ app.delete('/admin/licenses/:id', requireAdmin, async (req, res) => {
   if (!license) return res.status(404).json({ error: 'Not found' });
 
   let output = '';
-  if (license.slug) {
+  if (license.provisioned) {
     try {
       output = await deprovisionTenant(license.slug);
     } catch (err) {
@@ -127,7 +127,8 @@ app.delete('/admin/licenses/:id', requireAdmin, async (req, res) => {
 // npm build) — see provision.js's doc comment and README.md's sudoers
 // section. Only ever reachable behind requireAdmin.
 app.post('/admin/tenants', requireAdmin, async (req, res) => {
-  const { slug, customerName, port, maxDevices, dbPassword } = req.body || {};
+  const { customerName, port, maxDevices, dbPassword } = req.body || {};
+  const slug = (req.body?.slug || '').toLowerCase();
   if (!slug || !customerName || !port || !dbPassword) {
     return res.status(400).json({ error: 'slug, customerName, port, and dbPassword are all required.' });
   }
