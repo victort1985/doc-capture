@@ -457,5 +457,33 @@
     "emptyTitle": "No storage connections yet",
     "emptyBody": "Add a local folder, FTP server, or Synology NAS to send captured files to.",
     "testConnection": "Test connection"
+  },
+  "storageRouting": {
+    "eyebrow": "Routing",
+    "title": "Storage routing",
+    "explanation": "Which storage connection each user's uploads go to — required before that user can upload anything from the mobile app.",
+    "user": "User",
+    "selectUser": "Select a user…",
+    "docStorageConn": "Document storage connection",
+    "photoStorageConn": "Photo storage connection",
+    "docSubfolderPattern": "Document subfolder pattern",
+    "photoSubfolderPattern": "Photo subfolder pattern",
+    "saveRouting": "Save routing",
+    "saved": "saved",
+    "createOneFirst": "Create one on the Storage connections page first.",
+    "documentTypes": "Document types",
+    "savePathsTitle": "Save paths & naming templates",
+    "docTypesExplanation": "Where each document type is saved, and how its folder path and filename are built from a template.",
+    "availableVars": "Available variables",
+    "storageConnection": "Storage connection",
+    "folderPathPattern": "Folder path pattern",
+    "filenameTemplate": "Filename template",
+    "docType": {
+      "delivery_note": "Delivery notes",
+      "recount": "Recount documents (Home)",
+      "transfer": "Warehouse transfer notes",
+      "fleet": "Fleet",
+      "warehouse": "Warehouse"
+    }
   }
 }

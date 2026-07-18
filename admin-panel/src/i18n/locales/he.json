@@ -457,5 +457,33 @@
     "emptyTitle": "אין עדיין חיבורי אחסון",
     "emptyBody": "הוסיפו תיקייה מקומית, שרת FTP או Synology NAS לשליחת קבצים שנקלטו.",
     "testConnection": "בדיקת חיבור"
+  },
+  "storageRouting": {
+    "eyebrow": "ניתוב",
+    "title": "ניתוב אחסון",
+    "explanation": "לאיזה חיבור אחסון מגיעות ההעלאות של כל משתמש — נדרש לפני שהמשתמש יכול להעלות משהו מהאפליקציה הסלולרית.",
+    "user": "משתמש",
+    "selectUser": "בחירת משתמש…",
+    "docStorageConn": "חיבור אחסון למסמכים",
+    "photoStorageConn": "חיבור אחסון לתמונות",
+    "docSubfolderPattern": "תבנית תת-תיקייה למסמכים",
+    "photoSubfolderPattern": "תבנית תת-תיקייה לתמונות",
+    "saveRouting": "שמירת ניתוב",
+    "saved": "נשמר",
+    "createOneFirst": "צרו אחד תחילה בעמוד חיבורי האחסון.",
+    "documentTypes": "סוגי מסמכים",
+    "savePathsTitle": "נתיבי שמירה ותבניות שמות",
+    "docTypesExplanation": "היכן נשמר כל סוג מסמך, וכיצד נבנים נתיב התיקייה ושם הקובץ שלו מתבנית.",
+    "availableVars": "משתנים זמינים",
+    "storageConnection": "חיבור אחסון",
+    "folderPathPattern": "תבנית נתיב תיקייה",
+    "filenameTemplate": "תבנית שם קובץ",
+    "docType": {
+      "delivery_note": "תעודות משלוח",
+      "recount": "מסמכי ספירה (בית)",
+      "transfer": "תעודות העברה בין מחסנים",
+      "fleet": "רכבים",
+      "warehouse": "מחסן"
+    }
   }
 }

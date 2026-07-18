@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Save, Route, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../services/api';
 
 interface UserRow {
@@ -27,13 +28,7 @@ const DEFAULT_FORM = {
   photoSubfolderPattern: '{date}/{place}',
 };
 
-const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  delivery_note: 'Накладные',
-  recount: 'Документы переучета (Домашняя)',
-  transfer: 'Накладные перевода между складами',
-  fleet: 'Автопарк',
-  warehouse: 'Склад',
-};
+const DOCUMENT_TYPE_KEYS = ['delivery_note', 'recount', 'transfer', 'fleet', 'warehouse'];
 
 interface DocTypeSettings {
   documentType: string;
@@ -45,6 +40,7 @@ interface DocTypeSettings {
 interface TemplateVar { key: string; label: string; }
 
 export default function StorageRoutingPage() {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<UserRow[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -141,23 +137,22 @@ export default function StorageRoutingPage() {
   return (
     <div>
       <div className="topbar">
-        <span className="eyebrow">Routing</span>
-        <h1 className="page-title">Storage routing</h1>
+        <span className="eyebrow">{t('storageRouting.eyebrow')}</span>
+        <h1 className="page-title">{t('storageRouting.title')}</h1>
         <p style={{ color: 'var(--ink-soft)', marginTop: 8, marginBottom: 0 }}>
-          Which storage connection each user's uploads go to — required before that
-          user can upload anything from the mobile app.
+          {t('storageRouting.explanation')}
         </p>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
 
       <div className="card">
-        <label>User</label>
+        <label>{t('storageRouting.user')}</label>
         <select
           value={selectedUserId ?? ''}
           onChange={(e) => setSelectedUserId(e.target.value ? parseInt(e.target.value, 10) : null)}
         >
-          <option value="">Select a user…</option>
+          <option value="">{t('storageRouting.selectUser')}</option>
           {users.map((u) => (
             <option key={u.id} value={u.id}>{u.username}</option>
           ))}
@@ -168,7 +163,7 @@ export default function StorageRoutingPage() {
         <form className="card form-card" onSubmit={save}>
           <div className="form-grid">
             <div>
-              <label>Document storage connection</label>
+              <label>{t('storageRouting.docStorageConn')}</label>
               <select
                 value={form.documentStorageConnectionId}
                 onChange={(e) => setForm({ ...form, documentStorageConnectionId: e.target.value })}
@@ -180,7 +175,7 @@ export default function StorageRoutingPage() {
               </select>
             </div>
             <div>
-              <label>Photo storage connection</label>
+              <label>{t('storageRouting.photoStorageConn')}</label>
               <select
                 value={form.photoStorageConnectionId}
                 onChange={(e) => setForm({ ...form, photoStorageConnectionId: e.target.value })}
@@ -192,7 +187,7 @@ export default function StorageRoutingPage() {
               </select>
             </div>
             <div>
-              <label>Document subfolder pattern</label>
+              <label>{t('storageRouting.docSubfolderPattern')}</label>
               <input
                 className="mono"
                 value={form.documentSubfolderPattern}
@@ -200,7 +195,7 @@ export default function StorageRoutingPage() {
               />
             </div>
             <div>
-              <label>Photo subfolder pattern</label>
+              <label>{t('storageRouting.photoSubfolderPattern')}</label>
               <input
                 className="mono"
                 value={form.photoSubfolderPattern}
@@ -209,8 +204,8 @@ export default function StorageRoutingPage() {
             </div>
           </div>
           <div className="form-actions">
-            <button type="submit"><Save size={16} /> Save routing</button>
-            {saved && <span className="stamp-badge on"><Check size={12} /> saved</span>}
+            <button type="submit"><Save size={16} /> {t('storageRouting.saveRouting')}</button>
+            {saved && <span className="stamp-badge on"><Check size={12} /> {t('storageRouting.saved')}</span>}
           </div>
         </form>
       )}
@@ -219,25 +214,24 @@ export default function StorageRoutingPage() {
         <div className="card">
           <div className="empty-state">
             <Route size={32} strokeWidth={1.5} />
-            <strong>No storage connections yet</strong>
-            <span>Create one on the Storage connections page first.</span>
+            <strong>{t('storage.emptyTitle')}</strong>
+            <span>{t('storageRouting.createOneFirst')}</span>
           </div>
         </div>
       )}
 
       {/* Per-document-type storage path + filename template settings */}
       <div className="topbar" style={{ marginTop: 32 }}>
-        <span className="eyebrow">Document types</span>
-        <h1 className="page-title" style={{ fontSize: 22 }}>Save paths &amp; naming templates</h1>
+        <span className="eyebrow">{t('storageRouting.documentTypes')}</span>
+        <h1 className="page-title" style={{ fontSize: 22 }}>{t('storageRouting.savePathsTitle')}</h1>
         <p style={{ color: 'var(--ink-soft)', marginTop: 8, marginBottom: 0 }}>
-          Where each document type is saved, and how its folder path and
-          filename are built from a template.
+          {t('storageRouting.docTypesExplanation')}
         </p>
       </div>
 
       {templateVars.length > 0 && (
         <div className="card" style={{ marginBottom: 20 }}>
-          <strong>Available variables</strong>
+          <strong>{t('storageRouting.availableVars')}</strong>
           <ul style={{ marginTop: 8, marginBottom: 0, paddingInlineStart: 20 }}>
             {templateVars.map((v) => (
               <li key={v.key} style={{ marginBottom: 4 }}>
@@ -249,14 +243,14 @@ export default function StorageRoutingPage() {
         </div>
       )}
 
-      {Object.keys(DOCUMENT_TYPE_LABELS).map((type) => {
+      {DOCUMENT_TYPE_KEYS.map((type) => {
         const s = docTypeSettings[type] ?? { storageConnectionId: '', pathPattern: '{location}/{date}', filenameTemplate: '{docType}-{number}' };
         return (
           <div className="card form-card" key={type} style={{ marginBottom: 16 }}>
-            <h3 style={{ marginTop: 0 }}>{DOCUMENT_TYPE_LABELS[type]}</h3>
+            <h3 style={{ marginTop: 0 }}>{t(`storageRouting.docType.${type}`)}</h3>
             <div className="form-grid">
               <div>
-                <label>Storage connection</label>
+                <label>{t('storageRouting.storageConnection')}</label>
                 <select
                   value={s.storageConnectionId}
                   onChange={(e) => setDocTypeSettings({ ...docTypeSettings, [type]: { ...s, storageConnectionId: e.target.value } })}
@@ -268,7 +262,7 @@ export default function StorageRoutingPage() {
                 </select>
               </div>
               <div>
-                <label>Folder path pattern</label>
+                <label>{t('storageRouting.folderPathPattern')}</label>
                 <input
                   className="mono"
                   value={s.pathPattern}
@@ -276,7 +270,7 @@ export default function StorageRoutingPage() {
                 />
               </div>
               <div>
-                <label>Filename template</label>
+                <label>{t('storageRouting.filenameTemplate')}</label>
                 <input
                   className="mono"
                   value={s.filenameTemplate}
@@ -285,8 +279,8 @@ export default function StorageRoutingPage() {
               </div>
             </div>
             <div className="form-actions">
-              <button onClick={() => saveDocType(type)}><Save size={16} /> Save</button>
-              {savedDocType === type && <span className="stamp-badge on"><Check size={12} /> saved</span>}
+              <button onClick={() => saveDocType(type)}><Save size={16} /> {t('common.save')}</button>
+              {savedDocType === type && <span className="stamp-badge on"><Check size={12} /> {t('storageRouting.saved')}</span>}
             </div>
           </div>
         );
