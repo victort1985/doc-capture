@@ -297,5 +297,47 @@
     "createTemplate": "יצירת תבנית",
     "emptyTitle": "אין עדיין תבניות",
     "emptyBody": "הגדירו כיצד ייקראו קבצים שנקלטו לפני שמירתם."
+  },
+  "permissions": {
+    "eyebrow": "ניהול",
+    "title": "הרשאות",
+    "global": "גלובלי",
+    "editing": "עריכת",
+    "override": "override",
+    "legend": "תיבות סימון באפור = ברירת מחדל של התפקיד. שינויים מפורשים נשמרים לכל משתמש וגוברים על התפקיד."
+  },
+  "permGroup": {
+    "calls": "קריאות שירות",
+    "calendar": "יומן",
+    "fleet": "רכבים",
+    "warehouse": "מחסן",
+    "reports": "דוחות",
+    "phonebook": "פנקס טלפונים",
+    "organizations": "ארגונים",
+    "office": "משרד (נייד)"
+  },
+  "perm": {
+    "calls.create": "יצירת קריאות",
+    "calls.edit": "עריכת קריאות",
+    "calls.delete": "מחיקת קריאות",
+    "calls.close": "סגירת קריאות",
+    "calls.stats": "צפייה בסטטיסטיקה",
+    "calendar.view": "צפייה ביומן",
+    "calendar.edit": "עריכת אירועי יומן",
+    "calendar.all_orgs": "צפייה ביומני כל הארגונים",
+    "fleet.view": "צפייה ברכבים",
+    "fleet.refuel": "רישום תדלוקים",
+    "fleet.manage": "הוספה/עריכת רכבים",
+    "fleet.documents": "העלאת מסמכי רכב",
+    "warehouse.view": "צפייה במחסן",
+    "warehouse.transactions": "רישום תנועות כניסה/יציאה",
+    "warehouse.manage": "הוספה/עריכת פריטים וקטגוריות",
+    "reports.work": "צפייה בדוחות עבודה",
+    "reports.fuel": "צפייה בדוחות דלק",
+    "phonebook.edit": "עריכת פנקס טלפונים",
+    "orgs.switch": "מעבר בין ארגונים",
+    "office.delivery_notes": "תעודות משלוח",
+    "office.quotes": "הצעות מחיר",
+    "office.invoices": "חשבוניות"
   }
 }

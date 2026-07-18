@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Save } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
@@ -11,34 +12,36 @@ interface User {
   permissions: Record<string, boolean>;
 }
 
-// All available feature permissions with human-readable labels
-const FEATURES: { key: string; label: string; group: string }[] = [
-  { key: 'calls.create', label: 'Create calls', group: 'Calls' },
-  { key: 'calls.edit', label: 'Edit calls', group: 'Calls' },
-  { key: 'calls.delete', label: 'Delete calls', group: 'Calls' },
-  { key: 'calls.close', label: 'Close calls', group: 'Calls' },
-  { key: 'calls.stats', label: 'View statistics', group: 'Calls' },
-  { key: 'calendar.view', label: 'View calendar', group: 'Calendar' },
-  { key: 'calendar.edit', label: 'Edit calendar events', group: 'Calendar' },
-  { key: 'calendar.all_orgs', label: 'View all organizations calendars', group: 'Calendar' },
-  { key: 'fleet.view', label: 'View fleet', group: 'Fleet' },
-  { key: 'fleet.refuel', label: 'Register refuels', group: 'Fleet' },
-  { key: 'fleet.manage', label: 'Add/edit vehicles', group: 'Fleet' },
-  { key: 'fleet.documents', label: 'Upload vehicle documents', group: 'Fleet' },
-  { key: 'warehouse.view', label: 'View warehouse', group: 'Warehouse' },
-  { key: 'warehouse.transactions', label: 'Register in/out transactions', group: 'Warehouse' },
-  { key: 'warehouse.manage', label: 'Add/edit items and categories', group: 'Warehouse' },
-  { key: 'reports.work', label: 'View work reports', group: 'Reports' },
-  { key: 'reports.fuel', label: 'View fuel reports', group: 'Reports' },
-  { key: 'phonebook.edit', label: 'Edit phone book', group: 'Phone book' },
-  { key: 'orgs.switch', label: 'Switch between organizations', group: 'Organizations' },
-  { key: 'office.delivery_notes', label: 'Delivery notes', group: 'Office (mobile)' },
-  { key: 'office.quotes', label: 'Quotes', group: 'Office (mobile)' },
-  { key: 'office.invoices', label: 'Invoices', group: 'Office (mobile)' },
+// All available feature permissions — labels/groups come from i18n
+// (perm.<key> / permGroup.<key>), keeping the keys/order in sync with
+// server/src/modules/users/permissions.constants.ts.
+const FEATURE_KEYS: { key: string; group: string }[] = [
+  { key: 'calls.create', group: 'calls' },
+  { key: 'calls.edit', group: 'calls' },
+  { key: 'calls.delete', group: 'calls' },
+  { key: 'calls.close', group: 'calls' },
+  { key: 'calls.stats', group: 'calls' },
+  { key: 'calendar.view', group: 'calendar' },
+  { key: 'calendar.edit', group: 'calendar' },
+  { key: 'calendar.all_orgs', group: 'calendar' },
+  { key: 'fleet.view', group: 'fleet' },
+  { key: 'fleet.refuel', group: 'fleet' },
+  { key: 'fleet.manage', group: 'fleet' },
+  { key: 'fleet.documents', group: 'fleet' },
+  { key: 'warehouse.view', group: 'warehouse' },
+  { key: 'warehouse.transactions', group: 'warehouse' },
+  { key: 'warehouse.manage', group: 'warehouse' },
+  { key: 'reports.work', group: 'reports' },
+  { key: 'reports.fuel', group: 'reports' },
+  { key: 'phonebook.edit', group: 'phonebook' },
+  { key: 'orgs.switch', group: 'organizations' },
+  { key: 'office.delivery_notes', group: 'office' },
+  { key: 'office.quotes', group: 'office' },
+  { key: 'office.invoices', group: 'office' },
 ];
 
 const ROLE_DEFAULTS: Record<string, Record<string, boolean>> = {
-  admin: Object.fromEntries(FEATURES.map(f => [f.key, true])),
+  admin: Object.fromEntries(FEATURE_KEYS.map(f => [f.key, true])),
   user: {
     'calls.create': true, 'calls.close': true, 'calls.stats': false,
     'calendar.view': true, 'calendar.edit': true, 'calendar.all_orgs': false,
@@ -52,9 +55,10 @@ const ROLE_DEFAULTS: Record<string, Record<string, boolean>> = {
   },
 };
 
-const groups = Array.from(new Set(FEATURES.map(f => f.group)));
+const GROUP_ORDER = Array.from(new Set(FEATURE_KEYS.map(f => f.group)));
 
 export default function PermissionsPage() {
+  const { t } = useTranslation();
   const [users, setUsers] = useState<User[]>([]);
   const [selId, setSelId] = useState<number | null>(null);
   const [perms, setPerms] = useState<Record<string, boolean | null>>({});
@@ -69,7 +73,7 @@ export default function PermissionsPage() {
     setSelId(u.id);
     // null = use role default
     const resolved: Record<string, boolean | null> = {};
-    for (const f of FEATURES) {
+    for (const f of FEATURE_KEYS) {
       resolved[f.key] = u.permissions?.[f.key] ?? null;
     }
     setPerms(resolved);
@@ -115,21 +119,21 @@ export default function PermissionsPage() {
   return (
     <div>
       <div className="topbar">
-        <div><span className="eyebrow">Admin</span><h1 className="page-title">Permissions</h1></div>
+        <div><span className="eyebrow">{t('permissions.eyebrow')}</span><h1 className="page-title">{t('permissions.title')}</h1></div>
         <button onClick={save} disabled={saving}>
-          <Save size={15} /> {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
+          <Save size={15} /> {saving ? t('common.saving') : saved ? `${t('common.saved')} ✓` : t('common.save')}
         </button>
       </div>
 
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
         {/* User list */}
         <div className="card" style={{ width: 220, flexShrink: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>Users</div>
+          <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>{t('nav.users')}</div>
           {users.map(u => (
             <div key={u.id} onClick={() => select(u)}
               style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: selId === u.id ? 'var(--primary)' : 'transparent', color: selId === u.id ? '#fff' : 'inherit', marginBottom: 2 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{u.username}</div>
-              <div style={{ fontSize: 11, opacity: 0.7 }}>{u.role}{u.isGlobal ? ' · global' : ''}</div>
+              <div style={{ fontSize: 11, opacity: 0.7 }}>{u.role}{u.isGlobal ? ` · ${t('permissions.global')}` : ''}</div>
             </div>
           ))}
         </div>
@@ -138,21 +142,20 @@ export default function PermissionsPage() {
         {sel && (
           <div style={{ flex: 1 }}>
             <div className="card" style={{ marginBottom: 8, padding: '10px 16px', background: 'var(--surface-muted)', fontSize: 13 }}>
-              Editing <strong>{sel.username}</strong> ({sel.role}). Checkboxes in <span style={{ color: 'var(--ink-soft)' }}>grey</span> = role default. 
-              Explicit overrides are saved per-user and override the role.
+              {t('permissions.editing')} <strong>{sel.username}</strong> ({sel.role}). {t('permissions.legend')}
             </div>
-            {groups.map(group => (
+            {GROUP_ORDER.map(group => (
               <div key={group} className="card" style={{ marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 13 }}>{group}</div>
-                {FEATURES.filter(f => f.group === group).map(f => {
+                <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 13 }}>{t(`permGroup.${group}`)}</div>
+                {FEATURE_KEYS.filter(f => f.group === group).map(f => {
                   const val = effective(f.key);
                   const isOverride = perms[f.key] !== null;
                   return (
                     <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', cursor: 'pointer' }}>
                       <input type="checkbox" checked={val} onChange={() => toggle(f.key)}
                         style={{ width: 16, height: 16, accentColor: isOverride ? 'var(--primary)' : 'var(--ink-soft)' }} />
-                      <span style={{ fontSize: 13, color: isOverride ? 'var(--ink)' : 'var(--ink-soft)' }}>{f.label}</span>
-                      {isOverride && <span style={{ fontSize: 10, background: 'var(--primary)', color: '#fff', padding: '1px 6px', borderRadius: 3 }}>override</span>}
+                      <span style={{ fontSize: 13, color: isOverride ? 'var(--ink)' : 'var(--ink-soft)' }}>{t(`perm.${f.key}`)}</span>
+                      {isOverride && <span style={{ fontSize: 10, background: 'var(--primary)', color: '#fff', padding: '1px 6px', borderRadius: 3 }}>{t('permissions.override')}</span>}
                     </label>
                   );
                 })}

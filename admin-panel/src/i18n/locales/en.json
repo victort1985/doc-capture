@@ -297,5 +297,47 @@
     "createTemplate": "Create template",
     "emptyTitle": "No templates yet",
     "emptyBody": "Define how captured files get named before they're stored."
+  },
+  "permissions": {
+    "eyebrow": "Admin",
+    "title": "Permissions",
+    "global": "global",
+    "editing": "Editing",
+    "override": "override",
+    "legend": "Checkboxes in grey = role default. Explicit overrides are saved per-user and override the role."
+  },
+  "permGroup": {
+    "calls": "Calls",
+    "calendar": "Calendar",
+    "fleet": "Fleet",
+    "warehouse": "Warehouse",
+    "reports": "Reports",
+    "phonebook": "Phone book",
+    "organizations": "Organizations",
+    "office": "Office (mobile)"
+  },
+  "perm": {
+    "calls.create": "Create calls",
+    "calls.edit": "Edit calls",
+    "calls.delete": "Delete calls",
+    "calls.close": "Close calls",
+    "calls.stats": "View statistics",
+    "calendar.view": "View calendar",
+    "calendar.edit": "Edit calendar events",
+    "calendar.all_orgs": "View all organizations calendars",
+    "fleet.view": "View fleet",
+    "fleet.refuel": "Register refuels",
+    "fleet.manage": "Add/edit vehicles",
+    "fleet.documents": "Upload vehicle documents",
+    "warehouse.view": "View warehouse",
+    "warehouse.transactions": "Register in/out transactions",
+    "warehouse.manage": "Add/edit items and categories",
+    "reports.work": "View work reports",
+    "reports.fuel": "View fuel reports",
+    "phonebook.edit": "Edit phone book",
+    "orgs.switch": "Switch between organizations",
+    "office.delivery_notes": "Delivery notes",
+    "office.quotes": "Quotes",
+    "office.invoices": "Invoices"
   }
 }
