@@ -284,5 +284,18 @@
     "pause": "Pause",
     "resume": "Resume",
     "empty": "No maintenance contracts yet."
+  },
+  "templates": {
+    "eyebrow": "File naming",
+    "title": "Naming templates",
+    "deleteConfirm": "Delete this template?",
+    "newTemplate": "New template",
+    "appliesTo": "Applies to",
+    "both": "Both",
+    "phonebook": "Phone book",
+    "pattern": "Pattern",
+    "createTemplate": "Create template",
+    "emptyTitle": "No templates yet",
+    "emptyBody": "Define how captured files get named before they're stored."
   }
 }

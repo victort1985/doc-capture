@@ -284,5 +284,18 @@
     "pause": "השהיה",
     "resume": "המשך",
     "empty": "אין עדיין חוזי תחזוקה."
+  },
+  "templates": {
+    "eyebrow": "שמות קבצים",
+    "title": "תבניות שמות",
+    "deleteConfirm": "למחוק תבנית זו?",
+    "newTemplate": "תבנית חדשה",
+    "appliesTo": "חל על",
+    "both": "שניהם",
+    "phonebook": "פנקס טלפונים",
+    "pattern": "תבנית",
+    "createTemplate": "יצירת תבנית",
+    "emptyTitle": "אין עדיין תבניות",
+    "emptyBody": "הגדירו כיצד ייקראו קבצים שנקלטו לפני שמירתם."
   }
 }

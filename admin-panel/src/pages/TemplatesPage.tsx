@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, X, Trash2, FileSliders } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
@@ -15,6 +16,7 @@ const PHONEBOOK_PLACEHOLDERS = ['{organization}', '{city}', '{position}', '{firs
 const PHONEBOOK_DEFAULT_PATTERN = '{organization}_{city}_{position}_{firstName}_{lastName}_{year}';
 
 export default function TemplatesPage() {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -44,7 +46,7 @@ export default function TemplatesPage() {
   }
 
   async function removeTemplate(id: number) {
-    if (!confirm('Delete this template?')) return;
+    if (!confirm(t('templates.deleteConfirm'))) return;
     await apiFetch(`/templates/${id}`, { method: 'DELETE' });
     setTemplates((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
@@ -53,11 +55,11 @@ export default function TemplatesPage() {
     <div>
       <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className="eyebrow">File naming</span>
-          <h1 className="page-title">Naming templates</h1>
+          <span className="eyebrow">{t('templates.eyebrow')}</span>
+          <h1 className="page-title">{t('templates.title')}</h1>
         </div>
         <button onClick={() => setShowForm((v) => !v)}>
-          {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New template</>}
+          {showForm ? <><X size={16} /> {t('common.cancel')}</> : <><Plus size={16} /> {t('templates.newTemplate')}</>}
         </button>
       </div>
 
@@ -67,11 +69,11 @@ export default function TemplatesPage() {
         <form className="card form-card" onSubmit={createTemplate}>
           <div className="form-grid">
             <div>
-              <label>Name</label>
+              <label>{t('common.name')}</label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div>
-              <label>Applies to</label>
+              <label>{t('templates.appliesTo')}</label>
               <select
                 value={form.appliesTo}
                 onChange={(e) => {
@@ -92,14 +94,14 @@ export default function TemplatesPage() {
                   });
                 }}
               >
-                <option value="both">Both</option>
-                <option value="document">Document</option>
-                <option value="photo">Photo</option>
-                <option value="phonebook">Phone book</option>
+                <option value="both">{t('templates.both')}</option>
+                <option value="document">{t('files.document')}</option>
+                <option value="photo">{t('files.photo')}</option>
+                <option value="phonebook">{t('templates.phonebook')}</option>
               </select>
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
-              <label>Pattern</label>
+              <label>{t('templates.pattern')}</label>
               <input
                 className="mono"
                 value={form.pattern}
@@ -112,7 +114,7 @@ export default function TemplatesPage() {
             </div>
           </div>
           <div className="form-actions">
-            <button type="submit"><Plus size={16} /> Create template</button>
+            <button type="submit"><Plus size={16} /> {t('templates.createTemplate')}</button>
           </div>
         </form>
       )}
@@ -121,28 +123,28 @@ export default function TemplatesPage() {
         {templates.length === 0 ? (
           <div className="empty-state">
             <FileSliders size={32} strokeWidth={1.5} />
-            <strong>No templates yet</strong>
-            <span>Define how captured files get named before they're stored.</span>
+            <strong>{t('templates.emptyTitle')}</strong>
+            <span>{t('templates.emptyBody')}</span>
           </div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Applies to</th>
-                <th className="mono">Pattern</th>
+                <th>{t('common.name')}</th>
+                <th>{t('templates.appliesTo')}</th>
+                <th className="mono">{t('templates.pattern')}</th>
                 <th />
               </tr>
             </thead>
             <tbody>
-              {templates.map((t) => (
-                <tr key={t.id}>
-                  <td>{t.name}</td>
-                  <td className="mono">{t.appliesTo}</td>
-                  <td className="mono">{t.pattern}</td>
+              {templates.map((tpl) => (
+                <tr key={tpl.id}>
+                  <td>{tpl.name}</td>
+                  <td className="mono">{tpl.appliesTo}</td>
+                  <td className="mono">{tpl.pattern}</td>
                   <td>
                     <div className="row-actions">
-                      <button className="ghost" onClick={() => removeTemplate(t.id)} title="Delete" style={{ color: 'var(--danger)' }}>
+                      <button className="ghost" onClick={() => removeTemplate(tpl.id)} title={t('common.delete')} style={{ color: 'var(--danger)' }}>
                         <Trash2 size={15} />
                       </button>
                     </div>
