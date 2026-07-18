@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { Trash2, Eye, X, Pencil, Save } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
@@ -24,9 +25,9 @@ interface CallDetail extends CallRow {
   statusChangedAt?: string;
 }
 
-const STATUS_LABEL: Record<string, string> = { open: 'Open', in_progress: 'In progress', closed: 'Closed' };
-
 export default function CallsPage() {
+  const { t } = useTranslation();
+  const STATUS_LABEL: Record<string, string> = { open: t('calls.open'), in_progress: t('calls.inProgress'), closed: t('calls.closed') };
   const [calls, setCalls] = useState<CallRow[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [detail, setDetail] = useState<CallDetail | null>(null);
@@ -46,8 +47,8 @@ export default function CallsPage() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 15_000);
-    return () => clearInterval(t);
+    const intervalId = setInterval(load, 15_000);
+    return () => clearInterval(intervalId);
   }, [statusFilter]);
 
   async function openDetail(id: number) {
@@ -99,7 +100,7 @@ export default function CallsPage() {
   }
 
   async function removeCall(id: number) {
-    if (!confirm('Delete this call permanently? This removes its notes, attachments, and timer history too — files already on storage are not deleted, only the database records.')) return;
+    if (!confirm(t('calls.deleteConfirm'))) return;
     await apiFetch(`/calls/${id}`, { method: 'DELETE' });
     setDetail(null);
     load();
@@ -111,14 +112,14 @@ export default function CallsPage() {
     <div>
       <div className="topbar">
         <div>
-          <span className="eyebrow">Service calls</span>
-          <h1 className="page-title">Calls</h1>
+          <span className="eyebrow">{t('calls.eyebrow')}</span>
+          <h1 className="page-title">{t('calls.title')}</h1>
         </div>
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: 180 }}>
-          <option value="">All statuses</option>
-          <option value="open">Open</option>
-          <option value="in_progress">In progress</option>
-          <option value="closed">Closed</option>
+          <option value="">{t('calls.allStatuses')}</option>
+          <option value="open">{t('calls.open')}</option>
+          <option value="in_progress">{t('calls.inProgress')}</option>
+          <option value="closed">{t('calls.closed')}</option>
         </select>
       </div>
 
@@ -129,11 +130,11 @@ export default function CallsPage() {
           <thead>
             <tr>
               <th>#</th>
-              <th>Place</th>
-              <th>Status</th>
-              <th>Contact</th>
-              <th>Created by</th>
-              <th>Created</th>
+              <th>{t('calls.place')}</th>
+              <th>{t('common.status')}</th>
+              <th>{t('calls.contact')}</th>
+              <th>{t('calls.createdBy')}</th>
+              <th>{t('common.createdAt')}</th>
               <th />
             </tr>
           </thead>
@@ -141,22 +142,22 @@ export default function CallsPage() {
             {filtered.map((c) => (
               <tr key={c.id}>
                 <td className="mono">{c.id}</td>
-                <td>{c.place}{c.urgency === 'urgent' && <span className="stamp-badge danger" style={{ marginLeft: 6 }}>urgent</span>}</td>
+                <td>{c.place}{c.urgency === 'urgent' && <span className="stamp-badge danger" style={{ marginLeft: 6 }}>{t('calls.urgent')}</span>}</td>
                 <td><span className="stamp-badge neutral">{STATUS_LABEL[c.status]}</span></td>
                 <td>{c.contactName} <span className="mono" style={{ color: 'var(--ink-soft)' }}>{c.contactPhone}</span></td>
                 <td>{c.createdBy?.username ?? '—'}</td>
                 <td className="mono">{new Date(c.createdAt).toLocaleString()}</td>
                 <td>
                   <div className="row-actions">
-                    <button className="ghost" onClick={() => openDetail(c.id)} title="View / logs"><Eye size={15} /></button>
-                    <button className="ghost" onClick={() => openDetailForEdit(c.id)} title="Edit"><Pencil size={15} /></button>
-                    <button className="ghost" onClick={() => removeCall(c.id)} title="Delete" style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
+                    <button className="ghost" onClick={() => openDetail(c.id)} title={t('calls.viewLogs')}><Eye size={15} /></button>
+                    <button className="ghost" onClick={() => openDetailForEdit(c.id)} title={t('common.edit')}><Pencil size={15} /></button>
+                    <button className="ghost" onClick={() => removeCall(c.id)} title={t('common.delete')} style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                   </div>
                 </td>
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 24 }}>No calls</td></tr>
+              <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--ink-soft)', padding: 24 }}>{t('calls.empty')}</td></tr>
             )}
           </tbody>
         </table>
@@ -169,10 +170,10 @@ export default function CallsPage() {
         }} onClick={() => setDetail(null)}>
           <div className="card" style={{ width: 520, maxHeight: '85vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <h3 style={{ marginTop: 0 }}>Call #{detail.id} — {detail.place}</h3>
+              <h3 style={{ marginTop: 0 }}>{t('calls.callHash')}{detail.id} — {detail.place}</h3>
               <div style={{ display: 'flex', gap: 4 }}>
                 {!editing && (
-                  <button className="ghost" onClick={startEdit} title="Edit"><Pencil size={16} /></button>
+                  <button className="ghost" onClick={startEdit} title={t('common.edit')}><Pencil size={16} /></button>
                 )}
                 <button className="ghost" onClick={() => setDetail(null)}><X size={16} /></button>
               </div>
@@ -181,26 +182,26 @@ export default function CallsPage() {
             {editing ? (
               <form onSubmit={saveEdit} className="form-grid" style={{ marginTop: 12 }}>
                 <div>
-                  <label>Place</label>
+                  <label>{t('calls.place')}</label>
                   <input value={editForm.place} onChange={(e) => setEditForm({ ...editForm, place: e.target.value })} required />
                 </div>
                 <div>
-                  <label>Urgency</label>
+                  <label>{t('calls.urgency')}</label>
                   <select value={editForm.urgency} onChange={(e) => setEditForm({ ...editForm, urgency: e.target.value })}>
-                    <option value="not_urgent">Not urgent</option>
-                    <option value="urgent">Urgent</option>
+                    <option value="not_urgent">{t('calls.notUrgent')}</option>
+                    <option value="urgent">{t('calls.urgent')}</option>
                   </select>
                 </div>
                 <div>
-                  <label>Contact name</label>
+                  <label>{t('calls.contactName')}</label>
                   <input value={editForm.contactName} onChange={(e) => setEditForm({ ...editForm, contactName: e.target.value })} required />
                 </div>
                 <div>
-                  <label>Contact position</label>
+                  <label>{t('calls.contactPosition')}</label>
                   <input value={editForm.contactPosition} onChange={(e) => setEditForm({ ...editForm, contactPosition: e.target.value })} />
                 </div>
                 <div>
-                  <label>Contact phone</label>
+                  <label>{t('calls.contactPhone')}</label>
                   <input value={editForm.contactPhone} onChange={(e) => setEditForm({ ...editForm, contactPhone: e.target.value })} required />
                 </div>
                 <div>
@@ -211,11 +212,11 @@ export default function CallsPage() {
                       onChange={(e) => setEditForm({ ...editForm, unusualDamage: e.target.checked })}
                       style={{ marginRight: 6 }}
                     />
-                    Unusual damage
+                    {t('calls.unusualDamage')}
                   </label>
                 </div>
                 <div style={{ gridColumn: '1 / -1' }}>
-                  <label>Description</label>
+                  <label>{t('calls.description')}</label>
                   <textarea
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
@@ -224,41 +225,41 @@ export default function CallsPage() {
                   />
                 </div>
                 <div className="form-actions" style={{ gridColumn: '1 / -1' }}>
-                  <button type="button" className="ghost" onClick={() => setEditing(false)}>Cancel</button>
-                  <button type="submit"><Save size={15} /> Save changes</button>
+                  <button type="button" className="ghost" onClick={() => setEditing(false)}>{t('common.cancel')}</button>
+                  <button type="submit"><Save size={15} /> {t('calls.saveChanges')}</button>
                 </div>
               </form>
             ) : (
               <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>{detail.description}</p>
             )}
 
-            <h4>Status log</h4>
+            <h4>{t('calls.statusLog')}</h4>
             <p style={{ fontSize: 13 }}>
-              Currently <strong>{STATUS_LABEL[detail.status]}</strong>
-              {detail.statusChangedBy && <> — last changed by {detail.statusChangedBy.username}{detail.statusChangedAt ? ` at ${new Date(detail.statusChangedAt).toLocaleString()}` : ''}</>}
+              {t('calls.currently')} <strong>{STATUS_LABEL[detail.status]}</strong>
+              {detail.statusChangedBy && <> — <Trans i18nKey="calls.lastChangedBy" values={{ user: detail.statusChangedBy.username }} />{detail.statusChangedAt ? ` ${t('calls.at')} ${new Date(detail.statusChangedAt).toLocaleString()}` : ''}</>}
             </p>
 
-            <h4>Working sessions (timers)</h4>
+            <h4>{t('calls.workingSessions')}</h4>
             {detail.workingSessions.length === 0 ? (
-              <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>No one has pressed "In progress" yet.</p>
+              <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{t('calls.noSessions')}</p>
             ) : (
               <ul style={{ fontSize: 13, paddingLeft: 18 }}>
                 {detail.workingSessions.map((s) => (
                   <li key={s.id}>
-                    {s.userName}: {new Date(s.startedAt).toLocaleTimeString()} {s.endedAt ? `→ ${new Date(s.endedAt).toLocaleTimeString()}` : '(still running)'}
+                    {s.userName}: {new Date(s.startedAt).toLocaleTimeString()} {s.endedAt ? `→ ${new Date(s.endedAt).toLocaleTimeString()}` : `(${t('calls.stillRunning')})`}
                   </li>
                 ))}
               </ul>
             )}
 
-            <h4>Notes ({detail.notes.length})</h4>
+            <h4>{t('calls.notes')} ({detail.notes.length})</h4>
             <ul style={{ fontSize: 13, paddingLeft: 18 }}>
               {detail.notes.map((n) => (
-                <li key={n.id}>{n.text || '(photo)'} — {n.author?.username} · {new Date(n.createdAt).toLocaleString()}</li>
+                <li key={n.id}>{n.text || `(${t('calls.photo')})`} — {n.author?.username} · {new Date(n.createdAt).toLocaleString()}</li>
               ))}
             </ul>
 
-            <h4>Attachments ({detail.attachments.length})</h4>
+            <h4>{t('calls.attachments')} ({detail.attachments.length})</h4>
             <ul style={{ fontSize: 13, paddingLeft: 18 }}>
               {detail.attachments.map((a) => (
                 <li key={a.id}>{a.originalName} — {a.uploadedBy?.username} · {new Date(a.createdAt).toLocaleString()}</li>
@@ -267,7 +268,7 @@ export default function CallsPage() {
 
             <div className="form-actions" style={{ marginTop: 16 }}>
               <button onClick={() => removeCall(detail.id)} style={{ background: 'var(--danger)' }}>
-                <Trash2 size={15} /> Delete this call
+                <Trash2 size={15} /> {t('calls.deleteThisCall')}
               </button>
             </div>
           </div>
