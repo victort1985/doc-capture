@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Trash2, FileText, RefreshCw } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 
@@ -14,6 +15,7 @@ interface OrderListItem {
 }
 
 export default function OrdersListPage() {
+  const { t } = useTranslation();
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +44,7 @@ export default function OrdersListPage() {
   }
 
   async function removeOrder(id: number, name: string) {
-    if (!confirm(`Delete order "${name}"? This also removes the stored PDF. This cannot be undone.`)) return;
+    if (!confirm(t('orders.deleteConfirm', { name }))) return;
     setDeletingId(id);
     try {
       await apiFetch(`/orders/${id}`, { method: 'DELETE' });
@@ -58,11 +60,11 @@ export default function OrdersListPage() {
     <div className="page">
       <div className="topbar">
         <div>
-          <div className="eyebrow">ORDERS</div>
-          <h1>All orders</h1>
+          <div className="eyebrow">{t('orders.eyebrow')}</div>
+          <h1>{t('orders.title')}</h1>
         </div>
         <button type="button" onClick={load} disabled={loading}>
-          <RefreshCw size={15} /> {loading ? 'Loading…' : 'Refresh'}
+          <RefreshCw size={15} /> {loading ? t('common.loading') : t('common.refresh')}
         </button>
       </div>
 
@@ -72,11 +74,11 @@ export default function OrdersListPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
-              <th style={{ padding: '8px 12px' }}>Date</th>
-              <th style={{ padding: '8px 12px' }}>Organization</th>
-              <th style={{ padding: '8px 12px' }}>PO</th>
-              <th style={{ padding: '8px 12px' }}>Invoice</th>
-              <th style={{ padding: '8px 12px' }}>Status</th>
+              <th style={{ padding: '8px 12px' }}>{t('orders.date')}</th>
+              <th style={{ padding: '8px 12px' }}>{t('orders.organization')}</th>
+              <th style={{ padding: '8px 12px' }}>{t('orders.po')}</th>
+              <th style={{ padding: '8px 12px' }}>{t('orders.invoice')}</th>
+              <th style={{ padding: '8px 12px' }}>{t('common.status')}</th>
               <th style={{ padding: '8px 12px' }}></th>
             </tr>
           </thead>
@@ -89,20 +91,20 @@ export default function OrdersListPage() {
                 <td style={{ padding: '8px 12px' }}>{o.invoiceNumber || '—'}</td>
                 <td style={{ padding: '8px 12px' }}>
                   {o.completed ? (
-                    <span style={{ color: 'var(--success, green)' }}>Completed</span>
+                    <span style={{ color: 'var(--success, green)' }}>{t('orders.completed')}</span>
                   ) : (
-                    <span style={{ color: 'var(--ink-soft)' }}>Pending</span>
+                    <span style={{ color: 'var(--ink-soft)' }}>{t('orders.pending')}</span>
                   )}
                 </td>
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
-                  <button type="button" onClick={() => viewPdf(o.id)} title="View PDF" style={{ marginRight: 8 }}>
+                  <button type="button" onClick={() => viewPdf(o.id)} title={t('orders.viewPdf')} style={{ marginRight: 8 }}>
                     <FileText size={15} />
                   </button>
                   <button
                     type="button"
                     onClick={() => removeOrder(o.id, o.generatedName)}
                     disabled={deletingId === o.id}
-                    title="Delete"
+                    title={t('common.delete')}
                     style={{ color: 'var(--danger)' }}
                   >
                     <Trash2 size={15} />
@@ -113,7 +115,7 @@ export default function OrdersListPage() {
             {orders.length === 0 && !loading && (
               <tr>
                 <td colSpan={6} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>
-                  No orders yet.
+                  {t('orders.empty')}
                 </td>
               </tr>
             )}
