@@ -339,5 +339,16 @@
     "office.delivery_notes": "Delivery notes",
     "office.quotes": "Quotes",
     "office.invoices": "Invoices"
+  },
+  "groups": {
+    "eyebrow": "Access control",
+    "newGroup": "New group",
+    "groupName": "Group name",
+    "groupNamePlaceholder": "e.g. Warehouse staff",
+    "create": "Create",
+    "deleteConfirm": "Delete this group? Users in it keep their accounts but lose the group's permissions (falling back to their role default).",
+    "deleteGroup": "Delete group",
+    "empty": "No groups yet.",
+    "explanation": "Members of this group get these permissions unless a specific user has their own override set on the Permissions page — a user override always wins over their group."
   }
 }

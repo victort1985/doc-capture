@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Save, Trash2, X } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
@@ -8,38 +9,38 @@ interface Group {
   permissions: Record<string, boolean>;
 }
 
-// Keep in sync with FEATURES in PermissionsPage.tsx and FEATURE_KEYS in
-// server/src/modules/users/permissions.constants.ts — the server is the
-// source of truth for what actually gets enforced; this list is for
-// display/editing only.
-const FEATURES: { key: string; label: string; group: string }[] = [
-  { key: 'calls.create', label: 'Create calls', group: 'Calls' },
-  { key: 'calls.edit', label: 'Edit calls', group: 'Calls' },
-  { key: 'calls.delete', label: 'Delete calls', group: 'Calls' },
-  { key: 'calls.close', label: 'Close calls', group: 'Calls' },
-  { key: 'calls.stats', label: 'View statistics', group: 'Calls' },
-  { key: 'calendar.view', label: 'View calendar', group: 'Calendar' },
-  { key: 'calendar.edit', label: 'Edit calendar events', group: 'Calendar' },
-  { key: 'calendar.all_orgs', label: 'View all organizations calendars', group: 'Calendar' },
-  { key: 'fleet.view', label: 'View fleet', group: 'Fleet' },
-  { key: 'fleet.refuel', label: 'Register refuels', group: 'Fleet' },
-  { key: 'fleet.manage', label: 'Add/edit vehicles', group: 'Fleet' },
-  { key: 'fleet.documents', label: 'Upload vehicle documents', group: 'Fleet' },
-  { key: 'warehouse.view', label: 'View warehouse', group: 'Warehouse' },
-  { key: 'warehouse.transactions', label: 'Register in/out transactions', group: 'Warehouse' },
-  { key: 'warehouse.manage', label: 'Add/edit items and categories', group: 'Warehouse' },
-  { key: 'reports.work', label: 'View work reports', group: 'Reports' },
-  { key: 'reports.fuel', label: 'View fuel reports', group: 'Reports' },
-  { key: 'phonebook.edit', label: 'Edit phone book', group: 'Phone book' },
-  { key: 'orgs.switch', label: 'Switch between organizations', group: 'Organizations' },
-  { key: 'office.delivery_notes', label: 'Delivery notes', group: 'Office (mobile)' },
-  { key: 'office.quotes', label: 'Quotes', group: 'Office (mobile)' },
-  { key: 'office.invoices', label: 'Invoices', group: 'Office (mobile)' },
+// Keep in sync with PermissionsPage.tsx and FEATURE_KEYS in
+// server/src/modules/users/permissions.constants.ts — labels/groups
+// come from i18n (perm.<key> / permGroup.<key>).
+const FEATURE_KEYS: { key: string; group: string }[] = [
+  { key: 'calls.create', group: 'calls' },
+  { key: 'calls.edit', group: 'calls' },
+  { key: 'calls.delete', group: 'calls' },
+  { key: 'calls.close', group: 'calls' },
+  { key: 'calls.stats', group: 'calls' },
+  { key: 'calendar.view', group: 'calendar' },
+  { key: 'calendar.edit', group: 'calendar' },
+  { key: 'calendar.all_orgs', group: 'calendar' },
+  { key: 'fleet.view', group: 'fleet' },
+  { key: 'fleet.refuel', group: 'fleet' },
+  { key: 'fleet.manage', group: 'fleet' },
+  { key: 'fleet.documents', group: 'fleet' },
+  { key: 'warehouse.view', group: 'warehouse' },
+  { key: 'warehouse.transactions', group: 'warehouse' },
+  { key: 'warehouse.manage', group: 'warehouse' },
+  { key: 'reports.work', group: 'reports' },
+  { key: 'reports.fuel', group: 'reports' },
+  { key: 'phonebook.edit', group: 'phonebook' },
+  { key: 'orgs.switch', group: 'organizations' },
+  { key: 'office.delivery_notes', group: 'office' },
+  { key: 'office.quotes', group: 'office' },
+  { key: 'office.invoices', group: 'office' },
 ];
 
-const categories = Array.from(new Set(FEATURES.map((f) => f.group)));
+const GROUP_ORDER = Array.from(new Set(FEATURE_KEYS.map((f) => f.group)));
 
 export default function GroupsPage() {
+  const { t } = useTranslation();
   const [groups, setGroups] = useState<Group[]>([]);
   const [selId, setSelId] = useState<number | null>(null);
   const [perms, setPerms] = useState<Record<string, boolean>>({});
@@ -84,7 +85,7 @@ export default function GroupsPage() {
   }
 
   async function removeGroup(id: number) {
-    if (!confirm('Delete this group? Users in it keep their accounts but lose the group\'s permissions (falling back to their role default).')) return;
+    if (!confirm(t('groups.deleteConfirm'))) return;
     await apiFetch(`/groups/${id}`, { method: 'DELETE' });
     if (selId === id) setSelId(null);
     load();
@@ -111,11 +112,11 @@ export default function GroupsPage() {
     <div>
       <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className="eyebrow">Access control</span>
-          <h1 className="page-title">Groups</h1>
+          <span className="eyebrow">{t('groups.eyebrow')}</span>
+          <h1 className="page-title">{t('nav.groups')}</h1>
         </div>
         <button onClick={() => setShowNew((v) => !v)}>
-          {showNew ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New group</>}
+          {showNew ? <><X size={16} /> {t('common.cancel')}</> : <><Plus size={16} /> {t('groups.newGroup')}</>}
         </button>
       </div>
 
@@ -125,10 +126,10 @@ export default function GroupsPage() {
         <form className="card form-card" onSubmit={createGroup} style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
             <div style={{ flex: 1 }}>
-              <label>Group name</label>
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Warehouse staff" required />
+              <label>{t('groups.groupName')}</label>
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t('groups.groupNamePlaceholder')} required />
             </div>
-            <button type="submit"><Plus size={15} /> Create</button>
+            <button type="submit"><Plus size={15} /> {t('groups.create')}</button>
           </div>
         </form>
       )}
@@ -136,9 +137,9 @@ export default function GroupsPage() {
       <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
         <div className="card" style={{ width: 220, flexShrink: 0 }}>
           <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>
-            Groups
+            {t('nav.groups')}
           </div>
-          {groups.length === 0 && <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>No groups yet.</div>}
+          {groups.length === 0 && <div style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{t('groups.empty')}</div>}
           {groups.map((g) => (
             <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <div
@@ -151,7 +152,7 @@ export default function GroupsPage() {
               >
                 {g.name}
               </div>
-              <button className="ghost" onClick={() => removeGroup(g.id)} title="Delete group"><Trash2 size={14} /></button>
+              <button className="ghost" onClick={() => removeGroup(g.id)} title={t('groups.deleteGroup')}><Trash2 size={14} /></button>
             </div>
           ))}
         </div>
@@ -160,23 +161,22 @@ export default function GroupsPage() {
           <div style={{ flex: 1 }}>
             <div className="card" style={{ marginBottom: 12, display: 'flex', gap: 10, alignItems: 'flex-end' }}>
               <div style={{ flex: 1 }}>
-                <label>Group name</label>
+                <label>{t('groups.groupName')}</label>
                 <input value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <button onClick={save} disabled={saving}>
-                <Save size={15} /> {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save'}
+                <Save size={15} /> {saving ? t('common.saving') : saved ? `${t('common.saved')} ✓` : t('common.save')}
               </button>
             </div>
 
             <div className="card" style={{ marginBottom: 12, padding: '10px 16px', background: 'var(--surface-muted)', fontSize: 13 }}>
-              Members of this group get these permissions unless a specific user has their own override set
-              on the Permissions page — a user override always wins over their group.
+              {t('groups.explanation')}
             </div>
 
-            {categories.map((cat) => (
+            {GROUP_ORDER.map((cat) => (
               <div key={cat} className="card" style={{ marginBottom: 12 }}>
-                <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 13 }}>{cat}</div>
-                {FEATURES.filter((f) => f.group === cat).map((f) => (
+                <div style={{ fontWeight: 700, marginBottom: 10, fontSize: 13 }}>{t(`permGroup.${cat}`)}</div>
+                {FEATURE_KEYS.filter((f) => f.group === cat).map((f) => (
                   <label key={f.key} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
@@ -184,7 +184,7 @@ export default function GroupsPage() {
                       onChange={() => setPerms((p) => ({ ...p, [f.key]: !p[f.key] }))}
                       style={{ width: 16, height: 16 }}
                     />
-                    <span style={{ fontSize: 13 }}>{f.label}</span>
+                    <span style={{ fontSize: 13 }}>{t(`perm.${f.key}`)}</span>
                   </label>
                 ))}
               </div>
