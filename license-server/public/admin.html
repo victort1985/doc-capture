@@ -104,6 +104,28 @@
   </div>
 </div>
 
+<div id="connectionModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:200;">
+  <div class="card" style="width:380px;">
+    <h3 style="margin-top:0">Connection settings</h3>
+    <label>Public URL (e.g. company-a.doc-capture.app)</label>
+    <input id="connPublicUrl" placeholder="company-a.doc-capture.app">
+    <label style="display:flex;align-items:center;gap:8px;margin-top:12px;font-weight:600;">
+      <input type="checkbox" id="connUseAccess" onchange="toggleAccessFields()" style="width:auto;margin:0;">
+      This organization is behind Cloudflare Access
+    </label>
+    <div id="connAccessFields" style="display:none;margin-top:10px;">
+      <label>Client ID</label>
+      <input id="connClientId" placeholder="Cloudflare Access Service Token Client ID">
+      <label>Client Secret</label>
+      <input id="connClientSecret" type="password" placeholder="Client secret">
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="ghost" onclick="closeConnectionModal()" style="flex:1;">Cancel</button>
+      <button onclick="saveConnectionInfo()" style="flex:1;">Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let token = localStorage.getItem('vixor-license-admin-token');
 
@@ -182,30 +204,49 @@ async function deployAll() {
   }
 }
 
-async function editConnectionInfo(id) {
+let connectionModalLicenseId = null;
+
+function editConnectionInfo(id) {
   const l = lastLicenses.find(x => x.id === id);
   if (!l) return;
-  const publicUrl = prompt('Public URL this org\'s apps connect to (e.g. company-a.doc-capture.app):', l.public_url || '');
-  if (publicUrl === null) return; // cancelled
-  let cfAccessClientId = l.cf_access_client_id || '';
-  let cfAccessClientSecret = '';
-  if (confirm('Is this org behind Cloudflare Access (needs a Service Token)?')) {
-    cfAccessClientId = prompt('Cloudflare Access Client ID:', l.cf_access_client_id || '') || '';
-    cfAccessClientSecret = prompt('Cloudflare Access Client Secret (leave blank to keep existing):', '') || '';
-  } else {
-    cfAccessClientId = '';
-    cfAccessClientSecret = '';
-  }
+  connectionModalLicenseId = id;
+  document.getElementById('connPublicUrl').value = l.public_url || '';
+  document.getElementById('connUseAccess').checked = !!l.cf_access_client_id;
+  document.getElementById('connClientId').value = l.cf_access_client_id || '';
+  document.getElementById('connClientSecret').value = '';
+  document.getElementById('connClientSecret').placeholder = l.cf_access_client_id ? 'Leave blank to keep existing secret' : 'Client secret';
+  toggleAccessFields();
+  document.getElementById('connectionModal').classList.remove('hidden');
+}
+
+function toggleAccessFields() {
+  const on = document.getElementById('connUseAccess').checked;
+  document.getElementById('connAccessFields').style.display = on ? 'block' : 'none';
+}
+
+function closeConnectionModal() {
+  document.getElementById('connectionModal').classList.add('hidden');
+  connectionModalLicenseId = null;
+}
+
+async function saveConnectionInfo() {
+  const publicUrl = document.getElementById('connPublicUrl').value.trim();
+  if (!publicUrl) { alert('Public URL is required.'); return; }
+  const useAccess = document.getElementById('connUseAccess').checked;
+  const clientId = useAccess ? document.getElementById('connClientId').value.trim() : '';
+  const clientSecret = useAccess ? document.getElementById('connClientSecret').value.trim() : '';
   try {
-    await api(`/admin/licenses/${id}/connection-info`, {
+    await api(`/admin/licenses/${connectionModalLicenseId}/connection-info`, {
       method: 'POST',
       body: JSON.stringify({
-        publicUrl: publicUrl.trim(),
-        cfAccessClientId: cfAccessClientId.trim() || null,
-        // Only overwrite the stored secret if a new one was actually entered.
-        cfAccessClientSecret: cfAccessClientSecret.trim() || (cfAccessClientId.trim() ? undefined : null),
+        publicUrl,
+        cfAccessClientId: clientId || null,
+        // Only overwrite the stored secret if a new one was actually typed —
+        // leaving it blank while Access stays enabled keeps the existing one.
+        cfAccessClientSecret: clientSecret || (useAccess && clientId ? undefined : null),
       }),
     });
+    closeConnectionModal();
     loadLicenses();
   } catch (e) { alert(e.message); }
 }
