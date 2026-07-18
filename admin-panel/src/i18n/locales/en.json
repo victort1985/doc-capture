@@ -259,5 +259,30 @@
     "active": "active",
     "inactive": "inactive",
     "empty": "No vehicles registered"
+  },
+  "maintenance": {
+    "eyebrow": "SCHEDULED SERVICE",
+    "title": "Maintenance contracts",
+    "deleteConfirm": "Delete this maintenance contract? Future scheduled calls will no longer be created.",
+    "newContract": "New contract",
+    "explanation": "A contract auto-creates a real service call for its location on the schedule below — same notifications as a normal call. Runs once daily at 06:00.",
+    "contractTitle": "Title",
+    "titlePlaceholder": "e.g. Monthly gym equipment check",
+    "location": "Location",
+    "select": "Select…",
+    "frequency": "Frequency",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "quarterly": "Quarterly",
+    "yearly": "Yearly",
+    "firstRunDate": "First run date",
+    "description": "Description (used on the auto-created call)",
+    "create": "Create",
+    "nextRun": "Next run",
+    "active": "Active",
+    "paused": "Paused",
+    "pause": "Pause",
+    "resume": "Resume",
+    "empty": "No maintenance contracts yet."
   }
 }
