@@ -436,5 +436,26 @@
     "photo": "תמונה",
     "attachments": "קבצים מצורפים",
     "deleteThisCall": "מחיקת קריאה זו"
+  },
+  "storage": {
+    "eyebrow": "יעדים",
+    "title": "חיבורי אחסון",
+    "newConnection": "חיבור חדש",
+    "deleteConfirm": "למחוק חיבור אחסון זה?",
+    "type": "סוג",
+    "local": "מערכת קבצים מקומית",
+    "synology": "Synology NAS (WebDAV)",
+    "host": "מארח",
+    "port": "פורט",
+    "username": "שם משתמש",
+    "password": "סיסמה",
+    "keepCurrentPlaceholder": "השאירו ריק כדי לשמור על הקיים",
+    "synologyHttps": "HTTPS (פורטי ברירת מחדל של DSM WebDAV: 5005 HTTP / 5006 HTTPS)",
+    "ftps": "FTPS (FTP מוצפן — דורש שרת התומך ב-FTPS)",
+    "basePath": "נתיב בסיס",
+    "createConnection": "יצירת חיבור",
+    "emptyTitle": "אין עדיין חיבורי אחסון",
+    "emptyBody": "הוסיפו תיקייה מקומית, שרת FTP או Synology NAS לשליחת קבצים שנקלטו.",
+    "testConnection": "בדיקת חיבור"
   }
 }

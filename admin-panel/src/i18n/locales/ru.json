@@ -436,5 +436,26 @@
     "photo": "фото",
     "attachments": "Вложения",
     "deleteThisCall": "Удалить эту заявку"
+  },
+  "storage": {
+    "eyebrow": "Назначения",
+    "title": "Подключения хранилищ",
+    "newConnection": "Новое подключение",
+    "deleteConfirm": "Удалить это подключение хранилища?",
+    "type": "Тип",
+    "local": "Локальная файловая система",
+    "synology": "Synology NAS (WebDAV)",
+    "host": "Хост",
+    "port": "Порт",
+    "username": "Имя пользователя",
+    "password": "Пароль",
+    "keepCurrentPlaceholder": "Оставьте пустым, чтобы сохранить текущий",
+    "synologyHttps": "HTTPS (порты DSM WebDAV по умолчанию: 5005 HTTP / 5006 HTTPS)",
+    "ftps": "FTPS (шифрованный FTP — нужен сервер с поддержкой FTPS)",
+    "basePath": "Базовый путь",
+    "createConnection": "Создать подключение",
+    "emptyTitle": "Подключений хранилищ пока нет",
+    "emptyBody": "Добавьте локальную папку, FTP-сервер или Synology NAS для отправки захваченных файлов.",
+    "testConnection": "Проверить подключение"
   }
 }

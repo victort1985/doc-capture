@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, X, Trash2, Pencil, HardDrive, Save, Wifi, Loader2, Check, AlertTriangle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../services/api';
 
 interface Connection {
@@ -15,6 +16,7 @@ interface Connection {
 const EMPTY_FORM = { name: '', type: 'local', host: '', port: '', username: '', password: '', basePath: '', secure: false };
 
 export default function StoragePage() {
+  const { t } = useTranslation();
   const [connections, setConnections] = useState<Connection[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -92,7 +94,7 @@ export default function StoragePage() {
   }
 
   async function removeConnection(id: number) {
-    if (!confirm('Delete this storage connection?')) return;
+    if (!confirm(t('storage.deleteConfirm'))) return;
     await apiFetch(`/storage/connections/${id}`, { method: 'DELETE' });
     setConnections((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
@@ -118,11 +120,11 @@ export default function StoragePage() {
     <div>
       <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className="eyebrow">Destinations</span>
-          <h1 className="page-title">Storage connections</h1>
+          <span className="eyebrow">{t('storage.eyebrow')}</span>
+          <h1 className="page-title">{t('storage.title')}</h1>
         </div>
         <button onClick={() => (showForm ? closeForm() : openCreateForm())}>
-          {showForm ? <><X size={16} /> Cancel</> : <><Plus size={16} /> New connection</>}
+          {showForm ? <><X size={16} /> {t('common.cancel')}</> : <><Plus size={16} /> {t('storage.newConnection')}</>}
         </button>
       </div>
 
@@ -132,47 +134,47 @@ export default function StoragePage() {
         <form className="card form-card" onSubmit={submitForm}>
           <div className="form-grid">
             <div>
-              <label>Name</label>
+              <label>{t('common.name')}</label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
             </div>
             <div>
-              <label>Type</label>
+              <label>{t('storage.type')}</label>
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
                 disabled={editingId != null}
               >
-                <option value="local">Local filesystem</option>
+                <option value="local">{t('storage.local')}</option>
                 <option value="ftp">FTP</option>
                 <option value="sftp">SFTP</option>
-                <option value="synology">Synology NAS (WebDAV)</option>
+                <option value="synology">{t('storage.synology')}</option>
               </select>
             </div>
             {needsNetwork && (
               <>
                 <div>
-                  <label>Host</label>
+                  <label>{t('storage.host')}</label>
                   <input value={form.host} onChange={(e) => setForm({ ...form, host: e.target.value })} />
                 </div>
                 <div>
-                  <label>Port</label>
+                  <label>{t('storage.port')}</label>
                   <input value={form.port} onChange={(e) => setForm({ ...form, port: e.target.value })} />
                 </div>
                 <div>
-                  <label>Username</label>
+                  <label>{t('storage.username')}</label>
                   <input
                     value={form.username}
                     onChange={(e) => setForm({ ...form, username: e.target.value })}
-                    placeholder={editingId != null ? 'Leave blank to keep current' : ''}
+                    placeholder={editingId != null ? t('storage.keepCurrentPlaceholder') : ''}
                   />
                 </div>
                 <div>
-                  <label>Password</label>
+                  <label>{t('storage.password')}</label>
                   <input
                     type="password"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
-                    placeholder={editingId != null ? 'Leave blank to keep current' : ''}
+                    placeholder={editingId != null ? t('storage.keepCurrentPlaceholder') : ''}
                   />
                 </div>
               </>
@@ -187,13 +189,13 @@ export default function StoragePage() {
                     style={{ width: 'auto' }}
                   />
                   {form.type === 'synology'
-                    ? 'HTTPS (DSM WebDAV default ports: 5005 HTTP / 5006 HTTPS)'
-                    : 'FTPS (encrypted FTP — needs an FTPS-capable server)'}
+                    ? t('storage.synologyHttps')
+                    : t('storage.ftps')}
                 </label>
               </div>
             )}
             <div>
-              <label>Base path</label>
+              <label>{t('storage.basePath')}</label>
               <input
                 className="mono"
                 value={form.basePath}
@@ -205,7 +207,7 @@ export default function StoragePage() {
           </div>
           <div className="form-actions">
             <button type="submit">
-              {editingId != null ? <><Save size={16} /> Save changes</> : <><Plus size={16} /> Create connection</>}
+              {editingId != null ? <><Save size={16} /> {t('common.save')}</> : <><Plus size={16} /> {t('storage.createConnection')}</>}
             </button>
           </div>
         </form>
@@ -215,17 +217,17 @@ export default function StoragePage() {
         {connections.length === 0 ? (
           <div className="empty-state">
             <HardDrive size={32} strokeWidth={1.5} />
-            <strong>No storage connections yet</strong>
-            <span>Add a local folder, FTP server, or Synology NAS to send captured files to.</span>
+            <strong>{t('storage.emptyTitle')}</strong>
+            <span>{t('storage.emptyBody')}</span>
           </div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Host</th>
-                <th className="mono">Base path</th>
+                <th>{t('common.name')}</th>
+                <th>{t('storage.type')}</th>
+                <th>{t('storage.host')}</th>
+                <th className="mono">{t('storage.basePath')}</th>
                 <th />
               </tr>
             </thead>
@@ -261,7 +263,7 @@ export default function StoragePage() {
                           className="ghost"
                           onClick={() => testConnection(c.id)}
                           disabled={result === 'pending'}
-                          title="Test connection"
+                          title={t('storage.testConnection')}
                         >
                           {result === 'pending' ? (
                             <Loader2 size={15} className="spin" />
@@ -269,10 +271,10 @@ export default function StoragePage() {
                             <Wifi size={15} />
                           )}
                         </button>
-                        <button className="ghost" onClick={() => openEditForm(c)} title="Edit">
+                        <button className="ghost" onClick={() => openEditForm(c)} title={t('common.edit')}>
                           <Pencil size={15} />
                         </button>
-                        <button className="ghost" onClick={() => removeConnection(c.id)} title="Delete" style={{ color: 'var(--danger)' }}>
+                        <button className="ghost" onClick={() => removeConnection(c.id)} title={t('common.delete')} style={{ color: 'var(--danger)' }}>
                           <Trash2 size={15} />
                         </button>
                       </div>

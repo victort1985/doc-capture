@@ -436,5 +436,26 @@
     "photo": "photo",
     "attachments": "Attachments",
     "deleteThisCall": "Delete this call"
+  },
+  "storage": {
+    "eyebrow": "Destinations",
+    "title": "Storage connections",
+    "newConnection": "New connection",
+    "deleteConfirm": "Delete this storage connection?",
+    "type": "Type",
+    "local": "Local filesystem",
+    "synology": "Synology NAS (WebDAV)",
+    "host": "Host",
+    "port": "Port",
+    "username": "Username",
+    "password": "Password",
+    "keepCurrentPlaceholder": "Leave blank to keep current",
+    "synologyHttps": "HTTPS (DSM WebDAV default ports: 5005 HTTP / 5006 HTTPS)",
+    "ftps": "FTPS (encrypted FTP — needs an FTPS-capable server)",
+    "basePath": "Base path",
+    "createConnection": "Create connection",
+    "emptyTitle": "No storage connections yet",
+    "emptyBody": "Add a local folder, FTP server, or Synology NAS to send captured files to.",
+    "testConnection": "Test connection"
   }
 }
