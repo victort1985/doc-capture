@@ -33,11 +33,16 @@ async function provisionTenant({ slug, customerName, port, maxDevices, licenseKe
   if (!dbPassword) throw new Error('dbPassword is required (the Postgres password for the doccapture role).');
 
   const scriptPath = path.join(REPO_DIR, 'server', 'scripts', 'provision-tenant.sh');
-  return run('sudo', ['-n', 'bash', scriptPath, slug, customerName, String(port), String(maxDevices || 5)], {
-    PREGENERATED_LICENSE_KEY: licenseKey,
-    DOCCAPTURE_DB_PASSWORD: dbPassword,
-    PUBLIC_LICENSE_SERVER_URL: process.env.PUBLIC_LICENSE_SERVER_URL || `http://localhost:${process.env.PORT || 4100}`,
-  });
+  const licenseServerUrl = process.env.PUBLIC_LICENSE_SERVER_URL || `http://localhost:${process.env.PORT || 4100}`;
+  // sudo strips environment variables by default (SETENV isn't
+  // granted in the sudoers rule this depends on) — pass sensitive/
+  // config values as script arguments instead, which sudo always
+  // forwards regardless of env-stripping.
+  return run('sudo', [
+    '-n', 'bash', scriptPath,
+    slug, customerName, String(port), String(maxDevices || 5),
+    dbPassword, licenseKey, licenseServerUrl,
+  ]);
 }
 
 /** Runs deploy-all-tenants.sh — build once, restart every tenant instance. */

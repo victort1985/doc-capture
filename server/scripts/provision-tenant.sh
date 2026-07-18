@@ -14,10 +14,17 @@
 
 set -euo pipefail
 
-SLUG="${1:?Usage: provision-tenant.sh <slug> \"<Customer Name>\" <port> [maxDevices]}"
+SLUG="${1:?Usage: provision-tenant.sh <slug> \"<Customer Name>\" <port> [maxDevices] [dbPassword] [licenseKey]}"
 CUSTOMER_NAME="${2:?Customer name required}"
 PORT="${3:?Port required}"
 MAX_DEVICES="${4:-5}"
+# sudo strips environment variables by default (even ones explicitly
+# set on the child process from Node's execFile) unless sudoers grants
+# SETENV — rather than depend on that, the license-admin web UI passes
+# these as positional args 5/6. Env vars still work for manual CLI use.
+ARG_DB_PASSWORD="${5:-}"
+ARG_LICENSE_KEY="${6:-}"
+ARG_LICENSE_SERVER_URL="${7:-}"
 
 if [[ ! "$SLUG" =~ ^[a-z0-9-]+$ ]]; then
   echo "ERROR: slug must be lowercase letters, digits, and dashes only (used in DB name, systemd instance name, tenants/ folder)." >&2
@@ -28,7 +35,7 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"   # server/
 REPO_ROOT="$(cd "$SOURCE_DIR/.." && pwd)"
 TENANT_DIR="/opt/doc-capture/tenants/$SLUG"
 DB_NAME="vixor_${SLUG//-/_}"
-LICENSE_SERVER_URL="${LICENSE_SERVER_URL:-http://localhost:4100}"
+LICENSE_SERVER_URL="${ARG_LICENSE_SERVER_URL:-${LICENSE_SERVER_URL:-http://localhost:4100}}"
 
 if [[ $EUID -ne 0 ]]; then
   echo "Run with sudo — creates a system-level DB, systemd unit, and files under /opt." >&2
@@ -52,7 +59,9 @@ sudo -u postgres psql -d "$DB_NAME" -c "GRANT ALL PRIVILEGES ON SCHEMA public TO
 # from you. Set DOCCAPTURE_DB_PASSWORD when calling this script
 # non-interactively (e.g. from the license-admin web UI); only prompts
 # if running in a real terminal with nothing set.
-if [[ -n "${DOCCAPTURE_DB_PASSWORD:-}" ]]; then
+if [[ -n "$ARG_DB_PASSWORD" ]]; then
+  DB_PASSWORD="$ARG_DB_PASSWORD"
+elif [[ -n "${DOCCAPTURE_DB_PASSWORD:-}" ]]; then
   DB_PASSWORD="$DOCCAPTURE_DB_PASSWORD"
 elif [[ -t 0 ]]; then
   read -rsp "Postgres password for role 'doccapture' (same one every other tenant uses): " DB_PASSWORD
@@ -74,7 +83,10 @@ sed \
 chown -R doccapture:doccapture "$TENANT_DIR"
 
 # ── 3. License ────────────────────────────────────────────────────────
-if [[ -n "${PREGENERATED_LICENSE_KEY:-}" ]]; then
+if [[ -n "$ARG_LICENSE_KEY" ]]; then
+  LICENSE_KEY="$ARG_LICENSE_KEY"
+  echo "==> Using pre-generated license key"
+elif [[ -n "${PREGENERATED_LICENSE_KEY:-}" ]]; then
   LICENSE_KEY="$PREGENERATED_LICENSE_KEY"
   echo "==> Using pre-generated license key"
 elif [[ -n "${LICENSE_ADMIN_USER:-}" && -n "${LICENSE_ADMIN_PASS:-}" ]]; then
