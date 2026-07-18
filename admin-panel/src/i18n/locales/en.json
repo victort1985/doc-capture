@@ -361,5 +361,28 @@
     "logo": "Logo",
     "uploadLogo": "Upload logo",
     "empty": "No organizations yet"
+  },
+  "stats": {
+    "eyebrow": "Analytics",
+    "title": "Call Statistics",
+    "today": "Today",
+    "thisWeek": "This week",
+    "thisMonth": "This month",
+    "thisYear": "This year",
+    "allTime": "All time",
+    "totalCalls": "Total calls",
+    "open": "Open",
+    "inProgress": "In progress",
+    "closed": "Closed",
+    "avgResolution": "Average resolution time",
+    "avgResolutionHint": "From call creation to closed status",
+    "period": "Period",
+    "from": "From",
+    "to": "To",
+    "callsPerDay": "Calls per day",
+    "byTechnician": "By technician",
+    "username": "Username",
+    "callsWorked": "Calls worked",
+    "totalTime": "Total time in calls"
   }
 }

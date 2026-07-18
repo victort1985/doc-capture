@@ -361,5 +361,28 @@
     "logo": "לוגו",
     "uploadLogo": "העלאת לוגו",
     "empty": "אין עדיין ארגונים"
+  },
+  "stats": {
+    "eyebrow": "אנליטיקה",
+    "title": "סטטיסטיקת קריאות",
+    "today": "היום",
+    "thisWeek": "השבוע",
+    "thisMonth": "החודש",
+    "thisYear": "השנה",
+    "allTime": "כל הזמן",
+    "totalCalls": "סה\"כ קריאות",
+    "open": "פתוחות",
+    "inProgress": "בטיפול",
+    "closed": "סגורות",
+    "avgResolution": "זמן פתרון ממוצע",
+    "avgResolutionHint": "מיצירת הקריאה ועד סגירתה",
+    "period": "תקופה",
+    "from": "מ-",
+    "to": "עד",
+    "callsPerDay": "קריאות ליום",
+    "byTechnician": "לפי טכנאי",
+    "username": "שם משתמש",
+    "callsWorked": "קריאות שטופלו",
+    "totalTime": "זמן כולל בקריאות"
   }
 }

@@ -361,5 +361,28 @@
     "logo": "Логотип",
     "uploadLogo": "Загрузить логотип",
     "empty": "Организаций пока нет"
+  },
+  "stats": {
+    "eyebrow": "Аналитика",
+    "title": "Статистика заявок",
+    "today": "Сегодня",
+    "thisWeek": "Эта неделя",
+    "thisMonth": "Этот месяц",
+    "thisYear": "Этот год",
+    "allTime": "За всё время",
+    "totalCalls": "Всего заявок",
+    "open": "Открыто",
+    "inProgress": "В работе",
+    "closed": "Закрыто",
+    "avgResolution": "Среднее время решения",
+    "avgResolutionHint": "От создания заявки до закрытия",
+    "period": "Период",
+    "from": "С",
+    "to": "По",
+    "callsPerDay": "Заявок по дням",
+    "byTechnician": "По исполнителям",
+    "username": "Пользователь",
+    "callsWorked": "Обработано заявок",
+    "totalTime": "Общее время в заявках"
   }
 }

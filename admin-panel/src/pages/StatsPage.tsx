@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../services/api';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'all';
@@ -20,11 +21,13 @@ function fmtDuration(seconds: number | null): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-const PERIOD_LABELS: Record<Period, string> = {
-  day: 'Today', week: 'This week', month: 'This month', year: 'This year', all: 'All time',
-};
+
 
 export default function StatsPage() {
+  const { t } = useTranslation();
+  const PERIOD_LABELS: Record<Period, string> = {
+    day: t('stats.today'), week: t('stats.thisWeek'), month: t('stats.thisMonth'), year: t('stats.thisYear'), all: t('stats.allTime'),
+  };
   const [period, setPeriod] = useState<Period>('month');
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,7 +50,7 @@ export default function StatsPage() {
   return (
     <div>
       <div className="topbar">
-        <div><span className="eyebrow">Analytics</span><h1 className="page-title">Call Statistics</h1></div>
+        <div><span className="eyebrow">{t('stats.eyebrow')}</span><h1 className="page-title">{t('stats.title')}</h1></div>
         <div style={{ display: 'flex', gap: 6 }}>
           {(Object.keys(PERIOD_LABELS) as Period[]).map(p => (
             <button
@@ -72,16 +75,16 @@ export default function StatsPage() {
       {error && <div className="error-banner">{error}</div>}
 
       {loading ? (
-        <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-soft)' }}>Loading…</div>
+        <div style={{ padding: 40, textAlign: 'center', color: 'var(--ink-soft)' }}>{t('common.loading')}</div>
       ) : (
         <>
           {/* Summary cards */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 20 }}>
             {[
-              { label: 'Total calls', value: total, color: 'var(--primary)' },
-              { label: 'Open', value: totals.open ?? 0, color: '#3B82F6' },
-              { label: 'In progress', value: totals.in_progress ?? 0, color: '#F59E0B' },
-              { label: 'Closed', value: totals.closed ?? 0, color: '#10B981' },
+              { label: t('stats.totalCalls'), value: total, color: 'var(--primary)' },
+              { label: t('stats.open'), value: totals.open ?? 0, color: '#3B82F6' },
+              { label: t('stats.inProgress'), value: totals.in_progress ?? 0, color: '#F59E0B' },
+              { label: t('stats.closed'), value: totals.closed ?? 0, color: '#10B981' },
             ].map(({ label, value, color }) => (
               <div key={label} className="card" style={{ textAlign: 'center', padding: 20 }}>
                 <div style={{ fontSize: 36, fontWeight: 800, color }}>{value}</div>
@@ -93,21 +96,21 @@ export default function StatsPage() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
             {/* Avg resolution */}
             <div className="card">
-              <h3 style={{ margin: '0 0 12px' }}>Average resolution time</h3>
+              <h3 style={{ margin: '0 0 12px' }}>{t('stats.avgResolution')}</h3>
               <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--primary)' }}>
                 {fmtDuration(data?.avgResolutionSeconds ?? null)}
               </div>
               <p style={{ color: 'var(--ink-soft)', fontSize: 13, margin: '6px 0 0' }}>
-                From call creation to closed status
+                {t('stats.avgResolutionHint')}
               </p>
             </div>
 
             {/* Period info */}
             <div className="card">
-              <h3 style={{ margin: '0 0 12px' }}>Period</h3>
+              <h3 style={{ margin: '0 0 12px' }}>{t('stats.period')}</h3>
               <div style={{ color: 'var(--ink-soft)', fontSize: 13 }}>
-                <div><strong>From:</strong> {data?.from ? new Date(data.from).toLocaleDateString() : '—'}</div>
-                <div><strong>To:</strong> {data?.to ? new Date(data.to).toLocaleDateString() : '—'}</div>
+                <div><strong>{t('stats.from')}:</strong> {data?.from ? new Date(data.from).toLocaleDateString() : '—'}</div>
+                <div><strong>{t('stats.to')}:</strong> {data?.to ? new Date(data.to).toLocaleDateString() : '—'}</div>
               </div>
             </div>
           </div>
@@ -115,7 +118,7 @@ export default function StatsPage() {
           {/* Daily bar chart */}
           {byDay.length > 0 && (
             <div className="card" style={{ marginBottom: 20 }}>
-              <h3 style={{ margin: '0 0 16px' }}>Calls per day</h3>
+              <h3 style={{ margin: '0 0 16px' }}>{t('stats.callsPerDay')}</h3>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 100 }}>
                 {byDay.map((d) => {
                   const frac = d.count / maxDay;
@@ -143,14 +146,14 @@ export default function StatsPage() {
           {/* By user */}
           {(data?.byUser ?? []).length > 0 && (
             <div className="card">
-              <h3 style={{ margin: '0 0 12px' }}>By technician</h3>
+              <h3 style={{ margin: '0 0 12px' }}>{t('stats.byTechnician')}</h3>
               <table>
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Username</th>
-                    <th style={{ textAlign: 'right' }}>Calls worked</th>
-                    <th style={{ textAlign: 'right' }}>Total time in calls</th>
+                    <th>{t('stats.username')}</th>
+                    <th style={{ textAlign: 'right' }}>{t('stats.callsWorked')}</th>
+                    <th style={{ textAlign: 'right' }}>{t('stats.totalTime')}</th>
                   </tr>
                 </thead>
                 <tbody>
