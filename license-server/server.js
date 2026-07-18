@@ -7,6 +7,7 @@ const path = require('path');
 const db = require('./db');
 const { signPayload } = require('./crypto-sign');
 const { provisionTenant, deployAll, deprovisionTenant, createTenantAdmin } = require('./provision');
+const { encryptConnectionFile } = require('./connection-file');
 
 const app = express();
 app.use(express.json());
@@ -127,7 +128,7 @@ app.delete('/admin/licenses/:id', requireAdmin, async (req, res) => {
 // npm build) — see provision.js's doc comment and README.md's sudoers
 // section. Only ever reachable behind requireAdmin.
 app.post('/admin/tenants', requireAdmin, async (req, res) => {
-  const { customerName, port, maxDevices, dbPassword } = req.body || {};
+  const { customerName, port, maxDevices, dbPassword, publicUrl } = req.body || {};
   const slug = (req.body?.slug || '').toLowerCase();
   if (!slug || !customerName || !port || !dbPassword) {
     return res.status(400).json({ error: 'slug, customerName, port, and dbPassword are all required.' });
@@ -138,9 +139,9 @@ app.post('/admin/tenants', requireAdmin, async (req, res) => {
 
   const key = crypto.randomBytes(32).toString('hex');
   const info = db.prepare(`
-    INSERT INTO licenses (key, customer_name, notes, max_devices, slug, port, db_name)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(key, customerName, null, Number(maxDevices) > 0 ? Number(maxDevices) : 5, slug, Number(port), `vixor_${slug.replace(/-/g, '_')}`);
+    INSERT INTO licenses (key, customer_name, notes, max_devices, slug, port, db_name, public_url)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(key, customerName, null, Number(maxDevices) > 0 ? Number(maxDevices) : 5, slug, Number(port), `vixor_${slug.replace(/-/g, '_')}`, publicUrl || null);
 
   try {
     const output = await provisionTenant({
@@ -164,6 +165,37 @@ app.post('/admin/deploy', requireAdmin, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message, output: err.output || '' });
   }
+});
+
+app.post('/admin/licenses/:id/connection-info', requireAdmin, (req, res) => {
+  const { publicUrl, cfAccessClientId, cfAccessClientSecret } = req.body || {};
+  if (!publicUrl) return res.status(400).json({ error: 'publicUrl is required' });
+  if (cfAccessClientSecret !== undefined) {
+    db.prepare('UPDATE licenses SET public_url = ?, cf_access_client_id = ?, cf_access_client_secret = ? WHERE id = ?')
+      .run(publicUrl, cfAccessClientId || null, cfAccessClientSecret || null, req.params.id);
+  } else {
+    db.prepare('UPDATE licenses SET public_url = ?, cf_access_client_id = ? WHERE id = ?')
+      .run(publicUrl, cfAccessClientId || null, req.params.id);
+  }
+  res.json(db.prepare('SELECT * FROM licenses WHERE id = ?').get(req.params.id));
+});
+
+app.get('/admin/licenses/:id/connection-file', requireAdmin, (req, res) => {
+  const license = db.prepare('SELECT * FROM licenses WHERE id = ?').get(req.params.id);
+  if (!license) return res.status(404).json({ error: 'Not found' });
+  if (!license.public_url) return res.status(400).json({ error: 'Set this organization\'s Public URL first.' });
+
+  const payload = license.cf_access_client_id
+    ? { mode: 'cloud', address: license.public_url, clientId: license.cf_access_client_id, clientSecret: license.cf_access_client_secret }
+    : { mode: 'direct', address: license.public_url };
+
+  const fileBuffer = encryptConnectionFile(payload);
+  const safeSlug = (license.slug || license.customer_name).toString().replace(/[^a-z0-9-]/gi, '-');
+  res.set({
+    'Content-Type': 'application/octet-stream',
+    'Content-Disposition': `attachment; filename="${safeSlug}.vxconn"`,
+  });
+  res.send(fileBuffer);
 });
 
 app.post('/admin/licenses/:id/create-admin', requireAdmin, async (req, res) => {

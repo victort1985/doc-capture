@@ -63,6 +63,7 @@
       <input id="tCustomer" placeholder="Customer name">
       <input id="tSlug" placeholder="Slug (lowercase, dashes only — e.g. company-a)" oninput="this.value = this.value.toLowerCase()">
       <input id="tPort" type="number" placeholder="Port (e.g. 4101)">
+      <input id="tPublicUrl" placeholder="Public URL (e.g. company-a.doc-capture.app) — optional, can set later">
       <label style="font-size:12px;color:var(--ink-soft)">Max devices</label>
       <input id="tMaxDevices" type="number" value="5" min="1">
       <label style="font-size:12px;color:var(--ink-soft)">Postgres password for the 'doccapture' role</label>
@@ -147,6 +148,7 @@ async function provisionTenant() {
   const customerName = document.getElementById('tCustomer').value.trim();
   const slug = document.getElementById('tSlug').value.trim();
   const port = document.getElementById('tPort').value;
+  const publicUrl = document.getElementById('tPublicUrl').value.trim();
   const maxDevices = Number(document.getElementById('tMaxDevices').value) || 5;
   const dbPassword = document.getElementById('tDbPassword').value;
   if (!customerName || !slug || !port || !dbPassword) { alert('Customer name, slug, port, and DB password are all required.'); return; }
@@ -155,11 +157,12 @@ async function provisionTenant() {
   out.classList.remove('hidden');
   out.textContent = 'Provisioning… this can take a couple of minutes on the first tenant (building the app).';
   try {
-    const res = await api('/admin/tenants', { method: 'POST', body: JSON.stringify({ customerName, slug, port: Number(port), maxDevices, dbPassword }) });
+    const res = await api('/admin/tenants', { method: 'POST', body: JSON.stringify({ customerName, slug, port: Number(port), maxDevices, dbPassword, publicUrl: publicUrl || undefined }) });
     out.textContent = res.output + `\n\n✅ Done. License key: ${res.license.key}`;
     document.getElementById('tCustomer').value = '';
     document.getElementById('tSlug').value = '';
     document.getElementById('tPort').value = '';
+    document.getElementById('tPublicUrl').value = '';
     document.getElementById('tDbPassword').value = '';
     loadLicenses();
   } catch (e) {
@@ -177,6 +180,47 @@ async function deployAll() {
   } catch (e) {
     out.textContent = `❌ ${e.message}\n\n${e.output || ''}`;
   }
+}
+
+async function editConnectionInfo(id) {
+  const l = lastLicenses.find(x => x.id === id);
+  if (!l) return;
+  const publicUrl = prompt('Public URL this org\'s apps connect to (e.g. company-a.doc-capture.app):', l.public_url || '');
+  if (publicUrl === null) return; // cancelled
+  let cfAccessClientId = l.cf_access_client_id || '';
+  let cfAccessClientSecret = '';
+  if (confirm('Is this org behind Cloudflare Access (needs a Service Token)?')) {
+    cfAccessClientId = prompt('Cloudflare Access Client ID:', l.cf_access_client_id || '') || '';
+    cfAccessClientSecret = prompt('Cloudflare Access Client Secret (leave blank to keep existing):', '') || '';
+  } else {
+    cfAccessClientId = '';
+    cfAccessClientSecret = '';
+  }
+  try {
+    await api(`/admin/licenses/${id}/connection-info`, {
+      method: 'POST',
+      body: JSON.stringify({
+        publicUrl: publicUrl.trim(),
+        cfAccessClientId: cfAccessClientId.trim() || null,
+        // Only overwrite the stored secret if a new one was actually entered.
+        cfAccessClientSecret: cfAccessClientSecret.trim() || (cfAccessClientId.trim() ? undefined : null),
+      }),
+    });
+    loadLicenses();
+  } catch (e) { alert(e.message); }
+}
+
+async function downloadConnectionFile(id, slug) {
+  try {
+    const res = await fetch(`/admin/licenses/${id}/connection-file`, { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) { const body = await res.json().catch(() => ({})); throw new Error(body.error || 'Download failed'); }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${slug}.vxconn`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  } catch (e) { alert(e.message); }
 }
 
 async function createLicense() {
@@ -223,8 +267,11 @@ function timeAgo(iso) {
   return days >= 2 ? `<span class="stale">${label}</span>` : label;
 }
 
+let lastLicenses = [];
+
 async function loadLicenses() {
   const rows = await api('/admin/licenses');
+  lastLicenses = rows;
   document.getElementById('licenseRows').innerHTML = rows.map(l => `
     <tr>
       <td>${l.customer_name}${l.notes ? `<div style="color:var(--ink-soft);font-size:11px">${l.notes}</div>` : ''}</td>
@@ -245,6 +292,8 @@ async function loadLicenses() {
       <td>
         <div class="actions">
         ${l.provisioned ? `<button onclick="createTenantAdmin(${l.id}, '${l.customer_name.replace(/'/g, "\\'")}')">Create admin</button>` : ''}
+        <button onclick="editConnectionInfo(${l.id})">🔗 Connection</button>
+        ${l.public_url ? `<button onclick="downloadConnectionFile(${l.id}, '${(l.slug || l.customer_name).replace(/'/g, "\\'")}')">⬇ File</button>` : ''}
         ${l.status === 'active'
           ? `<button class="danger" onclick="revoke(${l.id})">Revoke</button>`
           : `<button onclick="reactivate(${l.id})">Reactivate</button>`}

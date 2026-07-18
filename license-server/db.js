@@ -32,5 +32,8 @@ try { db.exec('ALTER TABLE licenses ADD COLUMN slug TEXT'); } catch {}
 try { db.exec('ALTER TABLE licenses ADD COLUMN port INTEGER'); } catch {}
 try { db.exec('ALTER TABLE licenses ADD COLUMN db_name TEXT'); } catch {}
 try { db.exec('ALTER TABLE licenses ADD COLUMN provisioned INTEGER NOT NULL DEFAULT 0'); } catch {}
+try { db.exec('ALTER TABLE licenses ADD COLUMN public_url TEXT'); } catch {}
+try { db.exec('ALTER TABLE licenses ADD COLUMN cf_access_client_id TEXT'); } catch {}
+try { db.exec('ALTER TABLE licenses ADD COLUMN cf_access_client_secret TEXT'); } catch {}
 
 module.exports = db;
