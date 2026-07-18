@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2, MapPin, Link2, Copy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../services/api';
 
 interface Region {
@@ -20,6 +21,7 @@ interface Location {
 }
 
 export default function LocationsPage() {
+  const { t } = useTranslation();
   const [regions, setRegions] = useState<Region[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -91,7 +93,7 @@ export default function LocationsPage() {
   }
 
   async function removeRegion(id: number) {
-    if (!confirm('Delete this region? Cities assigned to it must be removed first.')) return;
+    if (!confirm(t('locations.deleteRegionConfirm'))) return;
     try {
       await apiFetch(`/locations/regions/${id}`, { method: 'DELETE' });
       setCities((prev: any[]) => prev.filter((x: any) => x.id !== id));
@@ -101,7 +103,7 @@ export default function LocationsPage() {
   }
 
   async function removeCity(id: number) {
-    if (!confirm('Delete this city? Locations assigned to it must be removed first.')) return;
+    if (!confirm(t('locations.deleteCityConfirm'))) return;
     try {
       await apiFetch(`/locations/cities/${id}`, { method: 'DELETE' });
       setCities((prev: any[]) => prev.filter((x: any) => x.id !== id));
@@ -111,7 +113,7 @@ export default function LocationsPage() {
   }
 
   async function removeLocation(id: number) {
-    if (!confirm('Delete this location?')) return;
+    if (!confirm(t('locations.deleteLocationConfirm'))) return;
     await apiFetch(`/locations/${id}`, { method: 'DELETE' });
     setCities((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
@@ -140,7 +142,7 @@ export default function LocationsPage() {
   }
 
   async function revokePortalLink(id: number) {
-    if (!confirm('Revoke this client portal link? The current link will stop working immediately.')) return;
+    if (!confirm(t('locations.revokePortalConfirm'))) return;
     setError(null);
     try {
       await apiFetch(`/locations/${id}/portal-token`, { method: 'DELETE' });
@@ -159,14 +161,12 @@ export default function LocationsPage() {
     <div>
       <div className="topbar">
         <div>
-          <span className="eyebrow">Shared directory</span>
-          <h1 className="page-title">Regions, cities &amp; locations</h1>
+          <span className="eyebrow">{t('locations.eyebrow')}</span>
+          <h1 className="page-title">{t('locations.title')}</h1>
         </div>
       </div>
       <p style={{ color: 'var(--ink-soft)', marginTop: -8, marginBottom: 24, maxWidth: 640 }}>
-        One shared directory, used as "Place" on calls/inventory and as
-        "Organization" on phone book contacts. Regions also drive which
-        technicians get notified about a new call (see Users).
+        {t('locations.explanation')}
       </p>
 
       {error && <div className="error-banner">{error}</div>}
@@ -174,10 +174,10 @@ export default function LocationsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 20 }}>
         {/* Regions */}
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Regions</h3>
+          <h3 style={{ marginTop: 0 }}>{t('locations.regions')}</h3>
           <form onSubmit={addRegion} style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
             <input
-              placeholder="New region name"
+              placeholder={t('locations.newRegionName')}
               value={newRegion}
               onChange={(e) => setNewRegion(e.target.value)}
               required
@@ -188,7 +188,7 @@ export default function LocationsPage() {
           {regions.length === 0 ? (
             <div className="empty-state" style={{ padding: 16 }}>
               <MapPin size={24} strokeWidth={1.5} />
-              <span>No regions yet</span>
+              <span>{t('locations.noRegions')}</span>
             </div>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -206,26 +206,26 @@ export default function LocationsPage() {
 
         {/* Cities */}
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Cities</h3>
+          <h3 style={{ marginTop: 0 }}>{t('locations.cities')}</h3>
           <form onSubmit={addCity} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
             <input
-              placeholder="New city name"
+              placeholder={t('locations.newCityName')}
               value={newCity}
               onChange={(e) => setNewCity(e.target.value)}
               required
             />
             <select value={newCityRegionId} onChange={(e) => setNewCityRegionId(e.target.value)} required>
-              <option value="">Region…</option>
+              <option value="">{t('locations.regionEllipsis')}</option>
               {regions.map((r) => (
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
-            <button type="submit"><Plus size={15} /> Add city</button>
+            <button type="submit"><Plus size={15} /> {t('locations.addCity')}</button>
           </form>
           {cities.length === 0 ? (
             <div className="empty-state" style={{ padding: 16 }}>
               <MapPin size={24} strokeWidth={1.5} />
-              <span>No cities yet</span>
+              <span>{t('locations.noCities')}</span>
             </div>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -243,26 +243,26 @@ export default function LocationsPage() {
 
         {/* Locations */}
         <div className="card">
-          <h3 style={{ marginTop: 0 }}>Locations</h3>
+          <h3 style={{ marginTop: 0 }}>{t('locations.locations')}</h3>
           <form onSubmit={addLocation} style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 14 }}>
             <input
-              placeholder="New location name"
+              placeholder={t('locations.newLocationName')}
               value={newLocation}
               onChange={(e) => setNewLocation(e.target.value)}
               required
             />
             <select value={newLocationCityId} onChange={(e) => setNewLocationCityId(e.target.value)} required>
-              <option value="">City…</option>
+              <option value="">{t('locations.cityEllipsis')}</option>
               {cities.map((c) => (
                 <option key={c.id} value={c.id}>{c.name} ({c.region?.name})</option>
               ))}
             </select>
-            <button type="submit"><Plus size={15} /> Add location</button>
+            <button type="submit"><Plus size={15} /> {t('locations.addLocation')}</button>
           </form>
           {locations.length === 0 ? (
             <div className="empty-state" style={{ padding: 16 }}>
               <MapPin size={24} strokeWidth={1.5} />
-              <span>No locations yet</span>
+              <span>{t('locations.noLocations')}</span>
             </div>
           ) : (
             <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
@@ -283,17 +283,14 @@ export default function LocationsPage() {
           company's primary stock, used as defaults for new equipment
           registration and equipment search on regular накладные. */}
       <div className="card" style={{ marginTop: 20 }}>
-        <h3 style={{ marginTop: 0 }}>Main warehouses</h3>
+        <h3 style={{ marginTop: 0 }}>{t('locations.mainWarehouses')}</h3>
         <p style={{ color: 'var(--ink-soft)', marginTop: -6, marginBottom: 14, maxWidth: 640 }}>
-          These are the default stock locations used when registering new equipment
-          and when searching for equipment while filling out a regular накладная.
-          Other locations still have their own independent warehouse, but aren't
-          used as a default.
+          {t('locations.mainWarehousesExplanation')}
         </p>
         {locations.length === 0 ? (
           <div className="empty-state" style={{ padding: 16 }}>
             <MapPin size={24} strokeWidth={1.5} />
-            <span>No locations yet</span>
+            <span>{t('locations.noLocations')}</span>
           </div>
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 24px' }}>
@@ -317,15 +314,14 @@ export default function LocationsPage() {
           client can check their own service-call status without
           logging in. */}
       <div className="card" style={{ marginTop: 20 }}>
-        <h3 style={{ marginTop: 0 }}>Client portal</h3>
+        <h3 style={{ marginTop: 0 }}>{t('locations.clientPortal')}</h3>
         <p style={{ color: 'var(--ink-soft)', marginTop: -6, marginBottom: 14, maxWidth: 640 }}>
-          Generate a link for a location's client to check their service-call status —
-          no login required. Revoking invalidates the link immediately.
+          {t('locations.portalExplanation')}
         </p>
         {locations.length === 0 ? (
           <div className="empty-state" style={{ padding: 16 }}>
             <Link2 size={24} strokeWidth={1.5} />
-            <span>No locations yet</span>
+            <span>{t('locations.noLocations')}</span>
           </div>
         ) : (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -335,11 +331,11 @@ export default function LocationsPage() {
                 {l.portalToken ? (
                   <>
                     <code style={{ fontSize: 12, color: 'var(--ink-soft)' }}>/portal/{l.portalToken.slice(0, 10)}…</code>
-                    <button type="button" onClick={() => copyPortalLink(l.portalToken!)} title="Copy link"><Copy size={14} /> Copy link</button>
-                    <button type="button" onClick={() => revokePortalLink(l.id)} title="Revoke" style={{ color: 'var(--danger)' }}><Trash2 size={14} /></button>
+                    <button type="button" onClick={() => copyPortalLink(l.portalToken!)} title={t('locations.copyLink')}><Copy size={14} /> {t('locations.copyLink')}</button>
+                    <button type="button" onClick={() => revokePortalLink(l.id)} title={t('locations.revoke')} style={{ color: 'var(--danger)' }}><Trash2 size={14} /></button>
                   </>
                 ) : (
-                  <button type="button" onClick={() => generatePortalLink(l.id)}><Link2 size={14} /> Generate link</button>
+                  <button type="button" onClick={() => generatePortalLink(l.id)}><Link2 size={14} /> {t('locations.generateLink')}</button>
                 )}
               </li>
             ))}
