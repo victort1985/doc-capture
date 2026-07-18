@@ -350,5 +350,16 @@
     "deleteGroup": "Delete group",
     "empty": "No groups yet.",
     "explanation": "Members of this group get these permissions unless a specific user has their own override set on the Permissions page — a user override always wins over their group."
+  },
+  "organizations": {
+    "eyebrow": "Multi-tenant",
+    "title": "Organizations",
+    "createOrg": "Create organization",
+    "description": "Each organization's users only see their own organization's calls, locations, and phone book. The logo uploaded here shows as an 80%-opacity background in that organization's mobile app.",
+    "deleteConfirm": "Delete this organization? Users in it keep their accounts but lose their organization assignment.",
+    "orgName": "Organization name",
+    "logo": "Logo",
+    "uploadLogo": "Upload logo",
+    "empty": "No organizations yet"
   }
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Plus, Trash2, Upload, Building2, Pencil } from 'lucide-react';
 import { apiFetch, apiFetchBlob, getToken, BASE_URL } from '../services/api';
 
@@ -42,6 +43,7 @@ function LogoThumb({ orgId, version }: { orgId: number; version: number }) {
 }
 
 export default function OrganizationsPage() {
+  const { t } = useTranslation();
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
@@ -73,7 +75,7 @@ export default function OrganizationsPage() {
   }
 
   async function removeOrg(id: number) {
-    if (!confirm('Delete this organization? Users in it keep their accounts but lose their organization assignment.')) return;
+    if (!confirm(t('organizations.deleteConfirm'))) return;
     await apiFetch(`/organizations/${id}`, { method: 'DELETE' });
     setOrgs((prev: any[]) => prev.filter((x: any) => x.id !== id));
   }
@@ -99,28 +101,26 @@ export default function OrganizationsPage() {
     <div>
       <div className="topbar">
         <div>
-          <span className="eyebrow">Multi-tenant</span>
-          <h1 className="page-title">Organizations</h1>
+          <span className="eyebrow">{t('organizations.eyebrow')}</span>
+          <h1 className="page-title">{t('organizations.title')}</h1>
         </div>
         <button onClick={() => setShowForm((s) => !s)}>
-          <Plus size={16} /> Create organization
+          <Plus size={16} /> {t('organizations.createOrg')}
         </button>
       </div>
 
       <p style={{ color: 'var(--ink-soft)', marginTop: -8, marginBottom: 24, maxWidth: 640 }}>
-        Each organization's users only see their own organization's calls,
-        locations, and phone book. The logo uploaded here shows as an
-        80%-opacity background in that organization's mobile app.
+        {t('organizations.description')}
       </p>
 
       {error && <div className="error-banner">{error}</div>}
 
       {showForm && (
         <form className="card form-card" onSubmit={createOrg} style={{ maxWidth: 420 }}>
-          <label>Organization name</label>
+          <label>{t('organizations.orgName')}</label>
           <input value={newName} onChange={(e) => setNewName(e.target.value)} required autoFocus />
           <div className="form-actions">
-            <button type="submit"><Plus size={16} /> Create</button>
+            <button type="submit"><Plus size={16} /> {t('groups.create')}</button>
           </div>
         </form>
       )}
@@ -129,9 +129,9 @@ export default function OrganizationsPage() {
         <table>
           <thead>
             <tr>
-              <th>Logo</th>
-              <th>Name</th>
-              <th>Created</th>
+              <th>{t('organizations.logo')}</th>
+              <th>{t('common.name')}</th>
+              <th>{t('common.createdAt')}</th>
               <th />
             </tr>
           </thead>
@@ -175,10 +175,10 @@ export default function OrganizationsPage() {
                         e.target.value = '';
                       }}
                     />
-                    <button className="ghost" onClick={() => fileInputs.current[o.id]?.click()} title="Upload logo">
+                    <button className="ghost" onClick={() => fileInputs.current[o.id]?.click()} title={t('organizations.uploadLogo')}>
                       <Upload size={15} />
                     </button>
-                    <button className="ghost" onClick={() => removeOrg(o.id)} title="Delete" style={{ color: 'var(--danger)' }}>
+                    <button className="ghost" onClick={() => removeOrg(o.id)} title={t('common.delete')} style={{ color: 'var(--danger)' }}>
                       <Trash2 size={15} />
                     </button>
                   </div>
@@ -188,7 +188,7 @@ export default function OrganizationsPage() {
             {orgs.length === 0 && (
               <tr><td colSpan={4} style={{ textAlign: 'center', padding: 32, color: 'var(--ink-soft)' }}>
                 <Building2 size={28} strokeWidth={1.5} style={{ marginBottom: 8 }} /><br />
-                No organizations yet
+                {t('organizations.empty')}
               </td></tr>
             )}
           </tbody>
