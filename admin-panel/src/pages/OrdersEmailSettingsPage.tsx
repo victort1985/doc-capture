@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation, Trans } from 'react-i18next';
 import { Save, Mail, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
@@ -23,6 +24,7 @@ const EMPTY: EmailSettings = {
 };
 
 export default function OrdersEmailSettingsPage() {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<EmailSettings>(EMPTY);
   const [appPassword, setAppPassword] = useState('');
   const [loading, setLoading] = useState(true);
@@ -78,27 +80,22 @@ export default function OrdersEmailSettingsPage() {
     }
   }
 
-  if (loading) return <div className="page"><p>Loading…</p></div>;
+  if (loading) return <div className="page"><p>{t('common.loading')}</p></div>;
 
   return (
     <div className="page">
       <div className="topbar">
         <div>
-          <div className="eyebrow">ORDERS</div>
-          <h1>Order intake email</h1>
+          <div className="eyebrow">{t('orders.eyebrow')}</div>
+          <h1>{t('ordersEmail.title')}</h1>
         </div>
       </div>
 
       <p style={{ color: 'var(--ink-soft)', maxWidth: 640 }}>
-        Connect the dedicated Gmail inbox that receives supplier purchase orders. The app checks
-        it every 5 minutes for new emails with a PDF attachment, extracts the order date,
-        ordering organization, and PO number from the document, and adds it to the Orders list
-        automatically. This uses a Gmail <strong>app password</strong>, not the account's real
-        login password — generate one at{' '}
-        <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer">
-          myaccount.google.com/apppasswords
-        </a>{' '}
-        (2-Step Verification must be turned on for that Google account first).
+        <Trans i18nKey="ordersEmail.explanation" components={{
+          strong: <strong />,
+          a: <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noreferrer" />,
+        }} />
       </p>
 
       <div className="card form-card" style={{ maxWidth: 560 }}>
@@ -108,10 +105,10 @@ export default function OrdersEmailSettingsPage() {
             checked={settings.enabled}
             onChange={(e) => setSettings({ ...settings, enabled: e.target.checked })}
           />
-          Enabled
+          {t('ordersEmail.enabled')}
         </label>
 
-        <label>Gmail address</label>
+        <label>{t('ordersEmail.gmailAddress')}</label>
         <input
           type="email"
           value={settings.emailAddress ?? ''}
@@ -119,24 +116,24 @@ export default function OrdersEmailSettingsPage() {
           placeholder="orders@yourcompany.com"
         />
 
-        <label>App password</label>
+        <label>{t('ordersEmail.appPassword')}</label>
         <input
           type="password"
           value={appPassword}
           onChange={(e) => setAppPassword(e.target.value)}
-          placeholder={settings.emailAddress ? 'Leave blank to keep the current one' : 'xxxx xxxx xxxx xxxx'}
+          placeholder={settings.emailAddress ? t('ordersEmail.appPasswordKeepPlaceholder') : 'xxxx xxxx xxxx xxxx'}
         />
 
         <div className="form-grid">
           <div>
-            <label>IMAP host</label>
+            <label>{t('ordersEmail.imapHost')}</label>
             <input
               value={settings.imapHost}
               onChange={(e) => setSettings({ ...settings, imapHost: e.target.value })}
             />
           </div>
           <div>
-            <label>IMAP port</label>
+            <label>{t('ordersEmail.imapPort')}</label>
             <input
               type="number"
               value={settings.imapPort}
@@ -153,15 +150,13 @@ export default function OrdersEmailSettingsPage() {
             checked={!!settings.notifyOnCompleteEnabled}
             onChange={(e) => setSettings({ ...settings, notifyOnCompleteEnabled: e.target.checked })}
           />
-          Email the finished order when a delivery note is added
+          {t('ordersEmail.notifyOnComplete')}
         </label>
         <p style={{ color: 'var(--ink-soft)', fontSize: 13, maxWidth: 560 }}>
-          Sends the completed PDF (PO + delivery note) to the addresses below as soon as an
-          order is marked done. The subject line is the generated filename (e.g. "2026-07-15 -
-          Company Ltd - רכש 1234 - תמ 5678.pdf").
+          {t('ordersEmail.notifyExplanation')}
         </p>
 
-        <label>Recipient emails (comma-separated)</label>
+        <label>{t('ordersEmail.recipientEmails')}</label>
         <input
           value={settings.notifyEmails ?? ''}
           onChange={(e) => setSettings({ ...settings, notifyEmails: e.target.value })}
@@ -170,29 +165,29 @@ export default function OrdersEmailSettingsPage() {
 
         {settings.lastCheckedAt && (
           <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>
-            Last checked: {new Date(settings.lastCheckedAt).toLocaleString()}
+            {t('ordersEmail.lastChecked')}: {new Date(settings.lastCheckedAt).toLocaleString()}
           </p>
         )}
         {settings.lastError && (
           <div style={{ display: 'flex', gap: 8, alignItems: 'flex-start', color: 'var(--danger)', fontSize: 13 }}>
             <AlertCircle size={16} style={{ flexShrink: 0, marginTop: 2 }} />
-            <span>Last check failed: {settings.lastError}</span>
+            <span>{t('ordersEmail.lastCheckFailed')}: {settings.lastError}</span>
           </div>
         )}
 
         {error && <div className="error-banner">{error}</div>}
         {saved && (
           <div style={{ display: 'flex', gap: 6, alignItems: 'center', color: 'var(--success, green)', fontSize: 13 }}>
-            <CheckCircle2 size={16} /> Saved
+            <CheckCircle2 size={16} /> {t('common.saved')}
           </div>
         )}
 
         <div className="form-actions">
           <button type="button" disabled={saving} onClick={save}>
-            <Save size={15} /> {saving ? 'Saving…' : 'Save'}
+            <Save size={15} /> {saving ? t('common.saving') : t('common.save')}
           </button>
-          <button type="button" disabled={syncing || !settings.enabled} onClick={syncNow} title={!settings.enabled ? 'Enable and save first' : undefined}>
-            <RefreshCw size={15} /> {syncing ? 'Syncing…' : 'Sync now'}
+          <button type="button" disabled={syncing || !settings.enabled} onClick={syncNow} title={!settings.enabled ? t('ordersEmail.enableFirstHint') : undefined}>
+            <RefreshCw size={15} /> {syncing ? t('ordersEmail.syncing') : t('ordersEmail.syncNow')}
           </button>
         </div>
       </div>

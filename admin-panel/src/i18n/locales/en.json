@@ -384,5 +384,23 @@
     "username": "Username",
     "callsWorked": "Calls worked",
     "totalTime": "Total time in calls"
+  },
+  "ordersEmail": {
+    "title": "Order intake email",
+    "explanation": "Connect the dedicated Gmail inbox that receives supplier purchase orders. The app checks it every 5 minutes for new emails with a PDF attachment, extracts the order date, ordering organization, and PO number from the document, and adds it to the Orders list automatically. This uses a Gmail <strong>app password</strong>, not the account's real login password — generate one at <a>myaccount.google.com/apppasswords</a> (2-Step Verification must be turned on for that Google account first).",
+    "enabled": "Enabled",
+    "gmailAddress": "Gmail address",
+    "appPassword": "App password",
+    "appPasswordKeepPlaceholder": "Leave blank to keep the current one",
+    "imapHost": "IMAP host",
+    "imapPort": "IMAP port",
+    "notifyOnComplete": "Email the finished order when a delivery note is added",
+    "notifyExplanation": "Sends the completed PDF (PO + delivery note) to the addresses below as soon as an order is marked done. The subject line is the generated filename (e.g. \"2026-07-15 - Company Ltd - רכש 1234 - תמ 5678.pdf\").",
+    "recipientEmails": "Recipient emails (comma-separated)",
+    "lastChecked": "Last checked",
+    "lastCheckFailed": "Last check failed",
+    "enableFirstHint": "Enable and save first",
+    "syncing": "Syncing…",
+    "syncNow": "Sync now"
   }
 }
