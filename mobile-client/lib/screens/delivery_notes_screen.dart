@@ -55,17 +55,15 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)?.deliveryNotesTitle ?? 'Delivery Notes'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () async {
-              await Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => DeliveryNoteFormScreen(svc: _svc),
-              ));
-              _load();
-            },
-          ),
-        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          await Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => DeliveryNoteFormScreen(svc: _svc),
+          ));
+          _load();
+        },
+        child: const Icon(Icons.add),
       ),
       body: SafeArea(
         child: _loading
