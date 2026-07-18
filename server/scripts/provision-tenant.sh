@@ -46,13 +46,20 @@ echo "==> Provisioning tenant '$SLUG' ($CUSTOMER_NAME), port $PORT, max $MAX_DEV
 echo "==> Creating database $DB_NAME"
 sudo -u postgres createdb "$DB_NAME"
 sudo -u postgres psql -d "$DB_NAME" -c "GRANT ALL PRIVILEGES ON SCHEMA public TO doccapture;"
-DB_PASSWORD="$(sudo -u postgres psql -tAc "SELECT rolpassword FROM pg_authid WHERE rolname='doccapture'" 2>/dev/null || true)"
-# The line above usually can't read the hash in a usable form — ask
-# instead of guessing, since DB_PASSWORD has to match whatever
-# doccapture's real Postgres role password already is.
-if [[ -z "${DB_PASSWORD:-}" || "$DB_PASSWORD" == *"SCRAM"* ]]; then
+
+# Needed to write the tenant's .env — Postgres never gives back a
+# usable plaintext password for an existing role, so this has to come
+# from you. Set DOCCAPTURE_DB_PASSWORD when calling this script
+# non-interactively (e.g. from the license-admin web UI); only prompts
+# if running in a real terminal with nothing set.
+if [[ -n "${DOCCAPTURE_DB_PASSWORD:-}" ]]; then
+  DB_PASSWORD="$DOCCAPTURE_DB_PASSWORD"
+elif [[ -t 0 ]]; then
   read -rsp "Postgres password for role 'doccapture' (same one every other tenant uses): " DB_PASSWORD
   echo
+else
+  echo "ERROR: DOCCAPTURE_DB_PASSWORD is not set and there's no terminal to prompt on." >&2
+  exit 1
 fi
 
 # ── 2. Tenant .env ────────────────────────────────────────────────────
@@ -67,7 +74,10 @@ sed \
 chown -R doccapture:doccapture "$TENANT_DIR"
 
 # ── 3. License ────────────────────────────────────────────────────────
-if [[ -n "${LICENSE_ADMIN_USER:-}" && -n "${LICENSE_ADMIN_PASS:-}" ]]; then
+if [[ -n "${PREGENERATED_LICENSE_KEY:-}" ]]; then
+  LICENSE_KEY="$PREGENERATED_LICENSE_KEY"
+  echo "==> Using pre-generated license key"
+elif [[ -n "${LICENSE_ADMIN_USER:-}" && -n "${LICENSE_ADMIN_PASS:-}" ]]; then
   echo "==> Creating license via $LICENSE_SERVER_URL"
   TOKEN=$(curl -sf -X POST "$LICENSE_SERVER_URL/admin/login" \
     -H 'Content-Type: application/json' \
@@ -104,6 +114,17 @@ systemctl enable --now "doc-capture@$SLUG"
 sleep 2
 systemctl is-active --quiet "doc-capture@$SLUG" && echo "==> ✅ doc-capture@$SLUG is running" \
   || echo "==> ⚠️  Service didn't start — check: journalctl -u doc-capture@$SLUG -n 50"
+
+# ── 6. Auto-activate the license we just generated ──────────────────
+if [[ "$LICENSE_KEY" != "(generate manually)" ]]; then
+  echo "==> Activating license on the new instance"
+  sleep 2
+  curl -sf -X POST "http://localhost:$PORT/api/license/activate" \
+    -H 'Content-Type: application/json' \
+    -d "{\"key\":\"$LICENSE_KEY\"}" >/dev/null \
+    && echo "    ✅ Activated" \
+    || echo "    ⚠️  Auto-activation failed — activate manually in the admin panel with the key above."
+fi
 
 cat <<EOF
 

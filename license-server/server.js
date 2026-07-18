@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const db = require('./db');
 const { signPayload } = require('./crypto-sign');
+const { provisionTenant, deployAll } = require('./provision');
 
 const app = express();
 app.use(express.json());
@@ -103,6 +104,49 @@ app.post('/admin/licenses/:id/reactivate', requireAdmin, (req, res) => {
 app.delete('/admin/licenses/:id', requireAdmin, (req, res) => {
   db.prepare('DELETE FROM licenses WHERE id = ?').run(req.params.id);
   res.json({ deleted: true });
+});
+
+// ── Admin: infrastructure orchestration ──────────────────────────────
+// These run real shell scripts on this machine (createdb, systemctl,
+// npm build) — see provision.js's doc comment and README.md's sudoers
+// section. Only ever reachable behind requireAdmin.
+app.post('/admin/tenants', requireAdmin, async (req, res) => {
+  const { slug, customerName, port, maxDevices, dbPassword } = req.body || {};
+  if (!slug || !customerName || !port || !dbPassword) {
+    return res.status(400).json({ error: 'slug, customerName, port, and dbPassword are all required.' });
+  }
+  if (db.prepare('SELECT id FROM licenses WHERE slug = ?').get(slug)) {
+    return res.status(409).json({ error: `A tenant with slug "${slug}" already exists.` });
+  }
+
+  const key = crypto.randomBytes(32).toString('hex');
+  const info = db.prepare(`
+    INSERT INTO licenses (key, customer_name, notes, max_devices, slug, port, db_name)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
+  `).run(key, customerName, null, Number(maxDevices) > 0 ? Number(maxDevices) : 5, slug, Number(port), `vixor_${slug.replace(/-/g, '_')}`);
+
+  try {
+    const output = await provisionTenant({
+      slug, customerName, port: Number(port), maxDevices: Number(maxDevices) || 5, licenseKey: key, dbPassword,
+    });
+    db.prepare('UPDATE licenses SET provisioned = 1 WHERE id = ?').run(info.lastInsertRowid);
+    res.json({ license: db.prepare('SELECT * FROM licenses WHERE id = ?').get(info.lastInsertRowid), output });
+  } catch (err) {
+    // Leave the license row in place (provisioned=0) — the slug/port/
+    // key are reserved and visible in the admin UI, and provisioning
+    // can be investigated/retried by hand using the printed output
+    // rather than silently losing the attempt.
+    res.status(500).json({ error: err.message, output: err.output || '' });
+  }
+});
+
+app.post('/admin/deploy', requireAdmin, async (req, res) => {
+  try {
+    const output = await deployAll();
+    res.json({ ok: true, output });
+  } catch (err) {
+    res.status(500).json({ error: err.message, output: err.output || '' });
+  }
 });
 
 const PORT = process.env.PORT || 4100;

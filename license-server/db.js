@@ -28,5 +28,9 @@ db.exec(`
 // Safe to re-run: fails harmlessly if the column already exists (fresh
 // installs get it from the CREATE TABLE above already).
 try { db.exec('ALTER TABLE licenses ADD COLUMN max_devices INTEGER NOT NULL DEFAULT 5'); } catch {}
+try { db.exec('ALTER TABLE licenses ADD COLUMN slug TEXT'); } catch {}
+try { db.exec('ALTER TABLE licenses ADD COLUMN port INTEGER'); } catch {}
+try { db.exec('ALTER TABLE licenses ADD COLUMN db_name TEXT'); } catch {}
+try { db.exec('ALTER TABLE licenses ADD COLUMN provisioned INTEGER NOT NULL DEFAULT 0'); } catch {}
 
 module.exports = db;

@@ -44,7 +44,33 @@
 
   <div id="mainArea" class="hidden">
     <div class="card">
-      <h3 style="margin-top:0">New license</h3>
+      <h3 style="margin-top:0">New tenant (full provisioning)</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:-4px;">
+        Creates the license, a dedicated database, and starts a running instance — all in one go.
+      </p>
+      <input id="tCustomer" placeholder="Customer name">
+      <input id="tSlug" placeholder="Slug (lowercase, dashes only — e.g. company-a)">
+      <input id="tPort" type="number" placeholder="Port (e.g. 4101)">
+      <label style="font-size:12px;color:var(--ink-soft)">Max devices</label>
+      <input id="tMaxDevices" type="number" value="5" min="1">
+      <label style="font-size:12px;color:var(--ink-soft)">Postgres password for the 'doccapture' role</label>
+      <input id="tDbPassword" type="password" placeholder="Same password every tenant DB uses">
+      <button onclick="provisionTenant()">Create &amp; provision</button>
+      <pre id="provisionOutput" class="hidden" style="white-space:pre-wrap;font-size:11.5px;background:var(--paper);padding:10px;border-radius:6px;margin-top:10px;max-height:300px;overflow:auto;"></pre>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">Deploy update to all tenants</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:-4px;">
+        Pulls latest code, builds once, restarts every running instance. Can take a few minutes.
+      </p>
+      <button onclick="deployAll()">Deploy now</button>
+      <pre id="deployOutput" class="hidden" style="white-space:pre-wrap;font-size:11.5px;background:var(--paper);padding:10px;border-radius:6px;margin-top:10px;max-height:300px;overflow:auto;"></pre>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">New license (manual, no infra)</h3>
+      <p style="font-size:12px;color:var(--ink-soft);margin-top:-4px;">For a tenant you're provisioning by hand, or a non-Vixor-hosted install.</p>
       <input id="newCustomer" placeholder="Customer name">
       <input id="newNotes" placeholder="Notes (optional)">
       <label style="font-size:12px;color:var(--ink-soft)">Max devices</label>
@@ -54,9 +80,9 @@
     </div>
 
     <div class="card">
-      <h3 style="margin-top:0">Licenses</h3>
+      <h3 style="margin-top:0">Licenses &amp; tenants</h3>
       <table>
-        <thead><tr><th>Customer</th><th>Key</th><th>Status</th><th>Max devices</th><th>Last check</th><th></th></tr></thead>
+        <thead><tr><th>Customer</th><th>Slug / Port</th><th>Key</th><th>Status</th><th>Max devices</th><th>Last check</th><th></th></tr></thead>
         <tbody id="licenseRows"></tbody>
       </table>
     </div>
@@ -72,7 +98,7 @@ function api(path, opts = {}) {
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(opts.headers || {}) },
   }).then(async r => {
     const body = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(body.error || `Request failed (${r.status})`);
+    if (!r.ok) throw Object.assign(new Error(body.error || `Request failed (${r.status})`), { output: body.output });
     return body;
   });
 }
@@ -103,6 +129,42 @@ document.getElementById('logoutBtn').onclick = () => {
   location.reload();
 };
 
+async function provisionTenant() {
+  const customerName = document.getElementById('tCustomer').value.trim();
+  const slug = document.getElementById('tSlug').value.trim();
+  const port = document.getElementById('tPort').value;
+  const maxDevices = Number(document.getElementById('tMaxDevices').value) || 5;
+  const dbPassword = document.getElementById('tDbPassword').value;
+  if (!customerName || !slug || !port || !dbPassword) { alert('Customer name, slug, port, and DB password are all required.'); return; }
+
+  const out = document.getElementById('provisionOutput');
+  out.classList.remove('hidden');
+  out.textContent = 'Provisioning… this can take a couple of minutes on the first tenant (building the app).';
+  try {
+    const res = await api('/admin/tenants', { method: 'POST', body: JSON.stringify({ customerName, slug, port: Number(port), maxDevices, dbPassword }) });
+    out.textContent = res.output + `\n\n✅ Done. License key: ${res.license.key}`;
+    document.getElementById('tCustomer').value = '';
+    document.getElementById('tSlug').value = '';
+    document.getElementById('tPort').value = '';
+    document.getElementById('tDbPassword').value = '';
+    loadLicenses();
+  } catch (e) {
+    out.textContent = `❌ ${e.message}\n\n${e.output || ''}`;
+  }
+}
+
+async function deployAll() {
+  const out = document.getElementById('deployOutput');
+  out.classList.remove('hidden');
+  out.textContent = 'Deploying… this can take a few minutes.';
+  try {
+    const res = await api('/admin/deploy', { method: 'POST' });
+    out.textContent = res.output;
+  } catch (e) {
+    out.textContent = `❌ ${e.message}\n\n${e.output || ''}`;
+  }
+}
+
 async function createLicense() {
   const customerName = document.getElementById('newCustomer').value.trim();
   const notes = document.getElementById('newNotes').value.trim();
@@ -130,6 +192,7 @@ async function loadLicenses() {
   document.getElementById('licenseRows').innerHTML = rows.map(l => `
     <tr>
       <td>${l.customer_name}${l.notes ? `<div style="color:var(--ink-soft);font-size:11px">${l.notes}</div>` : ''}</td>
+      <td>${l.slug ? `<code>${l.slug}</code>:${l.port}${l.provisioned ? '' : ' <span class="stale">(not provisioned)</span>'}` : '<span style="color:var(--ink-soft)">—</span>'}</td>
       <td><code>${l.key.slice(0, 12)}…</code></td>
       <td class="status-${l.status}">${l.status}</td>
       <td>
