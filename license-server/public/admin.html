@@ -244,6 +244,7 @@ async function loadLicenses() {
       <td>${timeAgo(l.last_checked_at)}</td>
       <td>
         <div class="actions">
+        ${l.provisioned ? `<button onclick="createTenantAdmin(${l.id}, '${l.customer_name.replace(/'/g, "\\'")}')">Create admin</button>` : ''}
         ${l.status === 'active'
           ? `<button class="danger" onclick="revoke(${l.id})">Revoke</button>`
           : `<button onclick="reactivate(${l.id})">Reactivate</button>`}
@@ -271,6 +272,25 @@ async function deleteLicense(id, customerName, provisioned) {
     const res = await api(`/admin/licenses/${id}`, { method: 'DELETE' });
     if (res.output) alert(res.output);
     loadLicenses();
+  } catch (e) {
+    alert(`❌ ${e.message}\n\n${e.output || ''}`);
+  }
+}
+
+async function createTenantAdmin(id, customerName) {
+  const username = prompt(`New admin username for "${customerName}":`, 'admin');
+  if (!username) return;
+  const password = prompt(`Password for "${username}" (min 6 characters):`);
+  if (!password) return;
+  if (password.length < 6) { alert('Password must be at least 6 characters.'); return; }
+  const language = prompt(`Interface language (he / en / ru):`, 'he') || 'he';
+
+  try {
+    const res = await api(`/admin/licenses/${id}/create-admin`, {
+      method: 'POST',
+      body: JSON.stringify({ username, password, language }),
+    });
+    alert(`✅ Admin user "${username}" created for ${customerName}.\n\n${res.output || ''}`);
   } catch (e) {
     alert(`❌ ${e.message}\n\n${e.output || ''}`);
   }

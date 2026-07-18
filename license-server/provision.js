@@ -60,4 +60,14 @@ async function deprovisionTenant(slug) {
   return run('sudo', ['-n', 'bash', scriptPath, slug]);
 }
 
-module.exports = { provisionTenant, deployAll, deprovisionTenant, SLUG_RE };
+/** Creates (or resets the password of) an admin user in one tenant's
+ * own database — see create-tenant-admin.sh's doc comment. */
+async function createTenantAdmin({ slug, username, password, language }) {
+  if (!SLUG_RE.test(slug)) throw new Error('Slug must be lowercase letters, digits, and dashes only.');
+  if (!username || !password) throw new Error('username and password are required.');
+  if (password.length < 6) throw new Error('Password must be at least 6 characters.');
+  const scriptPath = path.join(REPO_DIR, 'server', 'scripts', 'create-tenant-admin.sh');
+  return run('sudo', ['-n', 'bash', scriptPath, slug, username, password, language || 'he']);
+}
+
+module.exports = { provisionTenant, deployAll, deprovisionTenant, createTenantAdmin, SLUG_RE };

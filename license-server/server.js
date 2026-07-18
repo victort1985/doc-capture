@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const db = require('./db');
 const { signPayload } = require('./crypto-sign');
-const { provisionTenant, deployAll, deprovisionTenant } = require('./provision');
+const { provisionTenant, deployAll, deprovisionTenant, createTenantAdmin } = require('./provision');
 
 const app = express();
 app.use(express.json());
@@ -160,6 +160,21 @@ app.post('/admin/tenants', requireAdmin, async (req, res) => {
 app.post('/admin/deploy', requireAdmin, async (req, res) => {
   try {
     const output = await deployAll();
+    res.json({ ok: true, output });
+  } catch (err) {
+    res.status(500).json({ error: err.message, output: err.output || '' });
+  }
+});
+
+app.post('/admin/licenses/:id/create-admin', requireAdmin, async (req, res) => {
+  const license = db.prepare('SELECT * FROM licenses WHERE id = ?').get(req.params.id);
+  if (!license) return res.status(404).json({ error: 'Not found' });
+  if (!license.slug || !license.provisioned) {
+    return res.status(400).json({ error: 'This license has no provisioned tenant to create an admin user in.' });
+  }
+  const { username, password, language } = req.body || {};
+  try {
+    const output = await createTenantAdmin({ slug: license.slug, username, password, language });
     res.json({ ok: true, output });
   } catch (err) {
     res.status(500).json({ error: err.message, output: err.output || '' });
