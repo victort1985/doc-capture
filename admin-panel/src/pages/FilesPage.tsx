@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FileStack, FileText, Image, Trash2 } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
@@ -13,6 +14,7 @@ interface FileRecord {
 }
 
 export default function FilesPage() {
+  const { t } = useTranslation();
   const [records, setRecords] = useState<FileRecord[]>([]);
   const [typeFilter, setTypeFilter] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -28,14 +30,14 @@ export default function FilesPage() {
   }
 
   async function clearAll() {
-    const scope = typeFilter ? `all "${typeFilter}" entries` : 'the entire file log';
-    if (!confirm(`Clear ${scope}? This deletes the underlying files too — this cannot be undone.`)) return;
+    const scope = typeFilter ? t('files.clearScopeType', { type: typeFilter }) : t('files.clearScopeAll');
+    if (!confirm(t('files.clearConfirm', { scope }))) return;
     setClearing(true);
     setError(null);
     try {
       const qs = typeFilter ? `?type=${typeFilter}` : '';
       const res = await apiFetch<{ deleted: number; failed: number }>(`/files${qs}`, { method: 'DELETE' });
-      if (res.failed) setError(`Cleared ${res.deleted}, but ${res.failed} file(s) could not be removed from storage and were kept.`);
+      if (res.failed) setError(t('files.partialClearError', { deleted: res.deleted, failed: res.failed }));
       await load();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to clear file log');
@@ -50,17 +52,17 @@ export default function FilesPage() {
     <div>
       <div className="topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
         <div>
-          <span className="eyebrow">Activity</span>
-          <h1 className="page-title">File log</h1>
+          <span className="eyebrow">{t('files.eyebrow')}</span>
+          <h1 className="page-title">{t('files.title')}</h1>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <select style={{ width: 170 }} value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option value="">All types</option>
-            <option value="document">Document</option>
-            <option value="photo">Photo</option>
+            <option value="">{t('files.allTypes')}</option>
+            <option value="document">{t('files.document')}</option>
+            <option value="photo">{t('files.photo')}</option>
           </select>
-          <button type="button" onClick={clearAll} disabled={clearing || records.length === 0} title="Clear file log">
-            <Trash2 size={15} /> {clearing ? 'Clearing…' : 'Clear'}
+          <button type="button" onClick={clearAll} disabled={clearing || records.length === 0} title={t('files.clear')}>
+            <Trash2 size={15} /> {clearing ? t('files.clearing') : t('files.clear')}
           </button>
         </div>
       </div>
@@ -71,18 +73,18 @@ export default function FilesPage() {
         {records.length === 0 ? (
           <div className="empty-state">
             <FileStack size={32} strokeWidth={1.5} />
-            <strong>No uploads yet</strong>
-            <span>Captured documents and photos will show up here once staff start uploading.</span>
+            <strong>{t('files.emptyTitle')}</strong>
+            <span>{t('files.emptyBody')}</span>
           </div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th>Generated name</th>
-                <th>Type</th>
-                <th>Place</th>
-                <th className="mono">Path</th>
-                <th>Uploaded</th>
+                <th>{t('files.generatedName')}</th>
+                <th>{t('files.type')}</th>
+                <th>{t('files.place')}</th>
+                <th className="mono">{t('files.path')}</th>
+                <th>{t('files.uploaded')}</th>
               </tr>
             </thead>
             <tbody>
@@ -92,7 +94,7 @@ export default function FilesPage() {
                   <td>
                     <span className="stamp-badge neutral">
                       {r.type === 'document' ? <FileText size={12} /> : <Image size={12} />}
-                      {r.type}
+                      {r.type === 'document' ? t('files.document') : t('files.photo')}
                     </span>
                   </td>
                   <td>{r.place}</td>
