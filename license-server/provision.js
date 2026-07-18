@@ -51,4 +51,13 @@ async function deployAll() {
   return run('sudo', ['-n', 'bash', scriptPath], { REPO_DIR });
 }
 
-module.exports = { provisionTenant, deployAll, SLUG_RE };
+/** Stops the tenant's service and permanently drops its database —
+ * irreversible. Caller (server.js) deletes the license row after this
+ * succeeds. */
+async function deprovisionTenant(slug) {
+  if (!SLUG_RE.test(slug)) throw new Error('Slug must be lowercase letters, digits, and dashes only.');
+  const scriptPath = path.join(REPO_DIR, 'server', 'scripts', 'deprovision-tenant.sh');
+  return run('sudo', ['-n', 'bash', scriptPath, slug]);
+}
+
+module.exports = { provisionTenant, deployAll, deprovisionTenant, SLUG_RE };

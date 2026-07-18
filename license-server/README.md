@@ -89,6 +89,7 @@ from the main Vixor ERP repo.
    ```
    license_server_user ALL=(ALL) NOPASSWD: /usr/bin/bash /opt/vixor-repo/server/scripts/provision-tenant.sh *
    license_server_user ALL=(ALL) NOPASSWD: /usr/bin/bash /opt/vixor-repo/server/scripts/deploy-all-tenants.sh
+   license_server_user ALL=(ALL) NOPASSWD: /usr/bin/bash /opt/vixor-repo/server/scripts/deprovision-tenant.sh *
    ```
    Replace `license_server_user` with the actual account. Keeping the
    allowed commands scoped to these two specific scripts (rather than

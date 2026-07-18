@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const db = require('./db');
 const { signPayload } = require('./crypto-sign');
-const { provisionTenant, deployAll } = require('./provision');
+const { provisionTenant, deployAll, deprovisionTenant } = require('./provision');
 
 const app = express();
 app.use(express.json());
@@ -101,9 +101,25 @@ app.post('/admin/licenses/:id/reactivate', requireAdmin, (req, res) => {
   res.json(db.prepare('SELECT * FROM licenses WHERE id = ?').get(req.params.id));
 });
 
-app.delete('/admin/licenses/:id', requireAdmin, (req, res) => {
+app.delete('/admin/licenses/:id', requireAdmin, async (req, res) => {
+  const license = db.prepare('SELECT * FROM licenses WHERE id = ?').get(req.params.id);
+  if (!license) return res.status(404).json({ error: 'Not found' });
+
+  let output = '';
+  if (license.slug) {
+    try {
+      output = await deprovisionTenant(license.slug);
+    } catch (err) {
+      // Leave the license row in place if teardown fails — better to
+      // surface a stuck/half-deleted tenant for manual cleanup than
+      // to silently lose the record while a real server + database
+      // are still running somewhere.
+      return res.status(500).json({ error: err.message, output: err.output || '' });
+    }
+  }
+
   db.prepare('DELETE FROM licenses WHERE id = ?').run(req.params.id);
-  res.json({ deleted: true });
+  res.json({ deleted: true, output });
 });
 
 // ── Admin: infrastructure orchestration ──────────────────────────────

@@ -204,6 +204,7 @@ async function loadLicenses() {
         ${l.status === 'active'
           ? `<button class="danger" onclick="revoke(${l.id})">Revoke</button>`
           : `<button onclick="reactivate(${l.id})">Reactivate</button>`}
+        <button class="danger" onclick="deleteLicense(${l.id}, '${l.customer_name.replace(/'/g, "\\'")}', ${l.slug ? `'${l.slug}'` : 'null'})" style="margin-left:6px;">Delete</button>
       </td>
     </tr>
   `).join('');
@@ -213,6 +214,22 @@ async function updateMaxDevices(id, value) {
   try {
     await api(`/admin/licenses/${id}/max-devices`, { method: 'POST', body: JSON.stringify({ maxDevices: Number(value) }) });
   } catch (e) { alert(e.message); loadLicenses(); }
+}
+
+async function deleteLicense(id, customerName, slug) {
+  const warning = slug
+    ? `Permanently delete "${customerName}"?\n\nThis will STOP the running server, DROP its entire database, and remove its config — all data for this tenant is destroyed and CANNOT be recovered.\n\nType-to-confirm isn't required, but make sure you mean it.`
+    : `Delete the license for "${customerName}"? This cannot be undone.`;
+  if (!confirm(warning)) return;
+  if (slug && !confirm(`Really sure? "${customerName}"'s database (slug: ${slug}) will be gone permanently.`)) return;
+
+  try {
+    const res = await api(`/admin/licenses/${id}`, { method: 'DELETE' });
+    if (res.output) alert(res.output);
+    loadLicenses();
+  } catch (e) {
+    alert(`❌ ${e.message}\n\n${e.output || ''}`);
+  }
 }
 
 async function revoke(id) {
