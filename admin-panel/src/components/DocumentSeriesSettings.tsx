@@ -50,7 +50,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
   useEffect(() => {
     if (!selOrgId) return;
     setError(null);
-    apiFetch<HeaderPreview>(`/delivery-note-settings/${selOrgId}`).then(setHeader).catch(() => setHeader({}));
+    apiFetch<HeaderPreview>(`/delivery-note-settings/${selOrgId}`).then(h => setHeader(h ?? {})).catch(() => setHeader({}));
     apiFetch<SeriesSettings>(`${apiBase}/${selOrgId}`).then(s => {
       setSettings(s ?? {});
       setFooterText(s?.footerText ?? '');
