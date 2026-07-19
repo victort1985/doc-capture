@@ -108,3 +108,46 @@ Without the above, the "New tenant" and "Deploy now" buttons in the
 admin UI will fail with a permissions or path error — the regular
 manual `provision-tenant.sh` / `deploy-all-tenants.sh` CLI usage still
 works fine independent of any of this.
+
+## Automatic subdomain creation (Cloudflare)
+
+Without this, every new tenant needs a manual step in the Cloudflare
+dashboard (Zero Trust → Tunnels → your tunnel → Public Hostname →
+Add). With it, leaving the "Public URL" field blank when creating a
+tenant automatically adds the DNS record and tunnel route for
+`<slug>.<TENANT_BASE_DOMAIN>` — no dashboard visit needed.
+
+**Requires**, all in `.env`:
+
+1. `CLOUDFLARE_API_TOKEN` — create at
+   dash.cloudflare.com → My Profile → API Tokens → Create Token
+   (custom token), with these permissions:
+   - Account → Cloudflare Tunnel → Edit
+   - Zone → DNS → Edit (scoped to your domain's zone)
+
+2. `CLOUDFLARE_ACCOUNT_ID` — Cloudflare dashboard → any domain →
+   right sidebar shows it.
+
+3. `CLOUDFLARE_ZONE_ID` — same right sidebar, for the specific zone
+   (e.g. doc-capture.app).
+
+4. `CLOUDFLARE_TUNNEL_ID` — Zero Trust → Networks → Tunnels → click
+   your existing tunnel → the ID in the URL/overview (the same tunnel
+   already serving app.doc-capture.app and license.doc-capture.app —
+   this reuses it, never creates a second tunnel).
+
+5. `TENANT_BASE_DOMAIN` — defaults to `doc-capture.app`.
+
+**Important:** the tunnel configuration update (`PUT
+.../cfd_tunnel/{id}/configurations`) replaces the *entire* ingress
+rule list — cloudflare-dns.js always reads the current list first and
+only adds/removes the one rule for the tenant in question, so existing
+hostnames are never touched. Still, the first time you use this,
+watch the "New tenant" output carefully and spot-check
+`app.doc-capture.app` / `license.doc-capture.app` still resolve
+afterward.
+
+If any of the four Cloudflare env vars are missing, this feature is
+silently skipped — the tenant still gets created, you just fall back
+to setting the Public URL by hand via the 🔗 Connection button (same
+as before this existed).

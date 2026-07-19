@@ -8,6 +8,7 @@ const db = require('./db');
 const { signPayload } = require('./crypto-sign');
 const { provisionTenant, deployAll, deprovisionTenant, createTenantAdmin } = require('./provision');
 const { encryptConnectionFile } = require('./connection-file');
+const { provisionTenantHostname, deprovisionTenantHostname, cloudflareAutomationEnabled } = require('./cloudflare-dns');
 
 const app = express();
 app.use(express.json());
@@ -117,6 +118,16 @@ app.delete('/admin/licenses/:id', requireAdmin, async (req, res) => {
       // are still running somewhere.
       return res.status(500).json({ error: err.message, output: err.output || '' });
     }
+
+    const baseDomain = process.env.TENANT_BASE_DOMAIN || 'doc-capture.app';
+    if (cloudflareAutomationEnabled() && license.public_url && license.public_url.endsWith(baseDomain)) {
+      try {
+        await deprovisionTenantHostname(license.slug);
+        output += '\n\n🌐 DNS + tunnel route removed.';
+      } catch (cfErr) {
+        output += `\n\n⚠️ Server/database removed, but Cloudflare cleanup failed: ${cfErr.message}\nRemove the "${license.slug}.${baseDomain}" hostname manually in the Cloudflare dashboard.`;
+      }
+    }
   }
 
   db.prepare('DELETE FROM licenses WHERE id = ?').run(req.params.id);
@@ -147,8 +158,20 @@ app.post('/admin/tenants', requireAdmin, async (req, res) => {
     const output = await provisionTenant({
       slug, customerName, port: Number(port), maxDevices: Number(maxDevices) || 5, licenseKey: key, dbPassword,
     });
+
+    let cloudflareNote = '';
+    if (!publicUrl && cloudflareAutomationEnabled()) {
+      try {
+        const autoUrl = await provisionTenantHostname(slug, Number(port));
+        db.prepare('UPDATE licenses SET public_url = ? WHERE id = ?').run(autoUrl.replace(/^https?:\/\//, ''), info.lastInsertRowid);
+        cloudflareNote = `\n\n🌐 DNS + tunnel route created automatically: ${autoUrl}`;
+      } catch (cfErr) {
+        cloudflareNote = `\n\n⚠️ Server provisioned, but Cloudflare DNS/tunnel setup failed: ${cfErr.message}\nSet the Public URL manually via the 🔗 Connection button once DNS is sorted out.`;
+      }
+    }
+
     db.prepare('UPDATE licenses SET provisioned = 1 WHERE id = ?').run(info.lastInsertRowid);
-    res.json({ license: db.prepare('SELECT * FROM licenses WHERE id = ?').get(info.lastInsertRowid), output });
+    res.json({ license: db.prepare('SELECT * FROM licenses WHERE id = ?').get(info.lastInsertRowid), output: output + cloudflareNote });
   } catch (err) {
     // Leave the license row in place (provisioned=0) — the slug/port/
     // key are reserved and visible in the admin UI, and provisioning
