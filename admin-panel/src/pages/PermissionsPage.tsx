@@ -125,9 +125,9 @@ export default function PermissionsPage() {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+      <div className="split-layout">
         {/* User list */}
-        <div className="card" style={{ width: 220, flexShrink: 0 }}>
+        <div className="card split-sidebar">
           <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>{t('nav.users')}</div>
           {users.map(u => (
             <div key={u.id} onClick={() => select(u)}
@@ -140,7 +140,7 @@ export default function PermissionsPage() {
 
         {/* Permission grid */}
         {sel && (
-          <div style={{ flex: 1 }}>
+          <div className="split-content">
             <div className="card" style={{ marginBottom: 8, padding: '10px 16px', background: 'var(--surface-muted)', fontSize: 13 }}>
               {t('permissions.editing')} <strong>{sel.username}</strong> ({sel.role}). {t('permissions.legend')}
             </div>

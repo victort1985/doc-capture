@@ -259,6 +259,17 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-actions { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
 
+/* Sidebar-list + content split, used on Groups/Permissions/Delivery
+   note settings/Quote+Invoice settings — side-by-side on desktop,
+   stacks on mobile instead of squeezing the content column. */
+.split-layout { display: flex; gap: 16px; align-items: flex-start; }
+.split-sidebar { width: 220px; flex-shrink: 0; }
+.split-content { flex: 1; min-width: 0; }
+@media (max-width: 767px) {
+  .split-layout { flex-direction: column; }
+  .split-sidebar { width: 100%; }
+}
+
 @keyframes slide-down {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
@@ -587,6 +598,29 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
 
   /* Tables scroll horizontally */
   .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Several modals use fixed pixel widths (360-520px) meant for
+     desktop — cap every card to the viewport so none of them overflow
+     off-screen on a phone. Harmless for normal page cards too, since
+     92vw is already close to their natural full-container width. */
+  .card { max-width: 92vw !important; box-sizing: border-box; }
+
+  /* Many pages have an inline filter/action row (a <select> next to a
+     button, e.g. File log's type filter + Clear) with no flex-wrap
+     set — React renders inline styles as a literal style="..." string,
+     so this attribute selector genuinely matches them at runtime and
+     lets a row that doesn't fit drop to a second line instead of
+     forcing horizontal scroll or overflow. */
+  div[style*="display:flex"][style*="align-items:center"] {
+    flex-wrap: wrap;
+  }
+
+  /* Two-column forms collapse to one — .form-grid is used almost
+     everywhere (Fleet, Templates, Groups, Delivery notes, Quote/
+     Invoice settings, Maintenance...) and was hard-locked to 2
+     columns with no mobile override, the single biggest source of
+     "doesn't fit" across the admin panel. */
+  .form-grid { grid-template-columns: 1fr !important; }
 
   /* Inputs — prevent iOS zoom (needs 16px+) */
   input, select, textarea {

@@ -134,8 +134,8 @@ export default function GroupsPage() {
         </form>
       )}
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <div className="card" style={{ width: 220, flexShrink: 0 }}>
+      <div className="split-layout">
+        <div className="card split-sidebar">
           <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>
             {t('nav.groups')}
           </div>
@@ -158,7 +158,7 @@ export default function GroupsPage() {
         </div>
 
         {sel && (
-          <div style={{ flex: 1 }}>
+          <div className="split-content">
             <div className="card" style={{ marginBottom: 12, display: 'flex', gap: 10, alignItems: 'flex-end' }}>
               <div style={{ flex: 1 }}>
                 <label>{t('groups.groupName')}</label>

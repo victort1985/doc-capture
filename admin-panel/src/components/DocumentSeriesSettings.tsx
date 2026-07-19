@@ -111,8 +111,8 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
 
       {error && <div className="error-banner">{error}</div>}
 
-      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
-        <div className="card" style={{ width: 200, flexShrink: 0 }}>
+      <div className="split-layout">
+        <div className="card split-sidebar">
           <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>{t('documentSeries.organization')}</div>
           {orgs.map(o => (
             <div key={o.id} onClick={() => setSelOrgId(o.id)}
@@ -124,7 +124,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
         </div>
 
         {selOrgId && (
-          <div style={{ flex: 1 }}>
+          <div className="split-content">
             {/* Header preview — read-only, pulled from Delivery note settings */}
             <div className="card" style={{ marginBottom: 14 }}>
               <h3 style={{ margin: '0 0 6px' }}>{t('documentSeries.header')}</h3>
