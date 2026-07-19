@@ -23,6 +23,7 @@
   .status-active{ color:#1a7a3c; font-weight:700; }
   .status-revoked{ color:#b3261e; font-weight:700; }
   .hidden{ display:none; }
+  #connectionModal:not(.hidden){ display:flex; }
   .stale{ color:#c95c11; }
   .table-scroll{ overflow-x:auto; -webkit-overflow-scrolling:touch; margin:0 -20px; padding:0 20px; }
   table{ min-width:640px; }
@@ -104,8 +105,8 @@
   </div>
 </div>
 
-<div id="connectionModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:200;">
-  <div class="card" style="width:380px;">
+<div id="connectionModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,0.4);align-items:center;justify-content:center;z-index:200;" onclick="closeConnectionModal()">
+  <div class="card" style="width:380px;" onclick="event.stopPropagation()">
     <h3 style="margin-top:0">Connection settings</h3>
     <label>Public URL (e.g. company-a.doc-capture.app)</label>
     <input id="connPublicUrl" placeholder="company-a.doc-capture.app">
