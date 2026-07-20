@@ -307,7 +307,8 @@ async function drawModernLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, p
 
   // Document type pill, bottom-left of the band.
   const pillLabel = `${params.docTypeLabel} ${params.docNumber}`;
-  const pillWidth = fonts.heBold.widthOfTextAtSize(pillLabel, 11) + 28;
+  const pillLabelRuns = toVisualRuns(pillLabel);
+  const pillWidth = pillLabelRuns.reduce((sum, r) => sum + runWidth(r, fonts, 11, true), 0) + 28;
   page.drawRectangle({ x: M, y: H - bandH + 16, width: pillWidth, height: 24, color: orange });
   drawBidiText(page, pillLabel, { x: M + pillWidth - 14, y: H - bandH + 24, size: 11, fonts, bold: true, align: 'right', color: rgb(1, 1, 1) });
 
@@ -348,9 +349,11 @@ async function drawModernLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, p
 
   y -= 14;
   const totalStr = `₪ ${params.total.toFixed(2)}`;
-  const totalPillW = fonts.latinBold.widthOfTextAtSize(totalStr, 14) + 28;
+  const totalRuns = toVisualRuns(totalStr);
+  const totalTextW = totalRuns.reduce((sum, r) => sum + runWidth(r, fonts, 14, true), 0);
+  const totalPillW = totalTextW + 28;
   page.drawRectangle({ x: W - M - totalPillW, y: y - 8, width: totalPillW, height: 28, color: navy });
-  page.drawText(totalStr, { x: W - M - totalPillW + 14, y: y, size: 14, font: fonts.latinBold, color: rgb(1, 1, 1) });
+  drawBidiText(page, totalStr, { x: W - M - 14, y, size: 14, fonts, bold: true, align: 'right', color: rgb(1, 1, 1) });
 
   if (params.footerText) {
     const footerY = 60;
