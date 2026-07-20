@@ -193,8 +193,13 @@ async function bootstrap() {
           // browser silently blocks those images — no console error, just
           // a broken-image icon, since the fetch itself already succeeded.
           'img-src': ["'self'", 'data:', 'blob:'],
-          // script-src: unsafe-inline needed for signing page (server-injected data script)
-          'script-src': ["'self'", "'unsafe-inline'"],
+          // script-src: unsafe-inline needed for signing page (server-injected data script).
+          // static.cloudflareinsights.com is Cloudflare's own auto-injected
+          // Web Analytics beacon (only present if that's enabled on the
+          // zone) — harmless to allow, but if you'd rather not, turn off
+          // the auto-injection in the Cloudflare dashboard instead and
+          // drop this entry.
+          'script-src': ["'self'", "'unsafe-inline'", 'https://static.cloudflareinsights.com'],
           // Prevent clickjacking attacks
           'frame-ancestors': ["'none'"],
         },
