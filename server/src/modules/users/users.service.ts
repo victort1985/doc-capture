@@ -140,7 +140,16 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const { city, regions } = await this.resolveCityAndRegions(dto);
     const organization = await this.resolveOrganization(requester, dto);
-    const group = await this.resolveGroup(dto.groupId);
+    let group = await this.resolveGroup(dto.groupId);
+    // Demo/sandbox organizations: anyone signing up afterwards (not
+    // set up directly by the super-admin) lands in the "Users" group
+    // rather than getting full default role permissions — the
+    // super-admin controls what that group can actually do via the
+    // normal Groups page. Only kicks in when the caller didn't
+    // explicitly pick a group.
+    if (group === undefined && organization?.isDemoMode) {
+      group = await this.groupsRepo.findOne({ where: { name: 'Users', organization: { id: organization.id } } });
+    }
     const user = this.usersRepo.create({
       username: dto.username,
       email: dto.email,

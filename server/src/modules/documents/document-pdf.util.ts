@@ -1,4 +1,4 @@
-import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
+import { PDFDocument, PDFFont, PDFPage, StandardFonts, degrees, rgb } from 'pdf-lib';
 import * as fontkit from '@pdf-lib/fontkit';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -36,6 +36,9 @@ export interface GenerateDocumentPdfParams {
   header: DocHeader;
   /** Defaults to 'classic' when not set (existing settings rows predate this field). */
   template?: DocTemplate;
+  /** Draws a large translucent "sample, not for use" watermark diagonally
+   * across the page — for demo/sandbox organizations only, see Organization.isDemoMode. */
+  isDemoMode?: boolean;
 }
 
 // ── Minimal RTL layout ───────────────────────────────────────────────
@@ -121,6 +124,39 @@ function drawBidiText(
   return totalWidth;
 }
 
+/** Large, translucent, diagonal "sample, not for use" stamp for demo/
+ * sandbox organizations — same bidi run handling as drawBidiText (each
+ * run keeps the same rotation angle, anchored at its own position
+ * along the line, so the whole phrase still reads as one straight
+ * rotated line despite being drawn run-by-run). */
+function drawDemoWatermark(page: PDFPage, fonts: Fonts) {
+  const W = page.getWidth();
+  const H = page.getHeight();
+  const text = 'לדוגמה, לא לשימוש';
+  const size = 34;
+  const angle = degrees(28);
+  const runs = toVisualRuns(text);
+  const totalWidth = runs.reduce((sum, r) => sum + runWidth(r, fonts, size, true), 0);
+
+  // Anchor the un-rotated line so its rotated center lands at the
+  // page center — rotate() in pdf-lib pivots around (x, y), so we
+  // offset the start point by half the (unrotated) width along the
+  // rotation angle rather than just centering on a horizontal line.
+  const cx = W / 2;
+  const cy = H / 2;
+  const rad = (28 * Math.PI) / 180;
+  let x = cx - (totalWidth / 2) * Math.cos(rad);
+  let y = cy - (totalWidth / 2) * Math.sin(rad);
+
+  for (const run of runs) {
+    const font = run.hebrew ? fonts.heBold : fonts.latinBold;
+    page.drawText(run.text, { x, y, size, font, color: rgb(0.75, 0.15, 0.15), opacity: 0.2, rotate: angle });
+    const w = runWidth(run, fonts, size, true);
+    x += w * Math.cos(rad);
+    y += w * Math.sin(rad);
+  }
+}
+
 export async function generateDocumentPdf(params: GenerateDocumentPdfParams): Promise<Buffer> {
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit as any);
@@ -149,6 +185,10 @@ export async function generateDocumentPdf(params: GenerateDocumentPdfParams): Pr
     default:
       await drawClassicLayout(pdf, page, fonts, params);
       break;
+  }
+
+  if (params.isDemoMode) {
+    drawDemoWatermark(page, fonts);
   }
 
   const bytes = await pdf.save();

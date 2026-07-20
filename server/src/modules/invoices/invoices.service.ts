@@ -81,7 +81,7 @@ export class InvoicesService {
       }
       return null;
     }
-    const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
+    const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection', 'organization'] });
     if (!settings?.storageConnection) {
       if (throwOnError) throw new BadRequestException('No storage connection is configured in Invoice settings.');
       return null;
@@ -100,6 +100,7 @@ export class InvoicesService {
         footerText: settings.footerText,
         header,
         template: (settings.template as any) ?? 'classic',
+        isDemoMode: settings.organization?.isDemoMode ?? false,
       });
       const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
       const relativePath = `Invoices/${invoice.invoiceNumber ?? invoice.id}.pdf`;
