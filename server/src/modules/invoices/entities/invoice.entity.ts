@@ -4,6 +4,7 @@ import {
 } from 'typeorm';
 import { Organization } from '../../organizations/entities/organization.entity';
 import { User } from '../../users/entities/user.entity';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 
 export enum InvoiceStatus {
   DRAFT = 'draft',
@@ -50,7 +51,7 @@ export class Invoice {
   @Column({ type: 'jsonb', default: [] })
   items: InvoiceItem[];
 
-  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0, transformer: numericTransformer })
   total: number;
 
   @Column({ type: 'text', nullable: true })

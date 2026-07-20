@@ -80,7 +80,7 @@ export default function QuotesPage() {
               <tr key={q.id} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
                 <td style={{ padding: '8px 12px' }}>{q.clientName}</td>
                 <td style={{ padding: '8px 12px' }}>{q.quoteNumber || `#${q.id}`}</td>
-                <td style={{ padding: '8px 12px' }}>₪{q.total.toFixed(2)}</td>
+                <td style={{ padding: '8px 12px' }}>₪{Number(q.total).toFixed(2)}</td>
                 <td style={{ padding: '8px 12px', color: statusColor[q.status] }}>{statusLabel[q.status]}</td>
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                   <button type="button" onClick={() => viewPdf(q.id)} title={t('quotes.viewPdf')} style={{ marginRight: 8 }}><FileText size={15} /></button>

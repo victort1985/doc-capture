@@ -5,6 +5,7 @@ import {
 import { Organization } from '../../organizations/entities/organization.entity';
 import { User } from '../../users/entities/user.entity';
 import { randomBytes } from 'crypto';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 
 export enum QuoteStatus {
   DRAFT = 'draft',
@@ -47,7 +48,7 @@ export class Quote {
   @Column({ type: 'jsonb', default: [] })
   items: QuoteItem[];
 
-  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0 })
+  @Column({ type: 'numeric', precision: 12, scale: 2, default: 0, transformer: numericTransformer })
   total: number;
 
   @Column({ type: 'text', nullable: true })

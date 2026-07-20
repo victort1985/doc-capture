@@ -87,7 +87,7 @@ export default function InvoicesPage() {
               <tr key={inv.id} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
                 <td style={{ padding: '8px 12px' }}>{inv.clientName}</td>
                 <td style={{ padding: '8px 12px' }}>{inv.invoiceNumber || `#${inv.id}`}</td>
-                <td style={{ padding: '8px 12px' }}>₪{inv.total.toFixed(2)}</td>
+                <td style={{ padding: '8px 12px' }}>₪{Number(inv.total).toFixed(2)}</td>
                 <td style={{ padding: '8px 12px', color: statusColor[inv.status] }}>{statusLabel[inv.status]}</td>
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                   <button type="button" onClick={() => viewPdf(inv.id)} title={t('invoices.viewPdf')} style={{ marginRight: 8 }}><FileText size={15} /></button>
