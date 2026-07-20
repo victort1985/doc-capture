@@ -73,7 +73,14 @@ export class InvoicesService {
   }
 
   private async tryGeneratePdf(invoice: Invoice, organizationId: number | null, throwOnError = false): Promise<string | null> {
-    if (organizationId == null) return null;
+    if (organizationId == null) {
+      if (throwOnError) {
+        throw new BadRequestException(
+          'This account isn\'t assigned to an organization, so there\'s no Invoice settings (template, storage) to generate against. Sign in as a user assigned to this invoice\'s organization instead.',
+        );
+      }
+      return null;
+    }
     const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
     if (!settings?.storageConnection) {
       if (throwOnError) throw new BadRequestException('No storage connection is configured in Invoice settings.');
