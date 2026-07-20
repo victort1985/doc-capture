@@ -95,7 +95,8 @@
     "statusDraft": "черновик",
     "statusSent": "отправлена",
     "statusApproved": "одобрена",
-    "statusDeclined": "отклонена"
+    "statusDeclined": "отклонена",
+    "preview": "Превью"
   },
   "invoices": {
     "eyebrow": "ОФИС",
@@ -117,7 +118,8 @@
     "statusDraft": "черновик",
     "statusSent": "отправлен",
     "statusPaid": "оплачен",
-    "statusCancelled": "отменён"
+    "statusCancelled": "отменён",
+    "preview": "Превью"
   },
   "deliveryNoteSettings": {
     "eyebrow": "Накладные",

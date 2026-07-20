@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2, RefreshCw, Send, CheckCircle2, FileText } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
 
 interface InvoiceItem { description: string; quantity: number; unitPrice: number; }
 interface InvoiceRow {
   id: number;
   invoiceNumber?: string;
+  date?: string;
   clientName: string;
   clientEmail?: string;
   items: InvoiceItem[];
@@ -21,7 +24,9 @@ const statusColor: Record<string, string> = {
 
 export default function InvoicesPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
+  const [template, setTemplate] = useState('classic');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +46,10 @@ export default function InvoicesPage() {
     }
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (!user?.organizationId) return;
+    apiFetch<{ template?: string }>(`/invoice-settings/${user.organizationId}`).then(s => setTemplate(s?.template ?? 'classic')).catch(() => {});
+  }, [user?.organizationId]);
 
   async function send(id: number) {
     await apiFetch(`/invoices/${id}/send`, { method: 'POST' });
@@ -75,6 +84,7 @@ export default function InvoicesPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
+              <th style={{ padding: '8px 12px' }}>{t('invoices.preview')}</th>
               <th style={{ padding: '8px 12px' }}>{t('invoices.client')}</th>
               <th style={{ padding: '8px 12px' }}>{t('invoices.number')}</th>
               <th style={{ padding: '8px 12px' }}>{t('invoices.total')}</th>
@@ -85,6 +95,17 @@ export default function InvoicesPage() {
           <tbody>
             {invoices.map((inv) => (
               <tr key={inv.id} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                <td style={{ padding: '8px 12px' }}>
+                  <DocumentPreviewThumbnail
+                    docNumber={inv.invoiceNumber || `#${inv.id}`}
+                    clientName={inv.clientName}
+                    date={inv.date}
+                    items={inv.items}
+                    total={Number(inv.total)}
+                    template={template}
+                    onClick={() => viewPdf(inv.id)}
+                  />
+                </td>
                 <td style={{ padding: '8px 12px' }}>{inv.clientName}</td>
                 <td style={{ padding: '8px 12px' }}>{inv.invoiceNumber || `#${inv.id}`}</td>
                 <td style={{ padding: '8px 12px' }}>₪{Number(inv.total).toFixed(2)}</td>
@@ -102,7 +123,7 @@ export default function InvoicesPage() {
               </tr>
             ))}
             {invoices.length === 0 && !loading && (
-              <tr><td colSpan={5} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('invoices.empty')}</td></tr>
+              <tr><td colSpan={6} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('invoices.empty')}</td></tr>
             )}
           </tbody>
         </table>

@@ -95,7 +95,8 @@
     "statusDraft": "טיוטה",
     "statusSent": "נשלחה",
     "statusApproved": "אושרה",
-    "statusDeclined": "נדחתה"
+    "statusDeclined": "נדחתה",
+    "preview": "תצוגה מקדימה"
   },
   "invoices": {
     "eyebrow": "משרד",
@@ -117,7 +118,8 @@
     "statusDraft": "טיוטה",
     "statusSent": "נשלחה",
     "statusPaid": "שולמה",
-    "statusCancelled": "בוטלה"
+    "statusCancelled": "בוטלה",
+    "preview": "תצוגה מקדימה"
   },
   "deliveryNoteSettings": {
     "eyebrow": "תעודות משלוח",

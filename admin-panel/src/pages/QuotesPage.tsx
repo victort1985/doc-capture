@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Trash2, RefreshCw, Send, FileText } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
 
 interface QuoteItem { description: string; quantity: number; unitPrice: number; }
 interface QuoteRow {
   id: number;
   quoteNumber?: string;
+  date?: string;
   clientName: string;
   clientEmail?: string;
   items: QuoteItem[];
@@ -21,7 +24,9 @@ const statusColor: Record<string, string> = {
 
 export default function QuotesPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
+  const [template, setTemplate] = useState('classic');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,6 +46,10 @@ export default function QuotesPage() {
     }
   }
   useEffect(() => { load(); }, []);
+  useEffect(() => {
+    if (!user?.organizationId) return;
+    apiFetch<{ template?: string }>(`/quote-settings/${user.organizationId}`).then(s => setTemplate(s?.template ?? 'classic')).catch(() => {});
+  }, [user?.organizationId]);
 
   async function send(id: number) {
     await apiFetch(`/quotes/${id}/send`, { method: 'POST' });
@@ -68,6 +77,7 @@ export default function QuotesPage() {
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
+              <th style={{ padding: '8px 12px' }}>{t('quotes.preview')}</th>
               <th style={{ padding: '8px 12px' }}>{t('quotes.client')}</th>
               <th style={{ padding: '8px 12px' }}>{t('quotes.number')}</th>
               <th style={{ padding: '8px 12px' }}>{t('quotes.total')}</th>
@@ -78,6 +88,17 @@ export default function QuotesPage() {
           <tbody>
             {quotes.map((q) => (
               <tr key={q.id} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                <td style={{ padding: '8px 12px' }}>
+                  <DocumentPreviewThumbnail
+                    docNumber={q.quoteNumber || `#${q.id}`}
+                    clientName={q.clientName}
+                    date={q.date}
+                    items={q.items}
+                    total={Number(q.total)}
+                    template={template}
+                    onClick={() => viewPdf(q.id)}
+                  />
+                </td>
                 <td style={{ padding: '8px 12px' }}>{q.clientName}</td>
                 <td style={{ padding: '8px 12px' }}>{q.quoteNumber || `#${q.id}`}</td>
                 <td style={{ padding: '8px 12px' }}>₪{Number(q.total).toFixed(2)}</td>
@@ -92,7 +113,7 @@ export default function QuotesPage() {
               </tr>
             ))}
             {quotes.length === 0 && !loading && (
-              <tr><td colSpan={5} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('quotes.empty')}</td></tr>
+              <tr><td colSpan={6} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('quotes.empty')}</td></tr>
             )}
           </tbody>
         </table>

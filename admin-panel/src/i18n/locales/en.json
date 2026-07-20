@@ -95,7 +95,8 @@
     "statusDraft": "draft",
     "statusSent": "sent",
     "statusApproved": "approved",
-    "statusDeclined": "declined"
+    "statusDeclined": "declined",
+    "preview": "Preview"
   },
   "invoices": {
     "eyebrow": "OFFICE",
@@ -117,7 +118,8 @@
     "statusDraft": "draft",
     "statusSent": "sent",
     "statusPaid": "paid",
-    "statusCancelled": "cancelled"
+    "statusCancelled": "cancelled",
+    "preview": "Preview"
   },
   "deliveryNoteSettings": {
     "eyebrow": "Delivery notes",
