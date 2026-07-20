@@ -29,6 +29,16 @@ echo "==> Building server"
 echo "==> Building admin panel"
 ( cd "$REPO_DIR/admin-panel" && npm install --no-audit --no-fund && npm run build )
 
+# Everything above ran as root (this whole script needs sudo for the
+# systemd restarts later) — that leaves git/npm-created files in
+# REPO_DIR owned by root. Hand it back to whoever actually invoked
+# sudo, so a plain (non-sudo) `npm install` in this same directory
+# later doesn't fail with EACCES — a recurring source of confusion
+# when mixing manual deploy commands with this script.
+if [[ -n "${SUDO_USER:-}" ]]; then
+  chown -R "$SUDO_USER:$SUDO_USER" "$REPO_DIR"
+fi
+
 echo "==> Syncing shared build into $APP_DIR"
 cp -rv "$REPO_DIR/server/dist/." "$APP_DIR/dist/"
 cp -rv "$REPO_DIR/server/src/." "$APP_DIR/src/"
