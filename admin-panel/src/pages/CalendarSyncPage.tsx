@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Calendar, RefreshCw, Copy, Check, ExternalLink, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface IcsData { token: string | null; url: string | null; }
 interface ImportResult { imported: number; skipped: number; errors: string[]; }
@@ -9,6 +10,8 @@ interface Org { id: number; name: string; }
 
 export default function CalendarSyncPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.organizationId == null;
   const [data, setData] = useState<IcsData | null>(null);
   const [copied, setCopied] = useState(false);
   const [rotating, setRotating] = useState(false);
@@ -27,9 +30,13 @@ export default function CalendarSyncPage() {
 
   useEffect(() => {
     load();
-    apiFetch<Org[]>('/organizations')
-      .then(os => { setOrgs(os); if (os.length) setSelOrgId(os[0].id); })
-      .catch(() => {});
+    if (isSuperAdmin) {
+      apiFetch<Org[]>('/organizations')
+        .then(os => { setOrgs(os); if (os.length) setSelOrgId(os[0].id); })
+        .catch(() => {});
+    } else if (user?.organizationId) {
+      setSelOrgId(user.organizationId);
+    }
 
     const params = new URLSearchParams(window.location.search);
     if (params.get('google') === 'connected') {

@@ -3,6 +3,7 @@ import { Printer } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { apiFetch } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 type Period = 'day' | 'week' | 'month' | 'year' | 'all';
 type Dimension = 'none' | 'user' | 'location' | 'organization';
@@ -125,6 +126,8 @@ function fmt(sec: number) {
 
 export default function ReportsPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.organizationId == null;
   const [tab, setTab] = useState<'overview' | 'work' | 'fuel' | 'warehouse'>('overview');
   const [period, setPeriod] = useState<Period>('month');
   const [users, setUsers] = useState<User[]>([]);
@@ -145,8 +148,8 @@ export default function ReportsPage() {
     apiFetch<User[]>('/users').then(setUsers).catch(() => {});
     apiFetch<Vehicle[]>('/fleet/vehicles').then(setVehicles).catch(() => {});
     apiFetch<LocationOpt[]>('/locations').then(setLocations).catch(() => {});
-    apiFetch<OrgOpt[]>('/organizations').then(setOrgs).catch(() => {});
-  }, []);
+    if (isSuperAdmin) apiFetch<OrgOpt[]>('/organizations').then(setOrgs).catch(() => {});
+  }, [isSuperAdmin]);
 
   async function load() {
     setLoading(true);

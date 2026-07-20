@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Building2, Lock, Save, TriangleAlert, X } from 'lucide-react';
 import { apiFetch } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import TemplatePicker from './TemplatePicker';
 
 interface Organization { id: number; name: string; }
@@ -23,6 +24,8 @@ interface SeriesSettings {
 
 export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'quote' | 'invoice'; navLabelKey: string }) {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.organizationId == null;
   const apiBase = `/${kind}-settings`;
 
   const [orgs, setOrgs] = useState<Organization[]>([]);
@@ -46,9 +49,13 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
   const [lockError, setLockError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<Organization[]>('/organizations').then(os => { setOrgs(os); if (os.length) setSelOrgId(os[0].id); }).catch(() => {});
+    if (isSuperAdmin) {
+      apiFetch<Organization[]>('/organizations').then(os => { setOrgs(os); if (os.length) setSelOrgId(os[0].id); }).catch(() => {});
+    } else if (user?.organizationId) {
+      setSelOrgId(user.organizationId);
+    }
     apiFetch<StorageConnection[]>('/storage/connections').then(setConnections).catch(() => {});
-  }, []);
+  }, [isSuperAdmin, user?.organizationId]);
 
   useEffect(() => {
     if (!selOrgId) return;
@@ -116,16 +123,18 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
       {error && <div className="error-banner">{error}</div>}
 
       <div className="split-layout">
-        <div className="card split-sidebar">
-          <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>{t('documentSeries.organization')}</div>
-          {orgs.map(o => (
-            <div key={o.id} onClick={() => setSelOrgId(o.id)}
-              style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: selOrgId === o.id ? 'var(--primary)' : 'transparent', color: selOrgId === o.id ? '#fff' : 'inherit', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Building2 size={14} />
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{o.name}</span>
-            </div>
-          ))}
-        </div>
+        {isSuperAdmin && (
+          <div className="card split-sidebar">
+            <div style={{ fontWeight: 600, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.4, color: 'var(--ink-soft)', marginBottom: 8 }}>{t('documentSeries.organization')}</div>
+            {orgs.map(o => (
+              <div key={o.id} onClick={() => setSelOrgId(o.id)}
+                style={{ padding: '8px 10px', borderRadius: 6, cursor: 'pointer', background: selOrgId === o.id ? 'var(--primary)' : 'transparent', color: selOrgId === o.id ? '#fff' : 'inherit', marginBottom: 2, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Building2 size={14} />
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{o.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         {selOrgId && (
           <div className="split-content">
