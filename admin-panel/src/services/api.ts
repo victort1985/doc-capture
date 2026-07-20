@@ -77,12 +77,21 @@ export async function apiFetch<T>(
 /** Authenticated binary fetch — plain <img src> can't send an Authorization
  * header, so logo/photo previews need to fetch bytes and turn them into a
  * blob: URL instead of pointing the <img> straight at the API. */
-export async function apiFetchBlob(path: string): Promise<string | null> {
+export async function apiFetchBlob(path: string): Promise<string> {
   const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
     headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Client-Type': 'admin-panel' },
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const message =
+      typeof body.message === 'string'
+        ? body.message
+        : Array.isArray(body.message)
+          ? body.message.join(', ')
+          : body?.message?.message ?? `Request failed (${res.status})`;
+    throw new Error(message);
+  }
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }

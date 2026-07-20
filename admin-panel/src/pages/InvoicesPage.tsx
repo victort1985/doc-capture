@@ -56,9 +56,12 @@ export default function InvoicesPage() {
     load();
   }
   async function viewPdf(id: number) {
-    const url = await apiFetchBlob(`/invoices/${id}/pdf`);
-    if (url) window.open(url, '_blank');
-    else alert(t('invoices.noPdf'));
+    try {
+      const url = await apiFetchBlob(`/invoices/${id}/pdf`);
+      window.open(url, '_blank');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t('invoices.noPdf'));
+    }
   }
   async function regeneratePdf(id: number) {
     try {

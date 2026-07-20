@@ -19,7 +19,7 @@ function LogoThumb({ orgId, version }: { orgId: number; version: number }) {
       if (cancelled) return;
       objectUrl = u;
       setUrl(u);
-    });
+    }).catch(() => { if (!cancelled) setUrl(null); });
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);

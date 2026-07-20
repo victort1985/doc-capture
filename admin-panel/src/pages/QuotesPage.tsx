@@ -56,9 +56,12 @@ export default function QuotesPage() {
     load();
   }
   async function viewPdf(id: number) {
-    const url = await apiFetchBlob(`/quotes/${id}/pdf`);
-    if (url) window.open(url, '_blank');
-    else alert(t('quotes.noPdf'));
+    try {
+      const url = await apiFetchBlob(`/quotes/${id}/pdf`);
+      window.open(url, '_blank');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t('quotes.noPdf'));
+    }
   }
   async function regeneratePdf(id: number) {
     try {

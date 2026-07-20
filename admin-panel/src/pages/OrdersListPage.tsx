@@ -39,8 +39,12 @@ export default function OrdersListPage() {
   }, []);
 
   async function viewPdf(id: number) {
-    const url = await apiFetchBlob(`/orders/${id}/pdf`);
-    if (url) window.open(url, '_blank');
+    try {
+      const url = await apiFetchBlob(`/orders/${id}/pdf`);
+      window.open(url, '_blank');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to load PDF');
+    }
   }
 
   async function removeOrder(id: number, name: string) {
