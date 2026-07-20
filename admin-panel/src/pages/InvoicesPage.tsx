@@ -60,6 +60,15 @@ export default function InvoicesPage() {
     if (url) window.open(url, '_blank');
     else alert(t('invoices.noPdf'));
   }
+  async function regeneratePdf(id: number) {
+    try {
+      await apiFetch(`/invoices/${id}/regenerate-pdf`, { method: 'POST' });
+      alert(t('invoices.regenerated'));
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to regenerate PDF');
+    }
+  }
   async function markPaid(id: number) {
     await apiFetch(`/invoices/${id}/mark-paid`, { method: 'POST' });
     load();
@@ -112,6 +121,7 @@ export default function InvoicesPage() {
                 <td style={{ padding: '8px 12px', color: statusColor[inv.status] }}>{statusLabel[inv.status]}</td>
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                   <button type="button" onClick={() => viewPdf(inv.id)} title={t('invoices.viewPdf')} style={{ marginRight: 8 }}><FileText size={15} /></button>
+                  <button type="button" onClick={() => regeneratePdf(inv.id)} title={t('invoices.regeneratePdf')} style={{ marginRight: 8 }}><RefreshCw size={15} /></button>
                   {inv.status === 'draft' && (
                     <button type="button" onClick={() => send(inv.id)} title={t('invoices.markSent')} style={{ marginRight: 8 }}><Send size={15} /></button>
                   )}

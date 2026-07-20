@@ -39,6 +39,11 @@ export class InvoicesController {
     return this.invoicesService.markSent(id, user.organizationId);
   }
 
+  @Post(':id/regenerate-pdf')
+  regeneratePdf(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
+    return this.invoicesService.regeneratePdf(id, user.organizationId);
+  }
+
   @Post(':id/mark-paid')
   markPaid(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
     return this.invoicesService.markPaid(id, user.organizationId);

@@ -96,7 +96,9 @@
     "statusSent": "sent",
     "statusApproved": "approved",
     "statusDeclined": "declined",
-    "preview": "Preview"
+    "preview": "Preview",
+    "regeneratePdf": "Regenerate PDF",
+    "regenerated": "PDF regenerated."
   },
   "invoices": {
     "eyebrow": "OFFICE",
@@ -119,7 +121,9 @@
     "statusSent": "sent",
     "statusPaid": "paid",
     "statusCancelled": "cancelled",
-    "preview": "Preview"
+    "preview": "Preview",
+    "regeneratePdf": "Regenerate PDF",
+    "regenerated": "PDF regenerated."
   },
   "deliveryNoteSettings": {
     "eyebrow": "Delivery notes",

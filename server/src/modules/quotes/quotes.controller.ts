@@ -43,6 +43,12 @@ export class QuotesController {
     return this.quotesService.markSent(id, user.organizationId);
   }
 
+  @Post(':id/regenerate-pdf')
+  @UseGuards(JwtAuthGuard)
+  regeneratePdf(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
+    return this.quotesService.regeneratePdf(id, user.organizationId);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {

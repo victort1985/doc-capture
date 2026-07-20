@@ -96,7 +96,9 @@
     "statusSent": "נשלחה",
     "statusApproved": "אושרה",
     "statusDeclined": "נדחתה",
-    "preview": "תצוגה מקדימה"
+    "preview": "תצוגה מקדימה",
+    "regeneratePdf": "יצירה מחדש של PDF",
+    "regenerated": "ה-PDF נוצר מחדש."
   },
   "invoices": {
     "eyebrow": "משרד",
@@ -119,7 +121,9 @@
     "statusSent": "נשלחה",
     "statusPaid": "שולמה",
     "statusCancelled": "בוטלה",
-    "preview": "תצוגה מקדימה"
+    "preview": "תצוגה מקדימה",
+    "regeneratePdf": "יצירה מחדש של PDF",
+    "regenerated": "ה-PDF נוצר מחדש."
   },
   "deliveryNoteSettings": {
     "eyebrow": "תעודות משלוח",

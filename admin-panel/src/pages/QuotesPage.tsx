@@ -60,6 +60,15 @@ export default function QuotesPage() {
     if (url) window.open(url, '_blank');
     else alert(t('quotes.noPdf'));
   }
+  async function regeneratePdf(id: number) {
+    try {
+      await apiFetch(`/quotes/${id}/regenerate-pdf`, { method: 'POST' });
+      alert(t('quotes.regenerated'));
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to regenerate PDF');
+    }
+  }
   async function remove(id: number, name: string) {
     if (!confirm(t('quotes.deleteConfirm', { name }))) return;
     await apiFetch(`/quotes/${id}`, { method: 'DELETE' });
@@ -105,6 +114,7 @@ export default function QuotesPage() {
                 <td style={{ padding: '8px 12px', color: statusColor[q.status] }}>{statusLabel[q.status]}</td>
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                   <button type="button" onClick={() => viewPdf(q.id)} title={t('quotes.viewPdf')} style={{ marginRight: 8 }}><FileText size={15} /></button>
+                  <button type="button" onClick={() => regeneratePdf(q.id)} title={t('quotes.regeneratePdf')} style={{ marginRight: 8 }}><RefreshCw size={15} /></button>
                   {q.status === 'draft' && (
                     <button type="button" onClick={() => send(q.id)} title={t('quotes.markSent')} style={{ marginRight: 8 }}><Send size={15} /></button>
                   )}

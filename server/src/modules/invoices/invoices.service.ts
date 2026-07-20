@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
@@ -72,10 +72,13 @@ export class InvoicesService {
     return this.repo.save(saved);
   }
 
-  private async tryGeneratePdf(invoice: Invoice, organizationId: number | null): Promise<string | null> {
+  private async tryGeneratePdf(invoice: Invoice, organizationId: number | null, throwOnError = false): Promise<string | null> {
     if (organizationId == null) return null;
     const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
-    if (!settings?.storageConnection) return null;
+    if (!settings?.storageConnection) {
+      if (throwOnError) throw new BadRequestException('No storage connection is configured in Invoice settings.');
+      return null;
+    }
 
     try {
       const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
@@ -95,9 +98,16 @@ export class InvoicesService {
       const relativePath = `Invoices/${invoice.invoiceNumber ?? invoice.id}.pdf`;
       await adapter.write(relativePath, pdfBytes);
       return relativePath;
-    } catch {
+    } catch (err) {
+      if (throwOnError) throw err;
       return null;
     }
+  }
+
+  async regeneratePdf(id: number, organizationId: number | null): Promise<Invoice> {
+    const invoice = await this.findOne(id, organizationId);
+    invoice.storagePath = await this.tryGeneratePdf(invoice, organizationId, true);
+    return this.repo.save(invoice);
   }
 
   async getPdfBuffer(id: number, organizationId: number | null): Promise<Buffer> {

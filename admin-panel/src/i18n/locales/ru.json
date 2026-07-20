@@ -96,7 +96,9 @@
     "statusSent": "отправлена",
     "statusApproved": "одобрена",
     "statusDeclined": "отклонена",
-    "preview": "Превью"
+    "preview": "Превью",
+    "regeneratePdf": "Перегенерировать PDF",
+    "regenerated": "PDF пересоздан."
   },
   "invoices": {
     "eyebrow": "ОФИС",
@@ -119,7 +121,9 @@
     "statusSent": "отправлен",
     "statusPaid": "оплачен",
     "statusCancelled": "отменён",
-    "preview": "Превью"
+    "preview": "Превью",
+    "regeneratePdf": "Перегенерировать PDF",
+    "regenerated": "PDF пересоздан."
   },
   "deliveryNoteSettings": {
     "eyebrow": "Накладные",

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Quote, QuoteStatus } from './entities/quote.entity';
@@ -83,11 +83,17 @@ export class QuotesService {
   /** Best-effort: a missing storage connection or a PDF rendering
    * error shouldn't block creating the quote record itself — the
    * document can be regenerated/retried later once settings are
-   * fixed. Returns null on any failure. */
-  private async tryGeneratePdf(quote: Quote, organizationId: number | null): Promise<string | null> {
+   * fixed. Returns null on any failure (unless throwOnError is set —
+   * used by the explicit "Regenerate PDF" action, where silently
+   * doing nothing would be confusing; the user should see why it
+   * still failed). */
+  private async tryGeneratePdf(quote: Quote, organizationId: number | null, throwOnError = false): Promise<string | null> {
     if (organizationId == null) return null;
     const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
-    if (!settings?.storageConnection) return null;
+    if (!settings?.storageConnection) {
+      if (throwOnError) throw new BadRequestException('No storage connection is configured in Quote settings.');
+      return null;
+    }
 
     try {
       const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
@@ -107,9 +113,19 @@ export class QuotesService {
       const relativePath = `Quotes/${quote.quoteNumber ?? quote.id}.pdf`;
       await adapter.write(relativePath, pdfBytes);
       return relativePath;
-    } catch {
+    } catch (err) {
+      if (throwOnError) throw err;
       return null;
     }
+  }
+
+  /** Explicit user-triggered retry — e.g. after configuring storage
+   * that wasn't set up when the quote was first created, or after
+   * switching templates and wanting existing quotes to match. */
+  async regeneratePdf(id: number, organizationId: number | null): Promise<Quote> {
+    const quote = await this.findOne(id, organizationId);
+    quote.storagePath = await this.tryGeneratePdf(quote, organizationId, true);
+    return this.repo.save(quote);
   }
 
   async markSent(id: number, organizationId: number | null): Promise<Quote> {
