@@ -76,10 +76,18 @@ function splitRuns(text: string): Run[] {
 }
 
 /** Runs in final left-to-right drawing order, i.e. already flipped for RTL. */
+/** Runs in final left-to-right drawing order, i.e. already flipped for RTL.
+ *
+ * IMPORTANT: only the ORDER of runs gets reversed here — never the
+ * characters within a Hebrew run. Verified against Chromium's own
+ * bidi-aware PDF export as ground truth (extracted via pdftotext):
+ * word order flips for RTL text, but each word's internal letter
+ * sequence is untouched. An earlier version of this function also
+ * reversed characters within each Hebrew run, which produced
+ * mirror-image gibberish for every word (e.g. "הצעת" came out as
+ * "תעצה") — wrong despite seeming plausible on paper. */
 function toVisualRuns(text: string): Run[] {
-  return splitRuns(text)
-    .reverse()
-    .map((r) => (r.hebrew ? { ...r, text: [...r.text].reverse().join('') } : r));
+  return splitRuns(text).reverse();
 }
 
 interface Fonts { he: PDFFont; heBold: PDFFont; latin: PDFFont; latinBold: PDFFont; }
