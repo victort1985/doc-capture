@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, Send, CheckCircle2, FileText } from 'lucide-react';
+import { Trash2, RefreshCw, Send, CheckCircle2, FileText, Building2 } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
@@ -17,6 +17,7 @@ interface InvoiceRow {
   status: 'draft' | 'sent' | 'paid' | 'cancelled';
   createdAt: string;
 }
+interface Org { id: number; name: string; }
 
 const statusColor: Record<string, string> = {
   draft: 'var(--ink-soft)', sent: 'var(--primary)', paid: 'green', cancelled: 'var(--danger, crimson)',
@@ -25,6 +26,9 @@ const statusColor: Record<string, string> = {
 export default function InvoicesPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const isSuperAdmin = user?.organizationId == null;
+  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [selOrgId, setSelOrgId] = useState<number | null>(null);
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [template, setTemplate] = useState('classic');
   const [loading, setLoading] = useState(true);
@@ -34,22 +38,31 @@ export default function InvoicesPage() {
     draft: t('invoices.statusDraft'), sent: t('invoices.statusSent'), paid: t('invoices.statusPaid'), cancelled: t('invoices.statusCancelled'),
   };
 
+  useEffect(() => {
+    if (isSuperAdmin) {
+      apiFetch<Org[]>('/organizations').then(os => { setOrgs(os); if (os.length) setSelOrgId(os[0].id); }).catch(() => {});
+    } else if (user?.organizationId) {
+      setSelOrgId(user.organizationId);
+    }
+  }, [isSuperAdmin, user?.organizationId]);
+
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      setInvoices(await apiFetch<InvoiceRow[]>('/invoices'));
+      const qs = isSuperAdmin && selOrgId ? `?orgId=${selOrgId}` : '';
+      setInvoices(await apiFetch<InvoiceRow[]>(`/invoices${qs}`));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load invoices');
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (!isSuperAdmin || selOrgId) load(); }, [selOrgId]);
   useEffect(() => {
-    if (!user?.organizationId) return;
-    apiFetch<{ template?: string }>(`/invoice-settings/${user.organizationId}`).then(s => setTemplate(s?.template ?? 'classic')).catch(() => {});
-  }, [user?.organizationId]);
+    if (!selOrgId) return;
+    apiFetch<{ template?: string }>(`/invoice-settings/${selOrgId}`).then(s => setTemplate(s?.template ?? 'classic')).catch(() => {});
+  }, [selOrgId]);
 
   async function send(id: number) {
     await apiFetch(`/invoices/${id}/send`, { method: 'POST' });
@@ -86,7 +99,17 @@ export default function InvoicesPage() {
     <div className="page">
       <div className="topbar">
         <div><div className="eyebrow">{t('invoices.eyebrow')}</div><h1>{t('invoices.title')}</h1></div>
-        <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('invoices.loading') : t('invoices.refresh')}</button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {isSuperAdmin && orgs.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Building2 size={15} style={{ color: 'var(--ink-soft)' }} />
+              <select value={selOrgId ?? ''} onChange={(e) => setSelOrgId(Number(e.target.value))} style={{ minWidth: 160 }}>
+                {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            </div>
+          )}
+          <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('invoices.loading') : t('invoices.refresh')}</button>
+        </div>
       </div>
       <div className="card" style={{ marginBottom: 16, padding: '10px 16px', background: 'var(--surface-muted)', fontSize: 13 }}>
         {t('invoices.disclaimer')}

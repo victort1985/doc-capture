@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { QuotesService } from './quotes.service';
 import { CreateQuoteDto } from './dto/create-quote.dto';
@@ -13,8 +13,12 @@ export class QuotesController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  findAll(@CurrentUser() user: ReqUser) {
-    return this.quotesService.findAll(user.organizationId);
+  findAll(@CurrentUser() user: ReqUser, @Query('orgId') orgId?: string) {
+    // Only a super-admin (organizationId === null) can pick a
+    // different org to look at — a regular admin is always scoped to
+    // their own, regardless of what's in the query string.
+    const effectiveOrgId = user.organizationId == null && orgId ? Number(orgId) : user.organizationId;
+    return this.quotesService.findAll(effectiveOrgId);
   }
 
   @Get(':id')

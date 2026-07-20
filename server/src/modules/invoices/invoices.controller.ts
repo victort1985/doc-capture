@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -13,8 +13,9 @@ export class InvoicesController {
   constructor(private readonly invoicesService: InvoicesService) {}
 
   @Get()
-  findAll(@CurrentUser() user: ReqUser) {
-    return this.invoicesService.findAll(user.organizationId);
+  findAll(@CurrentUser() user: ReqUser, @Query('orgId') orgId?: string) {
+    const effectiveOrgId = user.organizationId == null && orgId ? Number(orgId) : user.organizationId;
+    return this.invoicesService.findAll(effectiveOrgId);
   }
 
   @Get(':id')

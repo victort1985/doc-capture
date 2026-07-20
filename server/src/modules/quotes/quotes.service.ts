@@ -131,7 +131,11 @@ export class QuotesService {
    * switching templates and wanting existing quotes to match. */
   async regeneratePdf(id: number, organizationId: number | null): Promise<Quote> {
     const quote = await this.findOne(id, organizationId);
-    quote.storagePath = await this.tryGeneratePdf(quote, organizationId, true);
+    // Use the quote's OWN organization for settings/storage lookup —
+    // not the calling user's, which is null for a super-admin looking
+    // at a specific org's quote. findOne() already enforces that a
+    // regular admin can only reach quotes in their own org anyway.
+    quote.storagePath = await this.tryGeneratePdf(quote, quote.organization?.id ?? organizationId, true);
     return this.repo.save(quote);
   }
 

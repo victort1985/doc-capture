@@ -113,7 +113,7 @@ export class InvoicesService {
 
   async regeneratePdf(id: number, organizationId: number | null): Promise<Invoice> {
     const invoice = await this.findOne(id, organizationId);
-    invoice.storagePath = await this.tryGeneratePdf(invoice, organizationId, true);
+    invoice.storagePath = await this.tryGeneratePdf(invoice, invoice.organization?.id ?? organizationId, true);
     return this.repo.save(invoice);
   }
 

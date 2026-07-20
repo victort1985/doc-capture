@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, Send, FileText } from 'lucide-react';
+import { Trash2, RefreshCw, Send, FileText, Building2 } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
@@ -17,6 +17,7 @@ interface QuoteRow {
   status: 'draft' | 'sent' | 'approved' | 'declined';
   createdAt: string;
 }
+interface Org { id: number; name: string; }
 
 const statusColor: Record<string, string> = {
   draft: 'var(--ink-soft)', sent: 'var(--primary)', approved: 'green', declined: 'var(--danger, crimson)',
@@ -25,6 +26,9 @@ const statusColor: Record<string, string> = {
 export default function QuotesPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const isSuperAdmin = user?.organizationId == null;
+  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [selOrgId, setSelOrgId] = useState<number | null>(null);
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [template, setTemplate] = useState('classic');
   const [loading, setLoading] = useState(true);
@@ -34,22 +38,34 @@ export default function QuotesPage() {
     draft: t('quotes.statusDraft'), sent: t('quotes.statusSent'), approved: t('quotes.statusApproved'), declined: t('quotes.statusDeclined'),
   };
 
+  // Super-admins pick which organization's quotes to look at; a
+  // regular admin only ever has their own, so no picker needed —
+  // GET /organizations is super-admin-only and 403s for anyone else.
+  useEffect(() => {
+    if (isSuperAdmin) {
+      apiFetch<Org[]>('/organizations').then(os => { setOrgs(os); if (os.length) setSelOrgId(os[0].id); }).catch(() => {});
+    } else if (user?.organizationId) {
+      setSelOrgId(user.organizationId);
+    }
+  }, [isSuperAdmin, user?.organizationId]);
+
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      setQuotes(await apiFetch<QuoteRow[]>('/quotes'));
+      const qs = isSuperAdmin && selOrgId ? `?orgId=${selOrgId}` : '';
+      setQuotes(await apiFetch<QuoteRow[]>(`/quotes${qs}`));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load quotes');
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { if (!isSuperAdmin || selOrgId) load(); }, [selOrgId]);
   useEffect(() => {
-    if (!user?.organizationId) return;
-    apiFetch<{ template?: string }>(`/quote-settings/${user.organizationId}`).then(s => setTemplate(s?.template ?? 'classic')).catch(() => {});
-  }, [user?.organizationId]);
+    if (!selOrgId) return;
+    apiFetch<{ template?: string }>(`/quote-settings/${selOrgId}`).then(s => setTemplate(s?.template ?? 'classic')).catch(() => {});
+  }, [selOrgId]);
 
   async function send(id: number) {
     await apiFetch(`/quotes/${id}/send`, { method: 'POST' });
@@ -82,7 +98,17 @@ export default function QuotesPage() {
     <div className="page">
       <div className="topbar">
         <div><div className="eyebrow">{t('quotes.eyebrow')}</div><h1>{t('quotes.title')}</h1></div>
-        <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('quotes.loading') : t('quotes.refresh')}</button>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {isSuperAdmin && orgs.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Building2 size={15} style={{ color: 'var(--ink-soft)' }} />
+              <select value={selOrgId ?? ''} onChange={(e) => setSelOrgId(Number(e.target.value))} style={{ minWidth: 160 }}>
+                {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            </div>
+          )}
+          <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('quotes.loading') : t('quotes.refresh')}</button>
+        </div>
       </div>
       {error && <div className="error-banner">{error}</div>}
       <div className="card" style={{ overflowX: 'auto' }}>
