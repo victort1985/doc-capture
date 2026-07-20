@@ -49,9 +49,12 @@ export interface GenerateDocumentPdfParams {
 // implementation — good enough for short business-document strings
 // (names, addresses, footer paragraphs), worth a visual check on
 // anything unusual (e.g. right-to-left text ending mid-number).
-function isHebrewChar(ch: string): boolean {
+type RunKind = 'hebrew' | 'other' | 'space';
+
+function classify(ch: string): RunKind {
+  if (ch === ' ') return 'space';
   const code = ch.codePointAt(0)!;
-  return (code >= 0x0590 && code <= 0x05ff) || ch === '₪';
+  return (code >= 0x0590 && code <= 0x05ff) || ch === '₪' ? 'hebrew' : 'other';
 }
 
 interface Run { text: string; hebrew: boolean; }
@@ -59,23 +62,22 @@ interface Run { text: string; hebrew: boolean; }
 function splitRuns(text: string): Run[] {
   const runs: Run[] = [];
   let cur = '';
-  let curHebrew: boolean | null = null;
+  let curKind: RunKind | null = null;
   for (const ch of text) {
-    const hebrew = isHebrewChar(ch);
-    if (curHebrew === null || hebrew === curHebrew) {
+    const kind = classify(ch);
+    if (curKind === null || kind === curKind) {
       cur += ch;
-      curHebrew = hebrew;
+      curKind = kind;
     } else {
-      runs.push({ text: cur, hebrew: curHebrew });
+      runs.push({ text: cur, hebrew: curKind === 'hebrew' });
       cur = ch;
-      curHebrew = hebrew;
+      curKind = kind;
     }
   }
-  if (cur) runs.push({ text: cur, hebrew: curHebrew! });
+  if (cur) runs.push({ text: cur, hebrew: curKind === 'hebrew' });
   return runs;
 }
 
-/** Runs in final left-to-right drawing order, i.e. already flipped for RTL. */
 /** Runs in final left-to-right drawing order, i.e. already flipped for RTL.
  *
  * IMPORTANT: only the ORDER of runs gets reversed here — never the
@@ -87,7 +89,9 @@ function splitRuns(text: string): Run[] {
  * mirror-image gibberish for every word (e.g. "הצעת" came out as
  * "תעצה") — wrong despite seeming plausible on paper. */
 function toVisualRuns(text: string): Run[] {
-  return splitRuns(text).reverse();
+  const runs = splitRuns(text);
+  const hasHebrew = runs.some((r) => r.hebrew);
+  return hasHebrew ? runs.reverse() : runs;
 }
 
 interface Fonts { he: PDFFont; heBold: PDFFont; latin: PDFFont; latinBold: PDFFont; }
