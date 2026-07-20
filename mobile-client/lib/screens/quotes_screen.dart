@@ -4,6 +4,8 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/quotes_service.dart';
+import '../services/validators.dart';
+import '../invalid_email_dialog.dart';
 
 class QuotesScreen extends StatefulWidget {
   const QuotesScreen({super.key});
@@ -123,6 +125,15 @@ class _QuoteFormScreenState extends State<_QuoteFormScreen> {
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
     if (_clientController.text.trim().isEmpty) return;
+
+    final email = _emailController.text.trim();
+    if (email.isNotEmpty && !isValidEmail(email)) {
+      final skip = await confirmInvalidEmail(context);
+      if (!mounted) return;
+      if (!skip) return; // user chose "Fix" — let them edit the field
+      _emailController.clear();
+    }
+
     setState(() => _saving = true);
     try {
       final svc = QuotesService(context.read<ApiService>());
