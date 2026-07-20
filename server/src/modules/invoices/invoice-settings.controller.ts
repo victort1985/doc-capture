@@ -35,11 +35,12 @@ export class InvoiceSettingsController {
   @Put(':orgId')
   async upsert(
     @Param('orgId', ParseIntPipe) orgId: number,
-    @Body() dto: { footerText?: string; storageConnectionId?: number | null },
+    @Body() dto: { footerText?: string; storageConnectionId?: number | null; template?: string },
   ) {
     let settings = await this.repo.findOne({ where: { organization: { id: orgId } } });
     if (!settings) settings = this.repo.create({ organization: { id: orgId } as any });
     if (dto.footerText !== undefined) settings.footerText = dto.footerText;
+    if (dto.template !== undefined) settings.template = dto.template;
     if (dto.storageConnectionId !== undefined) {
       settings.storageConnection = dto.storageConnectionId == null ? undefined : ({ id: dto.storageConnectionId } as any);
     }

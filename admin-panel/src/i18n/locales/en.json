@@ -71,7 +71,11 @@
     "confirmCheckbox": "I understand this is permanent and cannot be changed later.",
     "confirmPasswordLabel": "Confirm with your admin password",
     "confirmApply": "Apply permanently",
-    "confirmApplying": "Applying…"
+    "confirmApplying": "Applying…",
+    "template": "Document template",
+    "templateClassic": "Classic",
+    "templateModern": "Modern",
+    "templateMinimalist": "Minimalist"
   },
   "quotes": {
     "eyebrow": "OFFICE",
@@ -145,7 +149,9 @@
     "storageNotConfigured": "Not configured",
     "terms": "Terms & conditions (printed on every note)",
     "termsPlaceholder": "Enter the terms text that will appear at the bottom of every printed delivery note…",
-    "headerPreview": "Header preview"
+    "headerPreview": "Header preview",
+    "template": "Document template",
+    "templateMobileNote": "The mobile app currently always uses the Classic layout for delivery notes — this setting will apply to it in a future update."
   },
   "common": {
     "loading": "Loading…",

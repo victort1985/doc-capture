@@ -41,6 +41,10 @@ export class InvoiceSettings {
   @Column({ type: 'text', nullable: true })
   footerText?: string | null;
 
+  /** 'classic' | 'modern' | 'minimalist' — see document-pdf.util.ts's DocTemplate. */
+  @Column({ type: 'varchar', default: 'classic' })
+  template: string;
+
   @ManyToOne(() => StorageConnection, { nullable: true, onDelete: 'SET NULL' })
   storageConnection?: StorageConnection;
 

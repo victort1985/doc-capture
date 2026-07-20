@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Save, Upload, X, Building2 } from 'lucide-react';
 import { apiFetch } from '../services/api';
+import TemplatePicker from '../components/TemplatePicker';
 
 interface Organization { id: number; name: string; }
 interface StorageConnection { id: number; name: string; }
@@ -20,6 +21,7 @@ interface Settings {
   notePrefix?: string;
   startingNumber?: number;
   termsText?: string;
+  template?: string;
   storageConnection?: StorageConnection;
 }
 
@@ -189,6 +191,17 @@ export default function DeliveryNoteSettingsPage() {
                 <option value="">{t('deliveryNoteSettings.storageNotConfigured')}</option>
                 {connections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
+            </div>
+
+            {/* Template */}
+            <div className="card" style={{ marginBottom: 14 }}>
+              <h3 style={{ margin: '0 0 12px' }}>{t('deliveryNoteSettings.template')}</h3>
+              <TemplatePicker
+                value={settings.template ?? 'classic'}
+                onChange={(v) => set('template', v)}
+                labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist') }}
+              />
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 10 }}>{t('deliveryNoteSettings.templateMobileNote')}</p>
             </div>
 
             {/* Terms */}

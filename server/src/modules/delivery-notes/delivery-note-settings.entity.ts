@@ -67,6 +67,10 @@ export class DeliveryNoteSettings {
   @Column({ type: 'text', nullable: true })
   termsText?: string;
 
+  /** 'classic' | 'modern' | 'minimalist' — see document-pdf.util.ts's DocTemplate. */
+  @Column({ type: 'varchar', default: 'classic' })
+  template: string;
+
   /** Where generated delivery-note PDFs are saved for this organization. */
   @ManyToOne(() => StorageConnection, { nullable: true, onDelete: 'SET NULL' })
   storageConnection?: StorageConnection;

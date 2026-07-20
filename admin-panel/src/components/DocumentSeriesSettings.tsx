@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Building2, Lock, Save, TriangleAlert, X } from 'lucide-react';
 import { apiFetch } from '../services/api';
+import TemplatePicker from './TemplatePicker';
 
 interface Organization { id: number; name: string; }
 interface StorageConnection { id: number; name: string; }
@@ -17,6 +18,7 @@ interface SeriesSettings {
   numberLocked?: boolean;
   footerText?: string | null;
   storageConnection?: StorageConnection;
+  template?: string;
 }
 
 export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'quote' | 'invoice'; navLabelKey: string }) {
@@ -29,6 +31,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
   const [header, setHeader] = useState<HeaderPreview>({});
   const [settings, setSettings] = useState<SeriesSettings>({});
   const [footerText, setFooterText] = useState('');
+  const [template, setTemplate] = useState('classic');
   const [storageConnectionId, setStorageConnectionId] = useState<number | ''>('');
   const [prefixDraft, setPrefixDraft] = useState('');
   const [startingNumberDraft, setStartingNumberDraft] = useState('');
@@ -54,6 +57,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
     apiFetch<SeriesSettings>(`${apiBase}/${selOrgId}`).then(s => {
       setSettings(s ?? {});
       setFooterText(s?.footerText ?? '');
+      setTemplate(s?.template ?? 'classic');
       setStorageConnectionId(s?.storageConnection?.id ?? '');
       setPrefixDraft(s?.numberPrefix ?? '');
       setStartingNumberDraft(s?.startingNumber != null ? String(s.startingNumber) : '');
@@ -66,7 +70,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
     try {
       await apiFetch(`${apiBase}/${selOrgId}`, {
         method: 'PUT',
-        body: JSON.stringify({ footerText, storageConnectionId: storageConnectionId || null }),
+        body: JSON.stringify({ footerText, storageConnectionId: storageConnectionId || null, template }),
       });
       setSaved(true);
     } catch (e) {
@@ -172,6 +176,16 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
                   </button>
                 </>
               )}
+            </div>
+
+            {/* Template */}
+            <div className="card" style={{ marginBottom: 14 }}>
+              <h3 style={{ margin: '0 0 12px' }}>{t('documentSeries.template')}</h3>
+              <TemplatePicker
+                value={template}
+                onChange={setTemplate}
+                labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist') }}
+              />
             </div>
 
             {/* Storage */}

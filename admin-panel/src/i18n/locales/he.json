@@ -71,7 +71,11 @@
     "confirmCheckbox": "אני מבין/ה שזהו שינוי קבוע שלא ניתן לשנות בהמשך.",
     "confirmPasswordLabel": "אשרו עם סיסמת המנהל שלכם",
     "confirmApply": "אישור לצמיתות",
-    "confirmApplying": "מאשר…"
+    "confirmApplying": "מאשר…",
+    "template": "תבנית מסמך",
+    "templateClassic": "קלאסי",
+    "templateModern": "מודרני",
+    "templateMinimalist": "מינימליסטי"
   },
   "quotes": {
     "eyebrow": "משרד",
@@ -145,7 +149,9 @@
     "storageNotConfigured": "לא מוגדר",
     "terms": "תנאים והגבלות (מודפס על כל תעודה)",
     "termsPlaceholder": "הזינו את טקסט התנאים שיופיע בתחתית כל תעודת משלוח מודפסת…",
-    "headerPreview": "תצוגה מקדימה של הכותרת"
+    "headerPreview": "תצוגה מקדימה של הכותרת",
+    "template": "תבנית מסמך",
+    "templateMobileNote": "האפליקציה הסלולרית משתמשת כרגע תמיד בעיצוב הקלאסי עבור תעודות משלוח — הגדרה זו תשפיע עליה בעדכון עתידי."
   },
   "common": {
     "loading": "טוען…",

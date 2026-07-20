@@ -89,6 +89,7 @@ export class InvoicesService {
         total: invoice.total,
         footerText: settings.footerText,
         header,
+        template: (settings.template as any) ?? 'classic',
       });
       const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
       const relativePath = `Invoices/${invoice.invoiceNumber ?? invoice.id}.pdf`;
