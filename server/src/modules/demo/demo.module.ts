@@ -6,7 +6,7 @@ import { Order } from '../orders/entities/order.entity';
 import { Quote } from '../quotes/entities/quote.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
-import { PhonebookContact } from '../phonebook/entities/phonebook-contact.entity';
+import { PhoneBookContact } from '../phonebook/entities/phonebook-contact.entity';
 import { Location } from '../locations/entities/location.entity';
 import { WarehouseItem } from '../warehouse/entities/warehouse-item.entity';
 import { WarehouseTransfer } from '../warehouse/entities/warehouse-transfer.entity';
@@ -17,7 +17,7 @@ import { DemoCleanupService } from './demo-cleanup.service';
   imports: [
     TypeOrmModule.forFeature([
       Organization, ServiceCall, Order, Quote, Invoice, DeliveryNote,
-      PhonebookContact, Location, WarehouseItem, WarehouseTransfer, Vehicle,
+      PhoneBookContact, Location, WarehouseItem, WarehouseTransfer, Vehicle,
     ]),
   ],
   providers: [DemoCleanupService],

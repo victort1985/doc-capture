@@ -8,7 +8,7 @@ import { Order } from '../orders/entities/order.entity';
 import { Quote } from '../quotes/entities/quote.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
-import { PhonebookContact } from '../phonebook/entities/phonebook-contact.entity';
+import { PhoneBookContact } from '../phonebook/entities/phonebook-contact.entity';
 import { Location } from '../locations/entities/location.entity';
 import { WarehouseItem } from '../warehouse/entities/warehouse-item.entity';
 import { WarehouseTransfer } from '../warehouse/entities/warehouse-transfer.entity';
@@ -38,7 +38,7 @@ export class DemoCleanupService {
     @InjectRepository(Quote) private readonly quotesRepo: Repository<Quote>,
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
     @InjectRepository(DeliveryNote) private readonly deliveryNotesRepo: Repository<DeliveryNote>,
-    @InjectRepository(PhonebookContact) private readonly contactsRepo: Repository<PhonebookContact>,
+    @InjectRepository(PhoneBookContact) private readonly contactsRepo: Repository<PhoneBookContact>,
     @InjectRepository(Location) private readonly locationsRepo: Repository<Location>,
     @InjectRepository(WarehouseItem) private readonly warehouseItemsRepo: Repository<WarehouseItem>,
     @InjectRepository(WarehouseTransfer) private readonly warehouseTransfersRepo: Repository<WarehouseTransfer>,
