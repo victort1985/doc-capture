@@ -35,6 +35,11 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
   const [settings, setSettings] = useState<SeriesSettings>({});
   const [footerText, setFooterText] = useState('');
   const [template, setTemplate] = useState('classic');
+  const [autoSendEmail, setAutoSendEmail] = useState(false);
+  const [primaryEmail, setPrimaryEmail] = useState('');
+  const [primaryEmailPassword, setPrimaryEmailPassword] = useState('');
+  const [primaryEmailSaving, setPrimaryEmailSaving] = useState(false);
+  const [primaryEmailSaved, setPrimaryEmailSaved] = useState(false);
   const [storageConnectionId, setStorageConnectionId] = useState<number | ''>('');
   const [prefixDraft, setPrefixDraft] = useState('');
   const [startingNumberDraft, setStartingNumberDraft] = useState('');
@@ -55,6 +60,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
       setSelOrgId(user.organizationId);
     }
     apiFetch<StorageConnection[]>('/storage/connections').then(setConnections).catch(() => {});
+    apiFetch<{ emailAddress?: string }>('/document-email-settings').then(s => setPrimaryEmail(s?.emailAddress ?? '')).catch(() => {});
   }, [isSuperAdmin, user?.organizationId]);
 
   useEffect(() => {
@@ -65,11 +71,26 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
       setSettings(s ?? {});
       setFooterText(s?.footerText ?? '');
       setTemplate(s?.template ?? 'classic');
+      setAutoSendEmail(s?.autoSendEmail ?? false);
       setStorageConnectionId(s?.storageConnection?.id ?? '');
       setPrefixDraft(s?.numberPrefix ?? '');
       setStartingNumberDraft(s?.startingNumber != null ? String(s.startingNumber) : '');
     }).catch(() => setSettings({}));
   }, [selOrgId]);
+
+  async function savePrimaryEmail() {
+    setPrimaryEmailSaving(true); setPrimaryEmailSaved(false);
+    try {
+      await apiFetch('/document-email-settings', {
+        method: 'PUT',
+        body: JSON.stringify({ emailAddress: primaryEmail, ...(primaryEmailPassword.trim() ? { appPassword: primaryEmailPassword.trim() } : {}) }),
+      });
+      setPrimaryEmailPassword('');
+      setPrimaryEmailSaved(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save primary email');
+    } finally { setPrimaryEmailSaving(false); }
+  }
 
   async function saveEveryday() {
     if (!selOrgId) return;
@@ -77,7 +98,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
     try {
       await apiFetch(`${apiBase}/${selOrgId}`, {
         method: 'PUT',
-        body: JSON.stringify({ footerText, storageConnectionId: storageConnectionId || null, template }),
+        body: JSON.stringify({ footerText, storageConnectionId: storageConnectionId || null, template, autoSendEmail }),
       });
       setSaved(true);
     } catch (e) {
@@ -195,6 +216,31 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
                 onChange={setTemplate}
                 labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist') }}
               />
+            </div>
+
+            {/* Primary email — shared across quotes/invoices/delivery notes */}
+            <div className="card" style={{ marginBottom: 14 }}>
+              <h3 style={{ margin: '0 0 6px' }}>{t('documentSeries.primaryEmail')}</h3>
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 0, marginBottom: 12 }}>{t('documentSeries.primaryEmailHint')}</p>
+              <label>{t('documentSeries.primaryEmailAddress')}</label>
+              <input type="email" value={primaryEmail} onChange={e => setPrimaryEmail(e.target.value)} placeholder="documents@yourcompany.com" />
+              <label>{t('documentSeries.primaryEmailAppPassword')}</label>
+              <input type="password" value={primaryEmailPassword} onChange={e => setPrimaryEmailPassword(e.target.value)} placeholder={t('ordersEmail.appPasswordKeepPlaceholder')} />
+              <div className="form-actions">
+                <button type="button" disabled={primaryEmailSaving} onClick={savePrimaryEmail}>
+                  {primaryEmailSaving ? t('common.saving') : t('common.save')}
+                </button>
+                {primaryEmailSaved && <span className="stamp-badge on">{t('deliveryNoteSettings.saved') ?? t('documentSeries.saved')}</span>}
+              </div>
+            </div>
+
+            {/* Auto-send toggle for this document type */}
+            <div className="card" style={{ marginBottom: 14 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" checked={autoSendEmail} onChange={e => setAutoSendEmail(e.target.checked)} />
+                {t('documentSeries.autoSendEmail', { kind })}
+              </label>
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>{t('documentSeries.autoSendEmailHint')}</p>
             </div>
 
             {/* Storage */}

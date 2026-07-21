@@ -71,6 +71,12 @@ export class DeliveryNoteSettings {
   @Column({ type: 'varchar', default: 'classic' })
   template: string;
 
+  /** Auto-emails the generated PDF to the client's email (if set) via
+   * the org's shared "primary email" (DocumentEmailSettings) as soon
+   * as the document is created. */
+  @Column({ default: false })
+  autoSendEmail: boolean;
+
   /** Where generated delivery-note PDFs are saved for this organization. */
   @ManyToOne(() => StorageConnection, { nullable: true, onDelete: 'SET NULL' })
   storageConnection?: StorageConnection;

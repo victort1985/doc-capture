@@ -7,6 +7,7 @@ import { CreateQuoteDto } from './dto/create-quote.dto';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
+import { DocumentSendingService } from '../document-email/document-sending.service';
 
 @Injectable()
 export class QuotesService {
@@ -15,6 +16,7 @@ export class QuotesService {
     @InjectRepository(QuoteSettings) private readonly settingsRepo: Repository<QuoteSettings>,
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
+    private readonly documentSendingService: DocumentSendingService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -120,6 +122,18 @@ export class QuotesService {
       const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
       const relativePath = `Quotes/${quote.quoteNumber ?? quote.id}.pdf`;
       await adapter.write(relativePath, pdfBytes);
+
+      if (settings.autoSendEmail) {
+        this.documentSendingService
+          .sendDocument({
+            clientEmail: quote.clientEmail,
+            filename: relativePath.split('/').pop()!,
+            pdfBuffer: pdfBytes,
+            subject: `הצעת מחיר ${quote.quoteNumber ?? quote.id}`,
+          })
+          .catch(() => {}); // best-effort, doesn't block PDF generation succeeding
+      }
+
       return relativePath;
     } catch (err) {
       if (throwOnError) throw err;

@@ -23,6 +23,7 @@ interface Settings {
   startingNumber?: number;
   termsText?: string;
   template?: string;
+  autoSendEmail?: boolean;
   storageConnection?: StorageConnection;
 }
 
@@ -31,6 +32,10 @@ export default function DeliveryNoteSettingsPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.organizationId == null;
   const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [primaryEmail, setPrimaryEmail] = useState('');
+  const [primaryEmailPassword, setPrimaryEmailPassword] = useState('');
+  const [primaryEmailSaving, setPrimaryEmailSaving] = useState(false);
+  const [primaryEmailSaved, setPrimaryEmailSaved] = useState(false);
   const [connections, setConnections] = useState<StorageConnection[]>([]);
   const [selOrgId, setSelOrgId] = useState<number | null>(null);
   const [settings, setSettings] = useState<Settings>({});
@@ -50,7 +55,22 @@ export default function DeliveryNoteSettingsPage() {
       setSelOrgId(user.organizationId);
     }
     apiFetch<StorageConnection[]>('/storage/connections').then(setConnections).catch(() => {});
+    apiFetch<{ emailAddress?: string }>('/document-email-settings').then(s => setPrimaryEmail(s?.emailAddress ?? '')).catch(() => {});
   }, [isSuperAdmin, user?.organizationId]);
+
+  async function savePrimaryEmail() {
+    setPrimaryEmailSaving(true); setPrimaryEmailSaved(false);
+    try {
+      await apiFetch('/document-email-settings', {
+        method: 'PUT',
+        body: JSON.stringify({ emailAddress: primaryEmail, ...(primaryEmailPassword.trim() ? { appPassword: primaryEmailPassword.trim() } : {}) }),
+      });
+      setPrimaryEmailPassword('');
+      setPrimaryEmailSaved(true);
+    } catch {
+      // surfaced inline via the button state only — non-critical secondary card
+    } finally { setPrimaryEmailSaving(false); }
+  }
 
   useEffect(() => {
     if (!selOrgId) return;
@@ -211,6 +231,31 @@ export default function DeliveryNoteSettingsPage() {
                 labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist') }}
               />
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 10 }}>{t('deliveryNoteSettings.templateMobileNote')}</p>
+            </div>
+
+            {/* Primary email */}
+            <div className="card" style={{ marginBottom: 14 }}>
+              <h3 style={{ margin: '0 0 6px' }}>{t('documentSeries.primaryEmail')}</h3>
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 0, marginBottom: 12 }}>{t('documentSeries.primaryEmailHint')}</p>
+              <label>{t('documentSeries.primaryEmailAddress')}</label>
+              <input type="email" value={primaryEmail} onChange={e => setPrimaryEmail(e.target.value)} placeholder="documents@yourcompany.com" />
+              <label>{t('documentSeries.primaryEmailAppPassword')}</label>
+              <input type="password" value={primaryEmailPassword} onChange={e => setPrimaryEmailPassword(e.target.value)} placeholder={t('ordersEmail.appPasswordKeepPlaceholder')} />
+              <div className="form-actions">
+                <button type="button" disabled={primaryEmailSaving} onClick={savePrimaryEmail}>
+                  {primaryEmailSaving ? t('common.saving') : t('common.save')}
+                </button>
+                {primaryEmailSaved && <span className="stamp-badge on">{t('documentSeries.saved')}</span>}
+              </div>
+            </div>
+
+            {/* Auto-send */}
+            <div className="card" style={{ marginBottom: 14 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input type="checkbox" checked={settings.autoSendEmail ?? false} onChange={e => set('autoSendEmail', e.target.checked)} />
+                {t('documentSeries.autoSendEmail', { kind: 'delivery note' })}
+              </label>
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>{t('deliveryNoteSettings.autoSendMobileNote')}</p>
             </div>
 
             {/* Terms */}

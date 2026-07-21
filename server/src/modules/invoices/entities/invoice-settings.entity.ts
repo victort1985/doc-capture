@@ -45,6 +45,12 @@ export class InvoiceSettings {
   @Column({ type: 'varchar', default: 'classic' })
   template: string;
 
+  /** Auto-emails the generated PDF to the client's email (if set) via
+   * the org's shared "primary email" (DocumentEmailSettings) as soon
+   * as the document is created. */
+  @Column({ default: false })
+  autoSendEmail: boolean;
+
   @ManyToOne(() => StorageConnection, { nullable: true, onDelete: 'SET NULL' })
   storageConnection?: StorageConnection;
 

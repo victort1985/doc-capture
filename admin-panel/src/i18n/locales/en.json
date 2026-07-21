@@ -64,7 +64,7 @@
     "footerPlaceholder": "Terms, agreement text, or notes to print at the bottom of every {{kind}}…",
     "save": "Save",
     "saving": "Saving…",
-    "saved": "Saved ✓",
+    "saved": "Saved",
     "confirmTitle": "This cannot be undone",
     "confirmBody": "You're about to permanently set the numbering series for <b>{{org}}</b> to:",
     "confirmWarning": "Once applied, the prefix and starting number can never be changed again — not even by an admin.",
@@ -75,7 +75,13 @@
     "template": "Document template",
     "templateClassic": "Classic",
     "templateModern": "Modern",
-    "templateMinimalist": "Minimalist"
+    "templateMinimalist": "Minimalist",
+    "primaryEmail": "Primary email",
+    "primaryEmailHint": "One shared Gmail account used to send quotes, invoices, and delivery notes to clients — set it once here, use it from any of the three settings pages.",
+    "primaryEmailAddress": "Email address",
+    "primaryEmailAppPassword": "App password",
+    "autoSendEmail": "Automatically email this {{kind}} to the client when created",
+    "autoSendEmailHint": "Uses the primary email above. Requires the client to have an email address on file."
   },
   "quotes": {
     "eyebrow": "OFFICE",
@@ -157,7 +163,8 @@
     "termsPlaceholder": "Enter the terms text that will appear at the bottom of every printed delivery note…",
     "headerPreview": "Header preview",
     "template": "Document template",
-    "templateMobileNote": "The mobile app currently always uses the Classic layout for delivery notes — this setting will apply to it in a future update."
+    "templateMobileNote": "The mobile app currently always uses the Classic layout for delivery notes — this setting will apply to it in a future update.",
+    "autoSendMobileNote": "The mobile app doesn't send delivery notes by email yet — this setting is saved for when that's added."
   },
   "common": {
     "loading": "Loading…",

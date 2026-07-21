@@ -7,6 +7,7 @@ import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
+import { DocumentSendingService } from '../document-email/document-sending.service';
 
 @Injectable()
 export class InvoicesService {
@@ -15,6 +16,7 @@ export class InvoicesService {
     @InjectRepository(InvoiceSettings) private readonly settingsRepo: Repository<InvoiceSettings>,
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
+    private readonly documentSendingService: DocumentSendingService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -105,6 +107,18 @@ export class InvoicesService {
       const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
       const relativePath = `Invoices/${invoice.invoiceNumber ?? invoice.id}.pdf`;
       await adapter.write(relativePath, pdfBytes);
+
+      if (settings.autoSendEmail) {
+        this.documentSendingService
+          .sendDocument({
+            clientEmail: invoice.clientEmail,
+            filename: relativePath.split('/').pop()!,
+            pdfBuffer: pdfBytes,
+            subject: `חשבונית ${invoice.invoiceNumber ?? invoice.id}`,
+          })
+          .catch(() => {});
+      }
+
       return relativePath;
     } catch (err) {
       if (throwOnError) throw err;
