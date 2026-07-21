@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
+import { useSetupWizard } from './SetupWizardGate';
 import logo from '../assets/logo.png';
 import CopyrightFooter from './CopyrightFooter';
 import LicenseWarningBanner from './LicenseWarningBanner';
@@ -55,6 +56,9 @@ const LANGUAGES = [
 
 function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { t, i18n } = useTranslation();
+  const { user } = useAuth();
+  const { open: openWizard } = useSetupWizard();
+  const isSuperAdmin = user?.organizationId == null;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -87,6 +91,15 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <select value={i18n.language} onChange={e => i18n.changeLanguage(e.target.value)}>
           {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
         </select>
+
+        {isSuperAdmin && (
+          <>
+            <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border, #e5e5e5)' }} />
+            <button type="button" className="ghost" onClick={() => { onClose(); openWizard(); }} style={{ width: '100%' }}>
+              {t('settings.openSetupWizard')}
+            </button>
+          </>
+        )}
 
         <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border, #e5e5e5)' }} />
 

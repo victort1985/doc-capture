@@ -8,6 +8,7 @@ interface AuthUser {
   language: string;
   organizationId: number | null;
   isDemoMode?: boolean;
+  setupWizardCompleted?: boolean;
 }
 
 interface AuthContextValue {

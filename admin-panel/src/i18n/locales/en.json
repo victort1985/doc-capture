@@ -41,7 +41,8 @@
     "confirmPassword": "Confirm new password",
     "passwordTooShort": "New password must be at least 8 characters.",
     "passwordMismatch": "New passwords don't match.",
-    "passwordChanged": "Password changed."
+    "passwordChanged": "Password changed.",
+    "openSetupWizard": "Open Setup Wizard"
   },
   "login": {
     "wordmarkTagline": "Sign in to the admin console.",
@@ -820,5 +821,39 @@
     "disabled3": "New accounts default to limited permissions set by the super-admin",
     "deletionWarning": "Everything you create here — calls, orders, quotes, invoices, delivery notes, contacts, locations, warehouse items, vehicles — is automatically and permanently deleted 10 days after it's created.",
     "agree": "I understand — continue"
+  },
+  "wizard": {
+    "welcomeTitle": "Welcome to Vixor ERP",
+    "welcomeBody": "Let's get your installation set up — a few short steps: your profile, the organization, a user group, your first team members, calendar sync, document storage, and how your PDFs look. Everything here can be changed later from Settings.",
+    "start": "Let's start",
+    "back": "Back",
+    "next": "Next",
+    "skip": "Skip for now",
+    "createAndContinue": "Create & continue",
+    "profileTitle": "Your profile",
+    "profileBody": "This is your own account — the person managing the whole installation. Fill in what you'd like others to see; you can leave anything blank and fill it in later.",
+    "orgTitle": "Create your organization",
+    "orgBody": "An organization is the company/business using Vixor — its own users, data, and settings, kept completely separate from any other organization on this installation.",
+    "orgName": "Organization name",
+    "orgNamePlaceholder": "e.g. Acme Services Ltd.",
+    "orgNameRequired": "Please enter a name for the organization.",
+    "groupTitle": "Create a user group",
+    "groupBody": "A group is a reusable set of permissions — instead of configuring access for every person one by one, assign them to a group and manage permissions for everyone at once from the Groups page.",
+    "groupName": "Group name",
+    "groupNameRequired": "Please enter a name for the group.",
+    "usersTitle": "Add your first team members",
+    "usersBody": "Create accounts for the people who'll actually use the app day to day. You can add as many as you like now, or skip this and add them later from the Users page.",
+    "addAnotherUser": "Add another user",
+    "usersCreatedSoFar": "created before the error",
+    "calendarTitle": "Calendar sync",
+    "calendarBody": "Connect a Google Calendar so scheduled calls and maintenance visits show up automatically — this opens in a new tab since it needs to sign in with Google. Come back here (or just close this and continue from Settings) once you're done, or skip it for now.",
+    "calendarOpenLink": "Open Calendar sync",
+    "storageTitle": "Document storage",
+    "storageBody": "Where generated PDFs (delivery notes, quotes, invoices) get saved — a local folder on this server, or a remote FTP/SFTP/Synology location. You can add more storage connections later and route different document types to different ones.",
+    "templatesTitle": "Choose a document look",
+    "templatesBody": "Pick the visual style for quotes, invoices, and delivery notes. You can change this anytime from each document type's settings page, and even switch per document type later.",
+    "doneTitle": "All set",
+    "doneBody": "Your installation is ready to use. You can re-open this wizard anytime from the Settings menu if you want to revisit any of these steps.",
+    "finish": "Done"
   }
 }
