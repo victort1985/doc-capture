@@ -20,6 +20,7 @@ interface SeriesSettings {
   footerText?: string | null;
   storageConnection?: StorageConnection;
   template?: string;
+  autoSendEmail?: boolean;
 }
 
 export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'quote' | 'invoice'; navLabelKey: string }) {
