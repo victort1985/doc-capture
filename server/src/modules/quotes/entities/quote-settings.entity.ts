@@ -37,6 +37,15 @@ export class QuoteSettings {
   @Column({ default: false })
   numberLocked: boolean;
 
+  /** The number to use for the NEXT quote created, then incremented —
+   * a real persistent counter, not derived from COUNT(*) of existing
+   * rows. COUNT() silently breaks the moment any quote gets deleted
+   * (manually, or by the demo-mode nightly cleanup): the count drops,
+   * and the next quote created reuses a number that's already been
+   * issued to a different quote. This field only ever goes up. */
+  @Column({ type: 'integer', default: 1 })
+  nextSequence: number;
+
   /** Fixed text printed at the bottom of every quote (terms & conditions). */
   @Column({ type: 'text', nullable: true })
   footerText?: string | null;

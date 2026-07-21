@@ -27,16 +27,29 @@ export class QuotesService {
    * locked for the org; otherwise just "#{count+1}" (no prefix, starts
    * at 1) — a usable placeholder before an admin has set the real
    * series, since a quote still has to have *some* number. */
+  /** Atomically claims the next number for this org (or the global
+   * series, for a super-admin with no org) and advances the counter
+   * in the same query — two quotes created at the same moment can
+   * never end up with the same number, unlike the old COUNT(*)
+   * approach this replaced. */
   private async generateQuoteNumber(organizationId: number | null): Promise<string> {
-    const orgWhere = organizationId != null ? { organization: { id: organizationId } } : {};
-    const count = await this.repo.count({ where: orgWhere });
-    const settings = organizationId != null
-      ? await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } })
-      : null;
-    if (settings?.numberLocked && settings.startingNumber != null) {
-      return `${settings.numberPrefix ?? ''}${settings.startingNumber + count}`;
+    if (organizationId == null) {
+      // No org context (super-admin) — settings/locking don't apply;
+      // fall back to a simple running count, same as before.
+      const count = await this.repo.count({});
+      return `#${count + 1}`;
     }
-    return `#${count + 1}`;
+
+    let settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } });
+    if (!settings) settings = await this.settingsRepo.save(this.settingsRepo.create({ organization: { id: organizationId } as any }));
+
+    const claimed = settings.nextSequence ?? 1;
+    await this.settingsRepo.increment({ id: settings.id }, 'nextSequence', 1);
+
+    if (settings.numberLocked && settings.startingNumber != null) {
+      return `${settings.numberPrefix ?? ''}${settings.startingNumber + claimed - 1}`;
+    }
+    return `#${claimed}`;
   }
 
   async findAll(organizationId: number | null): Promise<Quote[]> {

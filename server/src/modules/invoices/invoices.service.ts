@@ -27,16 +27,23 @@ export class InvoicesService {
    * locked for the org (see entity doc comment on why this is
    * deliberately not compliance-grade sequential numbering);
    * otherwise a plain "#{count+1}" placeholder. */
+  /** See QuotesService.generateQuoteNumber — same fix, same reasoning. */
   private async generateInvoiceNumber(organizationId: number | null): Promise<string> {
-    const orgWhere = organizationId != null ? { organization: { id: organizationId } } : {};
-    const count = await this.repo.count({ where: orgWhere });
-    const settings = organizationId != null
-      ? await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } })
-      : null;
-    if (settings?.numberLocked && settings.startingNumber != null) {
-      return `${settings.numberPrefix ?? ''}${settings.startingNumber + count}`;
+    if (organizationId == null) {
+      const count = await this.repo.count({});
+      return `#${count + 1}`;
     }
-    return `#${count + 1}`;
+
+    let settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } });
+    if (!settings) settings = await this.settingsRepo.save(this.settingsRepo.create({ organization: { id: organizationId } as any }));
+
+    const claimed = settings.nextSequence ?? 1;
+    await this.settingsRepo.increment({ id: settings.id }, 'nextSequence', 1);
+
+    if (settings.numberLocked && settings.startingNumber != null) {
+      return `${settings.numberPrefix ?? ''}${settings.startingNumber + claimed - 1}`;
+    }
+    return `#${claimed}`;
   }
 
   async findAll(organizationId: number | null): Promise<Invoice[]> {

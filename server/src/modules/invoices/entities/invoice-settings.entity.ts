@@ -37,6 +37,11 @@ export class InvoiceSettings {
   @Column({ default: false })
   numberLocked: boolean;
 
+  /** The number to use for the NEXT invoice created, then incremented —
+   * see QuoteSettings.nextSequence for why this replaces COUNT(*). */
+  @Column({ type: 'integer', default: 1 })
+  nextSequence: number;
+
   /** Fixed text printed at the bottom of every invoice (terms & conditions). */
   @Column({ type: 'text', nullable: true })
   footerText?: string | null;
