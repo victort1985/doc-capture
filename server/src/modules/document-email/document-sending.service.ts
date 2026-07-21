@@ -17,10 +17,16 @@ export class DocumentSendingService {
     pdfBuffer: Buffer;
     subject: string;
   }): Promise<boolean> {
-    if (!params.clientEmail?.trim()) return false;
+    if (!params.clientEmail?.trim()) {
+      this.logger.warn(`Skipped sending "${params.filename}" — no client email on this document.`);
+      return false;
+    }
 
     const settings = await this.settingsService.getWithSecret();
-    if (!settings?.emailAddress || !settings.appPassword) return false;
+    if (!settings?.emailAddress || !settings.appPassword) {
+      this.logger.warn(`Skipped sending "${params.filename}" — primary email isn't fully configured (address and/or app password missing).`);
+      return false;
+    }
 
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
@@ -39,6 +45,7 @@ export class DocumentSendingService {
         text: params.subject,
         attachments: [{ filename: attachmentName, content: params.pdfBuffer, contentType: 'application/pdf' }],
       });
+      this.logger.log(`Sent "${attachmentName}" to ${params.clientEmail} from ${settings.emailAddress}.`);
       return true;
     } catch (err: any) {
       this.logger.error(`Failed to send "${attachmentName}" to ${params.clientEmail}: ${err?.message}`);
