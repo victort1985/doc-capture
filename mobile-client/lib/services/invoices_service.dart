@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import '../services/api_service.dart';
 
 class InvoiceItem {
@@ -59,6 +60,8 @@ class InvoicesService {
     final res = await _api.get('/invoices');
     return (res as List<dynamic>).map((e) => Invoice.fromJson(e)).toList();
   }
+
+  Future<Uint8List> getPdf(int id) => _api.getBytes('/invoices/$id/pdf');
 
   Future<Invoice> create({
     required String clientName,

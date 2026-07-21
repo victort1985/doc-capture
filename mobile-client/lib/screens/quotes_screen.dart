@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/quotes_service.dart';
 import '../services/validators.dart';
 import '../invalid_email_dialog.dart';
+import '../widgets/document_preview_card.dart';
 
 class QuotesScreen extends StatefulWidget {
   const QuotesScreen({super.key});
@@ -17,6 +19,7 @@ class _QuotesScreenState extends State<QuotesScreen> {
   late final QuotesService _svc;
   List<Quote> _quotes = [];
   bool _loading = true;
+  int? _pdfLoadingId;
 
   @override
   void initState() {
@@ -32,6 +35,22 @@ class _QuotesScreenState extends State<QuotesScreen> {
       if (mounted) setState(() { _quotes = quotes; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _viewPdf(Quote q) async {
+    setState(() => _pdfLoadingId = q.id);
+    try {
+      final bytes = await _svc.getPdf(q.id);
+      if (!mounted) return;
+      await Printing.layoutPdf(onLayout: (_) => bytes, name: q.quoteNumber ?? 'quote-${q.id}');
+    } catch (e) {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.quotePdfUnavailable)));
+      }
+    } finally {
+      if (mounted) setState(() => _pdfLoadingId = null);
     }
   }
 
@@ -60,7 +79,8 @@ class _QuotesScreenState extends State<QuotesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.quotesTitle)),
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(title: Text(l10n.quotesTitle), backgroundColor: Colors.transparent),
       floatingActionButton: FloatingActionButton(onPressed: _openCreate, child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -75,13 +95,37 @@ class _QuotesScreenState extends State<QuotesScreen> {
                     itemBuilder: (_, i) {
                       final q = _quotes[i];
                       return Card(
-                        child: ListTile(
-                          title: Text(q.clientName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('₪${q.total.toStringAsFixed(2)} · ${q.quoteNumber ?? '#${q.id}'}'),
-                          trailing: Chip(
-                            label: Text(_statusLabel(q.status, l10n), style: const TextStyle(color: Colors.white, fontSize: 11)),
-                            backgroundColor: _statusColor(q.status),
-                            padding: EdgeInsets.zero,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                              DocumentPreviewCard(
+                                docNumber: q.quoteNumber ?? '#${q.id}',
+                                clientName: q.clientName,
+                                total: q.total,
+                                items: q.items.map((it) => PreviewLineItem(it.description, it.quantity)).toList(),
+                                loading: _pdfLoadingId == q.id,
+                                onTap: () => _viewPdf(q),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(q.clientName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    Text('₪${q.total.toStringAsFixed(2)} · ${q.quoteNumber ?? '#${q.id}'}'),
+                                    const SizedBox(height: 4),
+                                    Chip(
+                                      label: Text(_statusLabel(q.status, l10n), style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                      backgroundColor: _statusColor(q.status),
+                                      padding: EdgeInsets.zero,
+                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );

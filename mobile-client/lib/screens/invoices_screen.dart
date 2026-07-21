@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:printing/printing.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/invoices_service.dart';
 import '../services/validators.dart';
 import '../invalid_email_dialog.dart';
+import '../widgets/document_preview_card.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -17,6 +19,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   late final InvoicesService _svc;
   List<Invoice> _invoices = [];
   bool _loading = true;
+  int? _pdfLoadingId;
 
   @override
   void initState() {
@@ -32,6 +35,22 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
       if (mounted) setState(() { _invoices = invoices; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _viewPdf(Invoice inv) async {
+    setState(() => _pdfLoadingId = inv.id);
+    try {
+      final bytes = await _svc.getPdf(inv.id);
+      if (!mounted) return;
+      await Printing.layoutPdf(onLayout: (_) => bytes, name: inv.invoiceNumber ?? 'invoice-${inv.id}');
+    } catch (e) {
+      if (mounted) {
+        final l10n = AppLocalizations.of(context)!;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.invoicePdfUnavailable)));
+      }
+    } finally {
+      if (mounted) setState(() => _pdfLoadingId = null);
     }
   }
 
@@ -65,7 +84,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.invoicesTitle)),
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(title: Text(l10n.invoicesTitle), backgroundColor: Colors.transparent),
       floatingActionButton: FloatingActionButton(onPressed: _openCreate, child: const Icon(Icons.add)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -80,19 +100,43 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                     itemBuilder: (_, i) {
                       final inv = _invoices[i];
                       return Card(
-                        child: ListTile(
-                          title: Text(inv.clientName, style: const TextStyle(fontWeight: FontWeight.w600)),
-                          subtitle: Text('₪${inv.total.toStringAsFixed(2)} · ${inv.invoiceNumber ?? '#${inv.id}'}'),
-                          trailing: Wrap(
-                            spacing: 6,
-                            crossAxisAlignment: WrapCrossAlignment.center,
+                        child: Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.center,
                             children: [
-                              if (inv.status != InvoiceStatus.paid && inv.status != InvoiceStatus.cancelled)
-                                TextButton(onPressed: () => _markPaid(inv), child: Text(l10n.invoiceMarkPaid)),
-                              Chip(
-                                label: Text(_statusLabel(inv.status, l10n), style: const TextStyle(color: Colors.white, fontSize: 11)),
-                                backgroundColor: _statusColor(inv.status),
-                                padding: EdgeInsets.zero,
+                              DocumentPreviewCard(
+                                docNumber: inv.invoiceNumber ?? '#${inv.id}',
+                                clientName: inv.clientName,
+                                total: inv.total,
+                                items: inv.items.map((it) => PreviewLineItem(it.description, it.quantity)).toList(),
+                                loading: _pdfLoadingId == inv.id,
+                                onTap: () => _viewPdf(inv),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(inv.clientName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                                    Text('₪${inv.total.toStringAsFixed(2)} · ${inv.invoiceNumber ?? '#${inv.id}'}'),
+                                    const SizedBox(height: 4),
+                                    Wrap(
+                                      spacing: 6,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: [
+                                        if (inv.status != InvoiceStatus.paid && inv.status != InvoiceStatus.cancelled)
+                                          TextButton(onPressed: () => _markPaid(inv), child: Text(l10n.invoiceMarkPaid)),
+                                        Chip(
+                                          label: Text(_statusLabel(inv.status, l10n), style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                          backgroundColor: _statusColor(inv.status),
+                                          padding: EdgeInsets.zero,
+                                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
