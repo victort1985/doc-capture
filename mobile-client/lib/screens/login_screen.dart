@@ -7,6 +7,7 @@ import '../services/biometric_service.dart';
 import '../store/app_state.dart';
 import '../widgets/copyright_notice.dart';
 import '../widgets/stamp_mark.dart';
+import '../demo_consent_dialog.dart';
 import 'connection_settings_screen.dart';
 import 'root_screen.dart';
 
@@ -90,6 +91,10 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         await appState.authService.clearSavedCredentials();
       }
       if (!mounted) return;
+      if (appState.currentUser?.isDemoMode ?? false) {
+        await showDemoConsentDialog(context);
+        if (!mounted) return;
+      }
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const RootScreen()),
       );

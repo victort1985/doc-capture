@@ -803,5 +803,15 @@
     "deleteSelected": "Delete selected",
     "clearSelection": "Clear selection",
     "noContacts": "No contacts"
+  },
+  "demoNotice": {
+    "title": "This is a demo installation",
+    "intro": "You're using Vixor ERP in demo mode to explore its features — not for real business data. Please don't enter real client information, real financial data, or anything you need to keep.",
+    "disabledTitle": "Disabled in demo mode (super-admin only):",
+    "disabled1": "Calendar sync, order-intake email, and document-sending email settings",
+    "disabled2": "Organization details and logo",
+    "disabled3": "New accounts default to limited permissions set by the super-admin",
+    "deletionWarning": "Everything you create here — calls, orders, quotes, invoices, delivery notes, contacts, locations, warehouse items, vehicles — is automatically and permanently deleted 10 days after it's created.",
+    "agree": "I understand — continue"
   }
 }

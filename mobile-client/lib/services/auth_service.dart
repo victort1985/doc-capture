@@ -10,6 +10,7 @@ class AuthUser {
   final String language;
   final String role;
   final int? organizationId;
+  final bool isDemoMode;
   final List<int> allowedOrganizationIds;
   final Map<String, bool> permissions;
   final String? firstName;
@@ -21,6 +22,7 @@ class AuthUser {
     required this.language,
     required this.role,
     this.organizationId,
+    this.isDemoMode = false,
     this.allowedOrganizationIds = const [],
     this.permissions = const {},
     this.firstName,
@@ -41,6 +43,7 @@ class AuthUser {
         language: json['language'] as String? ?? 'he',
         role: json['role'] as String? ?? 'user',
         organizationId: json['organizationId'] as int?,
+        isDemoMode: json['isDemoMode'] as bool? ?? false,
         allowedOrganizationIds: (json['allowedOrganizationIds'] as List<dynamic>?)
             ?.map((e) => e as int)
             .toList() ?? [],

@@ -7,6 +7,7 @@ interface AuthUser {
   role: string;
   language: string;
   organizationId: number | null;
+  isDemoMode?: boolean;
 }
 
 interface AuthContextValue {

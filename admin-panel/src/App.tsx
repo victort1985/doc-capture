@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { AuthProvider } from './context/AuthContext';
+import DemoConsentModal from './components/DemoConsentModal';
 import { LicenseProvider, useLicense } from './context/LicenseContext';
 import LicenseActivationPage from './pages/LicenseActivationPage';
 import LicenseLockedPage from './pages/LicenseLockedPage';
@@ -58,6 +59,7 @@ export default function App() {
     <LicenseProvider>
     <LicenseGate>
     <AuthProvider>
+      <DemoConsentModal />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/portal/:token" element={<PortalPage />} />
