@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation, Trans } from 'react-i18next';
 import { Save, Mail, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
 import { apiFetch } from '../services/api';
+import AppPasswordHelp from '../components/AppPasswordHelp';
 
 interface EmailSettings {
   enabled: boolean;
@@ -116,7 +117,7 @@ export default function OrdersEmailSettingsPage() {
           placeholder="orders@yourcompany.com"
         />
 
-        <label>{t('ordersEmail.appPassword')}</label>
+        <label>{t('ordersEmail.appPassword')}<AppPasswordHelp /></label>
         <input
           type="password"
           value={appPassword}

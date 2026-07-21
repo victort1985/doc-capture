@@ -4,6 +4,7 @@ import { Building2, Lock, Save, TriangleAlert, X } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import TemplatePicker from './TemplatePicker';
+import AppPasswordHelp from './AppPasswordHelp';
 
 interface Organization { id: number; name: string; }
 interface StorageConnection { id: number; name: string; }
@@ -225,7 +226,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
               <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 0, marginBottom: 12 }}>{t('documentSeries.primaryEmailHint')}</p>
               <label>{t('documentSeries.primaryEmailAddress')}</label>
               <input type="email" value={primaryEmail} onChange={e => setPrimaryEmail(e.target.value)} placeholder="documents@yourcompany.com" />
-              <label>{t('documentSeries.primaryEmailAppPassword')}</label>
+              <label>{t('documentSeries.primaryEmailAppPassword')}<AppPasswordHelp /></label>
               <input type="password" value={primaryEmailPassword} onChange={e => setPrimaryEmailPassword(e.target.value)} placeholder={t('ordersEmail.appPasswordKeepPlaceholder')} />
               <div className="form-actions">
                 <button type="button" disabled={primaryEmailSaving} onClick={savePrimaryEmail}>
