@@ -45,6 +45,7 @@ export class AuthService {
         role: user.role,
         organizationId: user.organization?.id ?? null,
         isDemoMode: user.organization?.isDemoMode ?? false,
+        setupWizardCompleted: user.setupWizardCompleted,
         allowedOrganizationIds: user.allowedOrganizationIds ?? [],
         // Fully resolved (role default -> group -> user override), not
         // the raw override map — the client shouldn't need to know

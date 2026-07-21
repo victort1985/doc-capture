@@ -68,6 +68,12 @@ export class User {
   @Column({ nullable: true })
   phone?: string;
 
+  /** Only meaningful for a super-admin account (organizationId ===
+   * null) — drives whether the Setup Wizard auto-opens on login. Once
+   * true, the wizard is only reachable manually from Settings. */
+  @Column({ default: false })
+  setupWizardCompleted: boolean;
+
   // Technician's base city (informational/display) — distinct from
   // `regions` below, which drives call notification routing.
   @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })

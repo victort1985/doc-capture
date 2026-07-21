@@ -68,6 +68,10 @@ export class UsersService {
     await this.usersRepo.update(userId, { passwordHash: await bcrypt.hash(newPassword, 10) });
   }
 
+  async markSetupWizardCompleted(userId: number): Promise<void> {
+    await this.usersRepo.update(userId, { setupWizardCompleted: true });
+  }
+
   /** Used only for login — explicitly pulls passwordHash (hidden by default via select:false). */
   async findByUsername(username: string): Promise<User | null> {
     return this.usersRepo.findOne({

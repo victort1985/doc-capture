@@ -44,6 +44,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // row above, never trusted from the JWT payload itself.
       organizationId: user.organization?.id ?? null,
       isDemoMode: user.organization?.isDemoMode ?? false,
+      setupWizardCompleted: user.setupWizardCompleted,
       allowedOrganizationIds: user.allowedOrganizationIds ?? [],
       permissions: user.permissions ?? {},
       firstName: user.firstName ?? null,

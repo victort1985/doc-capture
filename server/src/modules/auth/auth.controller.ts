@@ -35,4 +35,11 @@ export class AuthController {
     await this.usersService.changeOwnPassword(user.id, dto.currentPassword, dto.newPassword);
     return { ok: true };
   }
+
+  @Post('complete-setup-wizard')
+  @UseGuards(JwtAuthGuard)
+  async completeSetupWizard(@CurrentUser() user: { id: number }) {
+    await this.usersService.markSetupWizardCompleted(user.id);
+    return { ok: true };
+  }
 }
