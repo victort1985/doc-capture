@@ -10,6 +10,7 @@ import { OrderPdfParserService } from './order-pdf-parser.service';
 import { GmailOrderPollerService } from './gmail-order-poller.service';
 import { OrderNotificationService } from './order-notification.service';
 import { StorageModule } from '../storage/storage.module';
+import { Organization } from '../organizations/entities/organization.entity';
 
 /**
  * Deploy notes:
@@ -24,7 +25,7 @@ import { StorageModule } from '../storage/storage.module';
  *   intended one.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, OrderEmailSettings]), StorageModule],
+  imports: [TypeOrmModule.forFeature([Order, OrderEmailSettings, Organization]), StorageModule],
   controllers: [OrderEmailSettingsController, OrdersController],
   providers: [OrdersService, OrderEmailSettingsService, OrderPdfParserService, GmailOrderPollerService, OrderNotificationService],
 })

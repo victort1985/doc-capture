@@ -10,9 +10,10 @@ import { StorageModule } from '../storage/storage.module';
 import { GoogleCalendarService } from './google-calendar.service';
 import { GoogleCalendarController } from './google-calendar.controller';
 import { GoogleCalendarCron } from './google-calendar.cron';
+import { Organization } from '../organizations/entities/organization.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Calendar, CalendarEvent, CalendarAttachment]), StorageModule],
+  imports: [TypeOrmModule.forFeature([Calendar, CalendarEvent, CalendarAttachment, Organization]), StorageModule],
   controllers: [CalendarController, IcsController, GoogleCalendarController],
   providers: [CalendarService, GoogleCalendarService, GoogleCalendarCron],
   exports: [CalendarService],

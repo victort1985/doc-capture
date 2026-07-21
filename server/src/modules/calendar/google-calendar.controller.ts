@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { GoogleCalendarService } from './google-calendar.service';
 import { CalendarService } from './calendar.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -7,6 +9,8 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { Organization } from '../organizations/entities/organization.entity';
+import { assertCanEditDemoSettings } from '../../common/utils/demo-lockdown.util';
 
 type RequestUser = { id: number; organizationId: number | null };
 
@@ -15,6 +19,7 @@ export class GoogleCalendarController {
   constructor(
     private readonly googleCalendarService: GoogleCalendarService,
     private readonly calendarService: CalendarService,
+    @InjectRepository(Organization) private readonly orgRepo: Repository<Organization>,
   ) {}
 
   /** Where to send the admin's browser to start the Google consent flow. */
@@ -24,6 +29,8 @@ export class GoogleCalendarController {
   async getAuthUrl(@CurrentUser() user: RequestUser, @Query('organizationId') orgIdParam?: string) {
     const orgId = orgIdParam ? parseInt(orgIdParam, 10) : user.organizationId;
     if (orgId == null) return { url: null };
+    const org = await this.orgRepo.findOne({ where: { id: orgId } });
+    assertCanEditDemoSettings(org?.isDemoMode, user.organizationId);
     const calendar = await this.calendarService.getOrCreateOrgCalendar(orgId, user.id);
     return { url: this.googleCalendarService.getAuthUrl(calendar.id) };
   }
@@ -59,6 +66,8 @@ export class GoogleCalendarController {
   async disconnect(@CurrentUser() user: RequestUser, @Query('organizationId') orgIdParam?: string) {
     const orgId = orgIdParam ? parseInt(orgIdParam, 10) : user.organizationId;
     if (orgId == null) return { ok: false };
+    const org = await this.orgRepo.findOne({ where: { id: orgId } });
+    assertCanEditDemoSettings(org?.isDemoMode, user.organizationId);
     const calendar = await this.calendarService.getOrCreateOrgCalendar(orgId, user.id);
     await this.googleCalendarService.disconnect(calendar.id);
     return { ok: true };
