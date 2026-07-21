@@ -8,6 +8,8 @@ import '../services/invoices_service.dart';
 import '../services/validators.dart';
 import '../invalid_email_dialog.dart';
 import '../widgets/document_preview_card.dart';
+import '../widgets/search_picker_field.dart';
+import '../services/quotes_service.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -160,6 +162,8 @@ class _InvoiceFormScreenState extends State<_InvoiceFormScreen> {
   final _emailController = TextEditingController();
   final List<(TextEditingController, TextEditingController, TextEditingController)> _items = [];
   bool _saving = false;
+  List<Quote>? _quotesCache;
+  int? _fromQuoteId;
 
   @override
   void initState() {
@@ -169,6 +173,77 @@ class _InvoiceFormScreenState extends State<_InvoiceFormScreen> {
 
   void _addItem() {
     setState(() => _items.add((TextEditingController(), TextEditingController(text: '1'), TextEditingController(text: '0'))));
+  }
+
+  /// Fetches the quote list once and caches it — the search itself is
+  /// then just an in-memory "contains anywhere" filter (not limited to
+  /// matching from the first letter), so it stays instant even while
+  /// typing and works whether the person remembers the start of the
+  /// number, the middle, or just the client's name.
+  Future<List<Quote>> _searchQuotes(String query) async {
+    _quotesCache ??= await QuotesService(context.read<ApiService>()).list();
+    final q = query.toLowerCase();
+    return _quotesCache!
+        .where((quote) =>
+            (quote.quoteNumber ?? '#${quote.id}').toLowerCase().contains(q) ||
+            quote.clientName.toLowerCase().contains(q))
+        .toList();
+  }
+
+  void _fillFromQuote(Quote quote) {
+    setState(() {
+      _fromQuoteId = quote.id;
+      _clientController.text = quote.clientName;
+      _emailController.text = quote.clientEmail ?? '';
+      // Replace the (still-empty) default row with the quote's actual
+      // items, but keep the ability to add more on top afterward —
+      // doesn't touch anything the person may have already typed
+      // manually if they filled some rows in before picking a quote.
+      for (final c in _items) { c.$1.dispose(); c.$2.dispose(); c.$3.dispose(); }
+      _items.clear();
+      for (final item in quote.items) {
+        _items.add((
+          TextEditingController(text: item.description),
+          TextEditingController(text: item.quantity.toString()),
+          TextEditingController(text: item.unitPrice.toString()),
+        ));
+      }
+      if (_items.isEmpty) _addItem();
+    });
+  }
+
+  Future<void> _openQuotePicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 16, right: 16, top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.invoiceFromQuotePickTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text(l10n.invoiceFromQuotePickHint, style: const TextStyle(fontSize: 12.5, color: AppColors.inkSoft)),
+            const SizedBox(height: 12),
+            SearchPickerField<Quote>(
+              search: _searchQuotes,
+              displayString: (q) => q.quoteNumber ?? '#${q.id}',
+              listLabel: (q) => '${q.quoteNumber ?? '#${q.id}'} · ${q.clientName}',
+              hintText: l10n.invoiceFromQuoteSearchHint,
+              onSelected: (q) {
+                Navigator.of(ctx).pop();
+                _fillFromQuote(q);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   double get _total {
@@ -224,6 +299,16 @@ class _InvoiceFormScreenState extends State<_InvoiceFormScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          OutlinedButton.icon(
+            onPressed: _openQuotePicker,
+            icon: const Icon(Icons.request_quote_outlined, size: 18),
+            label: Text(l10n.invoiceCreateFromQuote),
+          ),
+          if (_fromQuoteId != null) ...[
+            const SizedBox(height: 6),
+            Text(l10n.invoiceFilledFromQuote, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
+          ],
+          const SizedBox(height: 16),
           TextField(controller: _clientController, decoration: InputDecoration(labelText: l10n.quoteClientName)),
           const SizedBox(height: 10),
           TextField(controller: _emailController, decoration: InputDecoration(labelText: l10n.quoteClientEmail)),
