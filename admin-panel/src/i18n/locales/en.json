@@ -34,7 +34,14 @@
   "settings": {
     "title": "Settings",
     "language": "Language",
-    "close": "Close"
+    "close": "Close",
+    "changePassword": "Change password",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordTooShort": "New password must be at least 8 characters.",
+    "passwordMismatch": "New passwords don't match.",
+    "passwordChanged": "Password changed."
   },
   "login": {
     "wordmarkTagline": "Sign in to the admin console.",

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -55,6 +56,16 @@ export class UsersService {
     const user = await this.usersRepo.findOne({ where: { id: userId }, select: { id: true, passwordHash: true } });
     if (!user) return false;
     return bcrypt.compare(password, user.passwordHash);
+  }
+
+  /** Self-service password change — always requires the CURRENT
+   * password (unlike an admin resetting someone else's password via
+   * update()), regardless of role. */
+  async changeOwnPassword(userId: number, currentPassword: string, newPassword: string): Promise<void> {
+    const ok = await this.verifyPassword(userId, currentPassword);
+    if (!ok) throw new BadRequestException('Current password is incorrect.');
+    if (!newPassword || newPassword.length < 8) throw new BadRequestException('New password must be at least 8 characters.');
+    await this.usersRepo.update(userId, { passwordHash: await bcrypt.hash(newPassword, 10) });
   }
 
   /** Used only for login — explicitly pulls passwordHash (hidden by default via select:false). */

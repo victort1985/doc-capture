@@ -8,6 +8,7 @@ import {
   ChevronDown, Settings, Globe, Smartphone,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../services/api';
 import logo from '../assets/logo.png';
 import CopyrightFooter from './CopyrightFooter';
 import LicenseWarningBanner from './LicenseWarningBanner';
@@ -54,6 +55,27 @@ const LANGUAGES = [
 
 function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { t, i18n } = useTranslation();
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwError, setPwError] = useState<string | null>(null);
+  const [pwSaving, setPwSaving] = useState(false);
+  const [pwSaved, setPwSaved] = useState(false);
+
+  async function changePassword() {
+    setPwError(null); setPwSaved(false);
+    if (newPassword.length < 8) { setPwError(t('settings.passwordTooShort')); return; }
+    if (newPassword !== confirmPassword) { setPwError(t('settings.passwordMismatch')); return; }
+    setPwSaving(true);
+    try {
+      await apiFetch('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) });
+      setCurrentPassword(''); setNewPassword(''); setConfirmPassword('');
+      setPwSaved(true);
+    } catch (e) {
+      setPwError(e instanceof Error ? e.message : 'Failed to change password');
+    } finally { setPwSaving(false); }
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={onClose}>
       <div className="card" style={{ width: 320 }} onClick={e => e.stopPropagation()}>
@@ -65,6 +87,18 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <select value={i18n.language} onChange={e => i18n.changeLanguage(e.target.value)}>
           {LANGUAGES.map(l => <option key={l.code} value={l.code}>{l.label}</option>)}
         </select>
+
+        <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border, #e5e5e5)' }} />
+
+        <label>{t('settings.changePassword')}</label>
+        <input type="password" placeholder={t('settings.currentPassword')} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} style={{ marginBottom: 8 }} />
+        <input type="password" placeholder={t('settings.newPassword')} value={newPassword} onChange={e => setNewPassword(e.target.value)} style={{ marginBottom: 8 }} />
+        <input type="password" placeholder={t('settings.confirmPassword')} value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} style={{ marginBottom: 8 }} />
+        {pwError && <div style={{ color: 'var(--danger, #b3261e)', fontSize: 12.5, marginBottom: 8 }}>{pwError}</div>}
+        {pwSaved && <div style={{ color: 'var(--success, green)', fontSize: 12.5, marginBottom: 8 }}>{t('settings.passwordChanged')}</div>}
+        <button type="button" disabled={pwSaving || !currentPassword || !newPassword} onClick={changePassword} style={{ width: '100%' }}>
+          {pwSaving ? t('common.saving') : t('settings.changePassword')}
+        </button>
       </div>
     </div>
   );

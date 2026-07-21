@@ -34,7 +34,14 @@
   "settings": {
     "title": "Настройки",
     "language": "Язык",
-    "close": "Закрыть"
+    "close": "Закрыть",
+    "changePassword": "Сменить пароль",
+    "currentPassword": "Текущий пароль",
+    "newPassword": "Новый пароль",
+    "confirmPassword": "Подтвердите новый пароль",
+    "passwordTooShort": "Новый пароль должен быть не короче 8 символов.",
+    "passwordMismatch": "Новые пароли не совпадают.",
+    "passwordChanged": "Пароль изменён."
   },
   "login": {
     "wordmarkTagline": "Вход в панель администратора.",

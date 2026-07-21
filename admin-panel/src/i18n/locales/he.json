@@ -34,7 +34,14 @@
   "settings": {
     "title": "הגדרות",
     "language": "שפה",
-    "close": "סגירה"
+    "close": "סגירה",
+    "changePassword": "שינוי סיסמה",
+    "currentPassword": "סיסמה נוכחית",
+    "newPassword": "סיסמה חדשה",
+    "confirmPassword": "אימות סיסמה חדשה",
+    "passwordTooShort": "הסיסמה החדשה חייבת להכיל לפחות 8 תווים.",
+    "passwordMismatch": "הסיסמאות החדשות אינן תואמות.",
+    "passwordChanged": "הסיסמה שונתה."
   },
   "login": {
     "wordmarkTagline": "התחברות לפאנל הניהול.",
