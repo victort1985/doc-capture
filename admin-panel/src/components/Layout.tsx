@@ -95,7 +95,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         {isSuperAdmin && (
           <>
             <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border, #e5e5e5)' }} />
-            <button type="button" className="ghost" onClick={() => { onClose(); openWizard(); }} style={{ width: '100%' }}>
+            <button type="button" onClick={() => { onClose(); openWizard(); }} style={{ width: '100%' }}>
               {t('settings.openSetupWizard')}
             </button>
           </>
