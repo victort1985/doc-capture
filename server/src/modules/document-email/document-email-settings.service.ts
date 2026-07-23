@@ -31,7 +31,7 @@ export class DocumentEmailSettingsService {
   async update(dto: UpdateDocumentEmailSettingsDto): Promise<DocumentEmailSettings> {
     const settings = await this.get();
     if (dto.emailAddress !== undefined) settings.emailAddress = dto.emailAddress;
-    if (dto.appPassword) settings.appPassword = dto.appPassword;
+    if (dto.appPassword) settings.appPassword = dto.appPassword.replace(/\s+/g, '');
     return this.repo.save(settings);
   }
 }

@@ -863,8 +863,8 @@
     "step2": "Turn on 2-Step Verification for that account, if it isn't already on — the App Passwords section won't appear in Google's settings without it.",
     "step3": "Go to <a>myaccount.google.com/apppasswords</a>.",
     "step4": "Create a new app password (any name works, e.g. \"Vixor\").",
-    "step5": "Google shows 16 characters (usually as xxxx xxxx xxxx xxxx) — copy them without the spaces.",
-    "step6": "Paste exactly those 16 characters here — not your regular Google account password — then save.",
+    "step5": "Google shows the password as 16 characters, usually grouped like \"xxxx xxxx xxxx xxxx\".",
+    "step6": "Copy it straight from Google (spaces and all) and paste it here — the spaces are removed automatically. Just don’t paste your regular Google account password instead.",
     "step7": "Try creating a new quote/invoice and check the client's email."
   },
   "prices": {

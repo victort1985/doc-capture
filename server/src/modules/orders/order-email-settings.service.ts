@@ -31,7 +31,7 @@ export class OrderEmailSettingsService {
     const settings = await this.get();
     settings.enabled = dto.enabled;
     settings.emailAddress = dto.emailAddress;
-    if (dto.appPassword) settings.appPassword = dto.appPassword;
+    if (dto.appPassword) settings.appPassword = dto.appPassword.replace(/\s+/g, '');
     if (dto.imapHost) settings.imapHost = dto.imapHost;
     if (dto.imapPort) settings.imapPort = dto.imapPort;
     if (dto.notifyOnCompleteEnabled !== undefined) settings.notifyOnCompleteEnabled = dto.notifyOnCompleteEnabled;

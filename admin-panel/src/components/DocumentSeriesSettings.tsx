@@ -85,7 +85,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
     try {
       await apiFetch('/document-email-settings', {
         method: 'PUT',
-        body: JSON.stringify({ emailAddress: primaryEmail, ...(primaryEmailPassword.trim() ? { appPassword: primaryEmailPassword.trim() } : {}) }),
+        body: JSON.stringify({ emailAddress: primaryEmail, ...(primaryEmailPassword.trim() ? { appPassword: primaryEmailPassword.replace(/\s+/g, '') } : {}) }),
       });
       setPrimaryEmailPassword('');
       setPrimaryEmailSaved(true);

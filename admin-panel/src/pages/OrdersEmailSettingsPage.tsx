@@ -55,7 +55,7 @@ export default function OrdersEmailSettingsPage() {
           imapPort: settings.imapPort,
           notifyOnCompleteEnabled: settings.notifyOnCompleteEnabled ?? false,
           notifyEmails: settings.notifyEmails ?? '',
-          ...(appPassword.trim() ? { appPassword: appPassword.trim() } : {}),
+          ...(appPassword.trim() ? { appPassword: appPassword.replace(/\s+/g, '') } : {}),
         }),
       });
       setSettings(updated);
