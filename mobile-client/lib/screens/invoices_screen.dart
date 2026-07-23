@@ -8,6 +8,7 @@ import '../services/invoices_service.dart';
 import '../services/validators.dart';
 import '../invalid_email_dialog.dart';
 import '../widgets/document_preview_card.dart';
+import 'chain_view_screen.dart';
 import '../widgets/search_picker_field.dart';
 import '../services/quotes_service.dart';
 
@@ -139,6 +140,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                     ),
                                   ],
                                 ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.timeline_outlined, size: 20),
+                                tooltip: l10n.chainViewTitle,
+                                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => ChainViewScreen(docType: 'invoice', docId: inv.id),
+                                )),
                               ),
                             ],
                           ),

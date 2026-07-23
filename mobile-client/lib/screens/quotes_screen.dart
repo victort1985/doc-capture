@@ -8,6 +8,7 @@ import '../services/quotes_service.dart';
 import '../services/validators.dart';
 import '../invalid_email_dialog.dart';
 import '../widgets/document_preview_card.dart';
+import 'chain_view_screen.dart';
 
 class QuotesScreen extends StatefulWidget {
   const QuotesScreen({super.key});
@@ -124,6 +125,13 @@ class _QuotesScreenState extends State<QuotesScreen> {
                                     ),
                                   ],
                                 ),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.timeline_outlined, size: 20),
+                                tooltip: l10n.chainViewTitle,
+                                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                                  builder: (_) => ChainViewScreen(docType: 'quote', docId: q.id),
+                                )),
                               ),
                             ],
                           ),
