@@ -25,7 +25,8 @@
     "routing": "Routing",
     "templates": "Templates",
     "fileLog": "File log",
-    "devices": "Devices"
+    "devices": "Devices",
+    "prices": "Prices"
   },
   "app": {
     "adminConsole": "admin console",
@@ -865,5 +866,22 @@
     "step5": "Google shows 16 characters (usually as xxxx xxxx xxxx xxxx) — copy them without the spaces.",
     "step6": "Paste exactly those 16 characters here — not your regular Google account password — then save.",
     "step7": "Try creating a new quote/invoice and check the client's email."
+  },
+  "prices": {
+    "eyebrow": "Office",
+    "title": "Prices",
+    "explainer": "A reusable catalog of devices and services with standard prices — pick one when adding a line to a quote, invoice, or delivery note to fill in the description and price automatically. You can still edit or replace anything afterward.",
+    "devices": "Devices",
+    "services": "Services",
+    "add": "Add",
+    "addItem": "Add price list item",
+    "editItem": "Edit price list item",
+    "name": "Name",
+    "type": "Type",
+    "price": "Price",
+    "notes": "Notes",
+    "nameRequired": "Please enter a name.",
+    "deleteConfirm": "Delete \"{{name}}\" from the price list?",
+    "empty": "Nothing here yet."
   }
 }
