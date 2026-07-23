@@ -2,6 +2,7 @@ import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, Up
 import { WarehouseCategory } from './warehouse-category.entity';
 import { Organization } from '../../organizations/entities/organization.entity';
 import { Location } from '../../locations/entities/location.entity';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 
 @Entity('warehouse_items')
 export class WarehouseItem {
@@ -25,6 +26,13 @@ export class WarehouseItem {
 
   @Column({ nullable: true })
   unit?: string; // шт, кг, м…
+
+  /** Sale/reference price for this item — separate from any cost-price
+   * bookkeeping, used to pre-fill quote/invoice/delivery-note line
+   * items when picking a warehouse item as a document line (see the
+   * Prices catalog for the equivalent on services). */
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: numericTransformer })
+  price?: number;
 
   @Column({ nullable: true })
   location?: string; // shelf/rack label within the location's warehouse

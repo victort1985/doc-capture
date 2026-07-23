@@ -34,6 +34,7 @@ import { DeliveryNotesModule } from './modules/delivery-notes/delivery-notes.mod
 import { ScanSessionsModule } from './modules/scan-sessions/scan-sessions.module';
 import { DemoModule } from './modules/demo/demo.module';
 import { DocumentEmailModule } from './modules/document-email/document-email.module';
+import { PriceListModule } from './modules/price-list/price-list.module';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -85,6 +86,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     ScanSessionsModule,
     DemoModule,
     DocumentEmailModule,
+    PriceListModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
