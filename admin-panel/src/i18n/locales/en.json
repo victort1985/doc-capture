@@ -883,5 +883,18 @@
     "nameRequired": "Please enter a name.",
     "deleteConfirm": "Delete \"{{name}}\" from the price list?",
     "empty": "Nothing here yet."
+  },
+  "warehouseWizard": {
+    "nameTitle": "What is it?",
+    "nameBody": "Start with the item's name — you can add everything else in the next steps.",
+    "namePlaceholder": "e.g. Router TP-Link AX3000",
+    "barcodeTitle": "Barcode",
+    "barcodeBody": "Type an existing barcode, or generate a new one automatically.",
+    "barcodeScanNote": "Scanning a physical barcode with the camera is available in the mobile app.",
+    "detailsTitle": "Category & location",
+    "detailsBody": "Where does this item live, and how is it measured? All optional.",
+    "priceTitle": "Price",
+    "priceBody": "The reference sale price for this item — used to auto-fill quote/invoice lines. You can leave it blank and set it later.",
+    "reviewTitle": "Review"
   }
 }

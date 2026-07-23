@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { Plus, Trash2, Pencil, X, Save, Package, ArrowUp, ArrowDown, History } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../services/api';
+import AddWarehouseItemWizard from './AddWarehouseItemWizard';
 
 interface Category { id: number; name: string; }
 interface Item {
   id: number; name: string; barcode: string; description?: string;
-  category?: Category; quantity: number; unit?: string; location?: string; notes?: string;
+  category?: Category; quantity: number; unit?: string; location?: string; notes?: string; price?: number;
   warehouseLocation?: { id: number; name: string };
 }
 
@@ -35,6 +36,7 @@ export default function WarehousePage() {
   const [form, setForm] = useState<Partial<Item> & { categoryId?: number }>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showWizard, setShowWizard] = useState(false);
   const [txModal, setTxModal] = useState<{ item: Item; type: 'in' | 'out' } | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<{ kind: 'item' | 'category'; id: number; label: string } | null>(null);
   const [txQty, setTxQty] = useState('1');
@@ -127,8 +129,8 @@ export default function WarehousePage() {
     <div>
       <div className="topbar">
         <div><span className="eyebrow">{t('warehouse.eyebrow')}</span><h1 className="page-title">{t('warehouse.title')}</h1></div>
-        <button onClick={() => { setShowForm(s => !s); setForm({}); setEditingId(null); }}>
-          {showForm ? <><X size={16} /> {t('common.cancel')}</> : <><Plus size={16} /> {t('warehouse.addItem')}</>}
+        <button onClick={() => setShowWizard(true)}>
+          <Plus size={16} /> {t('warehouse.addItem')}
         </button>
       </div>
 
@@ -179,9 +181,13 @@ export default function WarehousePage() {
             </div>
             <div><label>{t('warehouse.unit')}</label><input value={form.unit ?? ''} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="pcs, kg, m…" /></div>
             <div><label>{t('warehouse.locationShelf')}</label><input value={form.location ?? ''} onChange={e => setForm({ ...form, location: e.target.value })} /></div>
+            <div><label>{t('prices.price')}</label><input type="number" step="0.01" value={form.price ?? ''} onChange={e => setForm({ ...form, price: e.target.value ? Number(e.target.value) : undefined })} /></div>
             <div style={{ gridColumn: '1/-1' }}><label>{t('warehouse.description')}</label><textarea value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} style={{ width: '100%' }} /></div>
           </div>
-          <div className="form-actions"><button type="submit"><Save size={15} /> {editingId ? t('common.save') : t('warehouse.addItem')}</button></div>
+          <div className="form-actions">
+            <button type="button" className="ghost" onClick={() => { setForm({}); setEditingId(null); setShowForm(false); }}>{t('common.cancel')}</button>
+            <button type="submit"><Save size={15} /> {editingId ? t('common.save') : t('warehouse.addItem')}</button>
+          </div>
         </form>
       )}
 
@@ -191,7 +197,7 @@ export default function WarehousePage() {
           <input value={filter} onChange={e => setFilter(e.target.value)} placeholder={t('warehouse.searchPlaceholder')} style={{ width: 280 }} />
         </div>
         <table>
-          <thead><tr><th>{t('common.name')}</th><th>{t('warehouse.barcode')}</th><th>{t('warehouse.category')}</th><th>{t('warehouse.warehouse')}</th><th>{t('warehouse.location')}</th><th style={{ textAlign: 'right' }}>{t('warehouse.qty')}</th><th /></tr></thead>
+          <thead><tr><th>{t('common.name')}</th><th>{t('warehouse.barcode')}</th><th>{t('warehouse.category')}</th><th>{t('warehouse.warehouse')}</th><th>{t('warehouse.location')}</th><th style={{ textAlign: 'right' }}>{t('warehouse.qty')}</th><th style={{ textAlign: 'right' }}>{t('prices.price')}</th><th /></tr></thead>
           <tbody>
             {filtered.map(item => (
               <tr key={item.id}>
@@ -203,6 +209,7 @@ export default function WarehousePage() {
                 <td style={{ textAlign: 'right', fontWeight: 700, color: item.quantity === 0 ? 'var(--danger)' : 'var(--primary)' }}>
                   {item.quantity}{item.unit ? ` ${item.unit}` : ''}
                 </td>
+                <td style={{ textAlign: 'right' }}>{item.price != null ? `₪${Number(item.price).toFixed(2)}` : '—'}</td>
                 <td>
                   <div className="row-actions">
                     <button className="ghost" title={t('warehouse.serviceHistory')} onClick={() => openHistory(item)}><History size={15} /></button>
@@ -214,7 +221,7 @@ export default function WarehousePage() {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 24, color: 'var(--ink-soft)' }}><Package size={28} strokeWidth={1.5} /><br />{t('warehouse.noItems')}</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={8} style={{ textAlign: 'center', padding: 24, color: 'var(--ink-soft)' }}><Package size={28} strokeWidth={1.5} /><br />{t('warehouse.noItems')}</td></tr>}
           </tbody>
         </table>
       </div>
@@ -317,6 +324,14 @@ export default function WarehousePage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showWizard && (
+        <AddWarehouseItemWizard
+          categories={categories}
+          onClose={() => setShowWizard(false)}
+          onCreated={() => { setShowWizard(false); load(); }}
+        />
       )}
     </div>
   );
