@@ -165,73 +165,118 @@ class _WarehouseScreenState extends State<WarehouseScreen> {
     final unitCtrl = TextEditingController();
     final locCtrl  = TextEditingController();
     final qtyCtrl  = TextEditingController(text: '0');
+    final priceCtrl = TextEditingController();
     int? catId;
     String barcode = prefilledBarcode ?? generateLocalBarcode();
+    int step = 0;
+    const totalSteps = 4;
 
     await showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setSt) => AlertDialog(
-        title: Text(l10n.warehouseAddItem),
-        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: nameCtrl, decoration: InputDecoration(labelText: l10n.warehouseName)),
-          TextField(controller: descCtrl, decoration: InputDecoration(labelText: l10n.warehouseDescription)),
-          DropdownButtonFormField<int>(
-            value: catId,
-            hint: Text(l10n.warehouseCategory),
-            items: _categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
-            onChanged: (v) => setSt(() => catId = v),
-          ),
-          TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.warehouseQty)),
-          TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.warehouseUnit)),
-          TextField(controller: locCtrl, decoration: InputDecoration(labelText: l10n.warehouseLocation)),
-          const SizedBox(height: 8),
-          // Barcode row — shows current code + scan button
-          Row(children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: () { Clipboard.setData(ClipboardData(text: barcode)); ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Barcode copied'))); },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6), color: Colors.grey.shade50),
-                  child: Text(barcode, style: const TextStyle(fontFamily: 'Courier', fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1), overflow: TextOverflow.ellipsis),
+        title: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+          Text(l10n.warehouseAddItem),
+          const SizedBox(height: 10),
+          Row(children: List.generate(totalSteps, (i) => Expanded(child: Container(
+            height: 4,
+            margin: EdgeInsets.only(right: i < totalSteps - 1 ? 4 : 0),
+            decoration: BoxDecoration(
+              color: i <= step ? Theme.of(ctx).colorScheme.primary : Colors.grey.shade300,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          )))),
+        ]),
+        content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
+          if (step == 0) ...[
+            Text(l10n.warehouseWizardNameHint, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            TextField(autofocus: true, controller: nameCtrl, decoration: InputDecoration(labelText: l10n.warehouseName)),
+          ],
+          if (step == 1) ...[
+            Text(l10n.warehouseWizardBarcodeHint, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () { Clipboard.setData(ClipboardData(text: barcode)); ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(content: Text('Barcode copied'))); },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(6), color: Colors.grey.shade50),
+                    child: Text(barcode, style: const TextStyle(fontFamily: 'Courier', fontSize: 12, fontWeight: FontWeight.w700, letterSpacing: 1), overflow: TextOverflow.ellipsis),
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.qr_code_scanner),
+                tooltip: l10n.warehouseScan,
+                onPressed: () async {
+                  final scanned = await Navigator.of(ctx).push<String>(
+                    MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
+                  );
+                  if (scanned != null && scanned.isNotEmpty) {
+                    setSt(() => barcode = scanned);
+                  }
+                },
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh),
+                tooltip: l10n.warehouseGenerate,
+                onPressed: () => setSt(() => barcode = generateLocalBarcode()),
+              ),
+            ]),
+          ],
+          if (step == 2) ...[
+            Text(l10n.warehouseWizardDetailsHint, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            DropdownButtonFormField<int>(
+              value: catId,
+              hint: Text(l10n.warehouseCategory),
+              items: _categories.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+              onChanged: (v) => setSt(() => catId = v),
             ),
-            const SizedBox(width: 8),
-            IconButton(
-              icon: const Icon(Icons.qr_code_scanner),
-              tooltip: l10n.warehouseScan,
-              onPressed: () async {
-                final scanned = await Navigator.of(ctx).push<String>(
-                  MaterialPageRoute(builder: (_) => const BarcodeScannerScreen()),
-                );
-                if (scanned != null && scanned.isNotEmpty) {
-                  setSt(() => barcode = scanned);
-                }
-              },
-            ),
-          ]),
+            TextField(controller: qtyCtrl, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.warehouseQty)),
+            TextField(controller: unitCtrl, decoration: InputDecoration(labelText: l10n.warehouseUnit)),
+            TextField(controller: locCtrl, decoration: InputDecoration(labelText: l10n.warehouseLocation)),
+          ],
+          if (step == 3) ...[
+            Text(l10n.warehouseWizardPriceHint, style: TextStyle(fontSize: 12.5, color: Colors.grey.shade600)),
+            const SizedBox(height: 8),
+            TextField(controller: priceCtrl, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: '₪', prefixText: '₪ ')),
+            const SizedBox(height: 10),
+            TextField(controller: descCtrl, maxLines: 2, decoration: InputDecoration(labelText: l10n.warehouseDescription)),
+          ],
         ])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel)),
-          FilledButton(
-            onPressed: () async {
-              if (nameCtrl.text.trim().isEmpty) return;
-              await _svc.createItem({
-                'name': nameCtrl.text.trim(),
-                'barcode': barcode,
-                'quantity': int.tryParse(qtyCtrl.text) ?? 0,
-                if (descCtrl.text.isNotEmpty) 'description': descCtrl.text.trim(),
-                if (catId != null) 'categoryId': catId,
-                if (unitCtrl.text.isNotEmpty) 'unit': unitCtrl.text.trim(),
-                if (locCtrl.text.isNotEmpty) 'location': locCtrl.text.trim(),
-                if (_selectedLocationId != null) 'locationId': _selectedLocationId,
-              });
-              if (ctx.mounted) Navigator.pop(ctx);
-              _load();
-            },
-            child: Text(l10n.calendarSave),
-          ),
+          if (step == 0)
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l10n.cancel))
+          else
+            TextButton(onPressed: () => setSt(() => step--), child: Text(l10n.wizardBack)),
+          if (step < totalSteps - 1)
+            FilledButton(
+              onPressed: step == 0 && nameCtrl.text.trim().isEmpty ? null : () => setSt(() => step++),
+              child: Text(l10n.wizardNext),
+            )
+          else
+            FilledButton(
+              onPressed: () async {
+                if (nameCtrl.text.trim().isEmpty) return;
+                await _svc.createItem({
+                  'name': nameCtrl.text.trim(),
+                  'barcode': barcode,
+                  'quantity': int.tryParse(qtyCtrl.text) ?? 0,
+                  if (descCtrl.text.isNotEmpty) 'description': descCtrl.text.trim(),
+                  if (catId != null) 'categoryId': catId,
+                  if (unitCtrl.text.isNotEmpty) 'unit': unitCtrl.text.trim(),
+                  if (locCtrl.text.isNotEmpty) 'location': locCtrl.text.trim(),
+                  if (priceCtrl.text.isNotEmpty) 'price': double.tryParse(priceCtrl.text),
+                  if (_selectedLocationId != null) 'locationId': _selectedLocationId,
+                });
+                if (ctx.mounted) Navigator.pop(ctx);
+                _load();
+              },
+              child: Text(l10n.calendarSave),
+            ),
         ],
       )),
     );
