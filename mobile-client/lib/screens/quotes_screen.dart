@@ -9,6 +9,7 @@ import '../services/validators.dart';
 import '../invalid_email_dialog.dart';
 import '../widgets/document_preview_card.dart';
 import 'chain_view_screen.dart';
+import '../widgets/price_list_picker.dart';
 
 class QuotesScreen extends StatefulWidget {
   const QuotesScreen({super.key});
@@ -229,7 +230,20 @@ class _QuoteFormScreenState extends State<_QuoteFormScreen> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Row(children: [
                   Expanded(flex: 3, child: TextField(controller: item.$1, decoration: InputDecoration(labelText: l10n.quoteItemDescription))),
-                  const SizedBox(width: 8),
+                  IconButton(
+                    icon: const Icon(Icons.list_alt_outlined, size: 20),
+                    tooltip: l10n.priceListPickTitle,
+                    onPressed: () async {
+                      final picked = await showPriceListPicker(context);
+                      if (picked != null) {
+                        setState(() {
+                          item.$1.text = picked.name;
+                          item.$3.text = picked.price.toStringAsFixed(2);
+                        });
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 4),
                   Expanded(child: TextField(controller: item.$2, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.quoteItemQty))),
                   const SizedBox(width: 8),
                   Expanded(child: TextField(controller: item.$3, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.quoteItemPrice), onChanged: (_) => setState(() {}))),
