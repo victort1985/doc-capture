@@ -79,8 +79,14 @@ export class GmailOrderPollerService {
       await client.logout();
       await this.settingsService.recordCheckResult(null, maxUid);
     } catch (err: any) {
-      this.logger.error(`Gmail poll failed: ${err?.message}`);
-      await this.settingsService.recordCheckResult(err?.message ?? 'Unknown error', maxUid);
+      // imapflow's Error.message is often just "Command failed" with
+      // the actually useful detail (e.g. the real SMTP/IMAP server
+      // response, or an auth failure reason) tucked into one of these
+      // other properties instead - log whichever are present.
+      const detail = err?.responseText || err?.response || err?.authenticationFailure || err?.code;
+      const fullMessage = detail ? `${err?.message}: ${detail}` : err?.message;
+      this.logger.error(`Gmail poll failed: ${fullMessage}`);
+      await this.settingsService.recordCheckResult(fullMessage ?? 'Unknown error', maxUid);
     }
 
     this.logger.log(`Poll complete: ${processedCount} message(s) checked`);
