@@ -17,6 +17,8 @@ import '../services/field_cache_service.dart';
 import '../widgets/phone_book_search_field.dart';
 import '../widgets/client_search_field.dart';
 import '../widgets/item_row_widget.dart';
+import '../widgets/search_picker_field.dart';
+import '../services/quotes_service.dart';
 import '../store/app_state.dart';
 import '../l10n/app_localizations.dart';
 
@@ -47,6 +49,70 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
   final _dateCtrl        = TextEditingController();
   final _remarksCtrl     = TextEditingController();
   final _lesseeIdCtrl    = TextEditingController();
+  String? _chainId;
+  List<Quote>? _quotesCache;
+
+  Future<List<Quote>> _searchQuotes(String query) async {
+    _quotesCache ??= await QuotesService(context.read<ApiService>()).list();
+    final q = query.toLowerCase();
+    return _quotesCache!
+        .where((quote) =>
+            (quote.quoteNumber ?? '#${quote.id}').toLowerCase().contains(q) ||
+            quote.clientName.toLowerCase().contains(q))
+        .toList();
+  }
+
+  Future<void> _fillFromQuote(Quote quote) async {
+    // Resolves (and, if the quote never had one, creates) the shared
+    // chainId for this quote via the order-chain endpoint, so this
+    // delivery note joins the same chain rather than starting a new
+    // one — see order-chain module on the server.
+    try {
+      final chain = await context.read<ApiService>().get('/order-chain/for/quote/${quote.id}');
+      _chainId = chain['chainId'] as String?;
+    } catch (_) {
+      // Non-fatal — the delivery note still gets created, just without
+      // a resolved chain link if this call fails for some reason.
+    }
+    setState(() {
+      _clientNameCtrl.text = quote.clientName;
+      for (final row in _items) { row.dispose(); }
+      _items = quote.items.isNotEmpty
+          ? quote.items.map((i) => ItemRow(quantity: i.quantity.round(), name: i.description)).toList()
+          : [ItemRow()];
+    });
+  }
+
+  Future<void> _openQuotePicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.invoiceFromQuotePickTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text(l10n.invoiceFromQuotePickHint, style: const TextStyle(fontSize: 12.5, color: AppColors.inkSoft)),
+            const SizedBox(height: 12),
+            SearchPickerField<Quote>(
+              search: _searchQuotes,
+              displayString: (q) => q.quoteNumber ?? '#${q.id}',
+              listLabel: (q) => '${q.quoteNumber ?? '#${q.id}'} · ${q.clientName}',
+              hintText: l10n.invoiceFromQuoteSearchHint,
+              onSelected: (q) {
+                Navigator.of(ctx).pop();
+                _fillFromQuote(q);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   // Equipment rows
   List<ItemRow> _items = [ItemRow()];
@@ -196,6 +262,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     if (_lessorSig != null) 'lessorSignature': _lessorSig,
     if (_lesseeSig != null) 'lesseeSignature': _lesseeSig,
     if (_lessorNameCtrl.text.isNotEmpty) 'lessorSignerName': _lessorNameCtrl.text,
+    if (_chainId != null) 'chainId': _chainId,
   };
 
   Future<void> _save() async {
@@ -588,6 +655,15 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
               ]),
             ),
             const SizedBox(height: 16),
+
+            if (_note == null) ...[
+              OutlinedButton.icon(
+                onPressed: _openQuotePicker,
+                icon: const Icon(Icons.request_quote_outlined, size: 18),
+                label: Text(l10n.invoiceCreateFromQuote),
+              ),
+              const SizedBox(height: 12),
+            ],
 
             // ── Document type selector ─────────────────────────────────────
             Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
