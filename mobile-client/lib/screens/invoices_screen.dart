@@ -280,6 +280,7 @@ class _InvoiceFormScreenState extends State<_InvoiceFormScreen> {
                   unitPrice: double.tryParse(i.$3.text) ?? 0,
                 ))
             .toList(),
+        quoteId: _fromQuoteId,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {

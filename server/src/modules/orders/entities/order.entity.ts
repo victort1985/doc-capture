@@ -1,4 +1,4 @@
-import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, ManyToOne, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 import { Organization } from '../../organizations/entities/organization.entity';
 import { User } from '../../users/entities/user.entity';
 
@@ -23,6 +23,13 @@ export enum OrderSource {
 export class Order {
   @PrimaryGeneratedColumn()
   id: number;
+
+  /** Optionally links this (supplier-side) purchase order into a
+   * customer-facing order-processing chain (quote/delivery-note/
+   * invoice) — see order-chain module. Most Orders won't have one. */
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  chainId?: string | null;
 
   @Column({ type: 'date' })
   orderDate: string;

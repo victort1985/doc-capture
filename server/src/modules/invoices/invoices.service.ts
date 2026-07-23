@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as crypto from 'crypto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoiceSettings } from './entities/invoice-settings.entity';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
@@ -8,6 +9,8 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
+import { Quote } from '../quotes/entities/quote.entity';
+import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
 
 @Injectable()
 export class InvoicesService {
@@ -15,6 +18,8 @@ export class InvoicesService {
     @InjectRepository(Invoice) private readonly repo: Repository<Invoice>,
     @InjectRepository(InvoiceSettings) private readonly settingsRepo: Repository<InvoiceSettings>,
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
+    @InjectRepository(Quote) private readonly quotesRepo: Repository<Quote>,
+    @InjectRepository(DeliveryNote) private readonly deliveryNotesRepo: Repository<DeliveryNote>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
   ) {}
@@ -63,6 +68,7 @@ export class InvoicesService {
   }
 
   async create(organizationId: number | null, userId: number, dto: CreateInvoiceDto): Promise<Invoice> {
+    const chainId = await this.resolveChainIdForCreate(dto.quoteId, dto.deliveryNoteId, dto.chainId, organizationId);
     const invoice = this.repo.create({
       invoiceNumber: await this.generateInvoiceNumber(organizationId),
       clientName: dto.clientName,
@@ -73,12 +79,42 @@ export class InvoicesService {
       notes: dto.notes,
       status: InvoiceStatus.DRAFT,
       quoteId: dto.quoteId,
+      deliveryNoteId: dto.deliveryNoteId,
+      chainId,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
     const saved = await this.repo.save(invoice);
     saved.storagePath = await this.tryGeneratePdf(saved, organizationId);
     return this.repo.save(saved);
+  }
+
+  /** Joins the chain of a linked quote or delivery note (quoteId takes
+   * priority if somehow both are set), back-filling that document with
+   * a fresh chainId first if it never had one. Falls back to an
+   * explicit dto.chainId, then to a brand new chain. */
+  private async resolveChainIdForCreate(quoteId: number | undefined, deliveryNoteId: number | undefined, explicitChainId: string | undefined, organizationId: number | null): Promise<string> {
+    if (quoteId) {
+      const quote = await this.quotesRepo.findOne({ where: { id: quoteId } });
+      if (quote) {
+        if (!quote.chainId) {
+          quote.chainId = crypto.randomUUID();
+          await this.quotesRepo.save(quote);
+        }
+        return quote.chainId;
+      }
+    }
+    if (deliveryNoteId) {
+      const note = await this.deliveryNotesRepo.findOne({ where: { id: deliveryNoteId } });
+      if (note) {
+        if (!note.chainId) {
+          note.chainId = crypto.randomUUID();
+          await this.deliveryNotesRepo.save(note);
+        }
+        return note.chainId;
+      }
+    }
+    return explicitChainId || crypto.randomUUID();
   }
 
   private async tryGeneratePdf(invoice: Invoice, organizationId: number | null, throwOnError = false): Promise<string | null> {

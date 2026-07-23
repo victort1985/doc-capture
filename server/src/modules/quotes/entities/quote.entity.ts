@@ -1,5 +1,5 @@
 import {
-  Column, CreateDateColumn, Entity, ManyToOne,
+  Column, CreateDateColumn, Entity, Index, ManyToOne,
   PrimaryGeneratedColumn, UpdateDateColumn,
 } from 'typeorm';
 import { Organization } from '../../organizations/entities/organization.entity';
@@ -70,6 +70,15 @@ export class Quote {
    * connection is configured for the org yet. */
   @Column({ type: 'varchar', nullable: true })
   storagePath?: string | null;
+
+  /** Links this quote to the rest of its order-processing chain
+   * (order, delivery note, invoice) — see order-chain module. A
+   * document created standalone gets a fresh chainId; one created
+   * "from" another document in the chain (e.g. an invoice created
+   * from this quote) inherits the SAME chainId instead. */
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  chainId?: string | null;
 
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   organization?: Organization;

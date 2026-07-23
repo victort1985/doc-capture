@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as crypto from 'crypto';
 import { Quote, QuoteStatus } from './entities/quote.entity';
 import { QuoteSettings } from './entities/quote-settings.entity';
 import { CreateQuoteDto } from './dto/create-quote.dto';
@@ -89,6 +90,7 @@ export class QuotesService {
       approvalToken: Quote.generateToken(),
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
+      chainId: dto.chainId || crypto.randomUUID(),
     });
     const saved = await this.repo.save(quote);
     saved.storagePath = await this.tryGeneratePdf(saved, organizationId);

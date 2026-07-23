@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
+import * as crypto from 'crypto';
 import { DeliveryNote, DeliveryNoteStatus, NoteItem } from './delivery-note.entity';
 import { DeliveryNoteSettings } from './delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
@@ -43,6 +44,7 @@ export class DeliveryNotesService {
       noteNumber,
       date: dto.date ?? new Date().toISOString().slice(0, 10),
       items: dto.items ?? [],
+      chainId: dto.chainId || crypto.randomUUID(),
       organization: organizationId ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });

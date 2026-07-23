@@ -9,9 +9,11 @@ import { UsersModule } from '../users/users.module';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageModule } from '../storage/storage.module';
 import { DocumentEmailModule } from '../document-email/document-email.module';
+import { Quote } from '../quotes/entities/quote.entity';
+import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Invoice, InvoiceSettings, DeliveryNoteSettings]), UsersModule, StorageModule, DocumentEmailModule],
+  imports: [TypeOrmModule.forFeature([Invoice, InvoiceSettings, DeliveryNoteSettings, Quote, DeliveryNote]), UsersModule, StorageModule, DocumentEmailModule],
   controllers: [InvoicesController, InvoiceSettingsController],
   providers: [InvoicesService],
 })

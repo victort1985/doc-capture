@@ -1,5 +1,5 @@
 import {
-  Column, CreateDateColumn, Entity, ManyToOne,
+  Column, CreateDateColumn, Entity, Index, ManyToOne,
   PrimaryGeneratedColumn, UpdateDateColumn,
 } from 'typeorm';
 import { Organization } from '../organizations/entities/organization.entity';
@@ -79,6 +79,11 @@ export class DeliveryNote {
   /** Path of the generated PDF on the storage adapter */
   @Column({ nullable: true })
   pdfPath?: string;
+
+  /** See Quote.chainId — same order-processing chain concept. */
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  chainId?: string | null;
 
   /** Document type shown as large title on the form */
   @Column({ default: 'תעודת משלוח' })

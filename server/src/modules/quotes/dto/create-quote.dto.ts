@@ -34,4 +34,11 @@ export class CreateQuoteDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  /** Inherits an existing order-processing chain (e.g. this quote is
+   * being added to a chain that already has a delivery note) instead
+   * of starting a fresh one — see order-chain module. */
+  @IsString()
+  @IsOptional()
+  chainId?: string;
 }

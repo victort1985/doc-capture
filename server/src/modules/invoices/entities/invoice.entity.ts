@@ -1,5 +1,5 @@
 import {
-  Column, CreateDateColumn, Entity, ManyToOne,
+  Column, CreateDateColumn, Entity, Index, ManyToOne,
   PrimaryGeneratedColumn, UpdateDateColumn,
 } from 'typeorm';
 import { Organization } from '../../organizations/entities/organization.entity';
@@ -69,9 +69,19 @@ export class Invoice {
   @Column({ type: 'varchar', nullable: true })
   storagePath?: string | null;
 
+  /** See Quote.chainId — same order-processing chain concept. */
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  chainId?: string | null;
+
   /** Optional link back to the quote this invoice was raised from. */
   @Column({ nullable: true })
   quoteId?: number;
+
+  /** Optional link back to the delivery note this invoice was raised
+   * from — same chain-inheritance idea as quoteId. */
+  @Column({ nullable: true })
+  deliveryNoteId?: number;
 
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   organization?: Organization;
