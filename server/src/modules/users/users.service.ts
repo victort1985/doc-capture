@@ -72,6 +72,10 @@ export class UsersService {
     await this.usersRepo.update(userId, { setupWizardCompleted: true });
   }
 
+  async acceptTos(userId: number, version: string): Promise<void> {
+    await this.usersRepo.update(userId, { tosAcceptedAt: new Date(), tosAcceptedVersion: version });
+  }
+
   /** Used only for login — explicitly pulls passwordHash (hidden by default via select:false). */
   async findByUsername(username: string): Promise<User | null> {
     return this.usersRepo.findOne({

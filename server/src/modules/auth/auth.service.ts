@@ -5,6 +5,12 @@ import { UsersService } from '../users/users.service';
 import { resolveEffectivePermissions } from '../users/permissions.constants';
 import { DevicesService } from '../license/devices.service';
 
+/** Bump this whenever the Terms of Service text materially changes —
+ * every user (regardless of tosAcceptedAt) will be asked to accept
+ * again, since accepting version "1" isn't the same agreement as
+ * whatever version replaced it. */
+export const TOS_VERSION = '1';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -46,6 +52,7 @@ export class AuthService {
         organizationId: user.organization?.id ?? null,
         isDemoMode: user.organization?.isDemoMode ?? false,
         setupWizardCompleted: user.setupWizardCompleted,
+        tosAccepted: user.tosAcceptedVersion === TOS_VERSION,
         allowedOrganizationIds: user.allowedOrganizationIds ?? [],
         // Fully resolved (role default -> group -> user override), not
         // the raw override map — the client shouldn't need to know

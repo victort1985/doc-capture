@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Headers, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { AuthService } from './auth.service';
+import { AuthService, TOS_VERSION } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
@@ -40,6 +40,13 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   async completeSetupWizard(@CurrentUser() user: { id: number }) {
     await this.usersService.markSetupWizardCompleted(user.id);
+    return { ok: true };
+  }
+
+  @Post('accept-tos')
+  @UseGuards(JwtAuthGuard)
+  async acceptTos(@CurrentUser() user: { id: number }) {
+    await this.usersService.acceptTos(user.id, TOS_VERSION);
     return { ok: true };
   }
 }

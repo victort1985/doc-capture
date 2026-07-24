@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UsersService } from '../../users/users.service';
+import { TOS_VERSION } from '../auth.service';
 
 export interface JwtPayload {
   sub: number;
@@ -45,6 +46,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       organizationId: user.organization?.id ?? null,
       isDemoMode: user.organization?.isDemoMode ?? false,
       setupWizardCompleted: user.setupWizardCompleted,
+      tosAccepted: user.tosAcceptedVersion === TOS_VERSION,
       allowedOrganizationIds: user.allowedOrganizationIds ?? [],
       permissions: user.permissions ?? {},
       firstName: user.firstName ?? null,

@@ -74,6 +74,19 @@ export class User {
   @Column({ default: false })
   setupWizardCompleted: boolean;
 
+  /** When this user accepted the current Terms of Service — null
+   * means they haven't yet. Every user (any role, any organization)
+   * must accept before using the app; unlike setupWizardCompleted
+   * this isn't super-admin-only. Bumping TOS_VERSION (see
+   * auth.controller.ts) re-requires acceptance from everyone, since a
+   * changed document isn't the same agreement the null check alone
+   * would imply. */
+  @Column({ type: 'timestamp', nullable: true })
+  tosAcceptedAt?: Date | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  tosAcceptedVersion?: string | null;
+
   // Technician's base city (informational/display) — distinct from
   // `regions` below, which drives call notification routing.
   @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
