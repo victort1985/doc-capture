@@ -2,6 +2,7 @@ import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { AuthProvider } from './context/AuthContext';
 import DemoConsentModal from './components/DemoConsentModal';
+import TermsOfServiceGate from './components/TermsOfServiceGate';
 import SetupWizardGate from './components/SetupWizardGate';
 import { LicenseProvider, useLicense } from './context/LicenseContext';
 import LicenseActivationPage from './pages/LicenseActivationPage';
@@ -62,6 +63,7 @@ export default function App() {
     <LicenseGate>
     <AuthProvider>
       <DemoConsentModal />
+      <TermsOfServiceGate />
       <SetupWizardGate>
       <Routes>
         <Route path="/login" element={<LoginPage />} />

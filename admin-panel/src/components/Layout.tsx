@@ -10,6 +10,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
 import { useSetupWizard } from './SetupWizardGate';
+import TermsOfServiceContent from './TermsOfServiceContent';
 import logo from '../assets/logo.png';
 import CopyrightFooter from './CopyrightFooter';
 import LicenseWarningBanner from './LicenseWarningBanner';
@@ -64,6 +65,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { user } = useAuth();
   const { open: openWizard } = useSetupWizard();
   const isSuperAdmin = user?.organizationId == null;
+  const [showTos, setShowTos] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -107,6 +109,11 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         )}
 
         <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border, #e5e5e5)' }} />
+        <button type="button" className="ghost" onClick={() => { onClose(); setShowTos(true); }} style={{ width: '100%' }}>
+          {t('settings.viewTos')}
+        </button>
+
+        <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border, #e5e5e5)' }} />
 
         <label>{t('settings.changePassword')}</label>
         <input type="password" placeholder={t('settings.currentPassword')} value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} style={{ marginBottom: 8 }} />
@@ -118,6 +125,19 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
           {pwSaving ? t('common.saving') : t('settings.changePassword')}
         </button>
       </div>
+
+      {showTos && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 300 }} onClick={() => setShowTos(false)}>
+          <div className="card" style={{ width: '100%', maxWidth: 640, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 8 }}>
+              <button className="ghost" onClick={() => setShowTos(false)} aria-label={t('settings.close')}><X size={16} /></button>
+            </div>
+            <div style={{ overflowY: 'auto' }}>
+              <TermsOfServiceContent />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

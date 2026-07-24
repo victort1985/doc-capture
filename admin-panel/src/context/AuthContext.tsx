@@ -9,6 +9,7 @@ interface AuthUser {
   organizationId: number | null;
   isDemoMode?: boolean;
   setupWizardCompleted?: boolean;
+  tosAccepted?: boolean;
 }
 
 interface AuthContextValue {
@@ -16,6 +17,7 @@ interface AuthContextValue {
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -58,8 +60,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(data.user);
   }
 
+  /** Re-fetches /auth/me — used after an action that changes something
+   * on the user record itself (accepting ToS, finishing the setup
+   * wizard) so the rest of the app sees the update without requiring
+   * a full page reload. */
+  async function refreshUser() {
+    const data = await apiFetch<AuthUser>('/auth/me');
+    setUser(data);
+  }
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );
