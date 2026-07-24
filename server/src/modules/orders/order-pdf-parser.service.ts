@@ -112,6 +112,16 @@ export class OrderPdfParserService {
     // quarter of the page is what tells it apart from the recipient's
     // own company name, which also includes "בע"מ" but appears further
     // down under "לכבוד:" (To:).
+    //
+    // That percentage cutoff alone isn't reliable on every layout,
+    // though — on some documents the "לכבוד:" recipient block starts
+    // high enough on the page to still fall inside that top quarter,
+    // which was picking up the RECIPIENT's name (our own client) as if
+    // they were the ones placing the order. Explicitly finding the
+    // "לכבוד:" line's vertical position and excluding everything at or
+    // below it is a much harder guarantee than the percentage alone,
+    // since it doesn't matter how tall the header happens to be on any
+    // given supplier's template.
     const rows = tsv
       .split('\n')
       .slice(1)
@@ -131,9 +141,13 @@ export class OrderPdfParserService {
       lineMap.get(key)!.words.push(r[11]);
     }
 
-    const candidates = [...lineMap.values()]
-      .filter((l) => l.top < pageHeight * 0.25)
-      .map((l) => l.words.join(' ').trim())
+    const lines = [...lineMap.values()].map((l) => ({ top: l.top, text: l.words.join(' ').trim() }));
+    const recipientMarker = lines.find((l) => l.text.includes('לכבוד'));
+    const cutoff = recipientMarker ? Math.min(recipientMarker.top, pageHeight * 0.25) : pageHeight * 0.25;
+
+    const candidates = lines
+      .filter((l) => l.top < cutoff)
+      .map((l) => l.text)
       .filter((t) => t.includes('בע"מ') || t.includes('בעמ'));
 
     const line = candidates[0];

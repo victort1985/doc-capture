@@ -6,7 +6,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
+import '../services/api_service.dart';
 import '../services/order_service.dart';
+import '../services/delivery_notes_service.dart';
+import 'delivery_note_form_screen.dart';
 import 'scan_review_screen.dart';
 
 /// One order's detail: the PO itself (page 1), plus — once a delivery
@@ -19,9 +22,10 @@ import 'scan_review_screen.dart';
 /// freshly-scanned document elsewhere in the app, which already has
 /// both built in.
 class OrderDetailScreen extends StatefulWidget {
-  const OrderDetailScreen({super.key, required this.orderId});
+  const OrderDetailScreen({super.key, required this.orderId, this.order});
 
   final int orderId;
+  final OrderListItem? order;
 
   @override
   State<OrderDetailScreen> createState() => _OrderDetailScreenState();
@@ -47,6 +51,30 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       if (!mounted) return;
       setState(() => _error = 'Failed to load');
     }
+  }
+
+  /// Resolves this order's chain (assigning it one if it never had one)
+  /// so the delivery note created next joins the same chain, then
+  /// opens the delivery note form pre-filled with the ordering
+  /// organization's name — the actual "next link" the whole chain
+  /// feature is for.
+  Future<void> _createDeliveryNote() async {
+    String? chainId;
+    try {
+      final chain = await context.read<ApiService>().get('/order-chain/for/order/${widget.orderId}');
+      chainId = chain['chainId'] as String?;
+    } catch (_) {
+      // Non-fatal — the note still gets created, just without a
+      // resolved chain link if this call fails for some reason.
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => DeliveryNoteFormScreen(
+        svc: DeliveryNotesService(context.read<ApiService>()),
+        prefillClientName: widget.order?.organization,
+        prefillChainId: chainId,
+      ),
+    ));
   }
 
   Future<(String, String)?> _askInvoiceNumber() {
@@ -183,6 +211,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
           if (_busy) const LinearProgressIndicator(minHeight: 2),
           Expanded(child: _buildPreview()),
         ],
+      ),
+      bottomNavigationBar: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: FilledButton.icon(
+            onPressed: _createDeliveryNote,
+            icon: const Icon(Icons.local_shipping_outlined, size: 18),
+            label: Text(l10n.orderCreateDeliveryNote),
+          ),
+        ),
       ),
     );
   }

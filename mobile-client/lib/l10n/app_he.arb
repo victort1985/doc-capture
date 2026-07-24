@@ -136,6 +136,7 @@
   "orderStatusCompleted": "הושלם",
   "orderDetailAddInvoice": "הוספת תעודת משלוח",
   "orderInvoiceNumberPrompt": "מספר תעודת משלוח",
+  "orderCreateDeliveryNote": "יצירת תעודת משלוח",
   "orderInvoiceNumberHint": "הזן את מספר תעודת המשלוח",
   "orderInvoiceDescriptionHint": "תיאור (לא חובה)",
   "orderMarkDone": "סיום",
@@ -411,6 +412,7 @@
     }
   },
   "dnSave": "שמור",
+  "dnCreateInvoice": "יצירת חשבונית",
   "dnPrintPdf": "הדפסה / PDF",
   "dnShare": "שיתוף (וואטסאפ / אימייל)",
   "dnSendForSigning": "שלח לחתימה",

@@ -136,6 +136,7 @@
   "orderStatusCompleted": "Выполнен",
   "orderDetailAddInvoice": "Добавить накладную",
   "orderInvoiceNumberPrompt": "Номер накладной",
+  "orderCreateDeliveryNote": "Создать накладную",
   "orderInvoiceNumberHint": "Введите номер накладной",
   "orderInvoiceDescriptionHint": "Описание (необязательно)",
   "orderMarkDone": "Выполнено",
@@ -411,6 +412,7 @@
     }
   },
   "dnSave": "Сохранить",
+  "dnCreateInvoice": "Создать счёт",
   "dnPrintPdf": "Печать / PDF",
   "dnShare": "Поделиться (WhatsApp / Email)",
   "dnSendForSigning": "Отправить на подпись",

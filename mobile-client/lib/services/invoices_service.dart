@@ -69,6 +69,8 @@ class InvoicesService {
     required List<InvoiceItem> items,
     String? notes,
     int? quoteId,
+    int? deliveryNoteId,
+    String? chainId,
   }) async {
     final res = await _api.post('/invoices', {
       'clientName': clientName,
@@ -76,6 +78,8 @@ class InvoicesService {
       'items': items.map((i) => i.toJson()).toList(),
       if (notes != null && notes.isNotEmpty) 'notes': notes,
       if (quoteId != null) 'quoteId': quoteId,
+      if (deliveryNoteId != null) 'deliveryNoteId': deliveryNoteId,
+      if (chainId != null) 'chainId': chainId,
     });
     return Invoice.fromJson(res);
   }

@@ -19,13 +19,20 @@ import '../widgets/client_search_field.dart';
 import '../widgets/item_row_widget.dart';
 import '../widgets/search_picker_field.dart';
 import '../services/quotes_service.dart';
+import '../services/api_service.dart';
+import 'invoices_screen.dart';
 import '../store/app_state.dart';
 import '../l10n/app_localizations.dart';
 
 class DeliveryNoteFormScreen extends StatefulWidget {
-  const DeliveryNoteFormScreen({super.key, required this.svc, this.noteId});
+  const DeliveryNoteFormScreen({super.key, required this.svc, this.noteId, this.prefillClientName, this.prefillChainId});
   final DeliveryNotesService svc;
   final int? noteId;
+  /// Set when opened via "Create delivery note" from an order/quote in
+  /// the processing chain — pre-fills the client name and carries the
+  /// chainId forward so this note joins that same chain.
+  final String? prefillClientName;
+  final String? prefillChainId;
 
   @override
   State<DeliveryNoteFormScreen> createState() => _DeliveryNoteFormScreenState();
@@ -136,7 +143,10 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     if (widget.noteId != null) {
       _loadExisting();
     } else {
-      _dateCtrl.text = DateTime.now().toIso8601String().slice(0, 10);      _loadSettings();
+      _dateCtrl.text = DateTime.now().toIso8601String().slice(0, 10);
+      _loadSettings();
+      if (widget.prefillClientName != null) _clientNameCtrl.text = widget.prefillClientName!;
+      if (widget.prefillChainId != null) _chainId = widget.prefillChainId;
     }
   }
 
@@ -604,6 +614,29 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
     );
   }
 
+  /// Resolves this note's chain (assigning one if it never had one) and
+  /// opens the invoice form pre-filled with the client name — the
+  /// "next link" after a delivery note gets signed.
+  Future<void> _createInvoice() async {
+    if (_note == null) return;
+    String? chainId;
+    try {
+      final chain = await context.read<ApiService>().get('/order-chain/for/delivery-note/${_note!.id}');
+      chainId = chain['chainId'] as String?;
+    } catch (_) {
+      // Non-fatal — the invoice still gets created, just without a
+      // resolved chain link if this call fails for some reason.
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => InvoiceFormScreen(
+        prefillClientName: _note!.clientName,
+        prefillChainId: chainId,
+        prefillDeliveryNoteId: _note!.id,
+      ),
+    ));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -821,6 +854,18 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
           ],
         ),
       ),
+      bottomNavigationBar: isSigned
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: FilledButton.icon(
+                  onPressed: _createInvoice,
+                  icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                  label: Text(l10n.dnCreateInvoice),
+                ),
+              ),
+            )
+          : null,
     );
   }
 }

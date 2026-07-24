@@ -79,7 +79,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
 
   Future<void> _openCreate() async {
     final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const _InvoiceFormScreen()),
+      MaterialPageRoute(builder: (_) => const InvoiceFormScreen()),
     );
     if (created == true) _load();
   }
@@ -160,24 +160,34 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   }
 }
 
-class _InvoiceFormScreen extends StatefulWidget {
-  const _InvoiceFormScreen();
+class InvoiceFormScreen extends StatefulWidget {
+  const InvoiceFormScreen({super.key, this.prefillClientName, this.prefillChainId, this.prefillDeliveryNoteId});
+  /// Set when opened via "Create invoice" from a signed delivery note
+  /// in the processing chain.
+  final String? prefillClientName;
+  final String? prefillChainId;
+  final int? prefillDeliveryNoteId;
   @override
-  State<_InvoiceFormScreen> createState() => _InvoiceFormScreenState();
+  State<InvoiceFormScreen> createState() => _InvoiceFormScreenState();
 }
 
-class _InvoiceFormScreenState extends State<_InvoiceFormScreen> {
+class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   final _clientController = TextEditingController();
   final _emailController = TextEditingController();
   final List<(TextEditingController, TextEditingController, TextEditingController)> _items = [];
   bool _saving = false;
   List<Quote>? _quotesCache;
   int? _fromQuoteId;
+  int? _fromDeliveryNoteId;
+  String? _chainId;
 
   @override
   void initState() {
     super.initState();
     _addItem();
+    if (widget.prefillClientName != null) _clientController.text = widget.prefillClientName!;
+    if (widget.prefillChainId != null) _chainId = widget.prefillChainId;
+    if (widget.prefillDeliveryNoteId != null) _fromDeliveryNoteId = widget.prefillDeliveryNoteId;
   }
 
   void _addItem() {
@@ -290,6 +300,8 @@ class _InvoiceFormScreenState extends State<_InvoiceFormScreen> {
                 ))
             .toList(),
         quoteId: _fromQuoteId,
+        deliveryNoteId: _fromDeliveryNoteId,
+        chainId: _chainId,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {

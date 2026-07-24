@@ -136,6 +136,7 @@
   "orderStatusCompleted": "Completed",
   "orderDetailAddInvoice": "Add delivery note",
   "orderInvoiceNumberPrompt": "Delivery note number",
+  "orderCreateDeliveryNote": "Create delivery note",
   "orderInvoiceNumberHint": "Enter the delivery note number",
   "orderInvoiceDescriptionHint": "Description (optional)",
   "orderMarkDone": "Done",
@@ -411,6 +412,7 @@
     }
   },
   "dnSave": "Save",
+  "dnCreateInvoice": "Create invoice",
   "dnPrintPdf": "Print / PDF",
   "dnShare": "Share (WhatsApp / Email)",
   "dnSendForSigning": "Send for signing",

@@ -168,7 +168,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
             ),
             onTap: () async {
               await Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: order.id)),
+                MaterialPageRoute(builder: (_) => OrderDetailScreen(orderId: order.id, order: order)),
               );
               _load();
             },
