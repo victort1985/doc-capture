@@ -6,8 +6,9 @@ import { Quote } from '../quotes/entities/quote.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
 import { Order } from '../orders/entities/order.entity';
+import { Payment } from '../payments/entities/payment.entity';
 
-export type ChainDocType = 'quote' | 'order' | 'delivery-note' | 'invoice';
+export type ChainDocType = 'quote' | 'order' | 'delivery-note' | 'invoice' | 'payment';
 
 export interface ChainResult {
   chainId: string;
@@ -15,16 +16,14 @@ export interface ChainResult {
   orders: Order[];
   deliveryNotes: DeliveryNote[];
   invoices: Invoice[];
-  /** A simple "how far along is this" signal for the UI — not a strict
-   * state machine, just: does a delivery note exist and is it signed,
-   * and does an invoice exist. The chain can start at any step, so
-   * "complete" just means an invoice exists in the chain. */
+  payments: Payment[];
   status: {
     hasQuote: boolean;
     hasOrder: boolean;
     hasDeliveryNote: boolean;
     deliveryNoteSigned: boolean;
     hasInvoice: boolean;
+    hasPayment: boolean;
     complete: boolean;
   };
 }
@@ -36,13 +35,12 @@ export class OrderChainService {
     @InjectRepository(Order) private readonly ordersRepo: Repository<Order>,
     @InjectRepository(DeliveryNote) private readonly deliveryNotesRepo: Repository<DeliveryNote>,
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
+    @InjectRepository(Payment) private readonly paymentsRepo: Repository<Payment>,
   ) {}
 
   /** Resolves the chainId for a given document — if it doesn't have
-   * one yet (an older record from before this feature, or a document
-   * that's never been linked to anything), assigns it a fresh one on
-   * the spot rather than failing, so every document is always
-   * chain-viewable. */
+   * one yet, assigns it a fresh one on the spot rather than failing,
+   * so every document is always chain-viewable. */
   async resolveChainId(docType: ChainDocType, id: number, organizationId: number | null): Promise<string> {
     const { repo, where } = this.repoFor(docType, id, organizationId);
     const doc = await repo.findOne({ where });
@@ -56,25 +54,27 @@ export class OrderChainService {
 
   async getChain(chainId: string, organizationId: number | null): Promise<ChainResult> {
     const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
-    const [quotes, orders, deliveryNotes, invoices] = await Promise.all([
+    const [quotes, orders, deliveryNotes, invoices, payments] = await Promise.all([
       this.quotesRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
       this.ordersRepo.find({ where: { chainId } as any, order: { createdAt: 'ASC' } }),
       this.deliveryNotesRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
       this.invoicesRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
+      this.paymentsRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
     ]);
 
     const signedNote = deliveryNotes.find((n: any) => !!n.lesseeSignedAt || n.status === 'signed');
 
     return {
       chainId,
-      quotes, orders, deliveryNotes, invoices,
+      quotes, orders, deliveryNotes, invoices, payments,
       status: {
         hasQuote: quotes.length > 0,
         hasOrder: orders.length > 0,
         hasDeliveryNote: deliveryNotes.length > 0,
         deliveryNoteSigned: !!signedNote,
         hasInvoice: invoices.length > 0,
-        complete: invoices.length > 0,
+        hasPayment: payments.length > 0,
+        complete: payments.length > 0,
       },
     };
   }
@@ -84,6 +84,38 @@ export class OrderChainService {
     return this.getChain(chainId, organizationId);
   }
 
+  /** Manually attaches an existing document to another document's
+   * chain — e.g. linking an already-received Order to a Quote created
+   * separately, rather than only supporting "create a new X from this
+   * Y" at creation time. Both end up sharing the SAME chainId; if the
+   * source document already had its own chain with other documents in
+   * it, those get folded in too (repointed to match) rather than
+   * silently orphaned — a deliberate merge, not a move. */
+  async linkDocuments(
+    sourceType: ChainDocType, sourceId: number,
+    targetType: ChainDocType, targetId: number,
+    organizationId: number | null,
+  ): Promise<ChainResult> {
+    const targetChainId = await this.resolveChainId(targetType, targetId, organizationId);
+    const { repo: sourceRepo, where: sourceWhere } = this.repoFor(sourceType, sourceId, organizationId);
+    const sourceDoc = await sourceRepo.findOne({ where: sourceWhere });
+    if (!sourceDoc) throw new NotFoundException('Document not found');
+
+    const sourceChainId = (sourceDoc as any).chainId;
+    if (sourceChainId && sourceChainId !== targetChainId) {
+      await Promise.all(
+        [this.quotesRepo, this.ordersRepo, this.deliveryNotesRepo, this.invoicesRepo, this.paymentsRepo].map((repo) =>
+          repo.update({ chainId: sourceChainId } as any, { chainId: targetChainId } as any),
+        ),
+      );
+    } else {
+      (sourceDoc as any).chainId = targetChainId;
+      await sourceRepo.save(sourceDoc);
+    }
+
+    return this.getChain(targetChainId, organizationId);
+  }
+
   private repoFor(docType: ChainDocType, id: number, organizationId: number | null) {
     const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
     switch (docType) {
@@ -91,6 +123,7 @@ export class OrderChainService {
       case 'order': return { repo: this.ordersRepo as Repository<any>, where: { id } };
       case 'delivery-note': return { repo: this.deliveryNotesRepo as Repository<any>, where: { id, ...orgFilter } };
       case 'invoice': return { repo: this.invoicesRepo as Repository<any>, where: { id, ...orgFilter } };
+      case 'payment': return { repo: this.paymentsRepo as Repository<any>, where: { id, ...orgFilter } };
     }
   }
 }

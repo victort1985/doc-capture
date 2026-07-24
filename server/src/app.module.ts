@@ -36,6 +36,7 @@ import { DemoModule } from './modules/demo/demo.module';
 import { DocumentEmailModule } from './modules/document-email/document-email.module';
 import { PriceListModule } from './modules/price-list/price-list.module';
 import { OrderChainModule } from './modules/order-chain/order-chain.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -89,6 +90,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     DocumentEmailModule,
     PriceListModule,
     OrderChainModule,
+    PaymentsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
