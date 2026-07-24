@@ -1,20 +1,91 @@
 {
   "task_id": "server-critical-logic-tests",
-  "overall_status": "UNKNOWN",
+  "overall_status": "PASS",
   "acceptance_criteria": [
     {
       "id": "AC1",
-      "text": "TODO",
-      "status": "UNKNOWN",
-      "proof": [],
-      "gaps": [
-        "Not yet populated."
-      ]
+      "text": "resolveConnectionId() prefers configured DocumentCategory.ORDER routing",
+      "status": "PASS",
+      "proof": [
+        "server/src/modules/orders/orders.service.spec.ts"
+      ],
+      "gaps": []
+    },
+    {
+      "id": "AC2",
+      "text": "falls back to ORDERS_STORAGE_CONNECTION_ID env var / connection id 1 when unrouted",
+      "status": "PASS",
+      "proof": [
+        "server/src/modules/orders/orders.service.spec.ts"
+      ],
+      "gaps": []
+    },
+    {
+      "id": "AC3",
+      "text": "number generation uses persistent nextSequence, never repeats",
+      "status": "PASS",
+      "proof": [
+        "server/src/modules/quotes/quotes.service.spec.ts",
+        "server/src/modules/invoices/invoices.service.spec.ts"
+      ],
+      "gaps": []
+    },
+    {
+      "id": "AC4",
+      "text": "never derives numbers from COUNT(*) for org-scoped documents",
+      "status": "PASS",
+      "proof": [
+        "server/src/modules/quotes/quotes.service.spec.ts",
+        "server/src/modules/invoices/invoices.service.spec.ts"
+      ],
+      "gaps": []
+    },
+    {
+      "id": "AC5",
+      "text": "encryptString/decryptString round-trip",
+      "status": "PASS",
+      "proof": [
+        "server/src/common/crypto/encryption.util.spec.ts"
+      ],
+      "gaps": []
+    },
+    {
+      "id": "AC6",
+      "text": "encrypted output never equals plaintext",
+      "status": "PASS",
+      "proof": [
+        "server/src/common/crypto/encryption.util.spec.ts"
+      ],
+      "gaps": []
+    },
+    {
+      "id": "AC7",
+      "text": "entity column transformers actually encrypt at rest",
+      "status": "PASS",
+      "proof": [
+        "server/src/common/crypto/secret-columns.spec.ts"
+      ],
+      "gaps": []
     }
   ],
-  "changed_files": [],
-  "commands_for_fresh_verifier": [],
+  "changed_files": [
+    "server/package.json",
+    "server/package-lock.json",
+    "server/jest.config.js",
+    "server/__mocks__/webdav.js",
+    "server/src/common/crypto/encryption.util.spec.ts",
+    "server/src/common/crypto/secret-columns.spec.ts",
+    "server/src/modules/orders/orders.service.spec.ts",
+    "server/src/modules/quotes/quotes.service.spec.ts",
+    "server/src/modules/invoices/invoices.service.spec.ts"
+  ],
+  "commands_for_fresh_verifier": [
+    "cd server && npm install",
+    "cd server && npx jest",
+    "cd server && npm run build"
+  ],
   "known_gaps": [
-    "Evidence not yet populated."
+    "npm run lint is non-functional in server/ (no eslint installed) - pre-existing, out of scope.",
+    "No integration tests against a live Postgres instance - unit-level only, per frozen spec Non-goals."
   ]
 }
