@@ -1,4 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { encryptString, decryptString } from '../../../common/crypto/encryption.util';
 
 /**
  * The "primary email" quotes/invoices/delivery-note settings each
@@ -16,8 +17,18 @@ export class DocumentEmailSettings {
   @Column({ type: 'varchar', nullable: true })
   emailAddress?: string | null;
 
-  /** Gmail "app password" (myaccount.google.com/apppasswords) — same
-   * handling as every other stored connection secret in this codebase. */
-  @Column({ type: 'varchar', nullable: true, select: false })
+  /** Gmail "app password" (myaccount.google.com/apppasswords) —
+   * encrypted at rest with the same AES-256-GCM transformer used for
+   * StorageConnection.password, not just hidden via select:false
+   * (which only keeps it out of normal query results — it was
+   * previously stored as plaintext, readable directly from the
+   * database if it were ever compromised). */
+  @Column({
+    type: 'varchar', nullable: true, select: false,
+    transformer: {
+      to: (value?: string | null) => (value ? encryptString(value) : value),
+      from: (value?: string | null) => (value ? decryptString(value) ?? value : value),
+    },
+  })
   appPassword?: string | null;
 }

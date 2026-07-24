@@ -1,4 +1,5 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { encryptString, decryptString } from '../../../common/crypto/encryption.util';
 
 /**
  * Credentials for the one dedicated Gmail inbox that receives supplier
@@ -20,9 +21,19 @@ export class OrderEmailSettings {
   emailAddress?: string | null;
 
   /** A Gmail "app password" (myaccount.google.com/apppasswords), not
-   * the account's real login password — stored as-is like other
-   * connection secrets in this codebase (see StorageConnection). */
-  @Column({ type: 'varchar', nullable: true, select: false })
+   * the account's real login password — encrypted at rest with the
+   * same AES-256-GCM transformer as StorageConnection.password (an
+   * earlier version of this comment said "stored as-is like other
+   * connection secrets" — true when written, no longer true: this was
+   * plaintext until this fix, unlike StorageConnection which already
+   * had the transformer). */
+  @Column({
+    type: 'varchar', nullable: true, select: false,
+    transformer: {
+      to: (value?: string | null) => (value ? encryptString(value) : value),
+      from: (value?: string | null) => (value ? decryptString(value) ?? value : value),
+    },
+  })
   appPassword?: string | null;
 
   @Column({ default: 'imap.gmail.com' })
