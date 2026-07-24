@@ -20,6 +20,7 @@ import '../widgets/item_row_widget.dart';
 import '../widgets/search_picker_field.dart';
 import '../services/quotes_service.dart';
 import '../services/api_service.dart';
+import '../services/order_service.dart';
 import 'invoices_screen.dart';
 import '../store/app_state.dart';
 import '../l10n/app_localizations.dart';
@@ -123,6 +124,57 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
 
   // Equipment rows
   List<ItemRow> _items = [ItemRow()];
+
+  List<OrderListItem>? _ordersCache;
+
+  Future<List<OrderListItem>> _searchOrders(String query) async {
+    _ordersCache ??= await OrderService(context.read<ApiService>()).list();
+    final q = query.toLowerCase();
+    return _ordersCache!
+        .where((o) => o.organization.toLowerCase().contains(q) || o.poNumberLast4.toLowerCase().contains(q))
+        .toList();
+  }
+
+  /// Manually links this (already-saved) delivery note into an
+  /// existing order's chain.
+  Future<void> _linkToOrder() async {
+    if (_note == null) return;
+    final l10n = AppLocalizations.of(context)!;
+    final picked = await showModalBottomSheet<OrderListItem>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.linkToOrderTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text(l10n.invoiceFromQuotePickHint, style: const TextStyle(fontSize: 12.5, color: AppColors.inkSoft)),
+            const SizedBox(height: 12),
+            SearchPickerField<OrderListItem>(
+              search: _searchOrders,
+              displayString: (o) => '···${o.poNumberLast4}',
+              listLabel: (o) => '${o.organization} · ···${o.poNumberLast4}',
+              hintText: l10n.invoiceFromQuoteSearchHint,
+              onSelected: (o) => Navigator.of(ctx).pop(o),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    try {
+      await context.read<ApiService>().post('/order-chain/link', {
+        'sourceType': 'delivery-note', 'sourceId': _note!.id,
+        'targetType': 'order', 'targetId': picked.id,
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.linkedSuccessfully)));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
 
   // Signatures (base64 PNG)
   String? _lessorSig;
@@ -694,6 +746,15 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
                 onPressed: _openQuotePicker,
                 icon: const Icon(Icons.request_quote_outlined, size: 18),
                 label: Text(l10n.invoiceCreateFromQuote),
+              ),
+              const SizedBox(height: 12),
+            ],
+
+            if (_note != null) ...[
+              OutlinedButton.icon(
+                onPressed: _linkToOrder,
+                icon: const Icon(Icons.link, size: 18),
+                label: Text(l10n.linkToOrderButton),
               ),
               const SizedBox(height: 12),
             ],

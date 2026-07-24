@@ -5,6 +5,8 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/invoices_service.dart';
+import '../services/delivery_notes_service.dart';
+import '../widgets/search_picker_field.dart';
 import 'payments_screen.dart';
 
 /// Opened by tapping an invoice row — shows a quick summary, lets you
@@ -56,6 +58,56 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     }
   }
 
+  List<DeliveryNote>? _notesCache;
+
+  Future<List<DeliveryNote>> _searchNotes(String query) async {
+    _notesCache ??= await DeliveryNotesService(context.read<ApiService>()).list();
+    final q = query.toLowerCase();
+    return _notesCache!
+        .where((n) => (n.noteNumber ?? '').toLowerCase().contains(q) || (n.clientName ?? '').toLowerCase().contains(q))
+        .toList();
+  }
+
+  /// Manually links this invoice into an existing delivery note's chain.
+  Future<void> _linkToDeliveryNote() async {
+    final l10n = AppLocalizations.of(context)!;
+    final picked = await showModalBottomSheet<DeliveryNote>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.linkToNoteTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text(l10n.invoiceFromQuotePickHint, style: const TextStyle(fontSize: 12.5, color: AppColors.inkSoft)),
+            const SizedBox(height: 12),
+            SearchPickerField<DeliveryNote>(
+              search: _searchNotes,
+              displayString: (n) => n.noteNumber ?? '#${n.id}',
+              listLabel: (n) => '${n.noteNumber ?? '#${n.id}'} · ${n.clientName ?? ''}',
+              hintText: l10n.invoiceFromQuoteSearchHint,
+              onSelected: (n) => Navigator.of(ctx).pop(n),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    try {
+      await context.read<ApiService>().post('/order-chain/link', {
+        'sourceType': 'invoice', 'sourceId': widget.invoice.id,
+        'targetType': 'delivery-note', 'targetId': picked.id,
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.linkedSuccessfully)));
+      _loadChain();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
   Future<void> _pay() async {
     final paid = await Navigator.of(context).push<bool>(MaterialPageRoute(
       builder: (_) => PaymentFormScreen(
@@ -102,6 +154,8 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           ),
           const SizedBox(height: 12),
           OutlinedButton.icon(onPressed: _viewPdf, icon: const Icon(Icons.picture_as_pdf_outlined, size: 18), label: Text(l10n.invoiceViewPdf)),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(onPressed: _linkToDeliveryNote, icon: const Icon(Icons.link, size: 18), label: Text(l10n.linkToNoteButton)),
           if (_hasPayment) ...[
             const SizedBox(height: 16),
             Container(

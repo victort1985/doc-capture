@@ -5,12 +5,15 @@ import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
+import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/order_service.dart';
 import '../services/delivery_notes_service.dart';
 import 'delivery_note_form_screen.dart';
 import 'scan_review_screen.dart';
+import '../services/quotes_service.dart';
+import '../widgets/search_picker_field.dart';
 
 /// One order's detail: the PO itself (page 1), plus — once a delivery
 /// note has been added — that as page 2+. The same camera/gallery/file
@@ -75,6 +78,60 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         prefillChainId: chainId,
       ),
     ));
+  }
+
+  List<Quote>? _quotesCache;
+
+  Future<List<Quote>> _searchQuotes(String query) async {
+    _quotesCache ??= await QuotesService(context.read<ApiService>()).list();
+    final q = query.toLowerCase();
+    return _quotesCache!
+        .where((quote) =>
+            (quote.quoteNumber ?? '#${quote.id}').toLowerCase().contains(q) ||
+            quote.clientName.toLowerCase().contains(q))
+        .toList();
+  }
+
+  /// Manually links this order into an existing quote's chain — for
+  /// when the order was received separately (e.g. by email) from a
+  /// quote already created for the same client, rather than the two
+  /// only ever connecting via "create new X from Y" at creation time.
+  Future<void> _linkToQuote() async {
+    final l10n = AppLocalizations.of(context)!;
+    final picked = await showModalBottomSheet<Quote>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.linkToQuoteTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text(l10n.invoiceFromQuotePickHint, style: const TextStyle(fontSize: 12.5, color: AppColors.inkSoft)),
+            const SizedBox(height: 12),
+            SearchPickerField<Quote>(
+              search: _searchQuotes,
+              displayString: (q) => q.quoteNumber ?? '#${q.id}',
+              listLabel: (q) => '${q.quoteNumber ?? '#${q.id}'} · ${q.clientName}',
+              hintText: l10n.invoiceFromQuoteSearchHint,
+              onSelected: (q) => Navigator.of(ctx).pop(q),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
+    try {
+      await context.read<ApiService>().post('/order-chain/link', {
+        'sourceType': 'order', 'sourceId': widget.orderId,
+        'targetType': 'quote', 'targetId': picked.id,
+      });
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.linkedSuccessfully)));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
   }
 
   Future<(String, String)?> _askInvoiceNumber() {
@@ -215,10 +272,21 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
-          child: FilledButton.icon(
-            onPressed: _createDeliveryNote,
-            icon: const Icon(Icons.local_shipping_outlined, size: 18),
-            label: Text(l10n.orderCreateDeliveryNote),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              OutlinedButton.icon(
+                onPressed: _linkToQuote,
+                icon: const Icon(Icons.link, size: 18),
+                label: Text(l10n.linkToQuoteButton),
+              ),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: _createDeliveryNote,
+                icon: const Icon(Icons.local_shipping_outlined, size: 18),
+                label: Text(l10n.orderCreateDeliveryNote),
+              ),
+            ],
           ),
         ),
       ),
