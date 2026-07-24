@@ -29,9 +29,7 @@ const BASE_NAV = [
   { to: '/permissions',       labelKey: 'nav.permissions',     icon: ShieldCheck },
   { to: '/groups',            labelKey: 'nav.groups',          icon: Users2 },
   { to: '/calendar-sync',     labelKey: 'nav.calendarSync',    icon: CalendarDays },
-  { to: '/orders',            labelKey: 'nav.orders',          icon: ReceiptText },
   { to: '/maintenance',       labelKey: 'nav.maintenance',     icon: CalendarClock },
-  { to: '/orders-email-settings', labelKey: 'nav.orderIntakeEmail', icon: Mail },
   { to: '/storage',           labelKey: 'nav.storage',         icon: HardDrive },
   { to: '/storage-routing',   labelKey: 'nav.routing',         icon: Route },
   { to: '/templates',         labelKey: 'nav.templates',       icon: FileSliders },
@@ -39,14 +37,20 @@ const BASE_NAV = [
   { to: '/devices',           labelKey: 'nav.devices',         icon: Smartphone },
 ];
 
+// Ordered to match the order-processing chain (see order-chain module):
+// quote -> order -> delivery note (+ signature) -> invoice. Prices comes
+// first since it's the supporting catalog that feeds line items into
+// everything after it, not a step in the chain itself.
 const OFFICE_GROUP = [
-  { to: '/delivery-notes',    labelKey: 'nav.deliveryNotes',        icon: FileText },
-  { to: '/delivery-settings', labelKey: 'nav.deliveryNoteSettings', icon: FileSignature },
+  { to: '/prices',            labelKey: 'nav.prices',               icon: Tag },
   { to: '/quotes',            labelKey: 'nav.quotes',               icon: FileSpreadsheet },
   { to: '/quote-settings',    labelKey: 'nav.quoteSettings',        icon: Settings2 },
+  { to: '/orders',            labelKey: 'nav.orders',               icon: ReceiptText },
+  { to: '/orders-email-settings', labelKey: 'nav.orderIntakeEmail', icon: Mail },
+  { to: '/delivery-notes',    labelKey: 'nav.deliveryNotes',        icon: FileText },
+  { to: '/delivery-settings', labelKey: 'nav.deliveryNoteSettings', icon: FileSignature },
   { to: '/invoices',          labelKey: 'nav.invoices',             icon: Banknote },
   { to: '/invoice-settings',  labelKey: 'nav.invoiceSettings',      icon: Settings2 },
-  { to: '/prices',            labelKey: 'nav.prices',               icon: Tag },
 ];
 
 const LANGUAGES = [
