@@ -63,6 +63,15 @@ export class DeliveryNoteSettings {
   @Column({ default: 10000 })
   startingNumber: number; // first note number for this org
 
+  /** The number to use for the NEXT delivery note created, then
+   * incremented — a real persistent counter, not derived from
+   * COUNT(*) of existing rows. See QuoteSettings.nextSequence for why
+   * COUNT(*) is unsafe: it silently reissues an already-used number
+   * the moment any note gets deleted (manually, or by the demo-mode
+   * nightly cleanup). */
+  @Column({ type: 'integer', default: 1 })
+  nextSequence: number;
+
   /** Fixed text to print at the bottom of every note (terms & conditions) */
   @Column({ type: 'text', nullable: true })
   termsText?: string;

@@ -32,13 +32,7 @@ export class DeliveryNotesService {
   }
 
   async create(organizationId: number | null, userId: number, dto: Partial<DeliveryNote>): Promise<DeliveryNote> {
-    const count = await this.repo.count({ where: organizationId != null ? { organization: { id: organizationId } } : {} });
-    const orgSettings = organizationId
-      ? await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } })
-      : null;
-    const startNum = orgSettings?.startingNumber ?? 10000;
-    const prefix = orgSettings?.notePrefix ?? '';
-    const noteNumber = dto.noteNumber ?? `${prefix}${startNum + count}`;
+    const { noteNumber } = await this.claimNoteNumber(organizationId, dto.noteNumber);
     const note = this.repo.create({
       ...dto,
       noteNumber,
@@ -49,6 +43,35 @@ export class DeliveryNotesService {
       createdBy: { id: userId } as any,
     });
     return this.repo.save(note);
+  }
+
+  /** Claims the next persistent sequence number for this org (see
+   * DeliveryNoteSettings.nextSequence) and advances the counter in the
+   * same query, so two notes created at the same moment can never end
+   * up with the same number — unlike the old COUNT(*) approach this
+   * replaced, which reissued an already-used number the moment any
+   * note got deleted. */
+  private async claimNoteNumber(
+    organizationId: number | null,
+    explicitNoteNumber?: string,
+  ): Promise<{ noteNumber: string; orgSettings: DeliveryNoteSettings | null }> {
+    if (organizationId == null) {
+      // No org context (super-admin) — settings don't apply; fall
+      // back to a simple running count, same as before.
+      const count = await this.repo.count({});
+      return { noteNumber: explicitNoteNumber ?? `${10000 + count}`, orgSettings: null };
+    }
+
+    let orgSettings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } });
+    if (!orgSettings) orgSettings = await this.settingsRepo.save(this.settingsRepo.create({ organization: { id: organizationId } as any }));
+
+    const claimed = orgSettings.nextSequence ?? 1;
+    await this.settingsRepo.increment({ id: orgSettings.id }, 'nextSequence', 1);
+
+    const startNum = orgSettings.startingNumber ?? 10000;
+    const prefix = orgSettings.notePrefix ?? '';
+    const noteNumber = explicitNoteNumber ?? `${prefix}${startNum + claimed - 1}`;
+    return { noteNumber, orgSettings };
   }
 
   async update(id: number, organizationId: number | null, dto: Partial<DeliveryNote>): Promise<DeliveryNote> {
