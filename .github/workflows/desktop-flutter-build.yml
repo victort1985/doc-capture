@@ -153,11 +153,14 @@ jobs:
             final Map<String, bool> permissions;
             final String? firstName;
             final String? lastName;
+            final bool isDemoMode;
+            final bool tosAccepted;
 
             AuthUser({required this.id, required this.username, required this.language,
               required this.role, this.organizationId,
               this.allowedOrganizationIds = const [], this.permissions = const {},
-              this.firstName, this.lastName});
+              this.firstName, this.lastName,
+              this.isDemoMode = false, this.tosAccepted = false});
 
             bool hasPermission(String key) => permissions[key] ?? false;
 
@@ -177,7 +180,9 @@ jobs:
               permissions: (j['permissions'] as Map<String, dynamic>?)
                   ?.map((k, v) => MapEntry(k, v as bool)) ?? {},
               firstName: j['firstName'] as String?,
-              lastName: j['lastName'] as String?);
+              lastName: j['lastName'] as String?,
+              isDemoMode: j['isDemoMode'] as bool? ?? false,
+              tosAccepted: j['tosAccepted'] as bool? ?? false);
           }
 
           class AuthService {
@@ -374,11 +379,14 @@ jobs:
             final Map<String, bool> permissions;
             final String? firstName;
             final String? lastName;
+            final bool isDemoMode;
+            final bool tosAccepted;
 
             AuthUser({required this.id, required this.username, required this.language,
               required this.role, this.organizationId,
               this.allowedOrganizationIds = const [], this.permissions = const {},
-              this.firstName, this.lastName});
+              this.firstName, this.lastName,
+              this.isDemoMode = false, this.tosAccepted = false});
 
             bool hasPermission(String key) => permissions[key] ?? false;
 
@@ -398,7 +406,9 @@ jobs:
               permissions: (j['permissions'] as Map<String, dynamic>?)
                   ?.map((k, v) => MapEntry(k, v as bool)) ?? {},
               firstName: j['firstName'] as String?,
-              lastName: j['lastName'] as String?);
+              lastName: j['lastName'] as String?,
+              isDemoMode: j['isDemoMode'] as bool? ?? false,
+              tosAccepted: j['tosAccepted'] as bool? ?? false);
           }
 
           class AuthService {
