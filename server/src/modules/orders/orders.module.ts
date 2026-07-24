@@ -11,6 +11,7 @@ import { GmailOrderPollerService } from './gmail-order-poller.service';
 import { OrderNotificationService } from './order-notification.service';
 import { StorageModule } from '../storage/storage.module';
 import { Organization } from '../organizations/entities/organization.entity';
+import { DocumentStorageSettingsModule } from '../document-storage-settings/document-storage-settings.module';
 
 /**
  * Deploy notes:
@@ -19,13 +20,13 @@ import { Organization } from '../organizations/entities/organization.entity';
  * - Needs `npm install imapflow mailparser` (added to package.json).
  * - New tables: orders, order_email_settings (migration required,
  *   synchronize is off in prod).
- * - Orders live in one fixed storage connection shared by everyone
- *   (ORDERS_STORAGE_CONNECTION_ID env var, defaults to connection id 1)
- *   rather than per-user routing -- set this if connection 1 isn't the
- *   intended one.
+ * - Orders live in one fixed storage connection shared by everyone,
+ *   configured on the Routing page (DocumentCategory.ORDER) — falls
+ *   back to ORDERS_STORAGE_CONNECTION_ID env var / connection id 1
+ *   for installs that haven't set it there yet.
  */
 @Module({
-  imports: [TypeOrmModule.forFeature([Order, OrderEmailSettings, Organization]), StorageModule],
+  imports: [TypeOrmModule.forFeature([Order, OrderEmailSettings, Organization]), StorageModule, DocumentStorageSettingsModule],
   controllers: [OrderEmailSettingsController, OrdersController],
   providers: [OrdersService, OrderEmailSettingsService, OrderPdfParserService, GmailOrderPollerService, OrderNotificationService],
 })

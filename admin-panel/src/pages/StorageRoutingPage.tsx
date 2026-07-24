@@ -28,7 +28,7 @@ const DEFAULT_FORM = {
   photoSubfolderPattern: '{date}/{place}',
 };
 
-const DOCUMENT_TYPE_KEYS = ['delivery_note', 'recount', 'transfer', 'fleet', 'warehouse'];
+const DOCUMENT_TYPE_KEYS = ['delivery_note', 'recount', 'transfer', 'fleet', 'warehouse', 'order'];
 
 interface DocTypeSettings {
   documentType: string;

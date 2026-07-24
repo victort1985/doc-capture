@@ -429,7 +429,10 @@
     "lastCheckFailed": "Last check failed",
     "enableFirstHint": "Enable and save first",
     "syncing": "Syncing…",
-    "syncNow": "Sync now"
+    "syncNow": "Sync now",
+    "storageTitle": "Where incoming orders are saved",
+    "storageHint": "Which storage connection the PDF attachment from each incoming order gets saved to. Same setting as the \"Orders\" row on the Storage Routing page — shown here too for convenience.",
+    "storageNotConfigured": "Not configured"
   },
   "calls": {
     "eyebrow": "Service calls",
@@ -511,7 +514,8 @@
       "recount": "Recount documents (Home)",
       "transfer": "Warehouse transfer notes",
       "fleet": "Fleet",
-      "warehouse": "Warehouse"
+      "warehouse": "Warehouse",
+      "order": "Orders (incoming supplier POs)"
     }
   },
   "deliveryNotes": {

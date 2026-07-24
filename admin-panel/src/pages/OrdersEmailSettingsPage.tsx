@@ -28,6 +28,10 @@ export default function OrdersEmailSettingsPage() {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<EmailSettings>(EMPTY);
   const [appPassword, setAppPassword] = useState('');
+  const [connections, setConnections] = useState<{ id: number; name: string }[]>([]);
+  const [storageConnectionId, setStorageConnectionId] = useState<number | ''>('');
+  const [storageSaving, setStorageSaving] = useState(false);
+  const [storageSaved, setStorageSaved] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
@@ -39,7 +43,27 @@ export default function OrdersEmailSettingsPage() {
       .then(setSettings)
       .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
       .finally(() => setLoading(false));
+    apiFetch<{ id: number; name: string }[]>('/storage/connections').then(setConnections).catch(() => {});
+    apiFetch<{ documentType: string; storageConnection?: { id: number } }[]>('/document-storage-settings')
+      .then(rows => {
+        const orderRow = rows.find(r => r.documentType === 'order');
+        setStorageConnectionId(orderRow?.storageConnection?.id ?? '');
+      })
+      .catch(() => {});
   }, []);
+
+  async function saveStorage() {
+    setStorageSaving(true); setStorageSaved(false);
+    try {
+      await apiFetch('/document-storage-settings/order', {
+        method: 'PUT',
+        body: JSON.stringify({ storageConnectionId: storageConnectionId || null }),
+      });
+      setStorageSaved(true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save storage setting');
+    } finally { setStorageSaving(false); }
+  }
 
   async function save() {
     setSaving(true);
@@ -190,6 +214,21 @@ export default function OrdersEmailSettingsPage() {
           <button type="button" disabled={syncing || !settings.enabled} onClick={syncNow} title={!settings.enabled ? t('ordersEmail.enableFirstHint') : undefined}>
             <RefreshCw size={15} /> {syncing ? t('ordersEmail.syncing') : t('ordersEmail.syncNow')}
           </button>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginTop: 16 }}>
+        <h3 style={{ marginTop: 0 }}>{t('ordersEmail.storageTitle')}</h3>
+        <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 0, marginBottom: 12 }}>{t('ordersEmail.storageHint')}</p>
+        <select value={storageConnectionId} onChange={e => setStorageConnectionId(e.target.value ? Number(e.target.value) : '')}>
+          <option value="">{t('ordersEmail.storageNotConfigured')}</option>
+          {connections.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </select>
+        <div className="form-actions" style={{ marginTop: 12 }}>
+          <button type="button" disabled={storageSaving} onClick={saveStorage}>
+            {storageSaving ? t('common.saving') : t('common.save')}
+          </button>
+          {storageSaved && <span className="stamp-badge on">{t('common.saved')}</span>}
         </div>
       </div>
     </div>

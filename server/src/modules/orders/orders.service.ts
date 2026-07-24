@@ -6,6 +6,8 @@ import { Order, OrderSource } from './entities/order.entity';
 import { StorageService } from '../storage/storage.service';
 import { OrderPdfParserService, ParsedOrderFields } from './order-pdf-parser.service';
 import { OrderNotificationService } from './order-notification.service';
+import { DocumentStorageSettingsService } from '../document-storage-settings/document-storage-settings.service';
+import { DocumentCategory } from '../document-storage-settings/entities/document-type-settings.entity';
 
 export interface OrderListItem {
   id: number;
@@ -26,6 +28,7 @@ export class OrdersService {
     private readonly storageService: StorageService,
     private readonly parserService: OrderPdfParserService,
     private readonly notificationService: OrderNotificationService,
+    private readonly storageSettingsService: DocumentStorageSettingsService,
   ) {}
 
   /** "{date} - {organization} - רכש {poNumberLast4} - תמ {invoiceNumber|0000}[ - {invoiceDescription}]" */
@@ -65,7 +68,7 @@ export class OrdersService {
   }
 
   async getPdfBuffer(order: Order): Promise<Buffer> {
-    const { adapter } = await this.storageService.getAdapterWithMeta(this.defaultConnectionId());
+    const { adapter } = await this.storageService.getAdapterWithMeta(await this.resolveConnectionId());
     return adapter.read(order.storagePath);
   }
 
@@ -158,23 +161,26 @@ export class OrdersService {
     const name = this.generateName(fields);
     const safeName = name.replace(/[/\\:*?"<>|\x00-\x1f]/g, '_');
     const storagePath = `Orders/${safeName}.pdf`;
-    const { adapter } = await this.storageService.getAdapterWithMeta(this.defaultConnectionId());
+    const { adapter } = await this.storageService.getAdapterWithMeta(await this.resolveConnectionId());
     await adapter.write(storagePath, buffer);
     return storagePath;
   }
 
   private async deleteStoredFile(storagePath: string): Promise<void> {
-    const { adapter } = await this.storageService.getAdapterWithMeta(this.defaultConnectionId());
+    const { adapter } = await this.storageService.getAdapterWithMeta(await this.resolveConnectionId());
     await adapter.remove(storagePath);
   }
 
   // Orders live in one fixed connection rather than per-user routing
   // (like documents/photos do) since the whole point is one shared
   // company-wide order inbox, not something that varies by who's
-  // logged in. Reuses connection id 1 (the first configured storage
-  // connection) unless a dedicated one is configured — see
-  // OrdersModule's deploy notes for the one-time setup this assumes.
-  private defaultConnectionId(): number {
+  // logged in. Configured on the Routing page (DocumentCategory.ORDER,
+  // stored with organization=null since orders aren't org-scoped) —
+  // falls back to ORDERS_STORAGE_CONNECTION_ID (or connection id 1)
+  // for installs that haven't set it there yet.
+  private async resolveConnectionId(): Promise<number> {
+    const routed = await this.storageSettingsService.findOne(DocumentCategory.ORDER, null);
+    if (routed?.storageConnection?.id) return routed.storageConnection.id;
     return parseInt(process.env.ORDERS_STORAGE_CONNECTION_ID || '1', 10);
   }
 }

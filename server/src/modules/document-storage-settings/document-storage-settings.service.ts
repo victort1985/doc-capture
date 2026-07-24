@@ -23,6 +23,17 @@ export class DocumentStorageSettingsService {
     );
   }
 
+  /** Single-category lookup — used by services that just need "which
+   * connection does this document type go to" (e.g. the order-intake
+   * poller, which isn't itself organization-scoped the way documents
+   * created from the app are). */
+  async findOne(documentType: DocumentCategory, organizationId: number | null): Promise<DocumentTypeSettings | null> {
+    return this.repo.findOne({
+      where: { documentType, organization: organizationId != null ? { id: organizationId } : undefined },
+      relations: ['storageConnection'],
+    });
+  }
+
   async upsert(
     documentType: DocumentCategory,
     organizationId: number | null,

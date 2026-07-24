@@ -8,6 +8,7 @@ export enum DocumentCategory {
   TRANSFER = 'transfer',                 // Накладные перевода между складами
   FLEET = 'fleet',                       // Автопарк
   WAREHOUSE = 'warehouse',               // Склад
+  ORDER = 'order',                       // Заказы (входящие PDF от поставщиков)
 }
 
 /**
