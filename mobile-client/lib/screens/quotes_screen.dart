@@ -9,6 +9,7 @@ import '../services/validators.dart';
 import '../invalid_email_dialog.dart';
 import '../widgets/document_preview_card.dart';
 import 'chain_view_screen.dart';
+import '../widgets/chain_status_badge.dart';
 import '../widgets/price_list_picker.dart';
 
 class QuotesScreen extends StatefulWidget {
@@ -22,6 +23,7 @@ class _QuotesScreenState extends State<QuotesScreen> {
   List<Quote> _quotes = [];
   bool _loading = true;
   int? _pdfLoadingId;
+  Map<String, dynamic> _chainStatus = {};
 
   @override
   void initState() {
@@ -35,6 +37,10 @@ class _QuotesScreenState extends State<QuotesScreen> {
     try {
       final quotes = await _svc.list();
       if (mounted) setState(() { _quotes = quotes; _loading = false; });
+      if (mounted) {
+        final status = await fetchChainStatusBatch(context, quotes.map((q) => ChainStatusRequest('quote', q.id)).toList());
+        if (mounted) setState(() => _chainStatus = status);
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -127,6 +133,7 @@ class _QuotesScreenState extends State<QuotesScreen> {
                                   ],
                                 ),
                               ),
+                              ChainStatusBadge(status: _chainStatus['quote:${q.id}']),
                               IconButton(
                                 icon: const Icon(Icons.timeline_outlined, size: 20),
                                 tooltip: l10n.chainViewTitle,

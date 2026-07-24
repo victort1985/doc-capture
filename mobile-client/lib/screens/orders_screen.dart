@@ -10,6 +10,7 @@ import '../services/order_service.dart';
 import '../widgets/media_thumbnail.dart';
 import 'scan_review_screen.dart';
 import 'order_detail_screen.dart';
+import '../widgets/chain_status_badge.dart';
 
 /// Purchase orders, whether captured automatically from the dedicated
 /// order-intake inbox (see the server's GmailOrderPollerService) or
@@ -26,6 +27,7 @@ class _OrdersScreenState extends State<OrdersScreen> {
   List<OrderListItem>? _orders;
   bool _uploading = false;
   String? _error;
+  Map<String, dynamic> _chainStatus = {};
 
   @override
   void initState() {
@@ -38,6 +40,8 @@ class _OrdersScreenState extends State<OrdersScreen> {
       final orders = await context.read<OrderService>().list();
       if (!mounted) return;
       setState(() { _orders = orders; _error = null; });
+      final status = await fetchChainStatusBatch(context, orders.map((o) => ChainStatusRequest('order', o.id)).toList());
+      if (mounted) setState(() => _chainStatus = status);
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e is Exception ? e.toString() : 'Failed to load orders');
@@ -161,10 +165,17 @@ class _OrdersScreenState extends State<OrdersScreen> {
             leading: MediaThumbnail.pdf(url: '/orders/${order.id}/pdf'),
             title: Text(order.generatedName, maxLines: 2, overflow: TextOverflow.ellipsis),
             subtitle: Text(order.completed ? l10n.orderStatusCompleted : l10n.orderStatusPending),
-            trailing: Icon(
-              order.completed ? Icons.check_circle : Icons.hourglass_empty,
-              color: order.completed ? Colors.green : AppColors.inkSoft,
-              size: 20,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ChainStatusBadge(status: _chainStatus['order:${order.id}']),
+                const SizedBox(width: 6),
+                Icon(
+                  order.completed ? Icons.check_circle : Icons.hourglass_empty,
+                  color: order.completed ? Colors.green : AppColors.inkSoft,
+                  size: 20,
+                ),
+              ],
             ),
             onTap: () async {
               await Navigator.of(context).push(

@@ -5,6 +5,7 @@ import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/delivery_notes_service.dart';
 import 'delivery_note_form_screen.dart';
+import '../widgets/chain_status_badge.dart';
 
 class DeliveryNotesScreen extends StatefulWidget {
   const DeliveryNotesScreen({super.key});
@@ -16,6 +17,7 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
   late final DeliveryNotesService _svc;
   List<DeliveryNote> _notes = [];
   bool _loading = true;
+  Map<String, dynamic> _chainStatus = {};
 
   @override
   void initState() {
@@ -29,6 +31,10 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
     try {
       final notes = await _svc.list();
       if (mounted) setState(() { _notes = notes; _loading = false; });
+      if (mounted) {
+        final status = await fetchChainStatusBatch(context, notes.map((n) => ChainStatusRequest('delivery-note', n.id)).toList());
+        if (mounted) setState(() => _chainStatus = status);
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -95,7 +101,12 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
                               if (n.noteNumber != null) Text('№ ${n.noteNumber}  ·  ${n.date ?? ''}', style: const TextStyle(fontSize: 12)),
                               if (n.deliveredTo != null) Text(n.deliveredTo!, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
                             ]),
-                            trailing: Container(
+                            trailing: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ChainStatusBadge(status: _chainStatus['delivery-note:${n.id}']),
+                                const SizedBox(height: 4),
+                                Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: _statusColor(n.status).withOpacity(0.12),
@@ -103,6 +114,8 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
                               ),
                               child: Text(_statusLabel(context, n.status),
                                 style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _statusColor(n.status))),
+                                ),
+                              ],
                             ),
                           ),
                         );

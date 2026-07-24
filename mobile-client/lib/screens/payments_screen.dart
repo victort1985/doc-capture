@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/payments_service.dart';
 import 'chain_view_screen.dart';
+import '../widgets/chain_status_badge.dart';
 
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({super.key});
@@ -18,6 +19,7 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   List<Payment> _payments = [];
   bool _loading = true;
   int? _pdfLoadingId;
+  Map<String, dynamic> _chainStatus = {};
 
   @override
   void initState() {
@@ -31,6 +33,10 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     try {
       final payments = await _svc.list();
       if (mounted) setState(() { _payments = payments; _loading = false; });
+      if (mounted) {
+        final status = await fetchChainStatusBatch(context, payments.map((p) => ChainStatusRequest('payment', p.id)).toList());
+        if (mounted) setState(() => _chainStatus = status);
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -105,6 +111,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text('₪${p.amount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                              const SizedBox(width: 6),
+                              ChainStatusBadge(status: _chainStatus['payment:${p.id}']),
                               const SizedBox(width: 4),
                               if (_pdfLoadingId == p.id)
                                 const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))

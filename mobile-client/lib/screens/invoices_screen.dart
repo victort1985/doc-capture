@@ -9,6 +9,7 @@ import '../services/validators.dart';
 import '../invalid_email_dialog.dart';
 import '../widgets/document_preview_card.dart';
 import 'chain_view_screen.dart';
+import '../widgets/chain_status_badge.dart';
 import '../widgets/price_list_picker.dart';
 import 'invoice_detail_screen.dart';
 import '../widgets/search_picker_field.dart';
@@ -25,6 +26,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
   List<Invoice> _invoices = [];
   bool _loading = true;
   int? _pdfLoadingId;
+  Map<String, dynamic> _chainStatus = {};
 
   @override
   void initState() {
@@ -38,6 +40,10 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     try {
       final invoices = await _svc.list();
       if (mounted) setState(() { _invoices = invoices; _loading = false; });
+      if (mounted) {
+        final status = await fetchChainStatusBatch(context, invoices.map((i) => ChainStatusRequest('invoice', i.id)).toList());
+        if (mounted) setState(() => _chainStatus = status);
+      }
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -143,6 +149,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                   ],
                                 ),
                               ),
+                              ChainStatusBadge(status: _chainStatus['invoice:${inv.id}']),
                               IconButton(
                                 icon: const Icon(Icons.timeline_outlined, size: 20),
                                 tooltip: l10n.chainViewTitle,
