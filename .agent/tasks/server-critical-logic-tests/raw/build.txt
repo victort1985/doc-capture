@@ -1,0 +1,4 @@
+
+> vixor-erp-server@1.0.11 build
+> nest build
+

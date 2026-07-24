@@ -1,0 +1,11 @@
+PASS src/common/crypto/encryption.util.spec.ts (18.917 s)
+PASS src/modules/quotes/quotes.service.spec.ts
+PASS src/modules/orders/orders.service.spec.ts
+PASS src/modules/invoices/invoices.service.spec.ts
+PASS src/common/crypto/secret-columns.spec.ts
+
+Test Suites: 5 passed, 5 total
+Tests:       30 passed, 30 total
+Snapshots:   0 total
+Time:        25.422 s, estimated 26 s
+Ran all test suites.

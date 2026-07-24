@@ -1,0 +1,5 @@
+
+> vixor-erp-server@1.0.11 lint
+> eslint "src/**/*.ts"
+
+sh: 1: eslint: not found

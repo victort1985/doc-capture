@@ -1,0 +1,52 @@
+{
+  "task_id": "server-critical-logic-tests",
+  "overall_verdict": "PASS",
+  "criteria": [
+    {
+      "id": "AC1",
+      "status": "PASS",
+      "reason": "orders.service.spec.ts asserts routed connection id is used when configured"
+    },
+    {
+      "id": "AC2",
+      "status": "PASS",
+      "reason": "orders.service.spec.ts asserts env-var and connection-id-1 fallbacks"
+    },
+    {
+      "id": "AC3",
+      "status": "PASS",
+      "reason": "quotes/invoices .spec.ts assert sequential, non-repeating numbers via nextSequence"
+    },
+    {
+      "id": "AC4",
+      "status": "PASS",
+      "reason": "quotes/invoices .spec.ts assert repo.count() is never called for org-scoped generation"
+    },
+    {
+      "id": "AC5",
+      "status": "PASS",
+      "reason": "encryption.util.spec.ts round-trip across short/unicode/long/corrupted/wrong-key cases"
+    },
+    {
+      "id": "AC6",
+      "status": "PASS",
+      "reason": "encryption.util.spec.ts asserts ciphertext never equals or contains plaintext"
+    },
+    {
+      "id": "AC7",
+      "status": "PASS",
+      "reason": "secret-columns.spec.ts reads real TypeORM transformer metadata and asserts encryption is applied"
+    }
+  ],
+  "commands_run": [
+    "npm install",
+    "npx jest",
+    "npm run build",
+    "npm run lint"
+  ],
+  "artifacts_used": [
+    ".agent/tasks/server-critical-logic-tests/raw/test-unit.txt",
+    ".agent/tasks/server-critical-logic-tests/raw/build.txt",
+    ".agent/tasks/server-critical-logic-tests/raw/lint.txt"
+  ]
+}

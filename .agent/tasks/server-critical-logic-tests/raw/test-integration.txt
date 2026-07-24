@@ -1,0 +1,1 @@
+N/A for this task — no integration tests were in scope (see spec.md Non-goals: unit-level coverage with mocked repositories only, no live Postgres).
