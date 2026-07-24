@@ -26,7 +26,9 @@
     "templates": "תבניות",
     "fileLog": "יומן קבצים",
     "devices": "מכשירים",
-    "prices": "מחירים"
+    "prices": "מחירים",
+    "payments": "תשלומים",
+    "paymentSettings": "הגדרות תשלום"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -907,5 +909,27 @@
     "gateIntro": "נא לעיין ולאשר את תנאי השימוש כדי להמשיך להשתמש ב-Vixor ERP.",
     "checkboxLabel": "קראתי ואני מסכים/ה לתנאי השימוש.",
     "accept": "אישור והמשך"
+  },
+  "payments": {
+    "eyebrow": "משרד",
+    "title": "תשלומים",
+    "simulatorDisclaimer": "התשלומים כאן הם סימולציה — אין חיבור לשער תשלומים אמיתי. רישום כאן אינו מעביר כסף אמיתי — זו רק ההתעדה הסופית לכך ששרשרת המסמכים הושלמה במלואה.",
+    "client": "לקוח",
+    "number": "מספר",
+    "amount": "סכום",
+    "method": "אמצעי",
+    "date": "תאריך",
+    "methodCard": "כרטיס אשראי",
+    "methodCash": "מזומן",
+    "methodTransfer": "העברה בנקאית",
+    "viewPdf": "צפייה בקבלה",
+    "regeneratePdf": "יצירת PDF מחדש",
+    "regenerated": "הקבלה נוצרה מחדש.",
+    "delete": "מחיקה",
+    "deleteConfirm": "למחוק את התשלום מ-\"{{name}}\"?",
+    "empty": "אין עדיין תשלומים.",
+    "noPdf": "טרם נוצרה קבלה.",
+    "loading": "טוען…",
+    "refresh": "רענון"
   }
 }

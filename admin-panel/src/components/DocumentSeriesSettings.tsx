@@ -24,7 +24,7 @@ interface SeriesSettings {
   autoSendEmail?: boolean;
 }
 
-export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'quote' | 'invoice'; navLabelKey: string }) {
+export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'quote' | 'invoice' | 'payment'; navLabelKey: string }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isSuperAdmin = user?.organizationId == null;

@@ -36,6 +36,8 @@ import PortalPage from './pages/PortalPage';
 import MaintenancePage from './pages/MaintenancePage';
 import QuoteSettingsPage from './pages/QuoteSettingsPage';
 import InvoiceSettingsPage from './pages/InvoiceSettingsPage';
+import PaymentSettingsPage from './pages/PaymentSettingsPage';
+import PaymentsPage from './pages/PaymentsPage';
 import PriceListPage from './pages/PriceListPage';
 import DevicesPage from './pages/DevicesPage';
 
@@ -93,6 +95,8 @@ export default function App() {
           <Route path="/maintenance" element={<MaintenancePage />} />
           <Route path="/quote-settings" element={<QuoteSettingsPage />} />
           <Route path="/invoice-settings" element={<InvoiceSettingsPage />} />
+          <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="/payment-settings" element={<PaymentSettingsPage />} />
           <Route path="/prices" element={<PriceListPage />} />
           <Route path="/devices" element={<DevicesPage />} />
           <Route path="/users" element={<UsersPage />} />

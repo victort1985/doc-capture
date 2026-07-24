@@ -26,7 +26,9 @@
     "templates": "Templates",
     "fileLog": "File log",
     "devices": "Devices",
-    "prices": "Prices"
+    "prices": "Prices",
+    "payments": "Payments",
+    "paymentSettings": "Payment settings"
   },
   "app": {
     "adminConsole": "admin console",
@@ -907,5 +909,27 @@
     "gateIntro": "Please review and accept the Terms of Service to keep using Vixor ERP.",
     "checkboxLabel": "I have read and agree to the Terms of Service.",
     "accept": "Accept and continue"
+  },
+  "payments": {
+    "eyebrow": "Office",
+    "title": "Payments",
+    "simulatorDisclaimer": "Payments are simulated — no real payment gateway is connected. Recording one here does not move real money; it's the final record confirming a document chain is fully closed out.",
+    "client": "Client",
+    "number": "Number",
+    "amount": "Amount",
+    "method": "Method",
+    "date": "Date",
+    "methodCard": "Card",
+    "methodCash": "Cash",
+    "methodTransfer": "Bank transfer",
+    "viewPdf": "View receipt",
+    "regeneratePdf": "Regenerate PDF",
+    "regenerated": "Receipt regenerated.",
+    "delete": "Delete",
+    "deleteConfirm": "Delete the payment from \"{{name}}\"?",
+    "empty": "No payments yet.",
+    "noPdf": "No receipt available yet.",
+    "loading": "Loading…",
+    "refresh": "Refresh"
   }
 }
