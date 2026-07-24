@@ -11,6 +11,7 @@ import 'office_screen.dart';
 import '../store/app_state.dart';
 import 'calls_stats_screen.dart';
 import '../widgets/organization_logo_background.dart';
+import '../widgets/customizable_bottom_nav.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -20,7 +21,9 @@ class RootScreen extends StatefulWidget {
 }
 
 class _RootScreenState extends State<RootScreen> {
-  int _index = 0;
+  int _index = 0; // still used for the desktop NavigationRail, which doesn't need reordering
+  String? _selectedId;
+  List<String>? _tabOrder;
   final _callsListKey = GlobalKey<CallsListScreenState>();
 
   @override
@@ -39,7 +42,7 @@ class _RootScreenState extends State<RootScreen> {
       onCallCreated: (id, place, createdBy) => _popup(
         l10n.callPopupCreated(place, createdBy),
         onTap: () {
-          setState(() => _index = 1); // switch to the Calls tab
+          setState(() { _index = 1; _selectedId = 'calls'; }); // switch to the Calls tab
           _callsListKey.currentState?.openCall(id);
         },
       ),
@@ -74,29 +77,53 @@ class _RootScreenState extends State<RootScreen> {
         (user?.hasPermission('office.quotes') ?? false) ||
         (user?.hasPermission('office.invoices') ?? false);
 
-    final screens = [
-      const InventoryScreen(),
-      CallsListScreen(key: _callsListKey),
-      const PhoneBookScreen(),
-      const CalendarScreen(),
-      const ManagementScreen(),
-      if (hasOfficeAccess) const OfficeScreen(),
+    final screensById = <String, Widget>{
+      'home': const InventoryScreen(),
+      'calls': CallsListScreen(key: _callsListKey),
+      'phonebook': const PhoneBookScreen(),
+      'calendar': const CalendarScreen(),
+      'management': const ManagementScreen(),
+      if (hasOfficeAccess) 'office': const OfficeScreen(),
+    };
+    // Fixed regardless of the customizable nav bar's visual order —
+    // this is what keeps IndexedStack's state-preservation (scroll
+    // position, form drafts, etc.) working: the STACK's order never
+    // changes, only which index is selected does.
+    final canonicalIds = screensById.keys.toList();
+
+    final baseTabs = [
+      BottomNavTab(id: 'home', icon: Icons.inventory_2_outlined, selectedIcon: Icons.inventory_2, label: l10n.navHome),
+      BottomNavTab(id: 'calls', icon: Icons.support_agent_outlined, selectedIcon: Icons.support_agent, label: l10n.callsTitle),
+      BottomNavTab(id: 'phonebook', icon: Icons.contacts_outlined, selectedIcon: Icons.contacts, label: l10n.phoneBookTitle),
+      BottomNavTab(id: 'calendar', icon: Icons.calendar_month_outlined, selectedIcon: Icons.calendar_month, label: l10n.calendarTitle),
+      BottomNavTab(id: 'management', icon: Icons.build_outlined, selectedIcon: Icons.build, label: l10n.managementTitle),
+      if (hasOfficeAccess) BottomNavTab(id: 'office', icon: Icons.apartment_outlined, selectedIcon: Icons.apartment, label: l10n.officeTitle),
     ];
 
-    final destinations = [
-      (Icons.inventory_2_outlined, Icons.inventory_2, l10n.navHome),
-      (Icons.support_agent_outlined, Icons.support_agent, l10n.callsTitle),
-      (Icons.contacts_outlined, Icons.contacts, l10n.phoneBookTitle),
-      (Icons.calendar_month_outlined, Icons.calendar_month, l10n.calendarTitle),
-      (Icons.build_outlined, Icons.build, l10n.managementTitle),
-      if (hasOfficeAccess) (Icons.apartment_outlined, Icons.apartment, l10n.officeTitle),
-    ];
+    if (_tabOrder == null) {
+      // Kick off the (async) load once; render with the default order
+      // in the meantime so the first frame isn't blocked on disk I/O.
+      CustomizableBottomNav.loadOrder(baseTabs).then((order) {
+        if (mounted) setState(() => _tabOrder = order);
+      });
+    }
+    final order = _tabOrder ?? baseTabs.map((t) => t.id).toList();
+    final byId = { for (final t in baseTabs) t.id: t };
+    final orderedTabs = order.where(byId.containsKey).map((id) => byId[id]!).toList();
+    for (final t in baseTabs) {
+      if (!orderedTabs.any((o) => o.id == t.id)) orderedTabs.add(t);
+    }
 
-    // A user without Office access might currently be sitting on an
-    // index that no longer exists once their permissions change
-    // (e.g. an admin revokes access while this screen is alive) —
-    // clamp rather than crash.
-    if (_index >= screens.length) _index = 0;
+    _selectedId ??= orderedTabs.first.id;
+    if (!orderedTabs.any((t) => t.id == _selectedId)) _selectedId = orderedTabs.first.id;
+    final canonicalIndex = canonicalIds.indexOf(_selectedId!).clamp(0, canonicalIds.length - 1);
+
+    // Desktop still uses the plain fixed-order rail — reordering a
+    // touch-only gesture doesn't map cleanly onto a rail meant to be
+    // used with a mouse, and a desktop user isn't the one juggling a
+    // phone one-handed in the field this feature is actually for.
+    final destinations = baseTabs;
+    if (_index >= destinations.length) _index = 0;
 
     if (isDesktop) {
       // ── Desktop layout: NavigationRail sidebar + content ──────────────────
@@ -123,9 +150,9 @@ class _RootScreenState extends State<RootScreen> {
                 ]),
               ),
               destinations: destinations.map((d) => NavigationRailDestination(
-                icon: Icon(d.$1),
-                selectedIcon: Icon(d.$2),
-                label: Text(d.$3),
+                icon: Icon(d.icon),
+                selectedIcon: Icon(d.selectedIcon),
+                label: Text(d.label),
               )).toList(),
             ),
             const VerticalDivider(width: 1, thickness: 1, color: Color(0x22FFFFFF)),
@@ -133,31 +160,30 @@ class _RootScreenState extends State<RootScreen> {
               child: OrganizationLogoBackground(
                 fit: BoxFit.fitHeight,
                 backgroundColor: Colors.white,
-                child: IndexedStack(index: _index, children: screens),
+                child: IndexedStack(
+                  index: canonicalIds.indexOf(destinations[_index].id).clamp(0, canonicalIds.length - 1),
+                  children: canonicalIds.map((id) => screensById[id]!).toList(),
+                ),
               ),
             ),
         ]),
       );
     }
 
-    // ── Mobile layout: bottom NavigationBar ───────────────────────────────────
+    // ── Mobile layout: customizable bottom nav ────────────────────────────
     return Scaffold(
       body: OrganizationLogoBackground(
         child: IndexedStack(
-          index: _index,
-          children: screens,
+          index: canonicalIndex,
+          children: canonicalIds.map((id) => screensById[id]!).toList(),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
-        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        height: 64,
-        destinations: destinations.map((d) => NavigationDestination(
-          icon: Icon(d.$1),
-          selectedIcon: Icon(d.$2),
-          label: d.$3,
-        )).toList(),
+      bottomNavigationBar: CustomizableBottomNav(
+        tabs: orderedTabs,
+        selectedId: _selectedId!,
+        onSelect: (id) => setState(() => _selectedId = id),
+        doneLabel: l10n.bottomNavDone,
+        editHintLabel: l10n.bottomNavEditHint,
       ),
     );
   }

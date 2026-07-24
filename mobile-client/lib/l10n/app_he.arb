@@ -83,6 +83,8 @@
   "connectionClientSecretLabel": "Client Secret",
   "connectionSaveButton": "שמור",
   "connectionImportButton": "ייבוא מקובץ",
+  "bottomNavDone": "סיום",
+  "bottomNavEditHint": "גררו את הלשוניות כדי לסדר מחדש",
   "warehouseGenerate": "יצירת חדש",
   "wizardBack": "חזרה",
   "wizardNext": "הבא",

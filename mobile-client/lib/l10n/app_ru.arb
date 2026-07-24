@@ -83,6 +83,8 @@
   "connectionClientSecretLabel": "Client Secret",
   "connectionSaveButton": "Сохранить",
   "connectionImportButton": "Импорт из файла",
+  "bottomNavDone": "Готово",
+  "bottomNavEditHint": "Перетащите вкладки, чтобы изменить порядок",
   "warehouseGenerate": "Сгенерировать новый",
   "wizardBack": "Назад",
   "wizardNext": "Далее",

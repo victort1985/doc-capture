@@ -83,6 +83,8 @@
   "connectionClientSecretLabel": "Client Secret",
   "connectionSaveButton": "Save",
   "connectionImportButton": "Import from file",
+  "bottomNavDone": "Done",
+  "bottomNavEditHint": "Drag tabs to rearrange",
   "warehouseGenerate": "Generate new",
   "wizardBack": "Back",
   "wizardNext": "Next",
