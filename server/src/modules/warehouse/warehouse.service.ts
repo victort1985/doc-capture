@@ -83,7 +83,9 @@ export class WarehouseService {
 
   async findItemByBarcode(barcode: string, organizationId: number | null): Promise<WarehouseItem | null> {
     return this.itemsRepo.findOne({
-      where: { barcode },
+      where: organizationId != null
+        ? [{ barcode, organization: { id: organizationId } }, { barcode, organization: IsNull() }]
+        : { barcode },
       relations: ['category'],
     });
   }

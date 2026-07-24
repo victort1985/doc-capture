@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
+import * as crypto from 'crypto';
 import { Calendar } from './entities/calendar.entity';
 import { CalendarEvent, CalendarEventType } from './entities/calendar-event.entity';
 import { CalendarAttachment } from './entities/calendar-attachment.entity';
@@ -30,7 +31,7 @@ export class CalendarService {
     let cal = await this.calendarsRepo.findOne({ where: { organization: { id: organizationId } } });
     if (!cal) cal = await this.getOrCreateOrgCalendar(organizationId, 0);
     if (!cal.icsToken) {
-      cal.icsToken = require('crypto').randomBytes(24).toString('hex');
+      cal.icsToken = crypto.randomBytes(24).toString('hex');
       await this.calendarsRepo.save(cal);
     }
     return cal.icsToken!;
@@ -48,7 +49,7 @@ export class CalendarService {
   async rotateIcsToken(organizationId: number): Promise<string> {
     const cal = await this.calendarsRepo.findOne({ where: { organization: { id: organizationId } } });
     if (!cal) throw new Error('Calendar not found');
-    cal.icsToken = require('crypto').randomBytes(24).toString('hex');
+    cal.icsToken = crypto.randomBytes(24).toString('hex');
     await this.calendarsRepo.save(cal);
     return cal.icsToken!;
   }

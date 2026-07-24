@@ -1,5 +1,4 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
-import { Response } from 'express';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { WarehouseService } from './warehouse.service';
 import { TransactionType } from './entities/warehouse-transaction.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';

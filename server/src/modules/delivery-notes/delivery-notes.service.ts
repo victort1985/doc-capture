@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import * as crypto from 'crypto';
-import { DeliveryNote, DeliveryNoteStatus, NoteItem } from './delivery-note.entity';
+import { DeliveryNote, DeliveryNoteStatus } from './delivery-note.entity';
 import { DeliveryNoteSettings } from './delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
 
@@ -120,11 +120,11 @@ export class DeliveryNotesService {
 
   // ── Remote signing ────────────────────────────────────────────────────────
 
-  async createSigningLink(id: number, organizationId: number | null): Promise<{ token: string; url: string }> {
+  async createSigningLink(id: number, _organizationId: number | null): Promise<{ token: string; url: string }> {
     const note = await this.repo.findOne({ where: { id } });
     if (!note) throw new NotFoundException('Note not found');
     if (!note.signingToken) {
-      note.signingToken = require('crypto').randomBytes(24).toString('hex');
+      note.signingToken = crypto.randomBytes(24).toString('hex');
       await this.repo.save(note);
     }
     const url = `${process.env.SIGN_BASE_URL || "https://sign.doc-capture.app"}/${note.signingToken}`;

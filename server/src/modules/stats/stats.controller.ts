@@ -22,10 +22,6 @@ export class StatsController {
     @Query('period') period: 'day' | 'week' | 'month' | 'year' | 'all' = 'month',
   ) {
     const { from, to } = this.periodRange(period);
-    const orgWhere = user.organizationId != null
-      ? 'AND (c."organizationId" = :orgId OR c."organizationId" IS NULL)'
-      : '';
-    const params: Record<string, unknown> = { orgId: user.organizationId, from, to };
 
     // Total counts by status
     const totals = await this.callsRepo.query(`

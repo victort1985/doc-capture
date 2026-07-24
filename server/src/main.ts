@@ -16,7 +16,7 @@ async function handleSignPage(req: any, res: any, app: any, signPageFile: string
     let noteData: any = null;
     try { noteData = await svc.getNoteForSigning(token); } catch (_) {}
 
-    let html = require('fs').readFileSync(signPageFile, 'utf-8');
+    let html = fs.readFileSync(signPageFile, 'utf-8');
     // JSON-encode safely: escape </script> to prevent HTML injection
     const payload = JSON.stringify(noteData).replace(/<\/script>/gi, '<\\/script>');
     const script = '<script>window.__NOTE_DATA__=' + payload + ';window.__TOKEN__=' + JSON.stringify(token) + ';</script>';

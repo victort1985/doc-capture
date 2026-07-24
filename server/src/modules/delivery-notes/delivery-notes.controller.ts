@@ -1,6 +1,6 @@
 import {
   Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe,
-  Patch, Post, Query, Req, Res, SetMetadata, UseGuards,
+  Patch, Post, Query, Req, Res, UseGuards,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { DeliveryNotesService } from './delivery-notes.service';
@@ -8,7 +8,6 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { getActiveOrgId } from '../../common/utils/active-org.util';
 
-const SkipAuth = () => SetMetadata('skipAuth', true);
 type ReqUser = { id: number; organizationId: number | null; allowedOrganizationIds?: number[]; firstName?: string; lastName?: string; username?: string };
 
 @Controller('delivery-notes')

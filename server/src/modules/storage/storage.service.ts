@@ -131,6 +131,7 @@ export class StorageService {
   }
 
   private toPublic(conn: StorageConnection): PublicConnection {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- destructuring to omit `password` from the result, not a forgotten variable
     const { password, ...rest } = conn;
     return rest;
   }

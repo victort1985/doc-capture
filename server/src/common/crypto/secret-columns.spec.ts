@@ -7,13 +7,13 @@ import { OrderEmailSettings } from '../../modules/orders/entities/order-email-se
 /** Finds the `transformer` configured on a given @Column() property,
  * by reading TypeORM's global column metadata rather than trying to
  * import the (inline, unexported) transformer object directly. */
-function getColumnTransformer(target: Function, propertyName: string) {
+function getColumnTransformer(target: new (...args: unknown[]) => unknown, propertyName: string) {
   const column = getMetadataArgsStorage().columns.find(
     (c) => c.target === target && c.propertyName === propertyName,
   );
-  if (!column) throw new Error(`No @Column() found for ${target.name}.${propertyName}`);
-  const transformer = (column.options as { transformer?: { to: Function; from: Function } }).transformer;
-  if (!transformer) throw new Error(`${target.name}.${propertyName} has no transformer configured`);
+  if (!column) throw new Error(`No @Column() found for ${(target as { name: string }).name}.${propertyName}`);
+  const transformer = (column.options as { transformer?: { to: (v: unknown) => unknown; from: (v: unknown) => unknown } }).transformer;
+  if (!transformer) throw new Error(`${(target as { name: string }).name}.${propertyName} has no transformer configured`);
   return transformer;
 }
 

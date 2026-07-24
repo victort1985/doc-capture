@@ -60,7 +60,6 @@ export class FleetService {
   /** Vehicles with upcoming or overdue inspection/test (within next 30 days or past due). */
   async reminders(organizationId: number | null, isPrivileged = false): Promise<{ vehicle: Vehicle; type: string; dueDate: string }[]> {
     const vehicles = await this.findAllVehicles(organizationId, isPrivileged);
-    const today = new Date().toISOString().slice(0, 10);
     const in30 = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
 
     const addYear = (d: string) => {

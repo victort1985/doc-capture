@@ -1,4 +1,4 @@
-import { IsBoolean, IsDateString, IsEnum, IsInt, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString } from 'class-validator';
 import { CalendarEventRepeat, CalendarEventType } from '../entities/calendar-event.entity';
 
 export class CreateEventDto {
