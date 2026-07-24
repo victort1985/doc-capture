@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/quotes_service.dart';
 import '../services/invoices_service.dart';
+import '../services/payments_service.dart';
 
 /// Opened from any quote/invoice/delivery-note row — shows the whole
 /// order-processing chain that document belongs to (quote -> order ->
@@ -66,6 +67,21 @@ class _ChainViewScreenState extends State<ChainViewScreen> {
     }
   }
 
+  Future<void> _viewPaymentPdf(int id) async {
+    // Offset well clear of both quote (positive) and invoice (negative)
+    // ids used as the loading-indicator key, so a quote/invoice/payment
+    // sharing a numeric id doesn't show a spinner on the wrong row.
+    setState(() => _pdfLoadingKey = 1000000 + id);
+    try {
+      final bytes = await PaymentsService(context.read<ApiService>()).getPdf(id);
+      if (mounted) await Printing.layoutPdf(onLayout: (_) => bytes);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(AppLocalizations.of(context)!.paymentPdfUnavailable)));
+    } finally {
+      if (mounted) setState(() => _pdfLoadingKey = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -85,6 +101,7 @@ class _ChainViewScreenState extends State<ChainViewScreen> {
     final orders = (chain['orders'] as List).cast<Map<String, dynamic>>();
     final notes = (chain['deliveryNotes'] as List).cast<Map<String, dynamic>>();
     final invoices = (chain['invoices'] as List).cast<Map<String, dynamic>>();
+    final payments = (chain['payments'] as List).cast<Map<String, dynamic>>();
     final status = chain['status'] as Map<String, dynamic>;
 
     return ListView(
@@ -115,6 +132,13 @@ class _ChainViewScreenState extends State<ChainViewScreen> {
           trailing: '₪${(i['total'] is num ? i['total'] : num.tryParse('${i['total']}') ?? 0).toStringAsFixed(2)}',
           loading: _pdfLoadingKey == -(i['id'] as int),
           onTap: () => _viewInvoicePdf(i['id'] as int),
+        )).toList()),
+        _Section(title: l10n.chainStepPayment, icon: Icons.payments_outlined, empty: payments.isEmpty, children: payments.map((p) => _DocCard(
+          title: p['paymentNumber'] as String? ?? '#${p['id']}',
+          subtitle: p['clientName'] as String? ?? '',
+          trailing: '₪${(p['amount'] is num ? p['amount'] : num.tryParse('${p['amount']}') ?? 0).toStringAsFixed(2)}',
+          loading: _pdfLoadingKey == 1000000 + (p['id'] as int),
+          onTap: () => _viewPaymentPdf(p['id'] as int),
         )).toList()),
       ],
     );

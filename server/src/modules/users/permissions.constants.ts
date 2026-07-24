@@ -13,7 +13,7 @@ export const FEATURE_KEYS = [
   'orgs.switch',
   // "Office" tab (mobile) — each key gates one sub-tab. A user with
   // none of these doesn't see the Office tab at all.
-  'office.delivery_notes', 'office.quotes', 'office.invoices',
+  'office.delivery_notes', 'office.quotes', 'office.invoices', 'office.orders', 'office.payments',
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -33,7 +33,7 @@ export const ROLE_DEFAULTS: Record<UserRole, Record<FeatureKey, boolean>> = {
     'reports.work': false, 'reports.fuel': false,
     'phonebook.edit': false,
     'orgs.switch': false,
-    'office.delivery_notes': false, 'office.quotes': false, 'office.invoices': false,
+    'office.delivery_notes': false, 'office.quotes': false, 'office.invoices': false, 'office.orders': false, 'office.payments': false,
   },
 };
 

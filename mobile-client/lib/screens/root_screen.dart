@@ -75,7 +75,9 @@ class _RootScreenState extends State<RootScreen> {
     final user = context.watch<AppState>().currentUser;
     final hasOfficeAccess = (user?.hasPermission('office.delivery_notes') ?? false) ||
         (user?.hasPermission('office.quotes') ?? false) ||
-        (user?.hasPermission('office.invoices') ?? false);
+        (user?.hasPermission('office.invoices') ?? false) ||
+        (user?.hasPermission('office.orders') ?? false) ||
+        (user?.hasPermission('office.payments') ?? false);
 
     final screensById = <String, Widget>{
       'home': const InventoryScreen(),

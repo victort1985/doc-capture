@@ -12,7 +12,6 @@ import '../store/app_state.dart';
 import 'camera_screen.dart';
 import 'history_screen.dart';
 import 'settings_screen.dart';
-import 'orders_screen.dart';
 import '../widgets/search_picker_field.dart';
 import '../widgets/org_switcher_bar.dart';
 import 'document_preview_screen.dart';
@@ -41,7 +40,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() => _tabIndex = _tabController.index);
@@ -232,9 +231,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
 
     final body = _tabIndex == 0
         ? _buildCaptureTab(l10n, fileService)
-        : _tabIndex == 1
-            ? const OrdersScreen()
-            : const HistoryScreen();
+        : const HistoryScreen();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -253,7 +250,6 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
           controller: _tabController,
           tabs: [
             Tab(icon: const Icon(Icons.cloud_upload_outlined, size: 20), text: l10n.navScanner),
-            Tab(icon: const Icon(Icons.receipt_long_outlined, size: 20), text: l10n.navOrders),
             Tab(icon: const Icon(Icons.history_outlined, size: 20), text: l10n.navHistory),
           ],
         ),

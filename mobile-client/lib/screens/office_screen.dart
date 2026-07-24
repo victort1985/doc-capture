@@ -6,6 +6,8 @@ import '../l10n/app_localizations.dart';
 import 'delivery_notes_screen.dart';
 import 'quotes_screen.dart';
 import 'invoices_screen.dart';
+import 'orders_screen.dart';
+import 'payments_screen.dart';
 
 /// The "Office" tab: a small sub-navigation of admin-style features
 /// (delivery notes, quotes, invoices), each independently gated by an
@@ -27,12 +29,16 @@ class _OfficeScreenState extends State<OfficeScreen> {
     final user = context.watch<AppState>().currentUser;
 
     final items = <(String, IconData, Widget)>[
-      if (user?.hasPermission('office.delivery_notes') ?? false)
-        (l10n.deliveryNotesTitle, Icons.assignment_outlined, const DeliveryNotesScreen()),
       if (user?.hasPermission('office.quotes') ?? false)
         (l10n.quotesTitle, Icons.request_quote_outlined, const QuotesScreen()),
+      if (user?.hasPermission('office.orders') ?? false)
+        (l10n.navOrders, Icons.inventory_2_outlined, const OrdersScreen()),
+      if (user?.hasPermission('office.delivery_notes') ?? false)
+        (l10n.deliveryNotesTitle, Icons.assignment_outlined, const DeliveryNotesScreen()),
       if (user?.hasPermission('office.invoices') ?? false)
         (l10n.invoicesTitle, Icons.receipt_long_outlined, const InvoicesScreen()),
+      if (user?.hasPermission('office.payments') ?? false)
+        (l10n.paymentsTitle, Icons.payments_outlined, const PaymentsScreen()),
     ];
 
     if (items.isEmpty) {

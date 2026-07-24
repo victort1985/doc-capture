@@ -10,6 +10,7 @@ import '../invalid_email_dialog.dart';
 import '../widgets/document_preview_card.dart';
 import 'chain_view_screen.dart';
 import '../widgets/price_list_picker.dart';
+import 'invoice_detail_screen.dart';
 import '../widgets/search_picker_field.dart';
 import '../services/quotes_service.dart';
 
@@ -115,7 +116,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                                 total: inv.total,
                                 items: inv.items.map((it) => PreviewLineItem(it.description, it.quantity)).toList(),
                                 loading: _pdfLoadingId == inv.id,
-                                onTap: () => _viewPdf(inv),
+                                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => InvoiceDetailScreen(invoice: inv))),
                               ),
                               const SizedBox(width: 10),
                               Expanded(
