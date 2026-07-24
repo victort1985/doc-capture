@@ -21,10 +21,22 @@ export class WarehouseService {
 
   // ── Barcode generation ─────────────────────────────────────────────
 
-  /** Generates a unique barcode string — prefix + 8-digit zero-padded number. */
+  /** Generates a unique barcode string — prefix + 8-digit zero-padded
+   * number. Based on MAX(id) rather than COUNT(*): the id is an
+   * auto-increment column that never decreases or gets reused, even
+   * after items are deleted, unlike a plain row count (which was the
+   * exact bug fixed earlier for quote/invoice numbering — deleting an
+   * item would have dropped the count and reissued an already-used
+   * barcode for the next one created). createItem() below still
+   * double-checks for a collision before saving as a defense-in-depth
+   * backstop, not as the primary uniqueness mechanism. */
   async generateBarcode(prefix = 'DC'): Promise<string> {
-    const count = await this.itemsRepo.count();
-    return `${prefix}${String(count + 1).padStart(8, '0')}`;
+    const row = await this.itemsRepo
+      .createQueryBuilder('item')
+      .select('MAX(item.id)', 'max')
+      .getRawOne<{ max: string | null }>();
+    const next = (row?.max ? parseInt(row.max, 10) : 0) + 1;
+    return `${prefix}${String(next).padStart(8, '0')}`;
   }
 
   // ── Categories ─────────────────────────────────────────────────────
