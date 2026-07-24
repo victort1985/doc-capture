@@ -84,6 +84,48 @@ export class OrderChainService {
     return this.getChain(chainId, organizationId);
   }
 
+  /** Resolves just the status summary for a batch of documents in one
+   * round-trip — built for list screens (quotes/orders/delivery-notes/
+   * invoices/payments) that want a status badge on every row without
+   * firing one request per row. Documents that don't have a chainId
+   * yet are reported with an all-false status rather than assigned a
+   * fresh one here — resolving/assigning happens lazily the first time
+   * someone actually opens that document's own chain view, not just
+   * from glancing at a list. */
+  async getStatusBatch(
+    requests: { docType: ChainDocType; id: number }[],
+    organizationId: number | null,
+  ): Promise<Record<string, ChainResult['status']>> {
+    const emptyStatus: ChainResult['status'] = {
+      hasQuote: false, hasOrder: false, hasDeliveryNote: false,
+      deliveryNoteSigned: false, hasInvoice: false, hasPayment: false, complete: false,
+    };
+
+    // Look up each document's chainId (without assigning a new one for
+    // documents that don't have one yet) in parallel, then fetch each
+    // distinct chain's full status once, even if several requested
+    // documents happen to share the same chain.
+    const chainIds = await Promise.all(
+      requests.map(async (r) => {
+        const { repo, where } = this.repoFor(r.docType, r.id, organizationId);
+        const doc = await repo.findOne({ where });
+        return (doc as any)?.chainId as string | undefined;
+      }),
+    );
+
+    const uniqueChainIds = [...new Set(chainIds.filter((id): id is string => !!id))];
+    const chains = await Promise.all(uniqueChainIds.map((id) => this.getChain(id, organizationId)));
+    const statusByChainId = new Map(chains.map((c) => [c.chainId, c.status]));
+
+    const result: Record<string, ChainResult['status']> = {};
+    requests.forEach((r, i) => {
+      const key = `${r.docType}:${r.id}`;
+      const chainId = chainIds[i];
+      result[key] = (chainId && statusByChainId.get(chainId)) || emptyStatus;
+    });
+    return result;
+  }
+
   /** Manually attaches an existing document to another document's
    * chain — e.g. linking an already-received Order to a Quote created
    * separately, rather than only supporting "create a new X from this

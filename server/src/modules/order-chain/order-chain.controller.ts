@@ -33,4 +33,15 @@ export class OrderChainController {
   ) {
     return this.service.linkDocuments(body.sourceType, body.sourceId, body.targetType, body.targetId, user.organizationId);
   }
+
+  /** POST /order-chain/status-batch { requests: [{docType, id}, ...] }
+   * — one round-trip status lookup for a whole list screen, instead
+   * of one request per row. */
+  @Post('status-batch')
+  statusBatch(
+    @Body() body: { requests: { docType: ChainDocType; id: number }[] },
+    @CurrentUser() user: RequestUser,
+  ) {
+    return this.service.getStatusBatch(body.requests, user.organizationId);
+  }
 }
