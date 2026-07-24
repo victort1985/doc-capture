@@ -84,6 +84,28 @@ class _CustomizableBottomNavState extends State<CustomizableBottomNav> with Sing
     super.dispose();
   }
 
+  @override
+  void didUpdateWidget(CustomizableBottomNav oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // widget.tabs can change for reasons that have nothing to do with
+    // the person's manual reordering — most commonly, permissions
+    // finish loading asynchronously after the first frame and a tab
+    // (e.g. Office) becomes available that wasn't there a moment ago.
+    // _reorderedTabs is a point-in-time snapshot taken when a drag
+    // last happened; if we kept using it unconditionally, a tab that
+    // only just became available would never show up, since it simply
+    // isn't in that old snapshot and nothing here would ever add it
+    // back in. Only reset it when the *set* of ids actually changed —
+    // preserves the person's chosen order across ordinary rebuilds.
+    if (_reorderedTabs != null) {
+      final oldIds = oldWidget.tabs.map((t) => t.id).toSet();
+      final newIds = widget.tabs.map((t) => t.id).toSet();
+      if (!setEquals(oldIds, newIds)) {
+        _reorderedTabs = null;
+      }
+    }
+  }
+
   void _enterEditMode() {
     if (_editMode) return;
     setState(() => _editMode = true);
