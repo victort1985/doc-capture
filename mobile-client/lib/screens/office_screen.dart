@@ -77,14 +77,21 @@ class _OfficeScreenState extends State<OfficeScreen> {
                           ),
                         ),
                         child: Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(items[i].$2, size: 20, color: i == index ? AppColors.primary : AppColors.inkSoft),
                             const SizedBox(height: 3),
-                            Text(items[i].$1, style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: i == index ? FontWeight.w700 : FontWeight.w500,
-                              color: i == index ? AppColors.primary : AppColors.inkSoft,
-                            )),
+                            Text(
+                              items[i].$1,
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: i == index ? FontWeight.w700 : FontWeight.w500,
+                                color: i == index ? AppColors.primary : AppColors.inkSoft,
+                              ),
+                            ),
                           ],
                         ),
                       ),
