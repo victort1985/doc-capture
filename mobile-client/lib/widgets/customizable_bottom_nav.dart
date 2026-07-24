@@ -100,7 +100,8 @@ class _CustomizableBottomNavState extends State<CustomizableBottomNav> with Sing
     if (_reorderedTabs != null) {
       final oldIds = oldWidget.tabs.map((t) => t.id).toSet();
       final newIds = widget.tabs.map((t) => t.id).toSet();
-      if (!setEquals(oldIds, newIds)) {
+      final sameSet = oldIds.length == newIds.length && oldIds.every(newIds.contains);
+      if (!sameSet) {
         _reorderedTabs = null;
       }
     }
