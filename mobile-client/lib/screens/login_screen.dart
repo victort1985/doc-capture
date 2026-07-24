@@ -10,6 +10,7 @@ import '../widgets/stamp_mark.dart';
 import '../demo_consent_dialog.dart';
 import 'connection_settings_screen.dart';
 import 'root_screen.dart';
+import 'terms_of_service_gate_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -91,6 +92,18 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         await appState.authService.clearSavedCredentials();
       }
       if (!mounted) return;
+      if (!(appState.currentUser?.tosAccepted ?? false)) {
+        final accepted = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(builder: (_) => TermsOfServiceGateScreen(language: appState.currentUser?.language ?? 'he')),
+        );
+        if (accepted != true) {
+          // Cannot proceed without accepting — stay on the login
+          // screen rather than pushing through to RootScreen.
+          setState(() => _loading = false);
+          return;
+        }
+        if (!mounted) return;
+      }
       if (appState.currentUser?.isDemoMode ?? false) {
         await showDemoConsentDialog(context);
         if (!mounted) return;
