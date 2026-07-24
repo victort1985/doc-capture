@@ -37,6 +37,19 @@ class AppState extends ChangeNotifier {
 
   Future<(String?, String?)> getCfServiceToken() => _settingsService.getCfServiceToken();
 
+  /// Re-fetches the current user from the server and updates in-memory
+  /// state — used after an action that changes something on the user
+  /// record itself (accepting the ToS, finishing the setup wizard)
+  /// so the rest of the app reflects it immediately, without waiting
+  /// for the next full login.
+  Future<void> refreshCurrentUser() async {
+    final updated = await _authService.fetchCurrentUser();
+    if (updated != null) {
+      currentUser = updated;
+      notifyListeners();
+    }
+  }
+
   Future<void> bootstrap() async {
     languageCode = await _settingsService.getLanguage();
 

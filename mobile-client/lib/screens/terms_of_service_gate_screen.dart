@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+import '../store/app_state.dart';
 import '../widgets/terms_of_service_content.dart';
 
 /// Pushed (not popped by the user — PopScope blocks the back button)
@@ -24,6 +25,8 @@ class _TermsOfServiceGateScreenState extends State<TermsOfServiceGateScreen> {
     setState(() { _saving = true; _error = null; });
     try {
       await context.read<ApiService>().post('/auth/accept-tos', {});
+      if (!mounted) return;
+      await context.read<AppState>().refreshCurrentUser();
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {

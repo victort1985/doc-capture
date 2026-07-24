@@ -24,6 +24,7 @@ class _RootScreenState extends State<RootScreen> {
   int _index = 0; // still used for the desktop NavigationRail, which doesn't need reordering
   String? _selectedId;
   List<String>? _tabOrder;
+  Set<String>? _lastBaseTabIds;
   final _callsListKey = GlobalKey<CallsListScreenState>();
 
   @override
@@ -101,6 +102,20 @@ class _RootScreenState extends State<RootScreen> {
       BottomNavTab(id: 'management', icon: Icons.build_outlined, selectedIcon: Icons.build, label: l10n.managementTitle),
       if (hasOfficeAccess) BottomNavTab(id: 'office', icon: Icons.apartment_outlined, selectedIcon: Icons.apartment, label: l10n.officeTitle),
     ];
+
+    final currentBaseIds = baseTabs.map((t) => t.id).toSet();
+    final baseIdsChanged = _lastBaseTabIds != null &&
+        (currentBaseIds.length != _lastBaseTabIds!.length || !currentBaseIds.every(_lastBaseTabIds!.contains));
+    if (baseIdsChanged) {
+      // The set of available tabs changed since the last build (most
+      // commonly: permissions finished loading asynchronously after
+      // the first frame, or changed while the app was backgrounded and
+      // got refreshed on resume) — force a fresh read+reconcile against
+      // SharedPreferences rather than trusting whatever _tabOrder
+      // already holds in memory.
+      _tabOrder = null;
+    }
+    _lastBaseTabIds = currentBaseIds;
 
     if (_tabOrder == null) {
       // Kick off the (async) load once; render with the default order
