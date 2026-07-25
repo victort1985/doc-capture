@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
   ParseIntPipe,
   Patch,
@@ -53,6 +54,14 @@ export class OrganizationsController {
   @UseGuards(SuperAdminGuard)
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.orgsService.remove(id);
+  }
+
+  @Post(':id/seed-default-groups')
+  seedDefaultGroups(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: { organizationId: number | null }) {
+    if (user.organizationId != null && user.organizationId !== id) {
+      throw new NotFoundException('Organization not found');
+    }
+    return this.orgsService.seedDefaultGroups(id);
   }
 
   @Post(':id/logo')
