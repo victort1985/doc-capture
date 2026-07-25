@@ -10,6 +10,7 @@ import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
 import { Invoice } from '../invoices/entities/invoice.entity';
+import { OrderChainService } from '../order-chain/order-chain.service';
 
 @Injectable()
 export class PaymentsService {
@@ -20,6 +21,7 @@ export class PaymentsService {
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
+    private readonly orderChainService: OrderChainService,
   ) {}
 
   /** See QuotesService.generateQuoteNumber — same fix, same reasoning:
@@ -68,6 +70,16 @@ export class PaymentsService {
       amount: dto.amount,
       method: dto.method,
       notes: dto.notes,
+      cardLast4: dto.cardLast4,
+      cardType: dto.cardType,
+      approvalNumber: dto.approvalNumber,
+      installments: dto.installments,
+      checkNumber: dto.checkNumber,
+      bankName: dto.bankName,
+      branchNumber: dto.branchNumber,
+      accountNumber: dto.accountNumber,
+      checkDate: dto.checkDate,
+      referenceNumber: dto.referenceNumber,
       invoiceId: dto.invoiceId,
       chainId,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
@@ -75,7 +87,23 @@ export class PaymentsService {
     });
     const saved = await this.repo.save(payment);
     saved.storagePath = await this.tryGeneratePdf(saved, organizationId);
-    return this.repo.save(saved);
+    await this.repo.save(saved);
+
+    // Recording this payment is what completes the chain (see
+    // order-chain module) — build the combined "everything about this
+    // order" PDF now, once, rather than on every future view. Non-
+    // fatal: a failure here shouldn't undo an otherwise-successful
+    // payment record.
+    if (chainId) {
+      try {
+        saved.chainSummaryPath = await this.orderChainService.generateChainSummaryPdf(chainId, organizationId);
+        await this.repo.save(saved);
+      } catch {
+        // best-effort — see comment above
+      }
+    }
+
+    return saved;
   }
 
   /** Joins the chain of the linked invoice, back-filling it with a
@@ -97,6 +125,27 @@ export class PaymentsService {
     return explicitChainId || crypto.randomUUID();
   }
 
+  /** Renders the receipt PDF bytes — shared by the original-at-creation
+   * path and the on-demand "certified true copy" path, so both always
+   * look identical apart from the stamp. */
+  private async renderPdfBytes(payment: Payment, settings: PaymentSettings, stampText?: string): Promise<Buffer> {
+    const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: settings.organization?.id } } })) ?? {};
+    return generateDocumentPdf({
+      docTypeLabel: 'קבלה',
+      docNumber: payment.paymentNumber ?? `#${payment.id}`,
+      date: payment.date ?? new Date().toISOString().slice(0, 10),
+      clientName: payment.clientName,
+      clientEmail: payment.clientEmail,
+      items: [{ description: this.paymentLineDescription(payment), quantity: 1, unitPrice: payment.amount }],
+      total: payment.amount,
+      footerText: settings.footerText,
+      header,
+      template: (settings.template as any) ?? 'classic',
+      isDemoMode: settings.organization?.isDemoMode ?? false,
+      stampText,
+    });
+  }
+
   private async tryGeneratePdf(payment: Payment, organizationId: number | null, throwOnError = false): Promise<string | null> {
     if (organizationId == null) {
       if (throwOnError) {
@@ -113,23 +162,17 @@ export class PaymentsService {
     }
 
     try {
-      const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
-      const pdfBytes = await generateDocumentPdf({
-        docTypeLabel: 'קבלה',
-        docNumber: payment.paymentNumber ?? `#${payment.id}`,
-        date: payment.date ?? new Date().toISOString().slice(0, 10),
-        clientName: payment.clientName,
-        clientEmail: payment.clientEmail,
-        items: [{ description: `תשלום — ${this.methodLabel(payment.method)}`, quantity: 1, unitPrice: payment.amount }],
-        total: payment.amount,
-        footerText: settings.footerText,
-        header,
-        template: (settings.template as any) ?? 'classic',
-        isDemoMode: settings.organization?.isDemoMode ?? false,
-      });
+      const pdfBytes = await this.renderPdfBytes(payment, settings);
       const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
       const relativePath = `Payments/${payment.paymentNumber ?? payment.id}.pdf`;
       await adapter.write(relativePath, pdfBytes);
+
+      // The very first successful render is "the original" per the
+      // business rule that it only ever goes out once, at creation.
+      if (!payment.originalIssuedAt) {
+        payment.originalIssuedAt = new Date();
+        await this.repo.update(payment.id, { originalIssuedAt: payment.originalIssuedAt });
+      }
 
       if (settings.autoSendEmail) {
         this.documentSendingService
@@ -152,8 +195,35 @@ export class PaymentsService {
   private methodLabel(method: Payment['method']): string {
     switch (method) {
       case 'cash': return 'מזומן';
-      case 'transfer': return 'העברה בנקאית';
+      case 'bank_transfer': return 'העברה בנקאית';
+      case 'check': return "צ'ק";
+      case 'bit': return 'ביט';
+      case 'standing_order': return 'הרשאה לחיוב חשבון';
+      case 'credit_card':
       default: return 'כרטיס אשראי';
+    }
+  }
+
+  /** Builds the receipt line-item description, appending whatever
+   * method-specific reference detail is meaningful to print (check
+   * number, last 4 card digits, transfer reference, etc.) so the
+   * receipt itself documents how the payment was made, not just that
+   * it was made. */
+  private paymentLineDescription(payment: Payment): string {
+    const label = this.methodLabel(payment.method);
+    switch (payment.method) {
+      case 'credit_card': {
+        const bits = [payment.cardLast4 ? `····${payment.cardLast4}` : null, payment.installments && payment.installments > 1 ? `${payment.installments} תשלומים` : null].filter(Boolean);
+        return bits.length ? `תשלום — ${label} (${bits.join(', ')})` : `תשלום — ${label}`;
+      }
+      case 'check':
+        return payment.checkNumber ? `תשלום — ${label} מס' ${payment.checkNumber}` : `תשלום — ${label}`;
+      case 'bank_transfer':
+      case 'bit':
+      case 'standing_order':
+        return payment.referenceNumber ? `תשלום — ${label} (אסמכתא ${payment.referenceNumber})` : `תשלום — ${label}`;
+      default:
+        return `תשלום — ${label}`;
     }
   }
 
@@ -163,16 +233,37 @@ export class PaymentsService {
     return this.repo.save(payment);
   }
 
-  async getPdfBuffer(id: number, organizationId: number | null): Promise<Buffer> {
+  /** @param asCopy When true, ignores the stored original PDF and
+   * renders a fresh copy with the "נאמן למקור" (certified true copy)
+   * stamp overlaid instead — an explicit, opt-in action (see the
+   * class doc comment on Payment.originalIssuedAt), never automatic. */
+  async getPdfBuffer(id: number, organizationId: number | null, asCopy = false): Promise<Buffer> {
     const payment = await this.findOne(id, organizationId);
+    const settings = await this.settingsRepo.findOne({
+      where: { organization: { id: payment.organization?.id } },
+      relations: ['storageConnection', 'organization'],
+    });
+    if (!settings?.storageConnection) throw new NotFoundException('Storage connection is no longer configured');
+
+    if (asCopy) {
+      return this.renderPdfBytes(payment, settings, 'נאמן למקור');
+    }
+
     if (!payment.storagePath) throw new NotFoundException('No PDF has been generated for this payment yet');
+    const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+    return adapter.read(payment.storagePath);
+  }
+
+  async getChainSummaryPdfBuffer(id: number, organizationId: number | null): Promise<Buffer> {
+    const payment = await this.findOne(id, organizationId);
+    if (!payment.chainSummaryPath) throw new NotFoundException('No chain summary PDF has been generated yet');
     const settings = await this.settingsRepo.findOne({
       where: { organization: { id: payment.organization?.id } },
       relations: ['storageConnection'],
     });
     if (!settings?.storageConnection) throw new NotFoundException('Storage connection is no longer configured');
     const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
-    return adapter.read(payment.storagePath);
+    return adapter.read(payment.chainSummaryPath);
   }
 
   async remove(id: number, organizationId: number | null): Promise<void> {

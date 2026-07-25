@@ -39,6 +39,11 @@ export interface GenerateDocumentPdfParams {
   /** Draws a large translucent "sample, not for use" watermark diagonally
    * across the page — for demo/sandbox organizations only, see Organization.isDemoMode. */
   isDemoMode?: boolean;
+
+  /** Optional diagonal stamp text (e.g. "נאמן למקור" — "certified true
+   * copy") drawn in a neutral blue-gray, independent of isDemoMode —
+   * both can be present at once (a demo-org copy would show both). */
+  stampText?: string;
 }
 
 // ── Minimal RTL layout ───────────────────────────────────────────────
@@ -124,15 +129,15 @@ function drawBidiText(
   return totalWidth;
 }
 
-/** Large, translucent, diagonal "sample, not for use" stamp for demo/
- * sandbox organizations — same bidi run handling as drawBidiText (each
- * run keeps the same rotation angle, anchored at its own position
- * along the line, so the whole phrase still reads as one straight
- * rotated line despite being drawn run-by-run). */
-function drawDemoWatermark(page: PDFPage, fonts: Fonts) {
+/** Large, translucent, diagonal stamp across the page — reused for
+ * both the demo "sample, not for use" watermark and the "certified
+ * true copy" (נאמן למקור) stamp. Same bidi run handling as
+ * drawBidiText (each run keeps the same rotation angle, anchored at
+ * its own position along the line, so the whole phrase still reads as
+ * one straight rotated line despite being drawn run-by-run). */
+function drawDiagonalStamp(page: PDFPage, fonts: Fonts, text: string, color: { r: number; g: number; b: number }) {
   const W = page.getWidth();
   const H = page.getHeight();
-  const text = 'לדוגמה, לא לשימוש';
   const size = 34;
   const angle = degrees(28);
   const runs = toVisualRuns(text);
@@ -150,7 +155,7 @@ function drawDemoWatermark(page: PDFPage, fonts: Fonts) {
 
   for (const run of runs) {
     const font = run.hebrew ? fonts.heBold : fonts.latinBold;
-    page.drawText(run.text, { x, y, size, font, color: rgb(0.75, 0.15, 0.15), opacity: 0.2, rotate: angle });
+    page.drawText(run.text, { x, y, size, font, color: rgb(color.r, color.g, color.b), opacity: 0.2, rotate: angle });
     const w = runWidth(run, fonts, size, true);
     x += w * Math.cos(rad);
     y += w * Math.sin(rad);
@@ -188,7 +193,10 @@ export async function generateDocumentPdf(params: GenerateDocumentPdfParams): Pr
   }
 
   if (params.isDemoMode) {
-    drawDemoWatermark(page, fonts);
+    drawDiagonalStamp(page, fonts, 'לדוגמה, לא לשימוש', { r: 0.75, g: 0.15, b: 0.15 });
+  }
+  if (params.stampText) {
+    drawDiagonalStamp(page, fonts, params.stampText, { r: 0.15, g: 0.3, b: 0.55 });
   }
 
   const bytes = await pdf.save();

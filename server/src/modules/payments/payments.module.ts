@@ -10,9 +10,10 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageModule } from '../storage/storage.module';
 import { DocumentEmailModule } from '../document-email/document-email.module';
 import { Invoice } from '../invoices/entities/invoice.entity';
+import { OrderChainModule } from '../order-chain/order-chain.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Payment, PaymentSettings, DeliveryNoteSettings, Invoice]), UsersModule, StorageModule, DocumentEmailModule],
+  imports: [TypeOrmModule.forFeature([Payment, PaymentSettings, DeliveryNoteSettings, Invoice]), UsersModule, StorageModule, DocumentEmailModule, OrderChainModule],
   controllers: [PaymentsController, PaymentSettingsController],
   providers: [PaymentsService],
 })

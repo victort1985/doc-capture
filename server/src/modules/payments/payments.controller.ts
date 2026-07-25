@@ -24,9 +24,16 @@ export class PaymentsController {
   }
 
   @Get(':id/pdf')
-  async getPdf(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Res() res: Response) {
-    const buffer = await this.paymentsService.getPdfBuffer(id, user.organizationId);
-    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="payment-${id}.pdf"` });
+  async getPdf(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Res() res: Response, @Query('copy') copy?: string) {
+    const buffer = await this.paymentsService.getPdfBuffer(id, user.organizationId, copy === 'true');
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="payment-${id}${copy === 'true' ? '-copy' : ''}.pdf"` });
+    res.send(buffer);
+  }
+
+  @Get(':id/chain-summary-pdf')
+  async getChainSummaryPdf(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Res() res: Response) {
+    const buffer = await this.paymentsService.getChainSummaryPdfBuffer(id, user.organizationId);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="order-summary-${id}.pdf"` });
     res.send(buffer);
   }
 

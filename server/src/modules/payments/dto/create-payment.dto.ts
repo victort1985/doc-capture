@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsEmail, IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { PaymentMethod } from '../entities/payment.entity';
 
 export class CreatePaymentDto {
@@ -24,6 +24,46 @@ export class CreatePaymentDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsString()
+  @IsOptional()
+  cardLast4?: string;
+
+  @IsString()
+  @IsOptional()
+  cardType?: string;
+
+  @IsString()
+  @IsOptional()
+  approvalNumber?: string;
+
+  @IsInt()
+  @IsOptional()
+  installments?: number;
+
+  @IsString()
+  @IsOptional()
+  checkNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  bankName?: string;
+
+  @IsString()
+  @IsOptional()
+  branchNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  accountNumber?: string;
+
+  @IsDateString()
+  @IsOptional()
+  checkDate?: string;
+
+  @IsString()
+  @IsOptional()
+  referenceNumber?: string;
 
   /** Links this payment to the invoice it settles — inherits that
    * invoice's chain instead of starting a new one. */

@@ -2,11 +2,18 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
+import { PDFDocument } from 'pdf-lib';
 import { Quote } from '../quotes/entities/quote.entity';
+import { QuoteSettings } from '../quotes/entities/quote-settings.entity';
 import { Invoice } from '../invoices/entities/invoice.entity';
+import { InvoiceSettings } from '../invoices/entities/invoice-settings.entity';
 import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
+import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { Order } from '../orders/entities/order.entity';
 import { Payment } from '../payments/entities/payment.entity';
+import { PaymentSettings } from '../payments/entities/payment-settings.entity';
+import { StorageService } from '../storage/storage.service';
+import { generateDocumentPdf } from '../documents/document-pdf.util';
 
 export type ChainDocType = 'quote' | 'order' | 'delivery-note' | 'invoice' | 'payment';
 
@@ -32,10 +39,15 @@ export interface ChainResult {
 export class OrderChainService {
   constructor(
     @InjectRepository(Quote) private readonly quotesRepo: Repository<Quote>,
+    @InjectRepository(QuoteSettings) private readonly quoteSettingsRepo: Repository<QuoteSettings>,
     @InjectRepository(Order) private readonly ordersRepo: Repository<Order>,
     @InjectRepository(DeliveryNote) private readonly deliveryNotesRepo: Repository<DeliveryNote>,
+    @InjectRepository(DeliveryNoteSettings) private readonly deliveryNoteSettingsRepo: Repository<DeliveryNoteSettings>,
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
+    @InjectRepository(InvoiceSettings) private readonly invoiceSettingsRepo: Repository<InvoiceSettings>,
     @InjectRepository(Payment) private readonly paymentsRepo: Repository<Payment>,
+    @InjectRepository(PaymentSettings) private readonly paymentSettingsRepo: Repository<PaymentSettings>,
+    private readonly storageService: StorageService,
   ) {}
 
   /** Resolves the chainId for a given document — if it doesn't have
@@ -82,6 +94,105 @@ export class OrderChainService {
   async getChainForDocument(docType: ChainDocType, id: number, organizationId: number | null): Promise<ChainResult> {
     const chainId = await this.resolveChainId(docType, id, organizationId);
     return this.getChain(chainId, organizationId);
+  }
+
+  /** Builds one combined PDF out of every document in a completed
+   * chain (quote + delivery note + invoice + the receipt, stamped
+   * "נאמן למקור" since it's necessarily a reprint at this point — the
+   * original already went out when the payment was first recorded)
+   * and saves it to storage. Called once, right after the chain
+   * actually becomes complete (a payment gets recorded) — see
+   * PaymentsService.create(). Silently skips any document whose PDF
+   * isn't available (no storage configured for that document type,
+   * or it was never generated) rather than failing the whole summary
+   * over one missing piece. */
+  async generateChainSummaryPdf(chainId: string, organizationId: number | null): Promise<string | null> {
+    if (organizationId == null) return null;
+    const chain = await this.getChain(chainId, organizationId);
+    if (!chain.status.complete) return null; // only makes sense once the chain is actually done
+
+    const summary = await PDFDocument.create();
+    let pageCount = 0;
+
+    const appendPdf = async (bytes: Buffer | null) => {
+      if (!bytes) return;
+      try {
+        const doc = await PDFDocument.load(bytes);
+        const pages = await summary.copyPages(doc, doc.getPageIndices());
+        pages.forEach((p) => summary.addPage(p));
+        pageCount += pages.length;
+      } catch {
+        // A corrupt/unreadable individual PDF shouldn't take down the
+        // whole summary — just skip it.
+      }
+    };
+
+    for (const quote of chain.quotes) {
+      const settings = await this.quoteSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
+      if (settings?.storageConnection && quote.storagePath) {
+        const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+        await appendPdf(await adapter.read(quote.storagePath).catch(() => null));
+      }
+    }
+
+    for (const note of chain.deliveryNotes) {
+      const settings = await this.deliveryNoteSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
+      if (settings?.storageConnection && (note as any).pdfPath) {
+        const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+        await appendPdf(await adapter.read((note as any).pdfPath).catch(() => null));
+      }
+    }
+
+    for (const invoice of chain.invoices) {
+      const settings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
+      if (settings?.storageConnection && invoice.storagePath) {
+        const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+        await appendPdf(await adapter.read(invoice.storagePath).catch(() => null));
+      }
+    }
+
+    // The receipt always goes in freshly rendered WITH the "certified
+    // true copy" stamp — by definition, any copy included in a summary
+    // bundle generated after the fact is not the original that already
+    // went out to the client when the payment was first recorded.
+    let paymentSettings: PaymentSettings | null = null;
+    for (const payment of chain.payments) {
+      paymentSettings ??= await this.paymentSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection', 'organization'] });
+      if (!paymentSettings) continue;
+      const header = (await this.deliveryNoteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
+      const methodLabel = {
+        cash: 'מזומן', bank_transfer: 'העברה בנקאית', check: "צ'ק", bit: 'ביט',
+        standing_order: 'הרשאה לחיוב חשבון', credit_card: 'כרטיס אשראי',
+      }[payment.method] ?? 'כרטיס אשראי';
+      const bytes = await generateDocumentPdf({
+        docTypeLabel: 'קבלה',
+        docNumber: payment.paymentNumber ?? `#${payment.id}`,
+        date: payment.date ?? new Date().toISOString().slice(0, 10),
+        clientName: payment.clientName,
+        clientEmail: payment.clientEmail,
+        items: [{ description: `תשלום — ${methodLabel}`, quantity: 1, unitPrice: payment.amount }],
+        total: payment.amount,
+        footerText: paymentSettings.footerText,
+        header,
+        template: (paymentSettings.template as any) ?? 'classic',
+        isDemoMode: paymentSettings.organization?.isDemoMode ?? false,
+        stampText: 'נאמן למקור',
+      });
+      await appendPdf(bytes);
+    }
+
+    if (pageCount === 0) return null;
+
+    const bytes = Buffer.from(await summary.save());
+    // Saved via whichever storage connection Payment settings point
+    // to — as good a default as any single choice, since the summary
+    // conceptually belongs to the completed order as a whole rather
+    // than to any one document type.
+    if (!paymentSettings?.storageConnection) return null;
+    const adapter = await this.storageService.getAdapter(paymentSettings.storageConnection.id);
+    const relativePath = `ChainSummaries/${chainId}.pdf`;
+    await adapter.write(relativePath, bytes);
+    return relativePath;
   }
 
   /** Resolves just the status summary for a batch of documents in one
