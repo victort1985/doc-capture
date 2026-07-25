@@ -29,7 +29,9 @@
     "prices": "Цены",
     "payments": "Оплаты",
     "paymentSettings": "Настройки оплаты",
-    "financialReports": "Финансовые отчёты"
+    "financialReports": "Финансовые отчёты",
+    "creditNotes": "Кредит-ноты",
+    "creditNoteSettings": "Настройки кредит-нот"
   },
   "app": {
     "adminConsole": "панель администратора",
@@ -983,5 +985,31 @@
     "methodCheck": "Чек",
     "methodBit": "Bit",
     "methodStandingOrder": "Постоянное поручение"
+  },
+  "creditNotes": {
+    "eyebrow": "Офис",
+    "title": "Кредит-ноты",
+    "legalNotice": "Кредит-нота (זיכוי) — единственный законный способ исправить или аннулировать выставленный счёт. Оригинал не редактируется и не удаляется.",
+    "create": "Новая кредит-нота",
+    "createTitle": "Создание кредит-ноты",
+    "pickInvoiceLabel": "Какой счёт исправляем?",
+    "searchPlaceholder": "Поиск по номеру или клиенту…",
+    "noInvoicesFound": "Счета не найдены.",
+    "correcting": "Исправляем",
+    "changeInvoice": "Изменить",
+    "reasonLabel": "Причина (обязательно)",
+    "reasonPlaceholder": "Почему выставляется кредит-нота?",
+    "itemDescription": "Описание",
+    "addItem": "Добавить строку",
+    "submit": "Выставить кредит-ноту",
+    "number": "Номер",
+    "client": "Клиент",
+    "reason": "Причина",
+    "invoice": "Счёт",
+    "total": "Сумма",
+    "viewPdf": "Открыть PDF",
+    "noPdf": "PDF недоступен.",
+    "empty": "Кредит-нот пока нет.",
+    "defaultItemDescription": "Исправление счёта {{number}}"
   }
 }

@@ -29,7 +29,9 @@
     "prices": "Prices",
     "payments": "Payments",
     "paymentSettings": "Payment settings",
-    "financialReports": "Financial Reports"
+    "financialReports": "Financial Reports",
+    "creditNotes": "Credit Notes",
+    "creditNoteSettings": "Credit Note settings"
   },
   "app": {
     "adminConsole": "admin console",
@@ -983,5 +985,31 @@
     "methodCheck": "Check",
     "methodBit": "Bit",
     "methodStandingOrder": "Standing order"
+  },
+  "creditNotes": {
+    "eyebrow": "Office",
+    "title": "Credit Notes",
+    "legalNotice": "A credit note (זיכוי) is the only legal way to correct or void an issued invoice — it never edits or deletes the original.",
+    "create": "New credit note",
+    "createTitle": "Create credit note",
+    "pickInvoiceLabel": "Which invoice does this correct?",
+    "searchPlaceholder": "Search by number or client…",
+    "noInvoicesFound": "No matching invoices.",
+    "correcting": "Correcting",
+    "changeInvoice": "Change",
+    "reasonLabel": "Reason (required)",
+    "reasonPlaceholder": "Why is this being issued?",
+    "itemDescription": "Description",
+    "addItem": "Add line",
+    "submit": "Issue credit note",
+    "number": "Number",
+    "client": "Client",
+    "reason": "Reason",
+    "invoice": "Invoice",
+    "total": "Total",
+    "viewPdf": "View PDF",
+    "noPdf": "No PDF available.",
+    "empty": "No credit notes yet.",
+    "defaultItemDescription": "Correction of invoice {{number}}"
   }
 }

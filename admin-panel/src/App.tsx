@@ -39,6 +39,8 @@ import InvoiceSettingsPage from './pages/InvoiceSettingsPage';
 import PaymentSettingsPage from './pages/PaymentSettingsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import FinancialReportsPage from './pages/FinancialReportsPage';
+import CreditNotesPage from './pages/CreditNotesPage';
+import CreditNoteSettingsPage from './pages/CreditNoteSettingsPage';
 import PriceListPage from './pages/PriceListPage';
 import DevicesPage from './pages/DevicesPage';
 
@@ -98,6 +100,8 @@ export default function App() {
           <Route path="/invoice-settings" element={<InvoiceSettingsPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/financial-reports" element={<FinancialReportsPage />} />
+          <Route path="/credit-notes" element={<CreditNotesPage />} />
+          <Route path="/credit-note-settings" element={<CreditNoteSettingsPage />} />
           <Route path="/payment-settings" element={<PaymentSettingsPage />} />
           <Route path="/prices" element={<PriceListPage />} />
           <Route path="/devices" element={<DevicesPage />} />

@@ -29,7 +29,9 @@
     "prices": "מחירים",
     "payments": "תשלומים",
     "paymentSettings": "הגדרות תשלום",
-    "financialReports": "דוחות כספיים"
+    "financialReports": "דוחות כספיים",
+    "creditNotes": "הודעות זיכוי",
+    "creditNoteSettings": "הגדרות זיכוי"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -983,5 +985,31 @@
     "methodCheck": "צ'ק",
     "methodBit": "ביט",
     "methodStandingOrder": "הרשאה לחיוב חשבון"
+  },
+  "creditNotes": {
+    "eyebrow": "משרד",
+    "title": "הודעות זיכוי",
+    "legalNotice": "הודעת זיכוי היא הדרך החוקית היחידה לתקן או לבטל חשבונית שהופקה — המקור אינו נערך או נמחק.",
+    "create": "הודעת זיכוי חדשה",
+    "createTitle": "יצירת הודעת זיכוי",
+    "pickInvoiceLabel": "איזו חשבונית מתקנים?",
+    "searchPlaceholder": "חיפוש לפי מספר או לקוח…",
+    "noInvoicesFound": "לא נמצאו חשבוניות.",
+    "correcting": "מתקן/ת",
+    "changeInvoice": "החלפה",
+    "reasonLabel": "סיבה (חובה)",
+    "reasonPlaceholder": "מדוע מונפקת הודעת הזיכוי?",
+    "itemDescription": "תיאור",
+    "addItem": "הוספת שורה",
+    "submit": "הנפקת הודעת זיכוי",
+    "number": "מספר",
+    "client": "לקוח",
+    "reason": "סיבה",
+    "invoice": "חשבונית",
+    "total": "סכום",
+    "viewPdf": "צפייה ב-PDF",
+    "noPdf": "אין PDF זמין.",
+    "empty": "אין עדיין הודעות זיכוי.",
+    "defaultItemDescription": "תיקון לחשבונית {{number}}"
   }
 }
