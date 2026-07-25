@@ -60,6 +60,16 @@ export class QuoteSettings {
   @Column({ default: false })
   autoSendEmail: boolean;
 
+  /** Whether 18% VAT (מע"מ) is added to quote totals. Defaults to
+   * true — an organization exempt from VAT (עוסק פטור, or specific
+   * exempt transaction types) must explicitly turn this off, and the
+   * admin panel requires confirming that decision with an accountant
+   * before saving it (see PATCH .../vat-exempt-confirm). Not a
+   * per-quote choice: this is an organization-wide VAT status that
+   * shouldn't vary quote to quote. */
+  @Column({ default: true })
+  vatEnabled: boolean;
+
   @ManyToOne(() => StorageConnection, { nullable: true, onDelete: 'SET NULL' })
   storageConnection?: StorageConnection;
 

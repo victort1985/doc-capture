@@ -56,6 +56,12 @@ export class InvoiceSettings {
   @Column({ default: false })
   autoSendEmail: boolean;
 
+  /** Whether 18% VAT (מע"מ) is added to invoice totals. See
+   * QuoteSettings.vatEnabled for the full reasoning — same
+   * organization-wide flag, mirrored per document type. */
+  @Column({ default: true })
+  vatEnabled: boolean;
+
   @ManyToOne(() => StorageConnection, { nullable: true, onDelete: 'SET NULL' })
   storageConnection?: StorageConnection;
 

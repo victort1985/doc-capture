@@ -142,6 +142,7 @@ export class PaymentsService {
       header,
       template: (settings.template as any) ?? 'classic',
       isDemoMode: settings.organization?.isDemoMode ?? false,
+      vatEnabled: settings.vatEnabled,
       stampText,
     });
   }

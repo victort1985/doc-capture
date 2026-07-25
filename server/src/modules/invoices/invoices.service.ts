@@ -146,6 +146,7 @@ export class InvoicesService {
         header,
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
+        vatEnabled: settings.vatEnabled,
       });
       const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
       const relativePath = `Invoices/${invoice.invoiceNumber ?? invoice.id}.pdf`;

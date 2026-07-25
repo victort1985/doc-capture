@@ -46,6 +46,11 @@ export class PaymentSettings {
   @Column({ default: false })
   autoSendEmail: boolean;
 
+  /** Whether 18% VAT (מע"מ) is reflected on receipts. See
+   * QuoteSettings.vatEnabled for the full reasoning. */
+  @Column({ default: true })
+  vatEnabled: boolean;
+
   @ManyToOne(() => StorageConnection, { nullable: true, onDelete: 'SET NULL' })
   storageConnection?: StorageConnection;
 

@@ -35,13 +35,19 @@ export class InvoiceSettingsController {
   @Put(':orgId')
   async upsert(
     @Param('orgId', ParseIntPipe) orgId: number,
-    @Body() dto: { footerText?: string; storageConnectionId?: number | null; template?: string; autoSendEmail?: boolean },
+    @Body() dto: { footerText?: string; storageConnectionId?: number | null; template?: string; autoSendEmail?: boolean; vatEnabled?: boolean; vatDisableConfirmedByAccountant?: boolean },
   ) {
     let settings = await this.repo.findOne({ where: { organization: { id: orgId } } });
     if (!settings) settings = this.repo.create({ organization: { id: orgId } as any });
     if (dto.footerText !== undefined) settings.footerText = dto.footerText;
     if (dto.template !== undefined) settings.template = dto.template;
     if (dto.autoSendEmail !== undefined) settings.autoSendEmail = dto.autoSendEmail;
+    if (dto.vatEnabled !== undefined) {
+      if (dto.vatEnabled === false && settings.vatEnabled !== false && !dto.vatDisableConfirmedByAccountant) {
+        throw new BadRequestException('Disabling VAT requires accountant confirmation (vatDisableConfirmedByAccountant).');
+      }
+      settings.vatEnabled = dto.vatEnabled;
+    }
     if (dto.storageConnectionId !== undefined) {
       settings.storageConnection = dto.storageConnectionId == null ? undefined : ({ id: dto.storageConnectionId } as any);
     }

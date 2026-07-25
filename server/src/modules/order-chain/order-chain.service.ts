@@ -176,6 +176,7 @@ export class OrderChainService {
         header,
         template: (paymentSettings.template as any) ?? 'classic',
         isDemoMode: paymentSettings.organization?.isDemoMode ?? false,
+        vatEnabled: paymentSettings.vatEnabled,
         stampText: 'נאמן למקור',
       });
       await appendPdf(bytes);

@@ -133,6 +133,7 @@ export class QuotesService {
         header,
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
+        vatEnabled: settings.vatEnabled,
       });
       const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
       const relativePath = `Quotes/${quote.quoteNumber ?? quote.id}.pdf`;

@@ -44,7 +44,18 @@ export interface GenerateDocumentPdfParams {
    * copy") drawn in a neutral blue-gray, independent of isDemoMode —
    * both can be present at once (a demo-org copy would show both). */
   stampText?: string;
+
+  /** When true, an 18% VAT (מע"מ) line is added between the subtotal
+   * (params.total, which is always pre-VAT) and the printed grand
+   * total. Undefined/false means the org is VAT-exempt for this
+   * document type — the printed total simply equals params.total. */
+  vatEnabled?: boolean;
 }
+
+/** Israel's standard VAT rate. Not read from anywhere configurable on
+ * purpose — if/when the statutory rate changes, this is the one place
+ * to update, and every document type picks it up together. */
+export const VAT_RATE = 0.18;
 
 // ── Minimal RTL layout ───────────────────────────────────────────────
 // pdf-lib has no bidi/shaping engine. Hebrew doesn't need glyph
@@ -305,8 +316,21 @@ async function drawClassicLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, 
   }
 
   y -= 10;
-  const totalStr = `₪ ${params.total.toFixed(2)}`;
-  drawBidiText(page, totalStr, { x: W - M, y, size: 14, fonts, bold: true, align: 'right', color: navy });
+  if (params.vatEnabled) {
+    const vatAmount = params.total * VAT_RATE;
+    const grandTotal = params.total + vatAmount;
+    const subtotalStr = `סה"כ לפני מע"מ:  ₪ ${params.total.toFixed(2)}`;
+    drawBidiText(page, subtotalStr, { x: W - M, y, size: 10, fonts, align: 'right', color: gray });
+    y -= 16;
+    const vatStr = `מע"מ (${(VAT_RATE * 100).toFixed(0)}%):  ₪ ${vatAmount.toFixed(2)}`;
+    drawBidiText(page, vatStr, { x: W - M, y, size: 10, fonts, align: 'right', color: gray });
+    y -= 20;
+    const grandTotalStr = `סה"כ לתשלום:  ₪ ${grandTotal.toFixed(2)}`;
+    drawBidiText(page, grandTotalStr, { x: W - M, y, size: 14, fonts, bold: true, align: 'right', color: navy });
+  } else {
+    const totalStr = `₪ ${params.total.toFixed(2)}`;
+    drawBidiText(page, totalStr, { x: W - M, y, size: 14, fonts, bold: true, align: 'right', color: navy });
+  }
 
   drawClassicFooter(page, fonts, params, M, W, gray);
 }
@@ -396,12 +420,27 @@ async function drawModernLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, p
   }
 
   y -= 14;
-  const totalStr = `₪ ${params.total.toFixed(2)}`;
-  const totalRuns = toVisualRuns(totalStr);
-  const totalTextW = totalRuns.reduce((sum, r) => sum + runWidth(r, fonts, 14, true), 0);
-  const totalPillW = totalTextW + 28;
-  page.drawRectangle({ x: W - M - totalPillW, y: y - 8, width: totalPillW, height: 28, color: navy });
-  drawBidiText(page, totalStr, { x: W - M - 14, y, size: 14, fonts, bold: true, align: 'right', color: rgb(1, 1, 1) });
+  if (params.vatEnabled) {
+    const vatAmount = params.total * VAT_RATE;
+    const grandTotal = params.total + vatAmount;
+    drawBidiText(page, `סה"כ לפני מע"מ:  ₪ ${params.total.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
+    y -= 15;
+    drawBidiText(page, `מע"מ (${(VAT_RATE * 100).toFixed(0)}%):  ₪ ${vatAmount.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
+    y -= 18;
+    const grandTotalStr = `₪ ${grandTotal.toFixed(2)}`;
+    const totalRuns = toVisualRuns(grandTotalStr);
+    const totalTextW = totalRuns.reduce((sum, r) => sum + runWidth(r, fonts, 14, true), 0);
+    const totalPillW = totalTextW + 28;
+    page.drawRectangle({ x: W - M - totalPillW, y: y - 8, width: totalPillW, height: 28, color: navy });
+    drawBidiText(page, grandTotalStr, { x: W - M - 14, y, size: 14, fonts, bold: true, align: 'right', color: rgb(1, 1, 1) });
+  } else {
+    const totalStr = `₪ ${params.total.toFixed(2)}`;
+    const totalRuns = toVisualRuns(totalStr);
+    const totalTextW = totalRuns.reduce((sum, r) => sum + runWidth(r, fonts, 14, true), 0);
+    const totalPillW = totalTextW + 28;
+    page.drawRectangle({ x: W - M - totalPillW, y: y - 8, width: totalPillW, height: 28, color: navy });
+    drawBidiText(page, totalStr, { x: W - M - 14, y, size: 14, fonts, bold: true, align: 'right', color: rgb(1, 1, 1) });
+  }
 
   if (params.footerText) {
     const footerY = 60;
@@ -472,8 +511,18 @@ function drawMinimalistLayout(page: PDFPage, fonts: Fonts, params: GenerateDocum
 
   y -= 4;
   page.drawLine({ start: { x: M, y: y + 16 }, end: { x: W - M, y: y + 16 }, thickness: 0.75, color: black });
-  const totalStr = `₪ ${params.total.toFixed(2)}`;
-  drawBidiText(page, totalStr, { x: W - M, y, size: 15, fonts, align: 'right', color: black });
+  if (params.vatEnabled) {
+    const vatAmount = params.total * VAT_RATE;
+    const grandTotal = params.total + vatAmount;
+    drawBidiText(page, `סה"כ לפני מע"מ:  ₪ ${params.total.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
+    y -= 15;
+    drawBidiText(page, `מע"מ (${(VAT_RATE * 100).toFixed(0)}%):  ₪ ${vatAmount.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
+    y -= 20;
+    drawBidiText(page, `₪ ${grandTotal.toFixed(2)}`, { x: W - M, y, size: 15, fonts, align: 'right', color: black });
+  } else {
+    const totalStr = `₪ ${params.total.toFixed(2)}`;
+    drawBidiText(page, totalStr, { x: W - M, y, size: 15, fonts, align: 'right', color: black });
+  }
 
   if (params.footerText) {
     const footerY = 56;
