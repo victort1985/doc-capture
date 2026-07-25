@@ -369,7 +369,9 @@
     "orgs.switch": "Switch between organizations",
     "office.delivery_notes": "Delivery notes",
     "office.quotes": "Quotes",
-    "office.invoices": "Invoices"
+    "office.invoices": "Invoices",
+    "office.orders": "Orders",
+    "office.payments": "Payments"
   },
   "groups": {
     "eyebrow": "Access control",

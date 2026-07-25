@@ -369,7 +369,9 @@
     "orgs.switch": "מעבר בין ארגונים",
     "office.delivery_notes": "תעודות משלוח",
     "office.quotes": "הצעות מחיר",
-    "office.invoices": "חשבוניות"
+    "office.invoices": "חשבוניות",
+    "office.orders": "הזמנות",
+    "office.payments": "תשלומים"
   },
   "groups": {
     "eyebrow": "בקרת גישה",

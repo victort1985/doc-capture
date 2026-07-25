@@ -369,7 +369,9 @@
     "orgs.switch": "Переключение между организациями",
     "office.delivery_notes": "Накладные",
     "office.quotes": "Сметы",
-    "office.invoices": "Счета"
+    "office.invoices": "Счета",
+    "office.orders": "Заказы",
+    "office.payments": "Оплаты"
   },
   "groups": {
     "eyebrow": "Управление доступом",
