@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 import '../services/api_service.dart';
 
@@ -51,6 +52,18 @@ class Payment {
       );
 }
 
+/// Result of creating a payment — includes the ONE-TIME original
+/// receipt PDF bytes. This is the only place the app ever gets an
+/// unstamped original; every later fetch (getPdf) always returns the
+/// נאמן למקור-stamped copy, per Israeli law's "original issued once"
+/// rule. Nothing persists these bytes anywhere on the device — show/
+/// print/share them right away, then they're gone from memory.
+class CreatePaymentResult {
+  CreatePaymentResult({required this.payment, required this.originalPdfBytes});
+  final Payment payment;
+  final Uint8List? originalPdfBytes;
+}
+
 /// Payment is a SIMULATOR — recording one here does not move real
 /// money or talk to any payment gateway. It exists so the document
 /// chain (quote -> order -> delivery note -> invoice -> payment) has
@@ -65,16 +78,14 @@ class PaymentsService {
     return (res as List<dynamic>).map((e) => Payment.fromJson(e)).toList();
   }
 
-  /// [asCopy] renders a fresh "נאמן למקור" (certified true copy) stamped
-  /// version instead of the stored original — an explicit, opt-in
-  /// reprint action; the very first PDF (at creation) is always the
-  /// plain, unstamped original.
-  Future<Uint8List> getPdf(int id, {bool asCopy = false}) =>
-      _api.getBytes('/payments/$id/pdf${asCopy ? '?copy=true' : ''}');
+  /// Always returns the נאמן למקור-stamped copy — the server no
+  /// longer has any way to re-serve an unstamped original after
+  /// creation (see CreatePaymentResult for the one-time original).
+  Future<Uint8List> getPdf(int id) => _api.getBytes('/payments/$id/pdf');
 
   Future<Uint8List> getChainSummaryPdf(int id) => _api.getBytes('/payments/$id/chain-summary-pdf');
 
-  Future<Payment> create({
+  Future<CreatePaymentResult> create({
     required String clientName,
     String? clientEmail,
     required double amount,
@@ -112,7 +123,11 @@ class PaymentsService {
       if (checkDate != null && checkDate.isNotEmpty) 'checkDate': checkDate,
       if (referenceNumber != null && referenceNumber.isNotEmpty) 'referenceNumber': referenceNumber,
     });
-    return Payment.fromJson(res);
+    final base64Str = res['originalPdfBase64'] as String?;
+    return CreatePaymentResult(
+      payment: Payment.fromJson(res['payment'] as Map<String, dynamic>),
+      originalPdfBytes: base64Str != null ? base64Decode(base64Str) : null,
+    );
   }
 
   Future<void> delete(int id) => _api.delete('/payments/$id');

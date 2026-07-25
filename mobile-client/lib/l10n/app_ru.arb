@@ -111,7 +111,7 @@
   "paymentViewOriginal": "Открыть оригинал",
   "paymentPrintCopy": "Печать как заверенная копия",
   "paymentPrintCopyHint": "Со штампом «נאמן למקור» — для повторной печати после того, как оригинал уже был выдан",
-  "paymentViewSummary": "Скачать сводный документ по заказу",
+  "paymentViewSummary": "Напечатать все связанные документы",
   "paymentSummaryUnavailable": "Сводный документ ещё не готов.",
   "linkedSuccessfully": "Успешно привязано.",
   "linkToQuoteButton": "Привязать к квоте",

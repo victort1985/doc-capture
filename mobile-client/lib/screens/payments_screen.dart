@@ -47,12 +47,12 @@ class PaymentsScreenState extends State<PaymentsScreen> {
     }
   }
 
-  Future<void> _viewPdf(Payment p, {bool asCopy = false}) async {
+  Future<void> _viewPdf(Payment p) async {
     setState(() => _pdfLoadingId = p.id);
     try {
-      final bytes = await _svc.getPdf(p.id, asCopy: asCopy);
+      final bytes = await _svc.getPdf(p.id);
       if (!mounted) return;
-      await Printing.layoutPdf(onLayout: (_) => bytes, name: asCopy ? '${p.paymentNumber ?? p.id}-copy' : (p.paymentNumber ?? 'payment-${p.id}'));
+      await Printing.layoutPdf(onLayout: (_) => bytes, name: '${p.paymentNumber ?? p.id}-copy');
     } catch (e) {
       if (mounted) {
         final l10n = AppLocalizations.of(context)!;
@@ -133,15 +133,10 @@ class PaymentsScreenState extends State<PaymentsScreen> {
                             builder: (ctx) => SafeArea(
                               child: Column(mainAxisSize: MainAxisSize.min, children: [
                                 ListTile(
-                                  leading: const Icon(Icons.description_outlined),
-                                  title: Text(l10n.paymentViewOriginal),
-                                  onTap: () { Navigator.of(ctx).pop(); _viewPdf(p); },
-                                ),
-                                ListTile(
                                   leading: const Icon(Icons.verified_outlined),
                                   title: Text(l10n.paymentPrintCopy),
                                   subtitle: Text(l10n.paymentPrintCopyHint),
-                                  onTap: () { Navigator.of(ctx).pop(); _viewPdf(p, asCopy: true); },
+                                  onTap: () { Navigator.of(ctx).pop(); _viewPdf(p); },
                                 ),
                                 if (p.hasChainSummary)
                                   ListTile(
@@ -288,7 +283,7 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
     setState(() => _saving = true);
     try {
       final svc = PaymentsService(context.read<ApiService>());
-      await svc.create(
+      final result = await svc.create(
         clientName: _clientController.text.trim(),
         clientEmail: _emailController.text.trim(),
         amount: amount,
@@ -308,6 +303,15 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
         referenceNumber: [PaymentMethod.bankTransfer, PaymentMethod.bit, PaymentMethod.standingOrder].contains(_method)
             ? _referenceNumberController.text.trim() : null,
       );
+      if (mounted && result.originalPdfBytes != null) {
+        // The one and only chance to print/share the true original —
+        // by law it can't be issued a second time, so this has to
+        // happen right now, not as a "view later" action from a list.
+        await Printing.layoutPdf(
+          onLayout: (_) => result.originalPdfBytes!,
+          name: result.payment.paymentNumber ?? 'receipt-${result.payment.id}',
+        );
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));

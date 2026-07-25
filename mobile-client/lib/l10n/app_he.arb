@@ -111,7 +111,7 @@
   "paymentViewOriginal": "צפייה במקור",
   "paymentPrintCopy": "הדפסה כעותק נאמן למקור",
   "paymentPrintCopyHint": "עם חותמת \"נאמן למקור\" — להדפסה חוזרת לאחר שהמקור כבר נשלח",
-  "paymentViewSummary": "הורדת סיכום מלא של ההזמנה",
+  "paymentViewSummary": "הדפסת כל המסמכים המקושרים",
   "paymentSummaryUnavailable": "סיכום ההזמנה עדיין לא זמין.",
   "linkedSuccessfully": "הקישור בוצע בהצלחה.",
   "linkToQuoteButton": "קישור להצעת מחיר",

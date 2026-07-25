@@ -111,7 +111,7 @@
   "paymentViewOriginal": "View original",
   "paymentPrintCopy": "Print as certified copy",
   "paymentPrintCopyHint": "Stamped \"נאמן למקור\" — for reprints after the original has already gone out",
-  "paymentViewSummary": "Download full order summary",
+  "paymentViewSummary": "Print all related documents",
   "paymentSummaryUnavailable": "Order summary not available yet.",
   "linkedSuccessfully": "Linked successfully.",
   "linkToQuoteButton": "Link to quote",
