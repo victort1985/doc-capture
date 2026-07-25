@@ -18,6 +18,7 @@ class TermsOfServiceGateScreen extends StatefulWidget {
 
 class _TermsOfServiceGateScreenState extends State<TermsOfServiceGateScreen> {
   bool _checked = false;
+  bool _dontShowAgain = true;
   bool _saving = false;
   String? _error;
 
@@ -65,18 +66,31 @@ class _TermsOfServiceGateScreenState extends State<TermsOfServiceGateScreen> {
                 ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                child: Row(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Checkbox(value: _checked, onChanged: (v) => setState(() => _checked = v ?? false)),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _checked = !_checked),
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 12),
-                          child: Text(l10n.tosCheckboxLabel, style: const TextStyle(fontSize: 13.5)),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Checkbox(value: _checked, onChanged: (v) => setState(() => _checked = v ?? false)),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => setState(() => _checked = !_checked),
+                            child: Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Text(l10n.tosCheckboxLabel, style: const TextStyle(fontSize: 13.5)),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
+                    ),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      value: _dontShowAgain,
+                      onChanged: (v) => setState(() => _dontShowAgain = v),
+                      title: Text(l10n.tosDontShowAgain, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+                      subtitle: Text(l10n.tosDontShowAgainHint, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                      dense: true,
                     ),
                   ],
                 ),
@@ -86,7 +100,7 @@ class _TermsOfServiceGateScreenState extends State<TermsOfServiceGateScreen> {
                 child: SizedBox(
                   width: double.infinity,
                   child: FilledButton(
-                    onPressed: (_checked && !_saving) ? _accept : null,
+                    onPressed: (_checked && _dontShowAgain && !_saving) ? _accept : null,
                     child: _saving ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Text(l10n.tosAccept),
                   ),
                 ),

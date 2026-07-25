@@ -83,6 +83,8 @@
   "connectionClientSecretLabel": "Client Secret",
   "connectionSaveButton": "Save",
   "connectionImportButton": "Import from file",
+  "tosDontShowAgain": "Don't show this again",
+  "tosDontShowAgainHint": "You'll only see this screen again if the terms change.",
   "paymentMethodCreditCard": "Credit card",
   "paymentMethodBankTransfer": "Bank transfer",
   "paymentMethodCheck": "Check",

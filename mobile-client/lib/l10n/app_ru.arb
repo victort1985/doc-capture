@@ -83,6 +83,8 @@
   "connectionClientSecretLabel": "Client Secret",
   "connectionSaveButton": "Сохранить",
   "connectionImportButton": "Импорт из файла",
+  "tosDontShowAgain": "Больше не показывать",
+  "tosDontShowAgainHint": "Этот экран появится снова только если условия изменятся.",
   "paymentMethodCreditCard": "Банковская карта",
   "paymentMethodBankTransfer": "Банковский перевод",
   "paymentMethodCheck": "Чек",

@@ -83,6 +83,8 @@
   "connectionClientSecretLabel": "Client Secret",
   "connectionSaveButton": "שמור",
   "connectionImportButton": "ייבוא מקובץ",
+  "tosDontShowAgain": "אל תציגו שוב",
+  "tosDontShowAgainHint": "המסך הזה יופיע שוב רק אם התנאים ישתנו.",
   "paymentMethodCreditCard": "כרטיס אשראי",
   "paymentMethodBankTransfer": "העברה בנקאית",
   "paymentMethodCheck": "צ'ק",
