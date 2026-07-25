@@ -22,6 +22,7 @@ interface SeriesSettings {
   storageConnection?: StorageConnection;
   template?: string;
   autoSendEmail?: boolean;
+  vatEnabled?: boolean;
 }
 
 export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'quote' | 'invoice' | 'payment'; navLabelKey: string }) {
@@ -38,6 +39,10 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
   const [footerText, setFooterText] = useState('');
   const [template, setTemplate] = useState('classic');
   const [autoSendEmail, setAutoSendEmail] = useState(false);
+  const [vatEnabled, setVatEnabled] = useState(true);
+  const [vatDisableConfirmed, setVatDisableConfirmed] = useState(false);
+  const [showVatConfirm, setShowVatConfirm] = useState(false);
+  const [vatConfirmChecked, setVatConfirmChecked] = useState(false);
   const [primaryEmail, setPrimaryEmail] = useState('');
   const [primaryEmailPassword, setPrimaryEmailPassword] = useState('');
   const [primaryEmailSaving, setPrimaryEmailSaving] = useState(false);
@@ -74,6 +79,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
       setFooterText(s?.footerText ?? '');
       setTemplate(s?.template ?? 'classic');
       setAutoSendEmail(s?.autoSendEmail ?? false);
+      setVatEnabled(s?.vatEnabled ?? true);
       setStorageConnectionId(s?.storageConnection?.id ?? '');
       setPrefixDraft(s?.numberPrefix ?? '');
       setStartingNumberDraft(s?.startingNumber != null ? String(s.startingNumber) : '');
@@ -100,7 +106,10 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
     try {
       await apiFetch(`${apiBase}/${selOrgId}`, {
         method: 'PUT',
-        body: JSON.stringify({ footerText, storageConnectionId: storageConnectionId || null, template, autoSendEmail }),
+        body: JSON.stringify({
+          footerText, storageConnectionId: storageConnectionId || null, template, autoSendEmail,
+          vatEnabled, vatDisableConfirmedByAccountant: vatDisableConfirmed || undefined,
+        }),
       });
       setSaved(true);
     } catch (e) {
@@ -245,6 +254,32 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
               <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>{t('documentSeries.autoSendEmailHint')}</p>
             </div>
 
+            {/* VAT (מע"מ 18%) toggle — disabling requires accountant confirmation */}
+            <div className="card" style={{ marginBottom: 14 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={vatEnabled}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      setVatEnabled(true);
+                      setVatDisableConfirmed(false);
+                    } else {
+                      setVatConfirmChecked(false);
+                      setShowVatConfirm(true);
+                    }
+                  }}
+                />
+                {t('documentSeries.vatEnabled')}
+              </label>
+              <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginTop: 6 }}>{t('documentSeries.vatEnabledHint')}</p>
+              {!vatEnabled && (
+                <div style={{ marginTop: 8, padding: '8px 12px', background: 'var(--danger-bg, #fbeae8)', borderRadius: 8, fontSize: 12.5, color: 'var(--danger, #8a1f17)' }}>
+                  {t('documentSeries.vatDisabledNotice')}
+                </div>
+              )}
+            </div>
+
             {/* Storage */}
             <div className="card" style={{ marginBottom: 14 }}>
               <h3 style={{ margin: '0 0 12px' }}>{t('documentSeries.storage')}</h3>
@@ -310,6 +345,39 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
               style={{ width: '100%', marginTop: 14, background: 'var(--danger, crimson)', borderColor: 'var(--danger, crimson)' }}
             >
               <Lock size={15} /> {locking ? t('documentSeries.confirmApplying') : t('documentSeries.confirmApply')}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showVatConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}
+          onClick={() => setShowVatConfirm(false)}>
+          <div className="card" style={{ width: 420, border: '2px solid var(--danger, crimson)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button className="ghost" onClick={() => setShowVatConfirm(false)}><X size={16} /></button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginTop: -10 }}>
+              <TriangleAlert size={56} color="var(--danger, crimson)" strokeWidth={1.5} />
+              <h3 style={{ margin: '14px 0 6px', color: 'var(--danger, crimson)' }}>{t('documentSeries.vatConfirmTitle')}</h3>
+              <p style={{ fontSize: 13.5, color: 'var(--ink-soft)', marginBottom: 16 }}>{t('documentSeries.vatConfirmBody')}</p>
+            </div>
+
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, marginBottom: 14, cursor: 'pointer' }}>
+              <input type="checkbox" checked={vatConfirmChecked} onChange={e => setVatConfirmChecked(e.target.checked)} style={{ marginTop: 2 }} />
+              {t('documentSeries.vatConfirmCheckbox')}
+            </label>
+
+            <button
+              onClick={() => {
+                setVatEnabled(false);
+                setVatDisableConfirmed(true);
+                setShowVatConfirm(false);
+              }}
+              disabled={!vatConfirmChecked}
+              style={{ width: '100%', background: 'var(--danger, crimson)', borderColor: 'var(--danger, crimson)' }}
+            >
+              {t('documentSeries.vatConfirmApply')}
             </button>
           </div>
         </div>

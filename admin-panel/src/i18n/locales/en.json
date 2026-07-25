@@ -93,7 +93,14 @@
     "primaryEmailAddress": "Email address",
     "primaryEmailAppPassword": "App password",
     "autoSendEmail": "Automatically email this {{kind}} to the client when created",
-    "autoSendEmailHint": "Uses the primary email above. Requires the client to have an email address on file."
+    "autoSendEmailHint": "Uses the primary email above. Requires the client to have an email address on file.",
+    "vatEnabled": "Apply VAT (מע\"מ 18%)",
+    "vatEnabledHint": "On by default. Turn off only if this organization is VAT-exempt (עוסק פטור) or the transaction type is specifically exempt.",
+    "vatDisabledNotice": "VAT is currently OFF for this document type — totals will not include the 18% VAT line.",
+    "vatConfirmTitle": "Disable VAT?",
+    "vatConfirmBody": "Turning this off means VAT will no longer be calculated or shown on these documents. This is a real accounting/legal decision under Israeli tax law, not a display preference — it must be approved by an accountant (or the organization's recognized VAT-exempt status confirmed) before disabling.",
+    "vatConfirmCheckbox": "I confirm this has been reviewed and approved by an accountant, in line with Israeli VAT law.",
+    "vatConfirmApply": "Confirm and disable VAT"
   },
   "quotes": {
     "eyebrow": "OFFICE",
