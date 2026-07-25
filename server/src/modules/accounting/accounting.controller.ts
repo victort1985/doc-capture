@@ -31,6 +31,16 @@ export class AccountingController {
     return this.service.trialBalance(user.organizationId, from, to);
   }
 
+  @Get('profit-and-loss')
+  profitAndLoss(@CurrentUser() user: ReqUser, @Query('from') from: string, @Query('to') to: string) {
+    return this.service.profitAndLoss(user.organizationId, from, to);
+  }
+
+  @Get('balance-sheet')
+  balanceSheet(@CurrentUser() user: ReqUser, @Query('asOf') asOf: string) {
+    return this.service.balanceSheet(user.organizationId, asOf);
+  }
+
   @Get('general-ledger/:accountId')
   generalLedger(
     @Param('accountId', ParseIntPipe) accountId: number,

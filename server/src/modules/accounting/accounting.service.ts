@@ -122,6 +122,60 @@ export class AccountingService {
     }));
   }
 
+  /** Profit & Loss (отчёт о прибылях и убытках) for a period — revenue
+   * accounts net (credit total minus debit total, since revenue
+   * increases with credits) minus expense accounts net (debit total
+   * minus credit total, expenses increase with debits). Built
+   * straight from trialBalance() rather than a separate query, so
+   * there's exactly one place computing account totals to keep
+   * correct. */
+  async profitAndLoss(organizationId: number | null, from: string, to: string) {
+    const balances = await this.trialBalance(organizationId, from, to);
+    const revenueRows = balances.filter((b) => b.type === AccountType.REVENUE);
+    const expenseRows = balances.filter((b) => b.type === AccountType.EXPENSE);
+
+    const totalRevenue = round2(revenueRows.reduce((sum, r) => sum + (r.credit - r.debit), 0));
+    const totalExpenses = round2(expenseRows.reduce((sum, r) => sum + (r.debit - r.credit), 0));
+
+    return {
+      period: { from, to },
+      revenue: revenueRows.map((r) => ({ code: r.code, name: r.name, amount: round2(r.credit - r.debit) })),
+      totalRevenue,
+      expenses: expenseRows.map((r) => ({ code: r.code, name: r.name, amount: round2(r.debit - r.credit) })),
+      totalExpenses,
+      netProfit: round2(totalRevenue - totalExpenses),
+    };
+  }
+
+  /** Balance sheet (баланс) as of a given date — Assets should equal
+   * Liabilities + Equity + (retained earnings from net profit to
+   * date, folded into equity here since there's no separate closing-
+   * entry step in this simplified system). Cumulative from the
+   * beginning of time to `asOf`, unlike the trial balance/P&L which
+   * are period-scoped — a balance sheet is a snapshot, not a period
+   * summary. */
+  async balanceSheet(organizationId: number | null, asOf: string) {
+    const epoch = '1970-01-01';
+    const balances = await this.trialBalance(organizationId, epoch, asOf);
+    const netToDate = await this.profitAndLoss(organizationId, epoch, asOf);
+
+    const assets = balances.filter((b) => b.type === AccountType.ASSET).map((a) => ({ code: a.code, name: a.name, balance: round2(a.debit - a.credit) }));
+    const liabilities = balances.filter((b) => b.type === AccountType.LIABILITY).map((a) => ({ code: a.code, name: a.name, balance: round2(a.credit - a.debit) }));
+    const equity = balances.filter((b) => b.type === AccountType.EQUITY).map((a) => ({ code: a.code, name: a.name, balance: round2(a.credit - a.debit) }));
+
+    const totalAssets = round2(assets.reduce((s, a) => s + a.balance, 0));
+    const totalLiabilities = round2(liabilities.reduce((s, a) => s + a.balance, 0));
+    const totalEquity = round2(equity.reduce((s, a) => s + a.balance, 0) + netToDate.netProfit);
+
+    return {
+      asOf,
+      assets, totalAssets,
+      liabilities, totalLiabilities,
+      equity, retainedEarnings: netToDate.netProfit, totalEquity,
+      balances: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01,
+    };
+  }
+
   /** General ledger for one account — every entry that touched it,
    * in date order, with a running balance. */
   async generalLedger(organizationId: number | null, accountId: number, from: string, to: string) {
