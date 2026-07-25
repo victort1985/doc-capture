@@ -996,7 +996,15 @@
     "methodBankTransfer": "Bank transfer",
     "methodCheck": "Check",
     "methodBit": "Bit",
-    "methodStandingOrder": "Standing order"
+    "methodStandingOrder": "Standing order",
+    "agingTitle": "Age of debt",
+    "totalOutstanding": "Total outstanding",
+    "agingBucket": "Age",
+    "agingBucket_current": "0–30 days",
+    "agingBucket_days31to60": "31–60 days",
+    "agingBucket_days61to90": "61–90 days",
+    "agingBucket_days91to120": "91–120 days",
+    "agingBucket_over120": "Over 120 days"
   },
   "creditNotes": {
     "eyebrow": "Office",

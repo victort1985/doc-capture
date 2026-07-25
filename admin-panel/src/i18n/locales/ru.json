@@ -996,7 +996,15 @@
     "methodBankTransfer": "Банковский перевод",
     "methodCheck": "Чек",
     "methodBit": "Bit",
-    "methodStandingOrder": "Постоянное поручение"
+    "methodStandingOrder": "Постоянное поручение",
+    "agingTitle": "Возраст долгов",
+    "totalOutstanding": "Всего не оплачено",
+    "agingBucket": "Возраст",
+    "agingBucket_current": "0–30 дней",
+    "agingBucket_days31to60": "31–60 дней",
+    "agingBucket_days61to90": "61–90 дней",
+    "agingBucket_days91to120": "91–120 дней",
+    "agingBucket_over120": "Более 120 дней"
   },
   "creditNotes": {
     "eyebrow": "Офис",

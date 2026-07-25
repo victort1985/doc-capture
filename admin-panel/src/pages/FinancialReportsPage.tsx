@@ -13,6 +13,11 @@ interface ReportData {
   outstandingInvoices: { count: number; total: number };
   documentCounts: { quotes: number; invoices: number; payments: number };
 }
+interface AgingBucket { count: number; total: number; invoices: { id: number; invoiceNumber?: string; clientName: string; date?: string; total: number }[]; }
+interface AgingData {
+  current: AgingBucket; days31to60: AgingBucket; days61to90: AgingBucket; days91to120: AgingBucket; over120: AgingBucket;
+  totalOutstanding: number;
+}
 
 type PeriodPreset = 'month' | 'quarter' | 'half-year' | 'year' | 'custom';
 
@@ -55,6 +60,7 @@ export default function FinancialReportsPage() {
   const [from, setFrom] = useState(computeRange('month').from);
   const [to, setTo] = useState(computeRange('month').to);
   const [data, setData] = useState<ReportData | null>(null);
+  const [aging, setAging] = useState<AgingData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,8 +82,10 @@ export default function FinancialReportsPage() {
     setLoading(true); setError(null);
     try {
       const qs = new URLSearchParams({ from, to });
-      if (isSuperAdmin && selOrgId) qs.set('orgId', String(selOrgId));
+      const orgQs = new URLSearchParams();
+      if (isSuperAdmin && selOrgId) { qs.set('orgId', String(selOrgId)); orgQs.set('orgId', String(selOrgId)); }
       setData(await apiFetch<ReportData>(`/financial-reports?${qs.toString()}`));
+      setAging(await apiFetch<AgingData>(`/financial-reports/aging?${orgQs.toString()}`));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load report');
     } finally { setLoading(false); }
@@ -209,6 +217,41 @@ export default function FinancialReportsPage() {
               </tbody>
             </table>
           </div>
+
+          {aging && (
+            <div className="card" style={{ padding: 16, marginTop: 16 }}>
+              <h3 style={{ marginTop: 0 }}>{t('financialReports.agingTitle')}</h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
+                    <th style={{ padding: '6px 10px' }}>{t('financialReports.agingBucket')}</th>
+                    <th style={{ padding: '6px 10px' }}>{t('financialReports.count')}</th>
+                    <th style={{ padding: '6px 10px' }}>{t('financialReports.total')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    ['current', aging.current], ['days31to60', aging.days31to60], ['days61to90', aging.days61to90],
+                    ['days91to120', aging.days91to120], ['over120', aging.over120],
+                  ].map(([key, bucket]) => {
+                    const b = bucket as AgingBucket;
+                    return (
+                      <tr key={key as string} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                        <td style={{ padding: '6px 10px' }}>{t(`financialReports.agingBucket_${key}`)}</td>
+                        <td style={{ padding: '6px 10px' }}>{b.count}</td>
+                        <td style={{ padding: '6px 10px', fontWeight: 600 }}>₪{b.total.toLocaleString()}</td>
+                      </tr>
+                    );
+                  })}
+                  <tr style={{ fontWeight: 800 }}>
+                    <td style={{ padding: '6px 10px' }}>{t('financialReports.totalOutstanding')}</td>
+                    <td style={{ padding: '6px 10px' }}></td>
+                    <td style={{ padding: '6px 10px' }}>₪{aging.totalOutstanding.toLocaleString()}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </>
       )}
     </div>
