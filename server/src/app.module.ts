@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ServeStaticModule } from '@nestjs/serve-static';
@@ -43,7 +43,6 @@ import { AuditLogModule } from './modules/audit-log/audit-log.module';
 import { DebitNotesModule } from './modules/debit-notes/debit-notes.module';
 import { ReturnsModule } from './modules/returns/returns.module';
 import { AccountingModule } from './modules/accounting/accounting.module';
-import { AuditLogInterceptor } from './modules/audit-log/audit-log.interceptor';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -107,7 +106,6 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
-    { provide: APP_INTERCEPTOR, useClass: AuditLogInterceptor },
   ],
 })
 export class AppModule {}
