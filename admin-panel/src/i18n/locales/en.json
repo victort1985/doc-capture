@@ -36,7 +36,8 @@
     "debitNoteSettings": "Debit Note settings",
     "returns": "Returns",
     "returnSettings": "Return settings",
-    "accounting": "Accounting"
+    "accounting": "Accounting",
+    "auditLog": "Audit Log"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1124,5 +1125,20 @@
     "description": "Description",
     "balance": "Balance",
     "noEntries": "No entries in this period."
+  },
+  "auditLog": {
+    "eyebrow": "Security",
+    "title": "Audit Log",
+    "resourceTypePlaceholder": "Resource type (e.g. invoices)",
+    "resourceIdPlaceholder": "Resource ID",
+    "apply": "Filter",
+    "clear": "Clear",
+    "when": "When",
+    "user": "User",
+    "action": "Action",
+    "resource": "Resource",
+    "status": "Status",
+    "ip": "IP",
+    "empty": "No matching entries."
   }
 }

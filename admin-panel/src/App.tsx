@@ -46,6 +46,7 @@ import DebitNoteSettingsPage from './pages/DebitNoteSettingsPage';
 import ReturnsPage from './pages/ReturnsPage';
 import ReturnSettingsPage from './pages/ReturnSettingsPage';
 import AccountingPage from './pages/AccountingPage';
+import AuditLogPage from './pages/AuditLogPage';
 import PriceListPage from './pages/PriceListPage';
 import DevicesPage from './pages/DevicesPage';
 
@@ -112,6 +113,7 @@ export default function App() {
           <Route path="/returns" element={<ReturnsPage />} />
           <Route path="/return-settings" element={<ReturnSettingsPage />} />
           <Route path="/accounting" element={<AccountingPage />} />
+          <Route path="/audit-log" element={<AuditLogPage />} />
           <Route path="/payment-settings" element={<PaymentSettingsPage />} />
           <Route path="/prices" element={<PriceListPage />} />
           <Route path="/devices" element={<DevicesPage />} />

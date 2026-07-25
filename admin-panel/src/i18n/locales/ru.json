@@ -36,7 +36,8 @@
     "debitNoteSettings": "Настройки дебет-нот",
     "returns": "Возвраты",
     "returnSettings": "Настройки возвратов",
-    "accounting": "Бухгалтерия"
+    "accounting": "Бухгалтерия",
+    "auditLog": "Журнал действий"
   },
   "app": {
     "adminConsole": "панель администратора",
@@ -1124,5 +1125,20 @@
     "description": "Описание",
     "balance": "Баланс",
     "noEntries": "За этот период проводок нет."
+  },
+  "auditLog": {
+    "eyebrow": "Безопасность",
+    "title": "Журнал действий",
+    "resourceTypePlaceholder": "Тип ресурса (напр. invoices)",
+    "resourceIdPlaceholder": "ID ресурса",
+    "apply": "Применить",
+    "clear": "Сбросить",
+    "when": "Когда",
+    "user": "Пользователь",
+    "action": "Действие",
+    "resource": "Ресурс",
+    "status": "Статус",
+    "ip": "IP",
+    "empty": "Записей не найдено."
   }
 }

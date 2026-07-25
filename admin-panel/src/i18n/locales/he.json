@@ -36,7 +36,8 @@
     "debitNoteSettings": "הגדרות חיוב",
     "returns": "החזרות",
     "returnSettings": "הגדרות החזרה",
-    "accounting": "הנהלת חשבונות"
+    "accounting": "הנהלת חשבונות",
+    "auditLog": "יומן פעולות"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -1124,5 +1125,20 @@
     "description": "תיאור",
     "balance": "יתרה",
     "noEntries": "אין תנועות בתקופה זו."
+  },
+  "auditLog": {
+    "eyebrow": "אבטחה",
+    "title": "יומן פעולות",
+    "resourceTypePlaceholder": "סוג משאב (למשל invoices)",
+    "resourceIdPlaceholder": "מזהה משאב",
+    "apply": "סינון",
+    "clear": "איפוס",
+    "when": "מתי",
+    "user": "משתמש",
+    "action": "פעולה",
+    "resource": "משאב",
+    "status": "סטטוס",
+    "ip": "IP",
+    "empty": "לא נמצאו רשומות."
   }
 }
