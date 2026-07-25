@@ -1,4 +1,5 @@
-import { Controller, Get, Param, ParseIntPipe, Post, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, ParseIntPipe, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { AccountingService } from './accounting.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -49,5 +50,19 @@ export class AccountingController {
     @Query('to') to: string,
   ) {
     return this.service.generalLedger(user.organizationId, accountId, from, to);
+  }
+
+  /** Requirement #14 ("Excel") — a single workbook with one sheet per
+   * report, rather than separate CSV downloads per report, since an
+   * accountant reviewing the books wants all of them together, not
+   * four separate files to keep track of. */
+  @Get('export.xlsx')
+  async exportXlsx(@CurrentUser() user: ReqUser, @Query('from') from: string, @Query('to') to: string, @Res() res: Response) {
+    const buffer = await this.service.exportWorkbook(user.organizationId, from, to);
+    res.set({
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="accounting_${from}_${to}.xlsx"`,
+    });
+    res.send(buffer);
   }
 }

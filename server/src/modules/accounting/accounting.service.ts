@@ -204,6 +204,58 @@ export class AccountingService {
       };
     });
   }
+  /** Requirement #14 ("Excel") — everything AccountingService already
+   * knows how to compute, as one workbook. Reuses trialBalance/
+   * profitAndLoss/balanceSheet rather than re-deriving anything, so
+   * the numbers in the spreadsheet always match what the admin panel
+   * itself shows for the same period. */
+  async exportWorkbook(organizationId: number | null, from: string, to: string): Promise<Buffer> {
+    const ExcelJS = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
+
+    const trial = await this.trialBalance(organizationId, from, to);
+    const trialSheet = workbook.addWorksheet('Trial Balance');
+    trialSheet.columns = [
+      { header: 'Code', key: 'code', width: 10 },
+      { header: 'Account', key: 'name', width: 30 },
+      { header: 'Type', key: 'type', width: 12 },
+      { header: 'Debit', key: 'debit', width: 14 },
+      { header: 'Credit', key: 'credit', width: 14 },
+    ];
+    trialSheet.addRows(trial);
+
+    const pnl = await this.profitAndLoss(organizationId, from, to);
+    const pnlSheet = workbook.addWorksheet('Profit & Loss');
+    pnlSheet.columns = [{ header: 'Code', key: 'code', width: 10 }, { header: 'Account', key: 'name', width: 30 }, { header: 'Amount', key: 'amount', width: 14 }];
+    pnlSheet.addRow(['', 'REVENUE', '']);
+    pnlSheet.addRows(pnl.revenue);
+    pnlSheet.addRow(['', 'Total Revenue', pnl.totalRevenue]);
+    pnlSheet.addRow([]);
+    pnlSheet.addRow(['', 'EXPENSES', '']);
+    pnlSheet.addRows(pnl.expenses);
+    pnlSheet.addRow(['', 'Total Expenses', pnl.totalExpenses]);
+    pnlSheet.addRow([]);
+    pnlSheet.addRow(['', 'Net Profit', pnl.netProfit]);
+
+    const balance = await this.balanceSheet(organizationId, to);
+    const balanceSheetTab = workbook.addWorksheet('Balance Sheet');
+    balanceSheetTab.columns = [{ header: 'Code', key: 'code', width: 10 }, { header: 'Account', key: 'name', width: 30 }, { header: 'Balance', key: 'balance', width: 14 }];
+    balanceSheetTab.addRow(['', 'ASSETS', '']);
+    balanceSheetTab.addRows(balance.assets);
+    balanceSheetTab.addRow(['', 'Total Assets', balance.totalAssets]);
+    balanceSheetTab.addRow([]);
+    balanceSheetTab.addRow(['', 'LIABILITIES', '']);
+    balanceSheetTab.addRows(balance.liabilities);
+    balanceSheetTab.addRow(['', 'Total Liabilities', balance.totalLiabilities]);
+    balanceSheetTab.addRow([]);
+    balanceSheetTab.addRow(['', 'EQUITY', '']);
+    balanceSheetTab.addRows(balance.equity);
+    balanceSheetTab.addRow(['', 'Retained Earnings', balance.retainedEarnings]);
+    balanceSheetTab.addRow(['', 'Total Equity', balance.totalEquity]);
+
+    const arrayBuffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(arrayBuffer);
+  }
 }
 
 function round2(n: number): number {
