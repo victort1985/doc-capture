@@ -1,0 +1,45 @@
+import {
+  Column, CreateDateColumn, Entity, ManyToOne,
+  PrimaryGeneratedColumn, UpdateDateColumn,
+} from 'typeorm';
+import { Organization } from '../../organizations/entities/organization.entity';
+import { StorageConnection } from '../../storage/entities/storage-connection.entity';
+
+@Entity('return_note_settings')
+export class ReturnNoteSettings {
+  @PrimaryGeneratedColumn()
+  id: number;
+
+  @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
+  organization?: Organization;
+
+  @Column({ type: 'varchar', nullable: true })
+  numberPrefix?: string | null;
+
+  @Column({ type: 'integer', nullable: true })
+  startingNumber?: number | null;
+
+  @Column({ default: false })
+  numberLocked: boolean;
+
+  @Column({ type: 'integer', default: 1 })
+  nextSequence: number;
+
+  @Column({ type: 'text', nullable: true })
+  footerText?: string | null;
+
+  @Column({ type: 'varchar', default: 'classic' })
+  template: string;
+
+  @Column({ default: false })
+  autoSendEmail: boolean;
+
+  @ManyToOne(() => StorageConnection, { nullable: true, onDelete: 'SET NULL' })
+  storageConnection?: StorageConnection;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
+  @UpdateDateColumn()
+  updatedAt: Date;
+}
