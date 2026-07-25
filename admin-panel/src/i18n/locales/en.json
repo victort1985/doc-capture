@@ -394,7 +394,9 @@
     "deleteConfirm": "Delete this group? Users in it keep their accounts but lose the group's permissions (falling back to their role default).",
     "deleteGroup": "Delete group",
     "empty": "No groups yet.",
-    "explanation": "Members of this group get these permissions unless a specific user has their own override set on the Permissions page — a user override always wins over their group."
+    "explanation": "Members of this group get these permissions unless a specific user has their own override set on the Permissions page — a user override always wins over their group.",
+    "seedDefaults": "Add default roles",
+    "seedDefaultsHint": "Creates Бухгалтер/Кассир/Менеджер/Директор groups with sensible starting permissions, skipping any already present."
   },
   "organizations": {
     "eyebrow": "Multi-tenant",

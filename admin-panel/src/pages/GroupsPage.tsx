@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Save, Trash2, X } from 'lucide-react';
+import { Plus, Save, Trash2, X, Sparkles } from 'lucide-react';
 import { apiFetch } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface Group {
   id: number;
@@ -43,6 +44,7 @@ const GROUP_ORDER = Array.from(new Set(FEATURE_KEYS.map((f) => f.group)));
 
 export default function GroupsPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [groups, setGroups] = useState<Group[]>([]);
   const [selId, setSelId] = useState<number | null>(null);
   const [perms, setPerms] = useState<Record<string, boolean>>({});
@@ -86,6 +88,16 @@ export default function GroupsPage() {
     }
   }
 
+  async function seedDefaults() {
+    if (!user?.organizationId) return;
+    try {
+      await apiFetch(`/organizations/${user.organizationId}/seed-default-groups`, { method: 'POST' });
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create default groups');
+    }
+  }
+
   async function removeGroup(id: number) {
     if (!confirm(t('groups.deleteConfirm'))) return;
     await apiFetch(`/groups/${id}`, { method: 'DELETE' });
@@ -117,9 +129,16 @@ export default function GroupsPage() {
           <span className="eyebrow">{t('groups.eyebrow')}</span>
           <h1 className="page-title">{t('nav.groups')}</h1>
         </div>
-        <button onClick={() => setShowNew((v) => !v)}>
-          {showNew ? <><X size={16} /> {t('common.cancel')}</> : <><Plus size={16} /> {t('groups.newGroup')}</>}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {user?.organizationId != null && (
+            <button className="ghost" onClick={seedDefaults} title={t('groups.seedDefaultsHint')}>
+              <Sparkles size={16} /> {t('groups.seedDefaults')}
+            </button>
+          )}
+          <button onClick={() => setShowNew((v) => !v)}>
+            {showNew ? <><X size={16} /> {t('common.cancel')}</> : <><Plus size={16} /> {t('groups.newGroup')}</>}
+          </button>
+        </div>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
