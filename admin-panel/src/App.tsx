@@ -45,6 +45,7 @@ import DebitNotesPage from './pages/DebitNotesPage';
 import DebitNoteSettingsPage from './pages/DebitNoteSettingsPage';
 import ReturnsPage from './pages/ReturnsPage';
 import ReturnSettingsPage from './pages/ReturnSettingsPage';
+import AccountingPage from './pages/AccountingPage';
 import PriceListPage from './pages/PriceListPage';
 import DevicesPage from './pages/DevicesPage';
 
@@ -110,6 +111,7 @@ export default function App() {
           <Route path="/debit-note-settings" element={<DebitNoteSettingsPage />} />
           <Route path="/returns" element={<ReturnsPage />} />
           <Route path="/return-settings" element={<ReturnSettingsPage />} />
+          <Route path="/accounting" element={<AccountingPage />} />
           <Route path="/payment-settings" element={<PaymentSettingsPage />} />
           <Route path="/prices" element={<PriceListPage />} />
           <Route path="/devices" element={<DevicesPage />} />

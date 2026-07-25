@@ -35,7 +35,8 @@
     "debitNotes": "Debit Notes",
     "debitNoteSettings": "Debit Note settings",
     "returns": "Returns",
-    "returnSettings": "Return settings"
+    "returnSettings": "Return settings",
+    "accounting": "Accounting"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1097,5 +1098,31 @@
     "viewPdf": "View PDF",
     "noPdf": "No PDF available.",
     "empty": "No returns yet."
+  },
+  "accounting": {
+    "eyebrow": "Office",
+    "title": "Accounting",
+    "disclaimer": "A simplified starting chart of accounts and auto-posted ledger — not a complete accounting system. Have an accountant review before relying on this for tax filings.",
+    "seedDefaults": "Add default accounts",
+    "from": "From",
+    "to": "To",
+    "trialBalance": "Trial balance",
+    "code": "Code",
+    "account": "Account",
+    "type": "Type",
+    "debit": "Debit",
+    "credit": "Credit",
+    "totals": "Totals",
+    "type_asset": "Asset",
+    "type_liability": "Liability",
+    "type_equity": "Equity",
+    "type_revenue": "Revenue",
+    "type_expense": "Expense",
+    "noAccounts": "No accounts yet — click \"Add default accounts\" to get started.",
+    "back": "Back to trial balance",
+    "date": "Date",
+    "description": "Description",
+    "balance": "Balance",
+    "noEntries": "No entries in this period."
   }
 }

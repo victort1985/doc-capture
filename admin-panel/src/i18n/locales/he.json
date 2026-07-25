@@ -35,7 +35,8 @@
     "debitNotes": "הודעות חיוב",
     "debitNoteSettings": "הגדרות חיוב",
     "returns": "החזרות",
-    "returnSettings": "הגדרות החזרה"
+    "returnSettings": "הגדרות החזרה",
+    "accounting": "הנהלת חשבונות"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -1097,5 +1098,31 @@
     "viewPdf": "צפייה ב-PDF",
     "noPdf": "אין PDF זמין.",
     "empty": "אין עדיין החזרות."
+  },
+  "accounting": {
+    "eyebrow": "משרד",
+    "title": "הנהלת חשבונות",
+    "disclaimer": "תוכנית חשבונות התחלתית מפושטת ורישום אוטומטי — לא מערכת הנהלת חשבונות מלאה. יש לוודא מול רואה חשבון לפני הסתמכות על כך לצורכי דיווח מס.",
+    "seedDefaults": "הוספת חשבונות ברירת מחדל",
+    "from": "מ-",
+    "to": "עד",
+    "trialBalance": "מאזן בוחן",
+    "code": "קוד",
+    "account": "חשבון",
+    "type": "סוג",
+    "debit": "חובה",
+    "credit": "זכות",
+    "totals": "סה\"כ",
+    "type_asset": "נכס",
+    "type_liability": "התחייבות",
+    "type_equity": "הון",
+    "type_revenue": "הכנסה",
+    "type_expense": "הוצאה",
+    "noAccounts": "אין עדיין חשבונות — לחצו \"הוספת חשבונות ברירת מחדל\".",
+    "back": "חזרה למאזן הבוחן",
+    "date": "תאריך",
+    "description": "תיאור",
+    "balance": "יתרה",
+    "noEntries": "אין תנועות בתקופה זו."
   }
 }
