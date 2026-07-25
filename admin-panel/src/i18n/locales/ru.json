@@ -31,7 +31,9 @@
     "paymentSettings": "Настройки оплаты",
     "financialReports": "Финансовые отчёты",
     "creditNotes": "Кредит-ноты",
-    "creditNoteSettings": "Настройки кредит-нот"
+    "creditNoteSettings": "Настройки кредит-нот",
+    "debitNotes": "Дебет-ноты",
+    "debitNoteSettings": "Настройки дебет-нот"
   },
   "app": {
     "adminConsole": "панель администратора",
@@ -1021,5 +1023,31 @@
     "noPdf": "PDF недоступен.",
     "empty": "Кредит-нот пока нет.",
     "defaultItemDescription": "Исправление счёта {{number}}"
+  },
+  "debitNotes": {
+    "eyebrow": "Офис",
+    "title": "Дебет-ноты",
+    "legalNotice": "Дебет-нота (הודעת חיוב) увеличивает сумму к оплате по уже выставленному счёту. Оригинал счёта не редактируется.",
+    "create": "Новая дебет-нота",
+    "createTitle": "Создание дебет-ноты",
+    "pickInvoiceLabel": "К какому счёту относится?",
+    "searchPlaceholder": "Поиск по номеру или клиенту…",
+    "noInvoicesFound": "Счета не найдены.",
+    "correcting": "Относится к",
+    "changeInvoice": "Изменить",
+    "reasonLabel": "Причина (обязательно)",
+    "reasonPlaceholder": "Почему выставляется дебет-нота?",
+    "itemDescription": "Описание",
+    "addItem": "Добавить строку",
+    "submit": "Выставить дебет-ноту",
+    "number": "Номер",
+    "client": "Клиент",
+    "reason": "Причина",
+    "invoice": "Счёт",
+    "total": "Сумма",
+    "viewPdf": "Открыть PDF",
+    "noPdf": "PDF недоступен.",
+    "empty": "Дебет-нот пока нет.",
+    "defaultItemDescription": "Доначисление по счёту {{number}}"
   }
 }

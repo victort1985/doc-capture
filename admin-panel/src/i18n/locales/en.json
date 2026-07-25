@@ -31,7 +31,9 @@
     "paymentSettings": "Payment settings",
     "financialReports": "Financial Reports",
     "creditNotes": "Credit Notes",
-    "creditNoteSettings": "Credit Note settings"
+    "creditNoteSettings": "Credit Note settings",
+    "debitNotes": "Debit Notes",
+    "debitNoteSettings": "Debit Note settings"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1021,5 +1023,31 @@
     "noPdf": "No PDF available.",
     "empty": "No credit notes yet.",
     "defaultItemDescription": "Correction of invoice {{number}}"
+  },
+  "debitNotes": {
+    "eyebrow": "Office",
+    "title": "Debit Notes",
+    "legalNotice": "A debit note (הודעת חיוב) increases what a client owes on an already-issued invoice — the original invoice is never edited.",
+    "create": "New debit note",
+    "createTitle": "Create debit note",
+    "pickInvoiceLabel": "Which invoice does this relate to?",
+    "searchPlaceholder": "Search by number or client…",
+    "noInvoicesFound": "No matching invoices.",
+    "correcting": "Relates to",
+    "changeInvoice": "Change",
+    "reasonLabel": "Reason (required)",
+    "reasonPlaceholder": "Why is this being issued?",
+    "itemDescription": "Description",
+    "addItem": "Add line",
+    "submit": "Issue debit note",
+    "number": "Number",
+    "client": "Client",
+    "reason": "Reason",
+    "invoice": "Invoice",
+    "total": "Total",
+    "viewPdf": "View PDF",
+    "noPdf": "No PDF available.",
+    "empty": "No debit notes yet.",
+    "defaultItemDescription": "Additional charge on invoice {{number}}"
   }
 }

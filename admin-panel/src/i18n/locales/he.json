@@ -31,7 +31,9 @@
     "paymentSettings": "הגדרות תשלום",
     "financialReports": "דוחות כספיים",
     "creditNotes": "הודעות זיכוי",
-    "creditNoteSettings": "הגדרות זיכוי"
+    "creditNoteSettings": "הגדרות זיכוי",
+    "debitNotes": "הודעות חיוב",
+    "debitNoteSettings": "הגדרות חיוב"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -1021,5 +1023,31 @@
     "noPdf": "אין PDF זמין.",
     "empty": "אין עדיין הודעות זיכוי.",
     "defaultItemDescription": "תיקון לחשבונית {{number}}"
+  },
+  "debitNotes": {
+    "eyebrow": "משרד",
+    "title": "הודעות חיוב",
+    "legalNotice": "הודעת חיוב מגדילה את הסכום לתשלום בחשבונית שהופקה כבר — החשבונית המקורית אינה נערכת.",
+    "create": "הודעת חיוב חדשה",
+    "createTitle": "יצירת הודעת חיוב",
+    "pickInvoiceLabel": "לאיזו חשבונית זה מתייחס?",
+    "searchPlaceholder": "חיפוש לפי מספר או לקוח…",
+    "noInvoicesFound": "לא נמצאו חשבוניות.",
+    "correcting": "מתייחס ל",
+    "changeInvoice": "החלפה",
+    "reasonLabel": "סיבה (חובה)",
+    "reasonPlaceholder": "מדוע מונפקת הודעת החיוב?",
+    "itemDescription": "תיאור",
+    "addItem": "הוספת שורה",
+    "submit": "הנפקת הודעת חיוב",
+    "number": "מספר",
+    "client": "לקוח",
+    "reason": "סיבה",
+    "invoice": "חשבונית",
+    "total": "סכום",
+    "viewPdf": "צפייה ב-PDF",
+    "noPdf": "אין PDF זמין.",
+    "empty": "אין עדיין הודעות חיוב.",
+    "defaultItemDescription": "חיוב נוסף לחשבונית {{number}}"
   }
 }
