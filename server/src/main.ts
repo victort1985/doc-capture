@@ -236,6 +236,22 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
   app.setGlobalPrefix('api');
 
+  // Requirement #15 ("Желательно предоставить REST API") — auto-
+  // generated from the same @Controller/@Body/DTO decorators every
+  // endpoint already has, so this stays in sync with the actual API
+  // automatically rather than being a hand-maintained document that
+  // drifts. Served at /api-docs, same JWT bearer auth as the API
+  // itself (paste a token in Swagger UI's "Authorize" button to try
+  // endpoints directly from the docs page).
+  const { DocumentBuilder, SwaggerModule } = await import('@nestjs/swagger');
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Vixor ERP API')
+    .setDescription('REST API for Vixor ERP — every endpoint below is live, not illustrative. Authenticate with a Bearer token from POST /api/auth/login.')
+    .setVersion('1.0')
+    .addBearerAuth()
+    .build();
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api-docs', app, swaggerDocument);
   const port = process.env.PORT || 3000;
   await app.listen(port);
   // eslint-disable-next-line no-console
