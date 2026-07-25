@@ -915,7 +915,7 @@ class _DeliveryNoteFormScreenState extends State<DeliveryNoteFormScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: isSigned
+      bottomNavigationBar: _note != null
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(16),
