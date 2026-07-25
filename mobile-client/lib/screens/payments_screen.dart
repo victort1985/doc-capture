@@ -105,7 +105,8 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.paymentsTitle)),
+      appBar: AppBar(title: Text(l10n.paymentsTitle), backgroundColor: Colors.transparent),
+      backgroundColor: Colors.transparent,
       floatingActionButton: FloatingActionButton(onPressed: _openCreate, child: const Icon(Icons.add)),
       body: RefreshIndicator(
         onRefresh: _load,

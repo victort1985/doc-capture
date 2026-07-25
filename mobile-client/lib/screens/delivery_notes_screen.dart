@@ -61,6 +61,7 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
       backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)?.deliveryNotesTitle ?? 'Delivery Notes'),
+        backgroundColor: Colors.transparent,
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {

@@ -105,41 +105,45 @@ class _OrdersScreenState extends State<OrdersScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.camera_alt_outlined, size: 18),
-                  label: Text(l10n.sourceCamera, overflow: TextOverflow.ellipsis),
-                  onPressed: _uploading ? null : _pickFromCamera,
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(title: Text(l10n.navOrders), backgroundColor: Colors.transparent),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                    label: Text(l10n.sourceCamera, overflow: TextOverflow.ellipsis),
+                    onPressed: _uploading ? null : _pickFromCamera,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.photo_library_outlined, size: 18),
-                  label: Text(l10n.calendarGallery, overflow: TextOverflow.ellipsis),
-                  onPressed: _uploading ? null : _pickFromGallery,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.photo_library_outlined, size: 18),
+                    label: Text(l10n.calendarGallery, overflow: TextOverflow.ellipsis),
+                    onPressed: _uploading ? null : _pickFromGallery,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: const Icon(Icons.folder_open_outlined, size: 18),
-                  label: Text(l10n.sourceFiles, overflow: TextOverflow.ellipsis),
-                  onPressed: _uploading ? null : _pickFromFiles,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.folder_open_outlined, size: 18),
+                    label: Text(l10n.sourceFiles, overflow: TextOverflow.ellipsis),
+                    onPressed: _uploading ? null : _pickFromFiles,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        if (_uploading) const LinearProgressIndicator(minHeight: 2),
-        Expanded(child: _buildList(l10n)),
-      ],
+          if (_uploading) const LinearProgressIndicator(minHeight: 2),
+          Expanded(child: _buildList(l10n)),
+        ],
+      ),
     );
   }
 
