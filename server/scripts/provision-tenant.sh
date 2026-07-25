@@ -164,4 +164,9 @@ Done. Next steps:
 
 Tenant config: $TENANT_DIR/.env
 Logs:          journalctl -u doc-capture@$SLUG -f
+
+5. If this is the first tenant on this server, set up automated daily
+   backups (requirement #16 — not per-tenant, covers every tenant
+   automatically): add to root's crontab (sudo crontab -e):
+     0 3 * * * /opt/doc-capture/app/server/scripts/backup-all-tenants.sh >> /var/log/vixor-backup.log 2>&1
 EOF
