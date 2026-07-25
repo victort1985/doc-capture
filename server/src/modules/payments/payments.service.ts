@@ -60,7 +60,13 @@ export class PaymentsService {
     return payment;
   }
 
-  async create(organizationId: number | null, userId: number, dto: CreatePaymentDto): Promise<Payment> {
+  /** @returns the saved payment plus the ONE-TIME original receipt PDF
+   * (base64) — this is the only place in the whole API surface that
+   * ever hands out the unstamped original; every other read of this
+   * payment's PDF (GET /payments/:id/pdf) always returns the נאמן
+   * למקור-stamped copy from here on, per the legal requirement that
+   * an original may only be issued once. */
+  async create(organizationId: number | null, userId: number, dto: CreatePaymentDto): Promise<{ payment: Payment; originalPdfBase64: string | null }> {
     const chainId = await this.resolveChainIdForCreate(dto.invoiceId, dto.chainId);
     const payment = this.repo.create({
       paymentNumber: await this.generatePaymentNumber(organizationId),
@@ -86,7 +92,8 @@ export class PaymentsService {
       createdBy: { id: userId } as any,
     });
     const saved = await this.repo.save(payment);
-    saved.storagePath = await this.tryGeneratePdf(saved, organizationId);
+    const { path, bytes } = await this.tryGeneratePdf(saved, organizationId);
+    saved.storagePath = path;
     await this.repo.save(saved);
 
     // Recording this payment is what completes the chain (see
@@ -103,7 +110,7 @@ export class PaymentsService {
       }
     }
 
-    return saved;
+    return { payment: saved, originalPdfBase64: bytes ? bytes.toString('base64') : null };
   }
 
   /** Joins the chain of the linked invoice, back-filling it with a
@@ -147,19 +154,19 @@ export class PaymentsService {
     });
   }
 
-  private async tryGeneratePdf(payment: Payment, organizationId: number | null, throwOnError = false): Promise<string | null> {
+  private async tryGeneratePdf(payment: Payment, organizationId: number | null, throwOnError = false): Promise<{ path: string | null; bytes: Buffer | null }> {
     if (organizationId == null) {
       if (throwOnError) {
         throw new BadRequestException(
           'This account isn\'t assigned to an organization, so there\'s no Payment settings (template, storage) to generate against.',
         );
       }
-      return null;
+      return { path: null, bytes: null };
     }
     const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection', 'organization'] });
     if (!settings?.storageConnection) {
       if (throwOnError) throw new BadRequestException('No storage connection is configured in Payment settings.');
-      return null;
+      return { path: null, bytes: null };
     }
 
     try {
@@ -169,13 +176,25 @@ export class PaymentsService {
       await adapter.write(relativePath, pdfBytes);
 
       // The very first successful render is "the original" per the
-      // business rule that it only ever goes out once, at creation.
-      if (!payment.originalIssuedAt) {
+      // business rule that it only ever goes out once, at creation —
+      // capture that BEFORE updating it, so the email-send below can
+      // tell "this is genuinely the first time" apart from "an admin
+      // is just regenerating the stored file later" (e.g. after a
+      // template/logo change) without re-emailing the client each time.
+      const isFirstIssuance = !payment.originalIssuedAt;
+      if (isFirstIssuance) {
         payment.originalIssuedAt = new Date();
         await this.repo.update(payment.id, { originalIssuedAt: payment.originalIssuedAt });
       }
 
-      if (settings.autoSendEmail) {
+      // Emailing the original is no longer gated by the org's general
+      // autoSendEmail toggle — per Israeli law the original may only
+      // be issued once, and delivering it to the email given at
+      // payment time (see CreatePaymentDto.clientEmail) IS that one
+      // issuance, not an optional convenience send like it is for
+      // other document types. Only fires on the actual first issuance,
+      // never on a later admin-triggered regeneration of the file.
+      if (isFirstIssuance && payment.clientEmail) {
         this.documentSendingService
           .sendDocument({
             clientEmail: payment.clientEmail,
@@ -186,10 +205,10 @@ export class PaymentsService {
           .catch(() => {});
       }
 
-      return relativePath;
+      return { path: relativePath, bytes: pdfBytes };
     } catch (err) {
       if (throwOnError) throw err;
-      return null;
+      return { path: null, bytes: null };
     }
   }
 
@@ -230,7 +249,8 @@ export class PaymentsService {
 
   async regeneratePdf(id: number, organizationId: number | null): Promise<Payment> {
     const payment = await this.findOne(id, organizationId);
-    payment.storagePath = await this.tryGeneratePdf(payment, payment.organization?.id ?? organizationId, true);
+    const { path } = await this.tryGeneratePdf(payment, payment.organization?.id ?? organizationId, true);
+    payment.storagePath = path;
     return this.repo.save(payment);
   }
 
@@ -238,21 +258,25 @@ export class PaymentsService {
    * renders a fresh copy with the "נאמן למקור" (certified true copy)
    * stamp overlaid instead — an explicit, opt-in action (see the
    * class doc comment on Payment.originalIssuedAt), never automatic. */
-  async getPdfBuffer(id: number, organizationId: number | null, asCopy = false): Promise<Buffer> {
+  /** Always returns a freshly-rendered "נאמן למקור" (certified true
+   * copy) — the plain, unstamped original is only ever available once,
+   * as part of the create() response at the moment the payment is
+   * recorded (see PaymentsService.create() and
+   * PaymentsController.create()). Under Israeli law an original
+   * receipt may not be reissued a second time, so there's
+   * deliberately no code path here that can return the stored
+   * original bytes again after creation — not even for the org's own
+   * admin. [asCopy] is kept as a parameter for backward source
+   * compatibility with existing callers but no longer changes the
+   * behavior; every call is "as copy" now. */
+  async getPdfBuffer(id: number, organizationId: number | null, _asCopy = true): Promise<Buffer> {
     const payment = await this.findOne(id, organizationId);
     const settings = await this.settingsRepo.findOne({
       where: { organization: { id: payment.organization?.id } },
       relations: ['storageConnection', 'organization'],
     });
     if (!settings?.storageConnection) throw new NotFoundException('Storage connection is no longer configured');
-
-    if (asCopy) {
-      return this.renderPdfBytes(payment, settings, 'נאמן למקור');
-    }
-
-    if (!payment.storagePath) throw new NotFoundException('No PDF has been generated for this payment yet');
-    const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
-    return adapter.read(payment.storagePath);
+    return this.renderPdfBytes(payment, settings, 'נאמן למקור');
   }
 
   async getChainSummaryPdfBuffer(id: number, organizationId: number | null): Promise<Buffer> {
