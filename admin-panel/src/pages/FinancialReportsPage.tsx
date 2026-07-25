@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Building2, TrendingUp, Receipt, CreditCard, AlertTriangle, Calendar } from 'lucide-react';
-import { apiFetch } from '../services/api';
+import { Building2, TrendingUp, Receipt, CreditCard, AlertTriangle, Calendar, Download } from 'lucide-react';
+import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 interface Org { id: number; name: string; }
@@ -105,14 +105,30 @@ export default function FinancialReportsPage() {
     <div className="page">
       <div className="topbar">
         <div><div className="eyebrow">{t('financialReports.eyebrow')}</div><h1>{t('financialReports.title')}</h1></div>
-        {isSuperAdmin && orgs.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Building2 size={15} style={{ color: 'var(--ink-soft)' }} />
-            <select value={selOrgId ?? ''} onChange={(e) => setSelOrgId(Number(e.target.value))} style={{ minWidth: 160 }}>
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-          </div>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {isSuperAdmin && orgs.length > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Building2 size={15} style={{ color: 'var(--ink-soft)' }} />
+              <select value={selOrgId ?? ''} onChange={(e) => setSelOrgId(Number(e.target.value))} style={{ minWidth: 160 }}>
+                {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              </select>
+            </div>
+          )}
+          <button type="button" className="ghost" onClick={async () => {
+            const qs = new URLSearchParams({ from, to });
+            if (isSuperAdmin && selOrgId) qs.set('orgId', String(selOrgId));
+            try {
+              const url = await apiFetchBlob(`/financial-reports/export.csv?${qs.toString()}`);
+              const a = document.createElement('a');
+              a.href = url; a.download = `invoices_${from}_${to}.csv`;
+              a.click();
+            } catch (e) {
+              alert(e instanceof Error ? e.message : 'Export failed');
+            }
+          }}>
+            <Download size={15} /> {t('financialReports.exportCsv')}
+          </button>
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: 16, padding: 16 }}>

@@ -1015,7 +1015,8 @@
     "agingBucket_days31to60": "31–60 ימים",
     "agingBucket_days61to90": "61–90 ימים",
     "agingBucket_days91to120": "91–120 ימים",
-    "agingBucket_over120": "מעל 120 ימים"
+    "agingBucket_over120": "מעל 120 ימים",
+    "exportCsv": "ייצוא ל-CSV"
   },
   "creditNotes": {
     "eyebrow": "משרד",

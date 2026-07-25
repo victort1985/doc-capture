@@ -1015,7 +1015,8 @@
     "agingBucket_days31to60": "31–60 дней",
     "agingBucket_days61to90": "61–90 дней",
     "agingBucket_days91to120": "91–120 дней",
-    "agingBucket_over120": "Более 120 дней"
+    "agingBucket_over120": "Более 120 дней",
+    "exportCsv": "Экспорт в CSV"
   },
   "creditNotes": {
     "eyebrow": "Офис",
