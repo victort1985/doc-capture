@@ -403,7 +403,14 @@
     "orgName": "Название организации",
     "logo": "Логотип",
     "uploadLogo": "Загрузить логотип",
-    "empty": "Организаций пока нет"
+    "empty": "Организаций пока нет",
+    "businessType": "Тип предприятия",
+    "taxId": "ח.פ. / ИНН",
+    "businessType_osek_patur": "עוסק פטור (осек патур)",
+    "businessType_osek_murshe": "עוסק מורשה (осек мурше)",
+    "businessType_chevra": "חברה בע\"מ (ООО)",
+    "businessType_shutafut": "שותפות (партнёрство)",
+    "businessType_amuta": "עמותה (некоммерч.)"
   },
   "stats": {
     "eyebrow": "Аналитика",

@@ -403,7 +403,14 @@
     "orgName": "שם הארגון",
     "logo": "לוגו",
     "uploadLogo": "העלאת לוגו",
-    "empty": "אין עדיין ארגונים"
+    "empty": "אין עדיין ארגונים",
+    "businessType": "סוג עסק",
+    "taxId": "ח.פ. / ת.ז.",
+    "businessType_osek_patur": "עוסק פטור",
+    "businessType_osek_murshe": "עוסק מורשה",
+    "businessType_chevra": "חברה בע\"מ",
+    "businessType_shutafut": "שותפות",
+    "businessType_amuta": "עמותה"
   },
   "stats": {
     "eyebrow": "אנליטיקה",

@@ -403,7 +403,14 @@
     "orgName": "Organization name",
     "logo": "Logo",
     "uploadLogo": "Upload logo",
-    "empty": "No organizations yet"
+    "empty": "No organizations yet",
+    "businessType": "Business type",
+    "taxId": "ח.פ. / Tax ID",
+    "businessType_osek_patur": "עוסק פטור",
+    "businessType_osek_murshe": "עוסק מורשה",
+    "businessType_chevra": "חברה בע\"מ",
+    "businessType_shutafut": "שותפות",
+    "businessType_amuta": "עמותה"
   },
   "stats": {
     "eyebrow": "Analytics",

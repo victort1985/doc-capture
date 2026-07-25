@@ -7,7 +7,11 @@ interface Org {
   id: number;
   name: string;
   createdAt: string;
+  businessType?: string | null;
+  taxId?: string | null;
 }
+
+const BUSINESS_TYPES = ['osek_patur', 'osek_murshe', 'chevra', 'shutafut', 'amuta'];
 
 function LogoThumb({ orgId, version }: { orgId: number; version: number }) {
   const [url, setUrl] = useState<string | null>(null);
@@ -131,6 +135,8 @@ export default function OrganizationsPage() {
             <tr>
               <th>{t('organizations.logo')}</th>
               <th>{t('common.name')}</th>
+              <th>{t('organizations.businessType')}</th>
+              <th>{t('organizations.taxId')}</th>
               <th>{t('common.createdAt')}</th>
               <th />
             </tr>
@@ -160,6 +166,32 @@ export default function OrganizationsPage() {
                     />
                     <Pencil size={13} style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', color: 'var(--ink-soft)', pointerEvents: 'none' }} />
                   </div>
+                </td>
+                <td>
+                  <select
+                    defaultValue={o.businessType ?? ''}
+                    onChange={async (e) => {
+                      await apiFetch(`/organizations/${o.id}`, { method: 'PATCH', body: JSON.stringify({ businessType: e.target.value || null }) });
+                      load();
+                    }}
+                  >
+                    <option value="">—</option>
+                    {BUSINESS_TYPES.map((bt) => <option key={bt} value={bt}>{t(`organizations.businessType_${bt}`)}</option>)}
+                  </select>
+                </td>
+                <td>
+                  <input
+                    defaultValue={o.taxId ?? ''}
+                    placeholder="ח.פ. / ת.ז."
+                    onBlur={async (e) => {
+                      const v = e.target.value.trim();
+                      if (v !== (o.taxId ?? '')) {
+                        await apiFetch(`/organizations/${o.id}`, { method: 'PATCH', body: JSON.stringify({ taxId: v || null }) });
+                        load();
+                      }
+                    }}
+                    style={{ border: '1px solid var(--border)', background: 'var(--surface)', padding: '6px 8px', borderRadius: 6, width: 110 }}
+                  />
                 </td>
                 <td className="mono">{new Date(o.createdAt).toLocaleDateString()}</td>
                 <td>
