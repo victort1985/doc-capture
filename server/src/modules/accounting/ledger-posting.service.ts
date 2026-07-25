@@ -61,4 +61,33 @@ export class LedgerPostingService {
     const revenue = await this.accounting.getSystemAccount(organizationId, '4000');
     await this.accounting.postEntry(organizationId, date, `חיוב נוסף — ${clientName}`, ar.id, revenue.id, amount, 'debit-note', debitNoteId);
   }
+
+  /** Direct expense: paid immediately, debit General Expenses, credit
+   * whichever of Cash/Bank it came from. */
+  async postExpense(organizationId: number, expenseId: number, date: string, amount: number, method: 'cash' | 'bank', description: string): Promise<void> {
+    const expenses = await this.accounting.getSystemAccount(organizationId, '5000');
+    const cashLike = method === 'cash'
+      ? await this.accounting.getSystemAccount(organizationId, '1000')
+      : await this.accounting.getSystemAccount(organizationId, '1010');
+    await this.accounting.postEntry(organizationId, date, `הוצאה — ${description}`, expenses.id, cashLike.id, amount, 'expense', expenseId);
+  }
+
+  /** Supplier invoice: owed the moment it's recorded (debit Purchases,
+   * credit Accounts Payable) — independent of when it's actually
+   * paid, which posts separately via postSupplierPayment. */
+  async postSupplierInvoice(organizationId: number, supplierInvoiceId: number, date: string, amount: number, supplierName: string): Promise<void> {
+    const purchases = await this.accounting.getSystemAccount(organizationId, '5100');
+    const ap = await this.accounting.getSystemAccount(organizationId, '2000');
+    await this.accounting.postEntry(organizationId, date, `חשבונית ספק — ${supplierName}`, purchases.id, ap.id, amount, 'supplier-invoice', supplierInvoiceId);
+  }
+
+  /** Marking a supplier invoice paid: debit Accounts Payable (what's
+   * owed goes down), credit Cash/Bank (money actually left). */
+  async postSupplierPayment(organizationId: number, supplierInvoiceId: number, date: string, amount: number, method: 'cash' | 'bank', supplierName: string): Promise<void> {
+    const ap = await this.accounting.getSystemAccount(organizationId, '2000');
+    const cashLike = method === 'cash'
+      ? await this.accounting.getSystemAccount(organizationId, '1000')
+      : await this.accounting.getSystemAccount(organizationId, '1010');
+    await this.accounting.postEntry(organizationId, date, `תשלום לספק — ${supplierName}`, ap.id, cashLike.id, amount, 'supplier-payment', supplierInvoiceId);
+  }
 }

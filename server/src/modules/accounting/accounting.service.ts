@@ -15,9 +15,11 @@ const DEFAULT_ACCOUNTS: { code: string; name: string; type: AccountType }[] = [
   { code: '1010', name: 'בנק (Bank)', type: AccountType.ASSET },
   { code: '1100', name: 'לקוחות (Accounts Receivable)', type: AccountType.ASSET },
   { code: '2100', name: 'מע"מ עסקאות (VAT Payable)', type: AccountType.LIABILITY },
+  { code: '2000', name: 'ספקים (Accounts Payable)', type: AccountType.LIABILITY },
   { code: '3000', name: 'הון עצמי (Owner\'s Equity)', type: AccountType.EQUITY },
   { code: '4000', name: 'הכנסות ממכירות (Sales Revenue)', type: AccountType.REVENUE },
   { code: '5000', name: 'הוצאות כלליות (General Expenses)', type: AccountType.EXPENSE },
+  { code: '5100', name: 'קניות מספקים (Purchases)', type: AccountType.EXPENSE },
 ];
 
 @Injectable()
