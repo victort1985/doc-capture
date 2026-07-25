@@ -21,6 +21,22 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
       children: [
         Card(
+          color: Colors.amber.shade50,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('DEBUG — временно, для диагностики ToS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                const SizedBox(height: 6),
+                Text('user id: ${appState.currentUser?.id}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+                Text('tosAccepted (from server): ${appState.currentUser?.tosAccepted}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
