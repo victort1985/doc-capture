@@ -930,6 +930,14 @@
     "empty": "אין עדיין תשלומים.",
     "noPdf": "טרם נוצרה קבלה.",
     "loading": "טוען…",
-    "refresh": "רענון"
+    "refresh": "רענון",
+    "methodCreditCard": "כרטיס אשראי",
+    "methodBankTransfer": "העברה בנקאית",
+    "methodCheck": "צ'ק",
+    "methodBit": "ביט",
+    "methodStandingOrder": "הרשאה לחיוב חשבון",
+    "viewCopy": "הדפסה כעותק נאמן למקור",
+    "viewSummary": "הורדת סיכום מלא של ההזמנה",
+    "summaryUnavailable": "סיכום ההזמנה עדיין לא זמין."
   }
 }

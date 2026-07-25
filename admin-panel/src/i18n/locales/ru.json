@@ -930,6 +930,14 @@
     "empty": "Пока нет оплат.",
     "noPdf": "Квитанция ещё не сгенерирована.",
     "loading": "Загрузка…",
-    "refresh": "Обновить"
+    "refresh": "Обновить",
+    "methodCreditCard": "Банковская карта",
+    "methodBankTransfer": "Банковский перевод",
+    "methodCheck": "Чек",
+    "methodBit": "Bit",
+    "methodStandingOrder": "Постоянное поручение",
+    "viewCopy": "Печать как заверенная копия (נאמן למקור)",
+    "viewSummary": "Скачать сводный документ по заказу",
+    "summaryUnavailable": "Сводный документ ещё не готов."
   }
 }

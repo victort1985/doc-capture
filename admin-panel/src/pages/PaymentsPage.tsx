@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, FileText, Building2, CreditCard, Banknote, ArrowLeftRight } from 'lucide-react';
+import { Trash2, RefreshCw, FileText, Building2, CreditCard, Banknote, ArrowLeftRight, Receipt, Smartphone, Repeat, ShieldCheck, PackageOpen } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -10,14 +10,16 @@ interface PaymentRow {
   date?: string;
   clientName: string;
   amount: number;
-  method: 'card' | 'cash' | 'transfer';
+  method: 'cash' | 'credit_card' | 'bank_transfer' | 'check' | 'bit' | 'standing_order';
   invoiceId?: number;
+  chainSummaryPath?: string | null;
   createdAt: string;
 }
 interface Org { id: number; name: string; }
 
 const methodIcon: Record<string, JSX.Element> = {
-  card: <CreditCard size={15} />, cash: <Banknote size={15} />, transfer: <ArrowLeftRight size={15} />,
+  credit_card: <CreditCard size={15} />, cash: <Banknote size={15} />, bank_transfer: <ArrowLeftRight size={15} />,
+  check: <Receipt size={15} />, bit: <Smartphone size={15} />, standing_order: <Repeat size={15} />,
 };
 
 export default function PaymentsPage() {
@@ -31,7 +33,8 @@ export default function PaymentsPage() {
   const [error, setError] = useState<string | null>(null);
 
   const methodLabel: Record<string, string> = {
-    card: t('payments.methodCard'), cash: t('payments.methodCash'), transfer: t('payments.methodTransfer'),
+    credit_card: t('payments.methodCreditCard'), cash: t('payments.methodCash'), bank_transfer: t('payments.methodBankTransfer'),
+    check: t('payments.methodCheck'), bit: t('payments.methodBit'), standing_order: t('payments.methodStandingOrder'),
   };
 
   useEffect(() => {
@@ -59,6 +62,22 @@ export default function PaymentsPage() {
       window.open(url, '_blank');
     } catch (e) {
       alert(e instanceof Error ? e.message : t('payments.noPdf'));
+    }
+  }
+  async function viewCopyPdf(id: number) {
+    try {
+      const url = await apiFetchBlob(`/payments/${id}/pdf?copy=true`);
+      window.open(url, '_blank');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t('payments.noPdf'));
+    }
+  }
+  async function viewSummaryPdf(id: number) {
+    try {
+      const url = await apiFetchBlob(`/payments/${id}/chain-summary-pdf`);
+      window.open(url, '_blank');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : t('payments.summaryUnavailable'));
     }
   }
   async function regeneratePdf(id: number) {
@@ -118,6 +137,10 @@ export default function PaymentsPage() {
                 <td style={{ padding: '8px 12px' }}>{p.date}</td>
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                   <button type="button" onClick={() => viewPdf(p.id)} title={t('payments.viewPdf')} style={{ marginRight: 8 }}><FileText size={15} /></button>
+                  <button type="button" onClick={() => viewCopyPdf(p.id)} title={t('payments.viewCopy')} style={{ marginRight: 8 }}><ShieldCheck size={15} /></button>
+                  {p.chainSummaryPath && (
+                    <button type="button" onClick={() => viewSummaryPdf(p.id)} title={t('payments.viewSummary')} style={{ marginRight: 8 }}><PackageOpen size={15} /></button>
+                  )}
                   <button type="button" onClick={() => regeneratePdf(p.id)} title={t('payments.regeneratePdf')} style={{ marginRight: 8 }}><RefreshCw size={15} /></button>
                   <button type="button" onClick={() => remove(p.id, p.clientName)} title={t('payments.delete')} style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                 </td>

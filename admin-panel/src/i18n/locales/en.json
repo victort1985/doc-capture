@@ -930,6 +930,14 @@
     "empty": "No payments yet.",
     "noPdf": "No receipt available yet.",
     "loading": "Loading…",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "methodCreditCard": "Credit card",
+    "methodBankTransfer": "Bank transfer",
+    "methodCheck": "Check",
+    "methodBit": "Bit",
+    "methodStandingOrder": "Standing order",
+    "viewCopy": "Print as certified copy (נאמן למקור)",
+    "viewSummary": "Download full order summary",
+    "summaryUnavailable": "Order summary not available yet."
   }
 }
