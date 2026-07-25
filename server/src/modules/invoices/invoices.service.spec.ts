@@ -8,6 +8,7 @@ import { Quote } from '../quotes/entities/quote.entity';
 import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
 import { StorageService } from '../storage/storage.service';
 import { DocumentSendingService } from '../document-email/document-sending.service';
+import { LedgerPostingService } from '../accounting/ledger-posting.service';
 
 describe('InvoicesService number generation (private generateInvoiceNumber, tested via bracket access)', () => {
   let service: InvoicesService;
@@ -33,6 +34,7 @@ describe('InvoicesService number generation (private generateInvoiceNumber, test
         { provide: getRepositoryToken(DeliveryNote), useValue: {} },
         { provide: StorageService, useValue: {} },
         { provide: DocumentSendingService, useValue: {} },
+        { provide: LedgerPostingService, useValue: { postInvoice: jest.fn() } },
       ],
     }).compile();
 

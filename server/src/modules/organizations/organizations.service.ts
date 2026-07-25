@@ -5,6 +5,7 @@ import { Organization } from './entities/organization.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { UserGroup } from '../users/entities/user-group.entity';
+import { AccountingService } from '../accounting/accounting.service';
 
 /** Requirement #20 ("бухгалтер, кассир, менеджер, директор,
  * администратор с разграничением прав") — "администратор" is the
@@ -56,6 +57,7 @@ export class OrganizationsService {
   constructor(
     @InjectRepository(Organization) private readonly orgsRepo: Repository<Organization>,
     @InjectRepository(UserGroup) private readonly groupsRepo: Repository<UserGroup>,
+    private readonly accountingService: AccountingService,
   ) {}
 
   findAll(): Promise<Organization[]> {
@@ -75,6 +77,7 @@ export class OrganizationsService {
     if (existing) throw new ConflictException('An organization with this name already exists');
     const org = await this.orgsRepo.save(this.orgsRepo.create({ name: dto.name, businessType: dto.businessType, taxId: dto.taxId }));
     await this.seedDefaultGroups(org.id);
+    await this.accountingService.seedDefaultAccounts(org.id);
     return org;
   }
 

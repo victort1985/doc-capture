@@ -4,10 +4,11 @@ import { Repository } from 'typeorm';
 import * as crypto from 'crypto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoiceSettings } from './entities/invoice-settings.entity';
+import { LedgerPostingService } from '../accounting/ledger-posting.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
-import { generateDocumentPdf } from '../documents/document-pdf.util';
+import { generateDocumentPdf, VAT_RATE } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
 import { Quote } from '../quotes/entities/quote.entity';
 import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
@@ -22,6 +23,7 @@ export class InvoicesService {
     @InjectRepository(DeliveryNote) private readonly deliveryNotesRepo: Repository<DeliveryNote>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
+    private readonly ledgerPostingService: LedgerPostingService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -86,7 +88,21 @@ export class InvoicesService {
     });
     const saved = await this.repo.save(invoice);
     saved.storagePath = await this.tryGeneratePdf(saved, organizationId);
-    return this.repo.save(saved);
+    const result = await this.repo.save(saved);
+
+    if (organizationId != null) {
+      try {
+        const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } });
+        const vatEnabled = settings?.vatEnabled ?? true;
+        const vatAmount = vatEnabled ? Math.round(result.total * VAT_RATE * 100) / 100 : 0;
+        await this.ledgerPostingService.postInvoice(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, vatAmount, result.clientName);
+      } catch {
+        // Ledger posting is best-effort — a bookkeeping hiccup must
+        // never block issuing the invoice itself.
+      }
+    }
+
+    return result;
   }
 
   /** Joins the chain of a linked quote or delivery note (quoteId takes

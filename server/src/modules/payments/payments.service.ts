@@ -11,6 +11,7 @@ import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { OrderChainService } from '../order-chain/order-chain.service';
+import { LedgerPostingService } from '../accounting/ledger-posting.service';
 
 @Injectable()
 export class PaymentsService {
@@ -22,6 +23,7 @@ export class PaymentsService {
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
     private readonly orderChainService: OrderChainService,
+    private readonly ledgerPostingService: LedgerPostingService,
   ) {}
 
   /** See QuotesService.generateQuoteNumber — same fix, same reasoning:
@@ -105,6 +107,14 @@ export class PaymentsService {
       try {
         saved.chainSummaryPath = await this.orderChainService.generateChainSummaryPdf(chainId, organizationId);
         await this.repo.save(saved);
+      } catch {
+        // best-effort — see comment above
+      }
+    }
+
+    if (organizationId != null) {
+      try {
+        await this.ledgerPostingService.postPayment(organizationId, saved.id, saved.date ?? new Date().toISOString().slice(0, 10), saved.amount, saved.method, saved.clientName);
       } catch {
         // best-effort — see comment above
       }

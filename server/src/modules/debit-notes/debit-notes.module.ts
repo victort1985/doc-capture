@@ -10,6 +10,7 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageModule } from '../storage/storage.module';
 import { DocumentEmailModule } from '../document-email/document-email.module';
 import { UsersModule } from '../users/users.module';
+import { AccountingModule } from '../accounting/accounting.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { UsersModule } from '../users/users.module';
     StorageModule,
     DocumentEmailModule,
     UsersModule,
+    AccountingModule,
   ],
   controllers: [DebitNotesController, DebitNoteSettingsController],
   providers: [DebitNotesService],

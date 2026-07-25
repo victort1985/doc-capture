@@ -9,6 +9,7 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
+import { LedgerPostingService } from '../accounting/ledger-posting.service';
 
 @Injectable()
 export class DebitNotesService {
@@ -19,6 +20,7 @@ export class DebitNotesService {
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
+    private readonly ledgerPostingService: LedgerPostingService,
   ) {}
 
   private async generateDebitNoteNumber(organizationId: number | null): Promise<string> {
@@ -78,7 +80,17 @@ export class DebitNotesService {
     });
     const saved = await this.repo.save(debitNote);
     saved.storagePath = await this.tryGeneratePdf(saved, organizationId);
-    return this.repo.save(saved);
+    const result = await this.repo.save(saved);
+
+    if (organizationId != null) {
+      try {
+        await this.ledgerPostingService.postDebitNote(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, result.clientName);
+      } catch {
+        // best-effort — a bookkeeping hiccup must never block issuing the debit note itself
+      }
+    }
+
+    return result;
   }
 
   private async tryGeneratePdf(debitNote: DebitNote, organizationId: number | null): Promise<string | null> {
