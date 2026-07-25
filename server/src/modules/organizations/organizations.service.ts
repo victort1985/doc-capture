@@ -26,12 +26,14 @@ export class OrganizationsService {
   async create(dto: CreateOrganizationDto): Promise<Organization> {
     const existing = await this.orgsRepo.findOne({ where: { name: dto.name } });
     if (existing) throw new ConflictException('An organization with this name already exists');
-    return this.orgsRepo.save(this.orgsRepo.create({ name: dto.name }));
+    return this.orgsRepo.save(this.orgsRepo.create({ name: dto.name, businessType: dto.businessType, taxId: dto.taxId }));
   }
 
   async update(id: number, dto: UpdateOrganizationDto): Promise<Organization> {
     const org = await this.findById(id);
     if (dto.name) org.name = dto.name;
+    if (dto.businessType !== undefined) org.businessType = dto.businessType;
+    if (dto.taxId !== undefined) org.taxId = dto.taxId;
     return this.orgsRepo.save(org);
   }
 

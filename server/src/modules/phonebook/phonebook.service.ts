@@ -105,6 +105,9 @@ export class PhoneBookService {
       phone: dto.phone,
       email: dto.email,
       notes: dto.notes,
+      taxId: dto.taxId,
+      paymentTermsDays: dto.paymentTermsDays,
+      creditLimit: dto.creditLimit,
       createdBy: { id: userId } as any,
       tenant: tenantId != null ? ({ id: tenantId } as any) : undefined,
     });
@@ -140,6 +143,9 @@ export class PhoneBookService {
       phone: dto.phone ?? contact.phone,
       email: dto.email ?? contact.email,
       notes: dto.notes ?? contact.notes,
+      taxId: dto.taxId ?? contact.taxId,
+      paymentTermsDays: dto.paymentTermsDays ?? contact.paymentTermsDays,
+      creditLimit: dto.creditLimit ?? contact.creditLimit,
     });
     const saved = await this.contactsRepo.save(contact);
 

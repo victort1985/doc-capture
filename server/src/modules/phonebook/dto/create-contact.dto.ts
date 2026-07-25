@@ -36,4 +36,15 @@ export class CreateContactDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsString()
+  @IsOptional()
+  taxId?: string;
+
+  @IsInt()
+  @IsOptional()
+  paymentTermsDays?: number;
+
+  @IsOptional()
+  creditLimit?: number;
 }

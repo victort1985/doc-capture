@@ -6,6 +6,14 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export enum BusinessType {
+  OSEK_PATUR = 'osek_patur',       // עוסק פטור
+  OSEK_MURSHE = 'osek_murshe',     // עוסק מורשה
+  CHEVRA = 'chevra',               // חברה בע"מ
+  SHUTAFUT = 'shutafut',           // שותפות
+  AMUTA = 'amuta',                 // עמותה
+}
+
 /**
  * Multi-tenant boundary: an org-scoped admin (user.organization set) only
  * sees data belonging to their own organization. The super-admin (any
@@ -65,4 +73,22 @@ export class Organization {
 
   @Column({ default: 10 })
   demoRetentionDays: number;
+
+  /** Israeli business entity type (requirement #2 of the tax
+   * compliance checklist) — drives VAT/reporting rules downstream
+   * (e.g. עוסק פטור is VAT-exempt by definition, matching
+   * InvoiceSettings.vatEnabled being off for that type by default at
+   * onboarding, though the org can still override it — see
+   * organizations.controller.ts). */
+  @Column({ type: 'enum', enum: BusinessType, nullable: true })
+  businessType?: BusinessType | null;
+
+  /** ח.פ. (חברה) / עוסק מורשה number / ת.ז. for an עוסק פטור — Israeli
+   * business/tax registration number. Format varies by businessType
+   * (companies: 9 digits starting 51/52/etc; osek: often the owner's
+   * ת.ז.), not validated here beyond non-empty since the exact rules
+   * differ enough by type that a single regex would reject valid
+   * numbers as often as it'd catch typos. */
+  @Column({ type: 'varchar', nullable: true })
+  taxId?: string | null;
 }

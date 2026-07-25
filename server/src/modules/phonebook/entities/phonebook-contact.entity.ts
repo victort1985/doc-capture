@@ -62,6 +62,28 @@ export class PhoneBookContact {
   @Column({ type: 'text', nullable: true })
   notes?: string;
 
+  /** ח.פ. / עוסק מורשה number / ת.ז. — same field, same reasoning as
+   * Organization.taxId, just on the other side of the relationship
+   * (this contact AS a client or supplier, not our own org). Only
+   * meaningful for CLIENT/SUPPLIER category contacts, left blank for
+   * TECHNICIAN. */
+  @Column({ type: 'varchar', nullable: true })
+  taxId?: string | null;
+
+  /** Payment terms in days (e.g. 30 = net-30) — how long after
+   * invoicing this client is expected to pay, or how long we have to
+   * pay this supplier. Used by the "age of debt" report (requirement
+   * #13, "возраст долгов"). */
+  @Column({ type: 'integer', nullable: true })
+  paymentTermsDays?: number | null;
+
+  /** Maximum outstanding balance before new invoices/orders should be
+   * flagged — not enforced automatically anywhere yet (no credit-check
+   * gate on invoice creation), just recorded so a future report/gate
+   * has something to check against. */
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true })
+  creditLimit?: number | null;
+
   @Column({ nullable: true })
   photoRelativePath?: string;
 
