@@ -3,6 +3,7 @@ import { getMetadataArgsStorage } from 'typeorm';
 import { StorageConnection } from '../../modules/storage/entities/storage-connection.entity';
 import { DocumentEmailSettings } from '../../modules/document-email/entities/document-email-settings.entity';
 import { OrderEmailSettings } from '../../modules/orders/entities/order-email-settings.entity';
+import { User } from '../../modules/users/entities/user.entity';
 
 /** Finds the `transformer` configured on a given @Column() property,
  * by reading TypeORM's global column metadata rather than trying to
@@ -32,6 +33,7 @@ describe('secret-at-rest encryption (AC7)', () => {
     ['StorageConnection.password', StorageConnection, 'password'],
     ['DocumentEmailSettings.appPassword', DocumentEmailSettings, 'appPassword'],
     ['OrderEmailSettings.appPassword', OrderEmailSettings, 'appPassword'],
+    ['User.totpSecret', User, 'totpSecret'],
   ])('%s is encrypted going in and decrypted coming out', (_label, EntityClass, propertyName) => {
     const transformer = getColumnTransformer(EntityClass, propertyName);
     const plaintextSecret = 'xxxx xxxx xxxx xxxx';
@@ -50,6 +52,7 @@ describe('secret-at-rest encryption (AC7)', () => {
     ['StorageConnection.password', StorageConnection, 'password'],
     ['DocumentEmailSettings.appPassword', DocumentEmailSettings, 'appPassword'],
     ['OrderEmailSettings.appPassword', OrderEmailSettings, 'appPassword'],
+    ['User.totpSecret', User, 'totpSecret'],
   ])('%s transformer passes through null/undefined unchanged (optional field)', (_label, EntityClass, propertyName) => {
     const transformer = getColumnTransformer(EntityClass, propertyName);
     expect(transformer.to(undefined)).toBeUndefined();

@@ -8,6 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { encryptString, decryptString } from '../../../common/crypto/encryption.util';
 import { Region } from '../../locations/entities/region.entity';
 import { City } from '../../locations/entities/city.entity';
 import { Organization } from '../../organizations/entities/organization.entity';
@@ -87,11 +88,23 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   tosAcceptedVersion?: string | null;
 
-  /** TOTP secret (requirement #16, "двухфакторная аутентификация") —
-   * base32, only ever set via Auth2FAService.setupSecret(). Never
-   * returned to any client once confirmed; select:false keeps it out
-   * of ordinary queries the way password hashes already are. */
-  @Column({ type: 'varchar', nullable: true, select: false })
+  /** TOTP secret (requirement #16, "двухфакторная аутентификация" +
+   * "шифрование данных") — base32, only ever set via the /auth/2fa/*
+   * endpoints. Encrypted at rest (same AES-256-GCM transformer as
+   * StorageConnection.password) - select:false alone only protects
+   * against accidental exposure through ordinary queries, not a raw
+   * database dump/breach, which is exactly the scenario a TOTP secret
+   * needs to survive: if it leaked in plaintext, 2FA would protect
+   * against nothing. */
+  @Column({
+    type: 'varchar',
+    nullable: true,
+    select: false,
+    transformer: {
+      to: (value?: string | null) => (value ? encryptString(value) : value),
+      from: (value?: string | null) => (value ? decryptString(value) ?? value : value),
+    },
+  })
   totpSecret?: string | null;
 
   /** Set true only once the user has proven they can generate a valid
