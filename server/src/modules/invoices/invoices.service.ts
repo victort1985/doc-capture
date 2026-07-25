@@ -202,8 +202,16 @@ export class InvoicesService {
     return this.repo.save(invoice);
   }
 
-  async remove(id: number, organizationId: number | null): Promise<void> {
-    const invoice = await this.findOne(id, organizationId);
-    await this.repo.remove(invoice);
+  /** Deliberately does NOT delete — an invoice is a fiscal document
+   * (חשבונית מס) and gets its number the moment it's created (there is
+   * no draft state in this system, see generateInvoiceNumber). Israeli
+   * tax law requires that once issued, a document can never be deleted
+   * or have its amount/VAT changed - the only correction mechanism is
+   * a credit note (זיכוי) referencing it, which is its own numbered
+   * document, not an edit or removal of this one. See CreditNotesModule. */
+  async remove(_id: number, _organizationId: number | null): Promise<void> {
+    throw new BadRequestException(
+      'Invoices cannot be deleted once issued — Israeli tax law requires a credit note (זיכוי) to correct or void one instead. Use POST /credit-notes.',
+    );
   }
 }
