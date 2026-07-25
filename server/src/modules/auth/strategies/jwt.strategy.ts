@@ -3,6 +3,7 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UsersService } from '../../users/users.service';
 import { TOS_VERSION } from '../auth.service';
+import { resolveEffectivePermissions } from '../../users/permissions.constants';
 
 export interface JwtPayload {
   sub: number;
@@ -48,7 +49,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       setupWizardCompleted: user.setupWizardCompleted,
       tosAccepted: user.tosAcceptedVersion === TOS_VERSION,
       allowedOrganizationIds: user.allowedOrganizationIds ?? [],
-      permissions: user.permissions ?? {},
+      permissions: resolveEffectivePermissions(user.role, user.group?.permissions, user.permissions),
       firstName: user.firstName ?? null,
       lastName: user.lastName ?? null,
     };

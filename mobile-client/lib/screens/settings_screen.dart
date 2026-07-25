@@ -21,30 +21,6 @@ class SettingsScreen extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
       children: [
         Card(
-          color: Colors.amber.shade50,
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('DEBUG — временно, для диагностики', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                const SizedBox(height: 6),
-                Text('user id: ${appState.currentUser?.id}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
-                Text('role: ${appState.currentUser?.role}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
-                Text('office.quotes: ${appState.currentUser?.hasPermission('office.quotes')}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
-                Text('office.orders: ${appState.currentUser?.hasPermission('office.orders')}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
-                Text('office.invoices: ${appState.currentUser?.hasPermission('office.invoices')}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
-                Text('office.delivery_notes: ${appState.currentUser?.hasPermission('office.delivery_notes')}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
-                Text('office.payments: ${appState.currentUser?.hasPermission('office.payments')}', style: const TextStyle(fontFamily: 'monospace', fontSize: 11)),
-                const SizedBox(height: 6),
-                Text('raw permissions map:', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-                Text('${appState.currentUser?.permissionsDebugMap}', style: const TextStyle(fontFamily: 'monospace', fontSize: 10)),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(

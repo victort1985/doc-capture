@@ -33,10 +33,6 @@ class AuthUser {
 
   bool hasPermission(String key) => permissions[key] ?? false;
 
-  /// TEMPORARY — for diagnosing the "Office tab missing" report. Remove
-  /// once resolved.
-  String get permissionsDebugMap => permissions.entries.map((e) => '${e.key}=${e.value}').join(', ');
-
   /// Full name for auto-filling lessor signature etc.
   String get fullName {
     final parts = [firstName, lastName].where((s) => s != null && s.isNotEmpty).toList();
