@@ -1145,7 +1145,8 @@
     "tab_mutual_settlements": "התחשבנות הדדית",
     "client": "לקוח",
     "invoiced": "הופק",
-    "paid": "שולם"
+    "paid": "שולם",
+    "exportExcel": "ייצוא ל-Excel"
   },
   "auditLog": {
     "eyebrow": "אבטחה",

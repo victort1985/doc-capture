@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar, ArrowLeft } from 'lucide-react';
-import { apiFetch } from '../services/api';
+import { Calendar, ArrowLeft, Download } from 'lucide-react';
+import { apiFetch, apiFetchBlob } from '../services/api';
 
 interface TrialBalanceRow { accountId: number; code: string; name: string; type: string; debit: number; credit: number; }
 interface LedgerRow { id: number; date: string; description: string; debit: number; credit: number; balance: number; sourceType?: string; sourceId?: number; }
@@ -147,7 +147,25 @@ export default function AccountingPage() {
     <div className="page">
       <div className="topbar">
         <div><div className="eyebrow">{t('accounting.eyebrow')}</div><h1>{t('accounting.title')}</h1></div>
-        <button type="button" className="ghost" onClick={seedDefaults}>{t('accounting.seedDefaults')}</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            type="button"
+            className="ghost"
+            onClick={async () => {
+              try {
+                const url = await apiFetchBlob(`/accounting/export.xlsx?${new URLSearchParams({ from, to }).toString()}`);
+                const a = document.createElement('a');
+                a.href = url; a.download = `accounting_${from}_${to}.xlsx`;
+                a.click();
+              } catch (e) {
+                alert(e instanceof Error ? e.message : 'Export failed');
+              }
+            }}
+          >
+            <Download size={15} /> {t('accounting.exportExcel')}
+          </button>
+          <button type="button" className="ghost" onClick={seedDefaults}>{t('accounting.seedDefaults')}</button>
+        </div>
       </div>
 
       <div className="card" style={{ marginBottom: 16, padding: 16, fontSize: 13 }}>

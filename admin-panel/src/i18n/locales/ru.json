@@ -1145,7 +1145,8 @@
     "tab_mutual_settlements": "Взаиморасчёты",
     "client": "Клиент",
     "invoiced": "Выставлено",
-    "paid": "Оплачено"
+    "paid": "Оплачено",
+    "exportExcel": "Экспорт в Excel"
   },
   "auditLog": {
     "eyebrow": "Безопасность",

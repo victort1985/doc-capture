@@ -1145,7 +1145,8 @@
     "tab_mutual_settlements": "Mutual settlements",
     "client": "Client",
     "invoiced": "Invoiced",
-    "paid": "Paid"
+    "paid": "Paid",
+    "exportExcel": "Export Excel"
   },
   "auditLog": {
     "eyebrow": "Security",
