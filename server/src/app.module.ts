@@ -40,6 +40,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { FinancialReportsModule } from './modules/financial-reports/financial-reports.module';
 import { CreditNotesModule } from './modules/credit-notes/credit-notes.module';
 import { AuditLogModule } from './modules/audit-log/audit-log.module';
+import { DebitNotesModule } from './modules/debit-notes/debit-notes.module';
 import { AuditLogInterceptor } from './modules/audit-log/audit-log.interceptor';
 
 const publicDir = join(__dirname, '..', 'public');
@@ -98,6 +99,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     FinancialReportsModule,
     CreditNotesModule,
     AuditLogModule,
+    DebitNotesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
