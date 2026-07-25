@@ -28,7 +28,8 @@
     "devices": "Устройства",
     "prices": "Цены",
     "payments": "Оплаты",
-    "paymentSettings": "Настройки оплаты"
+    "paymentSettings": "Настройки оплаты",
+    "financialReports": "Финансовые отчёты"
   },
   "app": {
     "adminConsole": "панель администратора",
@@ -948,5 +949,39 @@
     "viewCopy": "Печать как заверенная копия (נאמן למקור)",
     "viewSummary": "Скачать сводный документ по заказу",
     "summaryUnavailable": "Сводный документ ещё не готов."
+  },
+  "financialReports": {
+    "eyebrow": "Офис",
+    "title": "Финансовые отчёты",
+    "periodMonth": "Этот месяц",
+    "periodQuarter": "Этот квартал",
+    "periodHalfYear": "Это полугодие",
+    "periodYear": "Этот год",
+    "periodCustom": "Произвольный период",
+    "from": "С",
+    "to": "По",
+    "loading": "Загрузка…",
+    "revenue": "Выручка (выставлено)",
+    "subtotal": "Без НДС",
+    "vat": "НДС",
+    "paymentsReceived": "Получено оплат",
+    "paymentsCount": "оплат",
+    "outstanding": "Не оплачено",
+    "outstandingCount": "неоплаченных счетов",
+    "documents": "Документы",
+    "quotes": "Квоты",
+    "invoices": "Счета",
+    "payments": "Оплаты",
+    "byMethod": "Оплаты по способам",
+    "method": "Способ",
+    "count": "Кол-во",
+    "total": "Сумма",
+    "noPayments": "За этот период оплат не было.",
+    "methodCash": "Наличные",
+    "methodCreditCard": "Карта",
+    "methodBankTransfer": "Банковский перевод",
+    "methodCheck": "Чек",
+    "methodBit": "Bit",
+    "methodStandingOrder": "Постоянное поручение"
   }
 }

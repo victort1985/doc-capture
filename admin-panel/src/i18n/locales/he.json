@@ -28,7 +28,8 @@
     "devices": "מכשירים",
     "prices": "מחירים",
     "payments": "תשלומים",
-    "paymentSettings": "הגדרות תשלום"
+    "paymentSettings": "הגדרות תשלום",
+    "financialReports": "דוחות כספיים"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -948,5 +949,39 @@
     "viewCopy": "הדפסה כעותק נאמן למקור",
     "viewSummary": "הורדת סיכום מלא של ההזמנה",
     "summaryUnavailable": "סיכום ההזמנה עדיין לא זמין."
+  },
+  "financialReports": {
+    "eyebrow": "משרד",
+    "title": "דוחות כספיים",
+    "periodMonth": "החודש",
+    "periodQuarter": "הרבעון",
+    "periodHalfYear": "המחצית",
+    "periodYear": "השנה",
+    "periodCustom": "טווח מותאם",
+    "from": "מ-",
+    "to": "עד",
+    "loading": "טוען…",
+    "revenue": "הכנסות (הופקו)",
+    "subtotal": "לפני מע\"מ",
+    "vat": "מע\"מ",
+    "paymentsReceived": "תשלומים שהתקבלו",
+    "paymentsCount": "תשלומים",
+    "outstanding": "יתרת חוב",
+    "outstandingCount": "חשבוניות שלא שולמו",
+    "documents": "מסמכים",
+    "quotes": "הצעות מחיר",
+    "invoices": "חשבוניות",
+    "payments": "תשלומים",
+    "byMethod": "תשלומים לפי אמצעי",
+    "method": "אמצעי",
+    "count": "כמות",
+    "total": "סכום",
+    "noPayments": "לא היו תשלומים בתקופה זו.",
+    "methodCash": "מזומן",
+    "methodCreditCard": "כרטיס אשראי",
+    "methodBankTransfer": "העברה בנקאית",
+    "methodCheck": "צ'ק",
+    "methodBit": "ביט",
+    "methodStandingOrder": "הרשאה לחיוב חשבון"
   }
 }

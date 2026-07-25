@@ -28,7 +28,8 @@
     "devices": "Devices",
     "prices": "Prices",
     "payments": "Payments",
-    "paymentSettings": "Payment settings"
+    "paymentSettings": "Payment settings",
+    "financialReports": "Financial Reports"
   },
   "app": {
     "adminConsole": "admin console",
@@ -948,5 +949,39 @@
     "viewCopy": "Print as certified copy (נאמן למקור)",
     "viewSummary": "Download full order summary",
     "summaryUnavailable": "Order summary not available yet."
+  },
+  "financialReports": {
+    "eyebrow": "Office",
+    "title": "Financial Reports",
+    "periodMonth": "This month",
+    "periodQuarter": "This quarter",
+    "periodHalfYear": "This half-year",
+    "periodYear": "This year",
+    "periodCustom": "Custom range",
+    "from": "From",
+    "to": "To",
+    "loading": "Loading…",
+    "revenue": "Revenue (billed)",
+    "subtotal": "Subtotal",
+    "vat": "VAT",
+    "paymentsReceived": "Payments received",
+    "paymentsCount": "payments",
+    "outstanding": "Outstanding",
+    "outstandingCount": "unpaid invoices",
+    "documents": "Documents",
+    "quotes": "Quotes",
+    "invoices": "Invoices",
+    "payments": "Payments",
+    "byMethod": "Payments by method",
+    "method": "Method",
+    "count": "Count",
+    "total": "Total",
+    "noPayments": "No payments in this period.",
+    "methodCash": "Cash",
+    "methodCreditCard": "Credit card",
+    "methodBankTransfer": "Bank transfer",
+    "methodCheck": "Check",
+    "methodBit": "Bit",
+    "methodStandingOrder": "Standing order"
   }
 }
