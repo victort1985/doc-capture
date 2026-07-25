@@ -51,7 +51,14 @@
     "passwordMismatch": "New passwords don't match.",
     "passwordChanged": "Password changed.",
     "openSetupWizard": "Open Setup Wizard",
-    "viewTos": "Terms of Service"
+    "viewTos": "Terms of Service",
+    "twoFactor": "Two-factor authentication",
+    "twoFactorEnabled": "Enabled — your account requires a code from your authenticator app to sign in.",
+    "twoFactorEnable": "Enable two-factor authentication",
+    "twoFactorDisable": "Disable two-factor authentication",
+    "twoFactorConfirmDisable": "Confirm disable",
+    "twoFactorScanHint": "Scan with Google Authenticator, Authy, or similar, then enter the 6-digit code to confirm.",
+    "twoFactorConfirm": "Confirm and enable"
   },
   "login": {
     "wordmarkTagline": "Sign in to the admin console.",
@@ -59,7 +66,9 @@
     "password": "Password",
     "signIn": "Sign in",
     "signingIn": "Signing in…",
-    "error": "Incorrect username or password"
+    "error": "Incorrect username or password",
+    "totpCode": "Authenticator code",
+    "totpInvalid": "Invalid code — try again."
   },
   "documentSeries": {
     "organization": "Organization",

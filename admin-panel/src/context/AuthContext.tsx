@@ -10,12 +10,13 @@ interface AuthUser {
   isDemoMode?: boolean;
   setupWizardCompleted?: boolean;
   tosAccepted?: boolean;
+  totpEnabled?: boolean;
 }
 
 interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
-  login: (username: string, password: string) => Promise<void>;
+  login: (username: string, password: string, totpCode?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -51,10 +52,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function login(username: string, password: string) {
+  async function login(username: string, password: string, totpCode?: string) {
     const data = await apiFetch<{ token: string; user: AuthUser }>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, totpCode }),
     });
     setToken(data.token);
     setUser(data.user);

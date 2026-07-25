@@ -69,6 +69,7 @@ export class AuthService {
         isDemoMode: user.organization?.isDemoMode ?? false,
         setupWizardCompleted: user.setupWizardCompleted,
         tosAccepted: user.tosAcceptedVersion === TOS_VERSION,
+        totpEnabled: user.totpEnabled,
         allowedOrganizationIds: user.allowedOrganizationIds ?? [],
         // Fully resolved (role default -> group -> user override), not
         // the raw override map — the client shouldn't need to know

@@ -51,7 +51,14 @@
     "passwordMismatch": "הסיסמאות החדשות אינן תואמות.",
     "passwordChanged": "הסיסמה שונתה.",
     "openSetupWizard": "פתיחת אשף ההתקנה",
-    "viewTos": "תנאי שימוש"
+    "viewTos": "תנאי שימוש",
+    "twoFactor": "אימות דו-שלבי",
+    "twoFactorEnabled": "מופעל — הכניסה תדרוש קוד מאפליקציית האימות שלך.",
+    "twoFactorEnable": "הפעלת אימות דו-שלבי",
+    "twoFactorDisable": "כיבוי אימות דו-שלבי",
+    "twoFactorConfirmDisable": "אישור כיבוי",
+    "twoFactorScanHint": "סרקו עם Google Authenticator, Authy או דומה, ואז הזינו את הקוד בן 6 הספרות לאישור.",
+    "twoFactorConfirm": "אישור והפעלה"
   },
   "login": {
     "wordmarkTagline": "התחברות לפאנל הניהול.",
@@ -59,7 +66,9 @@
     "password": "סיסמה",
     "signIn": "התחברות",
     "signingIn": "מתחבר…",
-    "error": "שם משתמש או סיסמה שגויים"
+    "error": "שם משתמש או סיסמה שגויים",
+    "totpCode": "קוד מאפליקציית האימות",
+    "totpInvalid": "קוד שגוי — נסו שוב."
   },
   "documentSeries": {
     "organization": "ארגון",

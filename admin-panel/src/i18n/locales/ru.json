@@ -51,7 +51,14 @@
     "passwordMismatch": "Новые пароли не совпадают.",
     "passwordChanged": "Пароль изменён.",
     "openSetupWizard": "Открыть Setup Wizard",
-    "viewTos": "Условия использования"
+    "viewTos": "Условия использования",
+    "twoFactor": "Двухфакторная аутентификация",
+    "twoFactorEnabled": "Включена — для входа потребуется код из приложения-аутентификатора.",
+    "twoFactorEnable": "Включить двухфакторную аутентификацию",
+    "twoFactorDisable": "Отключить двухфакторную аутентификацию",
+    "twoFactorConfirmDisable": "Подтвердить отключение",
+    "twoFactorScanHint": "Отсканируйте в Google Authenticator, Authy или похожем, затем введите 6-значный код для подтверждения.",
+    "twoFactorConfirm": "Подтвердить и включить"
   },
   "login": {
     "wordmarkTagline": "Вход в панель администратора.",
@@ -59,7 +66,9 @@
     "password": "Пароль",
     "signIn": "Войти",
     "signingIn": "Вход…",
-    "error": "Неверное имя пользователя или пароль"
+    "error": "Неверное имя пользователя или пароль",
+    "totpCode": "Код из приложения",
+    "totpInvalid": "Неверный код — попробуйте снова."
   },
   "documentSeries": {
     "organization": "Организация",

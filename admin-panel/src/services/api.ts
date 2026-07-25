@@ -1,5 +1,18 @@
 export const BASE_URL = '/api';
 
+/** Thrown instead of a plain Error whenever the server's response body
+ * carries a machine-readable `code` (e.g. TOTP_REQUIRED,
+ * LICENSE_LOCKED) — callers that care about the specific failure
+ * reason (not just a human-readable message) can check `.code`
+ * instead of string-matching the message text. */
+export class ApiError extends Error {
+  code?: string;
+  constructor(message: string, code?: string) {
+    super(message);
+    this.code = code;
+  }
+}
+
 export function getToken(): string | null {
   return sessionStorage.getItem('token');
 }
@@ -59,10 +72,8 @@ export async function apiFetch<T>(
         : Array.isArray(body.message)
           ? body.message.join(', ')
           : body?.message?.message ?? `Request failed (${res.status})`;
-    throw new Error(message);
+    throw new ApiError(message, code);
   }
-
-  if (res.status === 204) return undefined as T;
 
   // Handle 200 with empty body (some DELETE endpoints return 200 + no body)
   const text = await res.text();

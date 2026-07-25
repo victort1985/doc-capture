@@ -48,6 +48,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       isDemoMode: user.organization?.isDemoMode ?? false,
       setupWizardCompleted: user.setupWizardCompleted,
       tosAccepted: user.tosAcceptedVersion === TOS_VERSION,
+      totpEnabled: user.totpEnabled,
       allowedOrganizationIds: user.allowedOrganizationIds ?? [],
       permissions: resolveEffectivePermissions(user.role, user.group?.permissions, user.permissions),
       firstName: user.firstName ?? null,

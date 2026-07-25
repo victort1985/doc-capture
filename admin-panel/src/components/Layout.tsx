@@ -67,6 +67,93 @@ const LANGUAGES = [
   { code: 'he', label: 'עברית' },
 ];
 
+/** Requirement #16 ("двухфакторная аутентификация") — self-contained
+ * so it can carry its own multi-step state (idle -> QR shown ->
+ * confirming -> enabled) without cluttering SettingsPanel's own
+ * (already sizeable) state. */
+function TwoFactorSection() {
+  const { t } = useTranslation();
+  const { user } = useAuth();
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [secret, setSecret] = useState<string | null>(null);
+  const [confirmCode, setConfirmCode] = useState('');
+  const [disablePassword, setDisablePassword] = useState('');
+  const [showDisable, setShowDisable] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (user) setEnabled(user.totpEnabled ?? false);
+  }, [user]);
+
+  async function startSetup() {
+    setError(null); setBusy(true);
+    try {
+      const res = await apiFetch<{ secret: string; qrDataUrl: string }>('/auth/2fa/setup', { method: 'POST' });
+      setSecret(res.secret);
+      setQrDataUrl(res.qrDataUrl);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to start 2FA setup');
+    } finally { setBusy(false); }
+  }
+
+  async function confirmSetup() {
+    setError(null); setBusy(true);
+    try {
+      await apiFetch('/auth/2fa/confirm', { method: 'POST', body: JSON.stringify({ code: confirmCode }) });
+      setEnabled(true);
+      setQrDataUrl(null); setSecret(null); setConfirmCode('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Invalid code');
+    } finally { setBusy(false); }
+  }
+
+  async function disable() {
+    setError(null); setBusy(true);
+    try {
+      await apiFetch('/auth/2fa/disable', { method: 'POST', body: JSON.stringify({ password: disablePassword }) });
+      setEnabled(false);
+      setShowDisable(false); setDisablePassword('');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to disable 2FA');
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div>
+      <label>{t('settings.twoFactor')}</label>
+      {error && <div style={{ color: 'var(--danger, #b3261e)', fontSize: 12.5, marginBottom: 8 }}>{error}</div>}
+
+      {enabled === true && !showDisable && (
+        <>
+          <p style={{ fontSize: 12.5, color: 'var(--success, green)', marginBottom: 8 }}>{t('settings.twoFactorEnabled')}</p>
+          <button type="button" className="ghost" onClick={() => setShowDisable(true)} style={{ width: '100%' }}>{t('settings.twoFactorDisable')}</button>
+        </>
+      )}
+      {enabled === true && showDisable && (
+        <>
+          <input type="password" placeholder={t('settings.currentPassword')} value={disablePassword} onChange={e => setDisablePassword(e.target.value)} style={{ marginBottom: 8 }} />
+          <button type="button" disabled={busy || !disablePassword} onClick={disable} style={{ width: '100%' }}>{t('settings.twoFactorConfirmDisable')}</button>
+        </>
+      )}
+
+      {enabled === false && !qrDataUrl && (
+        <button type="button" disabled={busy} onClick={startSetup} style={{ width: '100%' }}>{t('settings.twoFactorEnable')}</button>
+      )}
+      {enabled === false && qrDataUrl && (
+        <>
+          <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', marginBottom: 8 }}>{t('settings.twoFactorScanHint')}</p>
+          <img src={qrDataUrl} alt="QR" style={{ width: '100%', maxWidth: 200, display: 'block', margin: '0 auto 8px' }} />
+          {secret && <p style={{ fontSize: 11, fontFamily: 'monospace', textAlign: 'center', marginBottom: 8, wordBreak: 'break-all' }}>{secret}</p>}
+          <input value={confirmCode} onChange={e => setConfirmCode(e.target.value)} placeholder="000000" inputMode="numeric" maxLength={6} style={{ marginBottom: 8 }} />
+          <button type="button" disabled={busy || confirmCode.length < 6} onClick={confirmSetup} style={{ width: '100%' }}>{t('settings.twoFactorConfirm')}</button>
+        </>
+      )}
+    </div>
+  );
+}
+
 function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
@@ -131,6 +218,9 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
         <button type="button" disabled={pwSaving || !currentPassword || !newPassword} onClick={changePassword} style={{ width: '100%' }}>
           {pwSaving ? t('common.saving') : t('settings.changePassword')}
         </button>
+
+        <hr style={{ margin: '16px 0', border: 'none', borderTop: '1px solid var(--border, #e5e5e5)' }} />
+        <TwoFactorSection />
       </div>
 
       {showTos && (
