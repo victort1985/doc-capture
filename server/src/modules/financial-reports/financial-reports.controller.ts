@@ -1,4 +1,5 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
 import { Invoice } from '../invoices/entities/invoice.entity';
@@ -157,6 +158,39 @@ export class FinancialReportsController {
       over120: summarize(buckets.over90),
       totalOutstanding: round2(outstanding.reduce((sum, i) => sum + Number(i.total), 0)),
     };
+  }
+
+  /** Requirement #14 ("Excel/CSV") — one row per invoice in the period,
+   * for dropping straight into Excel/accounting software. UTF-8 BOM
+   * prefix so Excel (which otherwise guesses the wrong encoding for
+   * non-ASCII text, e.g. Hebrew client names) opens it correctly
+   * without the person having to know to re-import with the right
+   * encoding manually. */
+  @Get('export.csv')
+  async exportCsv(
+    @CurrentUser() user: ReqUser,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('orgId') orgIdParam: string | undefined,
+    @Res() res: Response,
+  ) {
+    const organizationId = user.organizationId ?? (orgIdParam ? Number(orgIdParam) : null);
+    const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
+    const invoices = await this.invoicesRepo.find({ where: { ...orgFilter, date: Between(from, to) } as any, order: { date: 'ASC' } });
+
+    const escapeCsv = (v: unknown) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['Invoice #', 'Date', 'Client', 'Client Email', 'Total', 'Status'];
+    const rows = invoices.map((i) => [i.invoiceNumber ?? i.id, i.date ?? '', i.clientName, i.clientEmail ?? '', Number(i.total).toFixed(2), i.status]);
+    const csv = [header, ...rows].map((r) => r.map(escapeCsv).join(',')).join('\r\n');
+
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="invoices_${from}_${to}.csv"`,
+    });
+    res.send('\uFEFF' + csv);
   }
 }
 
