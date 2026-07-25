@@ -155,12 +155,13 @@ jobs:
             final String? lastName;
             final bool isDemoMode;
             final bool tosAccepted;
+            final bool totpEnabled;
 
             AuthUser({required this.id, required this.username, required this.language,
               required this.role, this.organizationId,
               this.allowedOrganizationIds = const [], this.permissions = const {},
               this.firstName, this.lastName,
-              this.isDemoMode = false, this.tosAccepted = false});
+              this.isDemoMode = false, this.tosAccepted = false, this.totpEnabled = false});
 
             bool hasPermission(String key) => permissions[key] ?? false;
 
@@ -182,7 +183,8 @@ jobs:
               firstName: j['firstName'] as String?,
               lastName: j['lastName'] as String?,
               isDemoMode: j['isDemoMode'] as bool? ?? false,
-              tosAccepted: j['tosAccepted'] as bool? ?? false);
+              tosAccepted: j['tosAccepted'] as bool? ?? false,
+              totpEnabled: j['totpEnabled'] as bool? ?? false);
           }
 
           class AuthService {
@@ -190,8 +192,8 @@ jobs:
             final ApiService _api;
             Future<SharedPreferences> get _p => SharedPreferences.getInstance();
 
-            Future<AuthUser> login(String u, String p) async {
-              final r = await _api.post('/auth/login', {'username': u, 'password': p});
+            Future<AuthUser> login(String u, String p, {String? totpCode}) async {
+              final r = await _api.post('/auth/login', {'username': u, 'password': p, if (totpCode != null) 'totpCode': totpCode});
               final token = r['token'] as String? ?? r['access_token'] as String;
               (await _p).setString('auth_token', token); _api.setToken(token);
               return AuthUser.fromJson(r['user'] as Map<String, dynamic>);
@@ -381,12 +383,13 @@ jobs:
             final String? lastName;
             final bool isDemoMode;
             final bool tosAccepted;
+            final bool totpEnabled;
 
             AuthUser({required this.id, required this.username, required this.language,
               required this.role, this.organizationId,
               this.allowedOrganizationIds = const [], this.permissions = const {},
               this.firstName, this.lastName,
-              this.isDemoMode = false, this.tosAccepted = false});
+              this.isDemoMode = false, this.tosAccepted = false, this.totpEnabled = false});
 
             bool hasPermission(String key) => permissions[key] ?? false;
 
@@ -408,7 +411,8 @@ jobs:
               firstName: j['firstName'] as String?,
               lastName: j['lastName'] as String?,
               isDemoMode: j['isDemoMode'] as bool? ?? false,
-              tosAccepted: j['tosAccepted'] as bool? ?? false);
+              tosAccepted: j['tosAccepted'] as bool? ?? false,
+              totpEnabled: j['totpEnabled'] as bool? ?? false);
           }
 
           class AuthService {
@@ -416,8 +420,8 @@ jobs:
             final ApiService _api;
             Future<SharedPreferences> get _p => SharedPreferences.getInstance();
 
-            Future<AuthUser> login(String u, String p) async {
-              final r = await _api.post('/auth/login', {'username': u, 'password': p});
+            Future<AuthUser> login(String u, String p, {String? totpCode}) async {
+              final r = await _api.post('/auth/login', {'username': u, 'password': p, if (totpCode != null) 'totpCode': totpCode});
               final token = r['token'] as String? ?? r['access_token'] as String;
               (await _p).setString('auth_token', token); _api.setToken(token);
               return AuthUser.fromJson(r['user'] as Map<String, dynamic>);
