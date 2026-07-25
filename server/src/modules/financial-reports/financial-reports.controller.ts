@@ -193,6 +193,63 @@ export class FinancialReportsController {
     res.send('\uFEFF' + csv);
   }
 
+  /** Requirement #14 ("XML") — includes line items per invoice
+   * (unlike export.csv's flat summary row), since XML is typically
+   * asked for when handing data to another accounting system rather
+   * than for a human to open directly, and a system-to-system import
+   * needs the actual items, not just totals. */
+  @Get('export.xml')
+  async exportXml(
+    @CurrentUser() user: ReqUser,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @Query('orgId') orgIdParam: string | undefined,
+    @Res() res: Response,
+  ) {
+    const organizationId = user.organizationId ?? (orgIdParam ? Number(orgIdParam) : null);
+    const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
+    const invoices = await this.invoicesRepo.find({ where: { ...orgFilter, date: Between(from, to) } as any, order: { date: 'ASC' } });
+
+    const escapeXml = (v: unknown) =>
+      String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+    const invoicesXml = invoices
+      .map((i) => {
+        const itemsXml = (i.items ?? [])
+          .map(
+            (item: { description: string; quantity: number; unitPrice: number }) => `    <Item>
+      <Description>${escapeXml(item.description)}</Description>
+      <Quantity>${item.quantity}</Quantity>
+      <UnitPrice>${item.unitPrice.toFixed(2)}</UnitPrice>
+    </Item>`,
+          )
+          .join('\n');
+        return `  <Invoice>
+    <Number>${escapeXml(i.invoiceNumber ?? i.id)}</Number>
+    <Date>${escapeXml(i.date ?? '')}</Date>
+    <ClientName>${escapeXml(i.clientName)}</ClientName>
+    <ClientEmail>${escapeXml(i.clientEmail ?? '')}</ClientEmail>
+    <Total>${Number(i.total).toFixed(2)}</Total>
+    <Status>${escapeXml(i.status)}</Status>
+    <Items>
+${itemsXml}
+    </Items>
+  </Invoice>`;
+      })
+      .join('\n');
+
+    const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<Invoices from="${from}" to="${to}">
+${invoicesXml}
+</Invoices>`;
+
+    res.set({
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Content-Disposition': `attachment; filename="invoices_${from}_${to}.xml"`,
+    });
+    res.send(xml);
+  }
+
   /** Взаиморасчёты (requirement #7) — per-client running balance:
    * everything invoiced minus everything paid, all-time (not
    * period-scoped, same reasoning as the aging report — a client's
