@@ -837,7 +837,10 @@
     "moveToCategory": "Переместить в категорию",
     "deleteSelected": "Удалить выбранные",
     "clearSelection": "Снять выбор",
-    "noContacts": "Контактов нет"
+    "noContacts": "Контактов нет",
+    "taxId": "ח.פ. / ИНН",
+    "paymentTermsDays": "Отсрочка платежа (дней)",
+    "creditLimit": "Кредитный лимит"
   },
   "demoNotice": {
     "title": "Это демо-версия",

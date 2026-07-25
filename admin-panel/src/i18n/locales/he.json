@@ -837,7 +837,10 @@
     "moveToCategory": "העברה לקטגוריה",
     "deleteSelected": "מחיקת נבחרים",
     "clearSelection": "ניקוי בחירה",
-    "noContacts": "אין אנשי קשר"
+    "noContacts": "אין אנשי קשר",
+    "taxId": "ח.פ. / ת.ז.",
+    "paymentTermsDays": "תנאי תשלום (ימים)",
+    "creditLimit": "מסגרת אשראי"
   },
   "demoNotice": {
     "title": "זוהי התקנת דמו",

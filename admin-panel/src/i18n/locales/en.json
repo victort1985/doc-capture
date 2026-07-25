@@ -837,7 +837,10 @@
     "moveToCategory": "Move to category",
     "deleteSelected": "Delete selected",
     "clearSelection": "Clear selection",
-    "noContacts": "No contacts"
+    "noContacts": "No contacts",
+    "taxId": "ח.פ. / Tax ID",
+    "paymentTermsDays": "Payment terms (days)",
+    "creditLimit": "Credit limit"
   },
   "demoNotice": {
     "title": "This is a demo installation",

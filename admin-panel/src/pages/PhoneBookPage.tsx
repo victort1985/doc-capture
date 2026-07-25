@@ -17,6 +17,9 @@ interface Contact {
   email?: string;
   notes?: string;
   photoRelativePath?: string;
+  taxId?: string;
+  paymentTermsDays?: number;
+  creditLimit?: number;
 }
 interface ParsedContact {
   firstName: string;
@@ -30,7 +33,7 @@ interface ParsedContact {
 
 const EMPTY_FORM = {
   category: 'client', firstName: '', lastName: '', cityId: '', organizationId: '',
-  position: '', phone: '', email: '', notes: '',
+  position: '', phone: '', email: '', notes: '', taxId: '', paymentTermsDays: '', creditLimit: '',
 };
 
 export default function PhoneBookPage() {
@@ -145,6 +148,8 @@ export default function PhoneBookPage() {
       phone: c.phone,
       email: c.email || '',
       notes: c.notes || '',
+      taxId: c.taxId || '', paymentTermsDays: c.paymentTermsDays != null ? String(c.paymentTermsDays) : '',
+      creditLimit: c.creditLimit != null ? String(c.creditLimit) : '',
     });
     setShowForm(true);
   }
@@ -498,6 +503,22 @@ export default function PhoneBookPage() {
               <label>{t('phonebook.emailLabel')}</label>
               <input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
             </div>
+            {(form.category === 'client' || form.category === 'supplier') && (
+              <>
+                <div>
+                  <label>{t('phonebook.taxId')}</label>
+                  <input value={form.taxId} onChange={(e) => setForm({ ...form, taxId: e.target.value })} placeholder="ח.פ. / ת.ז." />
+                </div>
+                <div>
+                  <label>{t('phonebook.paymentTermsDays')}</label>
+                  <input type="number" value={form.paymentTermsDays} onChange={(e) => setForm({ ...form, paymentTermsDays: e.target.value })} placeholder="30" />
+                </div>
+                <div>
+                  <label>{t('phonebook.creditLimit')}</label>
+                  <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: e.target.value })} placeholder="₪" />
+                </div>
+              </>
+            )}
             <div style={{ gridColumn: '1 / -1' }}>
               <label>{t('phonebook.notes')}</label>
               <textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} style={{ width: '100%' }} />
