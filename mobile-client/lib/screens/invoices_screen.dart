@@ -14,6 +14,7 @@ import '../widgets/price_list_picker.dart';
 import 'invoice_detail_screen.dart';
 import '../widgets/search_picker_field.dart';
 import '../services/quotes_service.dart';
+import '../services/delivery_notes_service.dart';
 
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
@@ -242,6 +243,78 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     });
   }
 
+  List<DeliveryNote>? _notesCache;
+
+  Future<List<DeliveryNote>> _searchDeliveryNotes(String query) async {
+    _notesCache ??= await DeliveryNotesService(context.read<ApiService>()).list();
+    final q = query.toLowerCase();
+    return _notesCache!
+        .where((n) => (n.noteNumber ?? '').toLowerCase().contains(q) || (n.clientName ?? '').toLowerCase().contains(q))
+        .toList();
+  }
+
+  /// Delivery notes carry quantities and item names but never prices
+  /// (they document goods movement, not a sale) — so unlike
+  /// _fillFromQuote, every price field here starts at 0 for the person
+  /// to fill in themselves rather than pretending to know a number
+  /// the note simply doesn't have.
+  void _fillFromDeliveryNote(DeliveryNote note) {
+    setState(() {
+      _fromDeliveryNoteId = note.id;
+      if (note.clientName != null) _clientController.text = note.clientName!;
+      for (final c in _items) { c.$1.dispose(); c.$2.dispose(); c.$3.dispose(); }
+      _items.clear();
+      for (final item in note.items) {
+        _items.add((
+          TextEditingController(text: item.name),
+          TextEditingController(text: item.quantity.toString()),
+          TextEditingController(text: '0'),
+        ));
+      }
+      if (_items.isEmpty) _addItem();
+    });
+    // Best-effort — the note's chain gets resolved server-side anyway
+    // from deliveryNoteId at creation time (see InvoicesService), this
+    // just lets the form show/carry the right chainId a moment sooner.
+    context.read<ApiService>().get('/order-chain/for/delivery-note/${note.id}').then((chain) {
+      if (mounted) setState(() => _chainId = chain['chainId'] as String?);
+    }).catchError((_) {});
+  }
+
+  Future<void> _openDeliveryNotePicker() async {
+    final l10n = AppLocalizations.of(context)!;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          left: 16, right: 16, top: 16,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.invoiceFromNotePickTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 4),
+            Text(l10n.invoiceFromQuotePickHint, style: const TextStyle(fontSize: 12.5, color: AppColors.inkSoft)),
+            const SizedBox(height: 12),
+            SearchPickerField<DeliveryNote>(
+              search: _searchDeliveryNotes,
+              displayString: (n) => n.noteNumber ?? '#${n.id}',
+              listLabel: (n) => '${n.noteNumber ?? '#${n.id}'} · ${n.clientName ?? ''}',
+              hintText: l10n.invoiceFromQuoteSearchHint,
+              onSelected: (n) {
+                Navigator.of(ctx).pop();
+                _fillFromDeliveryNote(n);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _openQuotePicker() async {
     final l10n = AppLocalizations.of(context)!;
     await showModalBottomSheet<void>(
@@ -340,6 +413,16 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
           if (_fromQuoteId != null) ...[
             const SizedBox(height: 6),
             Text(l10n.invoiceFilledFromQuote, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
+          ],
+          const SizedBox(height: 10),
+          OutlinedButton.icon(
+            onPressed: _openDeliveryNotePicker,
+            icon: const Icon(Icons.assignment_outlined, size: 18),
+            label: Text(l10n.invoiceCreateFromNote),
+          ),
+          if (_fromDeliveryNoteId != null) ...[
+            const SizedBox(height: 6),
+            Text(l10n.invoiceFilledFromNote, style: const TextStyle(fontSize: 12, color: AppColors.inkSoft)),
           ],
           const SizedBox(height: 16),
           TextField(controller: _clientController, decoration: InputDecoration(labelText: l10n.quoteClientName)),
