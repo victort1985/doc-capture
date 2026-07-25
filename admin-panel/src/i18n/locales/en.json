@@ -1141,7 +1141,11 @@
     "equity": "Equity",
     "retainedEarnings": "Retained Earnings (period to date)",
     "totalEquity": "Total Equity",
-    "doesNotBalance": "Assets do not equal Liabilities + Equity — check for a posting error."
+    "doesNotBalance": "Assets do not equal Liabilities + Equity — check for a posting error.",
+    "tab_mutual_settlements": "Mutual settlements",
+    "client": "Client",
+    "invoiced": "Invoiced",
+    "paid": "Paid"
   },
   "auditLog": {
     "eyebrow": "Security",

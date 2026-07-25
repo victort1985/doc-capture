@@ -14,8 +14,9 @@ interface BalanceSheetData {
   equity: BalanceRow[]; retainedEarnings: number; totalEquity: number;
   balances: boolean;
 }
+interface MutualSettlementRow { clientName: string; invoiced: number; paid: number; balance: number; }
 
-type Tab = 'trial-balance' | 'pnl' | 'balance-sheet';
+type Tab = 'trial-balance' | 'pnl' | 'balance-sheet' | 'mutual-settlements';
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
 function toDateStr(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -28,6 +29,7 @@ export default function AccountingPage() {
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
   const [pnl, setPnl] = useState<PnlData | null>(null);
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetData | null>(null);
+  const [mutualSettlements, setMutualSettlements] = useState<MutualSettlementRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<TrialBalanceRow | null>(null);
@@ -60,11 +62,21 @@ export default function AccountingPage() {
     } finally { setLoading(false); }
   }
 
+  async function loadMutualSettlements() {
+    setLoading(true); setError(null);
+    try {
+      setMutualSettlements(await apiFetch<MutualSettlementRow[]>('/financial-reports/mutual-settlements'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load mutual settlements');
+    } finally { setLoading(false); }
+  }
+
   useEffect(() => {
     setSelectedAccount(null);
     if (tab === 'trial-balance') loadTrialBalance();
     else if (tab === 'pnl') loadPnl();
-    else loadBalanceSheet();
+    else if (tab === 'balance-sheet') loadBalanceSheet();
+    else loadMutualSettlements();
   }, [tab, from, to]);
 
   async function openLedger(row: TrialBalanceRow) {
@@ -143,7 +155,7 @@ export default function AccountingPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['trial-balance', 'pnl', 'balance-sheet'] as Tab[]).map((tKey) => (
+        {(['trial-balance', 'pnl', 'balance-sheet', 'mutual-settlements'] as Tab[]).map((tKey) => (
           <button
             key={tKey}
             type="button"
@@ -159,17 +171,19 @@ export default function AccountingPage() {
         ))}
       </div>
 
-      <div className="card" style={{ marginBottom: 16, padding: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
-        <Calendar size={15} style={{ color: 'var(--ink-soft)' }} />
-        {tab !== 'balance-sheet' && (
-          <>
-            <label style={{ fontSize: 13 }}>{t('accounting.from')}</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </>
-        )}
-        <label style={{ fontSize: 13 }}>{tab === 'balance-sheet' ? t('accounting.asOf') : t('accounting.to')}</label>
-        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-      </div>
+      {tab !== 'mutual-settlements' && (
+        <div className="card" style={{ marginBottom: 16, padding: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <Calendar size={15} style={{ color: 'var(--ink-soft)' }} />
+          {tab !== 'balance-sheet' && (
+            <>
+              <label style={{ fontSize: 13 }}>{t('accounting.from')}</label>
+              <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+            </>
+          )}
+          <label style={{ fontSize: 13 }}>{tab === 'balance-sheet' ? t('accounting.asOf') : t('accounting.to')}</label>
+          <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+        </div>
+      )}
 
       {error && <div className="error-banner">{error}</div>}
       {loading && <p>{t('common.loading')}</p>}
@@ -275,6 +289,35 @@ export default function AccountingPage() {
               <tr style={{ borderTop: '1px solid var(--border, #ccc)', fontWeight: 700 }}>
                 <td style={{ padding: '6px 0' }}>{t('accounting.totalEquity')}</td><td style={{ padding: '6px 0', textAlign: 'right' }}>₪{balanceSheet.totalEquity.toFixed(2)}</td>
               </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab === 'mutual-settlements' && (
+        <div className="card" style={{ overflowX: 'auto' }}>
+          <h3 style={{ marginTop: 0, padding: '0 16px' }}>{t('accounting.tab_mutual_settlements')}</h3>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
+                <th style={{ padding: '8px 12px' }}>{t('accounting.client')}</th>
+                <th style={{ padding: '8px 12px' }}>{t('accounting.invoiced')}</th>
+                <th style={{ padding: '8px 12px' }}>{t('accounting.paid')}</th>
+                <th style={{ padding: '8px 12px' }}>{t('accounting.balance')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {mutualSettlements.map((r) => (
+                <tr key={r.clientName} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                  <td style={{ padding: '8px 12px' }}>{r.clientName}</td>
+                  <td style={{ padding: '8px 12px' }}>₪{r.invoiced.toFixed(2)}</td>
+                  <td style={{ padding: '8px 12px' }}>₪{r.paid.toFixed(2)}</td>
+                  <td style={{ padding: '8px 12px', fontWeight: 700, color: r.balance > 0 ? 'var(--danger, crimson)' : 'inherit' }}>₪{r.balance.toFixed(2)}</td>
+                </tr>
+              ))}
+              {mutualSettlements.length === 0 && !loading && (
+                <tr><td colSpan={4} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('accounting.noAccounts')}</td></tr>
+              )}
             </tbody>
           </table>
         </div>

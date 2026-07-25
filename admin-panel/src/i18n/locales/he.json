@@ -1141,7 +1141,11 @@
     "equity": "הון",
     "retainedEarnings": "רווח שוטף לתקופה",
     "totalEquity": "סה\"כ הון",
-    "doesNotBalance": "נכסים אינם שווים להתחייבויות + הון — יש לבדוק שגיאת רישום."
+    "doesNotBalance": "נכסים אינם שווים להתחייבויות + הון — יש לבדוק שגיאת רישום.",
+    "tab_mutual_settlements": "התחשבנות הדדית",
+    "client": "לקוח",
+    "invoiced": "הופק",
+    "paid": "שולם"
   },
   "auditLog": {
     "eyebrow": "אבטחה",
