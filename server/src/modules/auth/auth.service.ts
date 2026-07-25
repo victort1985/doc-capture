@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
+import { authenticator } from 'otplib';
 import { UsersService } from '../users/users.service';
 import { resolveEffectivePermissions } from '../users/permissions.constants';
 import { DevicesService } from '../license/devices.service';
@@ -31,8 +32,23 @@ export class AuthService {
     return user;
   }
 
-  async login(username: string, password: string, deviceId?: string, platform?: string) {
+  async login(username: string, password: string, deviceId?: string, platform?: string, totpCode?: string) {
     const user = await this.validateUser(username, password);
+
+    // 2FA (requirement #16) — a correct password alone isn't enough
+    // once enabled. No token of any kind (not even a short-lived one)
+    // is issued until a valid code is presented, so there's no
+    // intermediate state to attack; the client just resubmits
+    // username+password+code together once it has one.
+    if (user.totpEnabled) {
+      if (!totpCode) {
+        throw new UnauthorizedException({ code: 'TOTP_REQUIRED', message: 'Two-factor code required' });
+      }
+      const valid = user.totpSecret && authenticator.check(totpCode, user.totpSecret);
+      if (!valid) {
+        throw new UnauthorizedException({ code: 'TOTP_INVALID', message: 'Invalid two-factor code' });
+      }
+    }
 
     // Mobile logins only (deviceId is only ever passed for
     // X-Client-Type: mobile — see AuthController) — a rejected device

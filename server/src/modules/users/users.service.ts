@@ -76,6 +76,21 @@ export class UsersService {
     await this.usersRepo.update(userId, { tosAcceptedAt: new Date(), tosAcceptedVersion: version });
   }
 
+  async setTotpSecret(userId: number, secret: string | null): Promise<void> {
+    await this.usersRepo.update(userId, { totpSecret: secret });
+  }
+
+  /** totpSecret is select:false on the entity — needs an explicit
+   * select to read it back, same reasoning as passwordHash. */
+  async getTotpSecret(userId: number): Promise<string | null> {
+    const user = await this.usersRepo.findOne({ where: { id: userId }, select: { id: true, totpSecret: true } });
+    return user?.totpSecret ?? null;
+  }
+
+  async setTotpEnabled(userId: number, enabled: boolean): Promise<void> {
+    await this.usersRepo.update(userId, { totpEnabled: enabled });
+  }
+
   /** Used only for login — explicitly pulls passwordHash (hidden by default via select:false). */
   async findByUsername(username: string): Promise<User | null> {
     return this.usersRepo.findOne({
@@ -94,6 +109,8 @@ export class UsersService {
         lastName: true,
         allowedOrganizationIds: true,
         permissions: true,
+        totpSecret: true,
+        totpEnabled: true,
       },
     });
   }

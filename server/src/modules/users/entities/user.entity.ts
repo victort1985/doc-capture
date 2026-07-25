@@ -87,6 +87,21 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   tosAcceptedVersion?: string | null;
 
+  /** TOTP secret (requirement #16, "двухфакторная аутентификация") —
+   * base32, only ever set via Auth2FAService.setupSecret(). Never
+   * returned to any client once confirmed; select:false keeps it out
+   * of ordinary queries the way password hashes already are. */
+  @Column({ type: 'varchar', nullable: true, select: false })
+  totpSecret?: string | null;
+
+  /** Set true only once the user has proven they can generate a valid
+   * code with the secret (see Auth2FAService.confirm()) — having a
+   * secret alone (mid-setup, QR scanned but not yet confirmed) does
+   * NOT enable the login-time challenge, so a user can't lock
+   * themselves out by generating a secret and never finishing setup. */
+  @Column({ default: false })
+  totpEnabled: boolean;
+
   // Technician's base city (informational/display) — distinct from
   // `regions` below, which drives call notification routing.
   @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })

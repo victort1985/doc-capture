@@ -15,4 +15,10 @@ export class LoginDto {
   @IsOptional()
   @IsString()
   platform?: string;
+
+  /** Present only once the client has been told TOTP_REQUIRED and the
+   * person has typed their 6-digit code from their authenticator app. */
+  @IsOptional()
+  @IsString()
+  totpCode?: string;
 }
