@@ -192,6 +192,52 @@ export class FinancialReportsController {
     });
     res.send('\uFEFF' + csv);
   }
+
+  /** Взаиморасчёты (requirement #7) — per-client running balance:
+   * everything invoiced minus everything paid, all-time (not
+   * period-scoped, same reasoning as the aging report — a client's
+   * running balance doesn't reset at an arbitrary date boundary).
+   *
+   * Grouped by clientName string, not a proper foreign key — this
+   * app doesn't link invoices/payments to a phonebook contact record
+   * currently, so two invoices for "Yossi Cohen" and "יוסי כהן" (same
+   * person, different spelling) would show as two separate rows here.
+   * Good enough for a quick balance check, not a substitute for
+   * cross-referencing against the actual client list for anything
+   * that needs to be precise. */
+  @Get('mutual-settlements')
+  async mutualSettlements(@CurrentUser() user: ReqUser, @Query('orgId') orgIdParam?: string) {
+    const organizationId = user.organizationId ?? (orgIdParam ? Number(orgIdParam) : null);
+    const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
+
+    const [invoices, payments] = await Promise.all([
+      this.invoicesRepo.find({ where: orgFilter as any }),
+      this.paymentsRepo.find({ where: orgFilter as any }),
+    ]);
+
+    const byClient = new Map<string, { invoiced: number; paid: number }>();
+    for (const inv of invoices) {
+      const key = inv.clientName;
+      const entry = byClient.get(key) ?? { invoiced: 0, paid: 0 };
+      entry.invoiced += Number(inv.total);
+      byClient.set(key, entry);
+    }
+    for (const p of payments) {
+      const key = p.clientName;
+      const entry = byClient.get(key) ?? { invoiced: 0, paid: 0 };
+      entry.paid += Number(p.amount);
+      byClient.set(key, entry);
+    }
+
+    return Array.from(byClient.entries())
+      .map(([clientName, v]) => ({
+        clientName,
+        invoiced: round2(v.invoiced),
+        paid: round2(v.paid),
+        balance: round2(v.invoiced - v.paid),
+      }))
+      .sort((a, b) => b.balance - a.balance);
+  }
 }
 
 function round2(n: number): number {
