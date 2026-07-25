@@ -14,6 +14,8 @@ import { Payment } from '../payments/entities/payment.entity';
 import { PaymentSettings } from '../payments/entities/payment-settings.entity';
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
+import { DocumentStorageSettingsService } from '../document-storage-settings/document-storage-settings.service';
+import { DocumentCategory } from '../document-storage-settings/entities/document-type-settings.entity';
 
 export type ChainDocType = 'quote' | 'order' | 'delivery-note' | 'invoice' | 'payment';
 
@@ -48,6 +50,7 @@ export class OrderChainService {
     @InjectRepository(Payment) private readonly paymentsRepo: Repository<Payment>,
     @InjectRepository(PaymentSettings) private readonly paymentSettingsRepo: Repository<PaymentSettings>,
     private readonly storageService: StorageService,
+    private readonly orderStorageSettingsService: DocumentStorageSettingsService,
   ) {}
 
   /** Resolves the chainId for a given document — if it doesn't have
@@ -114,15 +117,31 @@ export class OrderChainService {
     const summary = await PDFDocument.create();
     let pageCount = 0;
 
+    /** Orders (and occasionally other document types, depending on
+     * how they were captured) are frequently a scanned photo, not a
+     * true PDF — PDFDocument.load() throws on those, and the previous
+     * version of this function silently swallowed that error, which
+     * is exactly why orders never appeared in a chain summary even
+     * once they got added to this loop: every single one failed to
+     * parse as a PDF and got dropped. Detect the format from the file
+     * signature and embed images as their own page instead of assuming
+     * everything is already a PDF. */
     const appendPdf = async (bytes: Buffer | null) => {
       if (!bytes) return;
       try {
+        if (isJpeg(bytes) || isPng(bytes)) {
+          const image = isJpeg(bytes) ? await summary.embedJpg(bytes) : await summary.embedPng(bytes);
+          const page = summary.addPage([image.width, image.height]);
+          page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+          pageCount += 1;
+          return;
+        }
         const doc = await PDFDocument.load(bytes);
         const pages = await summary.copyPages(doc, doc.getPageIndices());
         pages.forEach((p) => summary.addPage(p));
         pageCount += pages.length;
       } catch {
-        // A corrupt/unreadable individual PDF shouldn't take down the
+        // A corrupt/unreadable individual file shouldn't take down the
         // whole summary — just skip it.
       }
     };
@@ -132,6 +151,21 @@ export class OrderChainService {
       if (settings?.storageConnection && quote.storagePath) {
         const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
         await appendPdf(await adapter.read(quote.storagePath).catch(() => null));
+      }
+    }
+
+    for (const order of chain.orders) {
+      // Orders aren't org-scoped storage settings the way quotes/
+      // invoices/notes are — same resolution OrdersService itself uses
+      // (routing config for DocumentCategory.ORDER, falling back to
+      // ORDERS_STORAGE_CONNECTION_ID / connection id 1).
+      try {
+        const routed = await this.orderStorageSettingsService.findOne(DocumentCategory.ORDER, null);
+        const connectionId = routed?.storageConnection?.id ?? parseInt(process.env.ORDERS_STORAGE_CONNECTION_ID || '1', 10);
+        const adapter = await this.storageService.getAdapter(connectionId);
+        await appendPdf(await adapter.read(order.storagePath).catch(() => null));
+      } catch {
+        // storage not configured for orders — skip, same as the other document types
       }
     }
 
@@ -280,4 +314,15 @@ export class OrderChainService {
       case 'payment': return { repo: this.paymentsRepo as Repository<any>, where: { id, ...orgFilter } };
     }
   }
+}
+
+/** JPEG files start with the SOI marker 0xFFD8. */
+function isJpeg(bytes: Buffer): boolean {
+  return bytes.length > 2 && bytes[0] === 0xff && bytes[1] === 0xd8;
+}
+
+/** PNG files start with an 8-byte fixed signature. */
+function isPng(bytes: Buffer): boolean {
+  const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+  return bytes.length > sig.length && sig.every((b, i) => bytes[i] === b);
 }

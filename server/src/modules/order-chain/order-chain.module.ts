@@ -10,6 +10,7 @@ import { Order } from '../orders/entities/order.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { PaymentSettings } from '../payments/entities/payment-settings.entity';
 import { StorageModule } from '../storage/storage.module';
+import { DocumentStorageSettingsModule } from '../document-storage-settings/document-storage-settings.module';
 import { OrderChainService } from './order-chain.service';
 import { OrderChainController } from './order-chain.controller';
 
@@ -20,6 +21,7 @@ import { OrderChainController } from './order-chain.controller';
       Order, Payment, PaymentSettings,
     ]),
     StorageModule,
+    DocumentStorageSettingsModule,
   ],
   controllers: [OrderChainController],
   providers: [OrderChainService],
