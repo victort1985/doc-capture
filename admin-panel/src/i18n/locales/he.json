@@ -33,7 +33,9 @@
     "creditNotes": "הודעות זיכוי",
     "creditNoteSettings": "הגדרות זיכוי",
     "debitNotes": "הודעות חיוב",
-    "debitNoteSettings": "הגדרות חיוב"
+    "debitNoteSettings": "הגדרות חיוב",
+    "returns": "החזרות",
+    "returnSettings": "הגדרות החזרה"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -1069,5 +1071,31 @@
     "noPdf": "אין PDF זמין.",
     "empty": "אין עדיין הודעות חיוב.",
     "defaultItemDescription": "חיוב נוסף לחשבונית {{number}}"
+  },
+  "returns": {
+    "eyebrow": "משרד",
+    "title": "החזרות",
+    "legalNotice": "תעודת החזרה מתעדת ציוד/סחורה שהוחזרו מלקוח, בהתייחסות לתעודת המשלוח המקורית.",
+    "create": "החזרה חדשה",
+    "createTitle": "יצירת תעודת החזרה",
+    "pickNoteLabel": "על פי איזו תעודת משלוח נשלחו הפריטים?",
+    "searchPlaceholder": "חיפוש לפי מספר או לקוח…",
+    "noNotesFound": "לא נמצאו תעודות משלוח.",
+    "returning": "החזרה על בסיס",
+    "changeNote": "החלפה",
+    "reasonLabel": "סיבה (חובה)",
+    "reasonPlaceholder": "מדוע מוחזר הפריט?",
+    "itemName": "פריט",
+    "itemNotes": "הערות",
+    "addItem": "הוספת שורה",
+    "submit": "רישום החזרה",
+    "number": "מספר",
+    "client": "לקוח",
+    "reason": "סיבה",
+    "deliveryNote": "תעודת משלוח",
+    "items": "פריטים",
+    "viewPdf": "צפייה ב-PDF",
+    "noPdf": "אין PDF זמין.",
+    "empty": "אין עדיין החזרות."
   }
 }

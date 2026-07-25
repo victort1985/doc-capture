@@ -25,7 +25,7 @@ interface SeriesSettings {
   vatEnabled?: boolean;
 }
 
-export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'quote' | 'invoice' | 'payment' | 'credit-note' | 'debit-note'; navLabelKey: string }) {
+export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'quote' | 'invoice' | 'payment' | 'credit-note' | 'debit-note' | 'return'; navLabelKey: string }) {
   const { t } = useTranslation();
   const { user } = useAuth();
   const isSuperAdmin = user?.organizationId == null;

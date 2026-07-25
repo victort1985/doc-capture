@@ -33,7 +33,9 @@
     "creditNotes": "Credit Notes",
     "creditNoteSettings": "Credit Note settings",
     "debitNotes": "Debit Notes",
-    "debitNoteSettings": "Debit Note settings"
+    "debitNoteSettings": "Debit Note settings",
+    "returns": "Returns",
+    "returnSettings": "Return settings"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1069,5 +1071,31 @@
     "noPdf": "No PDF available.",
     "empty": "No debit notes yet.",
     "defaultItemDescription": "Additional charge on invoice {{number}}"
+  },
+  "returns": {
+    "eyebrow": "Office",
+    "title": "Returns",
+    "legalNotice": "A return documents goods/equipment coming back from a client, referencing the delivery note they were sent out on.",
+    "create": "New return",
+    "createTitle": "Create return",
+    "pickNoteLabel": "Which delivery note were these items sent out on?",
+    "searchPlaceholder": "Search by number or client…",
+    "noNotesFound": "No matching delivery notes.",
+    "returning": "Returning against",
+    "changeNote": "Change",
+    "reasonLabel": "Reason (required)",
+    "reasonPlaceholder": "Why is this being returned?",
+    "itemName": "Item",
+    "itemNotes": "Notes",
+    "addItem": "Add line",
+    "submit": "Record return",
+    "number": "Number",
+    "client": "Client",
+    "reason": "Reason",
+    "deliveryNote": "Delivery note",
+    "items": "Items",
+    "viewPdf": "View PDF",
+    "noPdf": "No PDF available.",
+    "empty": "No returns yet."
   }
 }

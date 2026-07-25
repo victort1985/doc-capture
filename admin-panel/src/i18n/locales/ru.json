@@ -33,7 +33,9 @@
     "creditNotes": "Кредит-ноты",
     "creditNoteSettings": "Настройки кредит-нот",
     "debitNotes": "Дебет-ноты",
-    "debitNoteSettings": "Настройки дебет-нот"
+    "debitNoteSettings": "Настройки дебет-нот",
+    "returns": "Возвраты",
+    "returnSettings": "Настройки возвратов"
   },
   "app": {
     "adminConsole": "панель администратора",
@@ -1069,5 +1071,31 @@
     "noPdf": "PDF недоступен.",
     "empty": "Дебет-нот пока нет.",
     "defaultItemDescription": "Доначисление по счёту {{number}}"
+  },
+  "returns": {
+    "eyebrow": "Офис",
+    "title": "Возвраты",
+    "legalNotice": "Возврат документирует товар/оборудование, возвращённое клиентом, со ссылкой на исходную накладную.",
+    "create": "Новый возврат",
+    "createTitle": "Создание возврата",
+    "pickNoteLabel": "По какой накладной был отправлен товар?",
+    "searchPlaceholder": "Поиск по номеру или клиенту…",
+    "noNotesFound": "Накладные не найдены.",
+    "returning": "Возврат по",
+    "changeNote": "Изменить",
+    "reasonLabel": "Причина (обязательно)",
+    "reasonPlaceholder": "Почему оформляется возврат?",
+    "itemName": "Позиция",
+    "itemNotes": "Заметки",
+    "addItem": "Добавить строку",
+    "submit": "Оформить возврат",
+    "number": "Номер",
+    "client": "Клиент",
+    "reason": "Причина",
+    "deliveryNote": "Накладная",
+    "items": "Позиций",
+    "viewPdf": "Открыть PDF",
+    "noPdf": "PDF недоступен.",
+    "empty": "Возвратов пока нет."
   }
 }

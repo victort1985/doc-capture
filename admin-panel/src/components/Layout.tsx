@@ -5,7 +5,7 @@ import {
   Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall,
   Building2, Contact, Car, Package, BarChart2, ShieldCheck, FileSignature,
   FileText, CalendarDays, Menu, X, Mail, ReceiptText, Users2, FileSpreadsheet, Banknote, CalendarClock, Settings2,
-  ChevronDown, Settings, Globe, Smartphone, Tag, CreditCard, TrendingUp, FileMinus, FilePlus2,
+  ChevronDown, Settings, Globe, Smartphone, Tag, CreditCard, TrendingUp, FileMinus, FilePlus2, Undo2,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
@@ -50,6 +50,8 @@ const OFFICE_GROUP = [
   { to: '/orders-email-settings', labelKey: 'nav.orderIntakeEmail', icon: Mail },
   { to: '/delivery-notes',    labelKey: 'nav.deliveryNotes',        icon: FileText },
   { to: '/delivery-settings', labelKey: 'nav.deliveryNoteSettings', icon: FileSignature },
+  { to: '/returns',           labelKey: 'nav.returns',              icon: Undo2 },
+  { to: '/return-settings',   labelKey: 'nav.returnSettings',       icon: Settings2 },
   { to: '/invoices',          labelKey: 'nav.invoices',             icon: Banknote },
   { to: '/invoice-settings',  labelKey: 'nav.invoiceSettings',      icon: Settings2 },
   { to: '/credit-notes',      labelKey: 'nav.creditNotes',          icon: FileMinus },
