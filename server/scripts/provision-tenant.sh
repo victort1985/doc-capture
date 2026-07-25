@@ -79,6 +79,7 @@ sed \
   -e "s|__DB_PASSWORD__|$DB_PASSWORD|" \
   -e "s|__DB_DATABASE__|$DB_NAME|" \
   -e "s|__LICENSE_SERVER_URL__|$LICENSE_SERVER_URL|" \
+  -e "s|__SLUG__|$SLUG|g" \
   "$SOURCE_DIR/scripts/tenant.env.template" > "$TENANT_DIR/.env"
 chown -R doccapture:doccapture "$TENANT_DIR"
 
@@ -148,6 +149,13 @@ Done. Next steps:
 
 2. Point a subdomain at this instance (nginx/Caddy), proxying to
    127.0.0.1:$PORT — e.g. company-a.vixor-erp.com
+
+2b. ALSO add a Cloudflare Tunnel route + DNS record for
+    sign.$SLUG.doc-capture.app -> 127.0.0.1:$PORT (same target as
+    step 2, just a second hostname on the same tenant process).
+    Without this, remote delivery-note signing links for this tenant
+    will always show "link not found" — see the SIGN_BASE_URL comment
+    in $TENANT_DIR/.env for why.
 
 3. Give the customer their license key: $LICENSE_KEY
 
