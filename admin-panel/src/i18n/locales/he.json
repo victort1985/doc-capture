@@ -37,7 +37,8 @@
     "returns": "החזרות",
     "returnSettings": "הגדרות החזרה",
     "accounting": "הנהלת חשבונות",
-    "auditLog": "יומן פעולות"
+    "auditLog": "יומן פעולות",
+    "expenses": "הוצאות ורכישות"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -1163,5 +1164,30 @@
     "status": "סטטוס",
     "ip": "IP",
     "empty": "לא נמצאו רשומות."
+  },
+  "expenses": {
+    "eyebrow": "משרד",
+    "title": "הוצאות ורכישות",
+    "newExpense": "הוצאה חדשה",
+    "newSupplierInvoice": "חשבונית ספק חדשה",
+    "tabExpenses": "הוצאות",
+    "tabSupplierInvoices": "חשבוניות ספקים",
+    "date": "תאריך",
+    "description": "תיאור",
+    "category": "קטגוריה",
+    "method": "אמצעי",
+    "amount": "סכום",
+    "cash": "מזומן",
+    "bank": "בנק",
+    "submit": "שמירה",
+    "supplier": "ספק",
+    "invoiceNumber": "מס' חשבונית",
+    "dueDate": "תאריך פירעון",
+    "status": "סטטוס",
+    "paid": "שולם",
+    "unpaid": "לא שולם",
+    "markPaid": "סימון כשולם",
+    "noExpenses": "אין עדיין הוצאות.",
+    "noSupplierInvoices": "אין עדיין חשבוניות ספקים."
   }
 }

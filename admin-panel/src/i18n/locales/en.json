@@ -37,7 +37,8 @@
     "returns": "Returns",
     "returnSettings": "Return settings",
     "accounting": "Accounting",
-    "auditLog": "Audit Log"
+    "auditLog": "Audit Log",
+    "expenses": "Expenses & Purchases"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1163,5 +1164,30 @@
     "status": "Status",
     "ip": "IP",
     "empty": "No matching entries."
+  },
+  "expenses": {
+    "eyebrow": "Office",
+    "title": "Expenses & Purchases",
+    "newExpense": "New expense",
+    "newSupplierInvoice": "New supplier invoice",
+    "tabExpenses": "Expenses",
+    "tabSupplierInvoices": "Supplier invoices",
+    "date": "Date",
+    "description": "Description",
+    "category": "Category",
+    "method": "Method",
+    "amount": "Amount",
+    "cash": "Cash",
+    "bank": "Bank",
+    "submit": "Save",
+    "supplier": "Supplier",
+    "invoiceNumber": "Invoice #",
+    "dueDate": "Due date",
+    "status": "Status",
+    "paid": "Paid",
+    "unpaid": "Unpaid",
+    "markPaid": "Mark paid",
+    "noExpenses": "No expenses yet.",
+    "noSupplierInvoices": "No supplier invoices yet."
   }
 }

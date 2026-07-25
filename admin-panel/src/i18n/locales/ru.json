@@ -37,7 +37,8 @@
     "returns": "Возвраты",
     "returnSettings": "Настройки возвратов",
     "accounting": "Бухгалтерия",
-    "auditLog": "Журнал действий"
+    "auditLog": "Журнал действий",
+    "expenses": "Расходы и закупки"
   },
   "app": {
     "adminConsole": "панель администратора",
@@ -1163,5 +1164,30 @@
     "status": "Статус",
     "ip": "IP",
     "empty": "Записей не найдено."
+  },
+  "expenses": {
+    "eyebrow": "Офис",
+    "title": "Расходы и закупки",
+    "newExpense": "Новый расход",
+    "newSupplierInvoice": "Новый счёт от поставщика",
+    "tabExpenses": "Расходы",
+    "tabSupplierInvoices": "Счета поставщиков",
+    "date": "Дата",
+    "description": "Описание",
+    "category": "Категория",
+    "method": "Способ",
+    "amount": "Сумма",
+    "cash": "Наличные",
+    "bank": "Банк",
+    "submit": "Сохранить",
+    "supplier": "Поставщик",
+    "invoiceNumber": "№ счёта",
+    "dueDate": "Срок оплаты",
+    "status": "Статус",
+    "paid": "Оплачено",
+    "unpaid": "Не оплачено",
+    "markPaid": "Отметить оплаченным",
+    "noExpenses": "Расходов пока нет.",
+    "noSupplierInvoices": "Счетов поставщиков пока нет."
   }
 }

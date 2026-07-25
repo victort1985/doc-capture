@@ -47,6 +47,7 @@ import ReturnsPage from './pages/ReturnsPage';
 import ReturnSettingsPage from './pages/ReturnSettingsPage';
 import AccountingPage from './pages/AccountingPage';
 import AuditLogPage from './pages/AuditLogPage';
+import ExpensesPage from './pages/ExpensesPage';
 import PriceListPage from './pages/PriceListPage';
 import DevicesPage from './pages/DevicesPage';
 
@@ -114,6 +115,7 @@ export default function App() {
           <Route path="/return-settings" element={<ReturnSettingsPage />} />
           <Route path="/accounting" element={<AccountingPage />} />
           <Route path="/audit-log" element={<AuditLogPage />} />
+          <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/payment-settings" element={<PaymentSettingsPage />} />
           <Route path="/prices" element={<PriceListPage />} />
           <Route path="/devices" element={<DevicesPage />} />
