@@ -5,6 +5,7 @@ import '../store/app_state.dart';
 import 'connection_settings_screen.dart';
 import 'login_screen.dart';
 import 'terms_of_service_viewer_screen.dart';
+import 'two_factor_settings_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key, required this.appState});
@@ -85,6 +86,17 @@ class SettingsScreen extends StatelessWidget {
             trailing: const Icon(Icons.chevron_right, size: 18),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => TermsOfServiceViewerScreen(language: appState.currentUser?.language ?? appState.languageCode)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.shield_outlined, color: AppColors.inkSoft),
+            title: Text(l10n.twoFactorTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+            trailing: const Icon(Icons.chevron_right, size: 18),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const TwoFactorSettingsScreen()),
             ),
           ),
         ),

@@ -116,8 +116,8 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> login(String username, String password) async {
-    currentUser = await _authService.login(username, password);
+  Future<void> login(String username, String password, {String? totpCode}) async {
+    currentUser = await _authService.login(username, password, totpCode: totpCode);
     await setLanguage(currentUser!.language);
     await _pushNotificationsService.initAndRegister();
     await _loadSwitchableOrgs();

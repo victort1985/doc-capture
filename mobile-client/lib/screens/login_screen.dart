@@ -22,6 +22,8 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _totpController = TextEditingController();
+  bool _needsTotp = false;
   bool _loading = false;
   String? _error;
   bool _obscure = true;
@@ -85,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
     setState(() { _loading = true; _error = null; });
     try {
       final appState = context.read<AppState>();
-      await appState.login(_usernameController.text.trim(), _passwordController.text);
+      await appState.login(_usernameController.text.trim(), _passwordController.text, totpCode: _needsTotp ? _totpController.text.trim() : null);
       if (_rememberMe) {
         await appState.authService.saveCredentials(_usernameController.text.trim(), _passwordController.text);
       } else {
@@ -124,7 +126,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       // checks their connection settings instead of re-typing a password
       // that was never actually wrong.
       if (e.response?.statusCode == 401) {
-        setState(() => _error = l10n.signInError);
+        final code = (e.response?.data is Map) ? (e.response?.data['message'] as Object?) : null;
+        final errorCode = code is Map ? code['code'] as String? : null;
+        if (errorCode == 'TOTP_REQUIRED') {
+          setState(() { _needsTotp = true; _error = null; });
+        } else if (errorCode == 'TOTP_INVALID') {
+          setState(() => _error = l10n.totpInvalid);
+        } else {
+          setState(() => _error = l10n.signInError);
+        }
       } else {
         // Surfacing the bare DioExceptionType name (e.g. "connectionError")
         // turned out not to be enough detail on its own — it covers many
@@ -245,6 +255,20 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
                               ),
                             ),
                           ),
+                          if (_needsTotp) ...[
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: _totpController,
+                              autofocus: true,
+                              keyboardType: TextInputType.number,
+                              maxLength: 6,
+                              decoration: InputDecoration(
+                                labelText: l10n.totpCode,
+                                prefixIcon: const Icon(Icons.shield_outlined, size: 20),
+                                counterText: '',
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 8),
                           Row(
                             children: [

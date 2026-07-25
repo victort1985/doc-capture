@@ -12,6 +12,7 @@ class AuthUser {
   final int? organizationId;
   final bool isDemoMode;
   final bool tosAccepted;
+  final bool totpEnabled;
   final List<int> allowedOrganizationIds;
   final Map<String, bool> permissions;
   final String? firstName;
@@ -25,6 +26,7 @@ class AuthUser {
     this.organizationId,
     this.isDemoMode = false,
     this.tosAccepted = false,
+    this.totpEnabled = false,
     this.allowedOrganizationIds = const [],
     this.permissions = const {},
     this.firstName,
@@ -47,6 +49,7 @@ class AuthUser {
         organizationId: json['organizationId'] as int?,
         isDemoMode: json['isDemoMode'] as bool? ?? false,
         tosAccepted: json['tosAccepted'] as bool? ?? false,
+        totpEnabled: json['totpEnabled'] as bool? ?? false,
         allowedOrganizationIds: (json['allowedOrganizationIds'] as List<dynamic>?)
             ?.map((e) => e as int)
             .toList() ?? [],
@@ -66,13 +69,14 @@ class AuthService {
   static const _savedUsernameKey = 'saved_username';
   static const _savedPasswordKey = 'saved_password';
 
-  Future<AuthUser> login(String username, String password) async {
+  Future<AuthUser> login(String username, String password, {String? totpCode}) async {
     final deviceId = await getOrCreateDeviceId();
     final response = await _api.post('/auth/login', {
       'username': username,
       'password': password,
       'deviceId': deviceId,
       'platform': Platform.operatingSystem,
+      if (totpCode != null) 'totpCode': totpCode,
     });
     final token = response['token'] as String;
     await _storage.write(key: _tokenKey, value: token);
