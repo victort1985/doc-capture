@@ -10,10 +10,10 @@ import '../widgets/chain_status_badge.dart';
 class DeliveryNotesScreen extends StatefulWidget {
   const DeliveryNotesScreen({super.key});
   @override
-  State<DeliveryNotesScreen> createState() => _DeliveryNotesScreenState();
+  State<DeliveryNotesScreen> createState() => DeliveryNotesScreenState();
 }
 
-class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
+class DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
   late final DeliveryNotesService _svc;
   List<DeliveryNote> _notes = [];
   bool _loading = true;
@@ -25,6 +25,14 @@ class _DeliveryNotesScreenState extends State<DeliveryNotesScreen> {
     _svc = DeliveryNotesService(context.read<ApiService>());
     _load();
   }
+
+  /// Called by OfficeScreen (via GlobalKey) whenever this tab becomes
+  /// selected again — this screen stays alive in an IndexedStack for
+  /// scroll-position continuity, so it doesn't naturally re-fetch on
+  /// its own the way a freshly-built screen would. Without this, a
+  /// note created elsewhere (e.g. from an order's "Create delivery
+  /// note" button) wouldn't show up here until the whole app restarted.
+  Future<void> refresh() => _load();
 
   Future<void> _load() async {
     setState(() => _loading = true);

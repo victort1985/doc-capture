@@ -13,10 +13,10 @@ import '../widgets/chain_status_badge.dart';
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({super.key});
   @override
-  State<PaymentsScreen> createState() => _PaymentsScreenState();
+  State<PaymentsScreen> createState() => PaymentsScreenState();
 }
 
-class _PaymentsScreenState extends State<PaymentsScreen> {
+class PaymentsScreenState extends State<PaymentsScreen> {
   late final PaymentsService _svc;
   List<Payment> _payments = [];
   bool _loading = true;
@@ -29,6 +29,9 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
     _svc = PaymentsService(context.read<ApiService>());
     _load();
   }
+
+  /// See DeliveryNotesScreenState.refresh() for why this exists.
+  Future<void> refresh() => _load();
 
   Future<void> _load() async {
     setState(() => _loading = true);

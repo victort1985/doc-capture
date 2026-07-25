@@ -20,10 +20,10 @@ class OrdersScreen extends StatefulWidget {
   const OrdersScreen({super.key});
 
   @override
-  State<OrdersScreen> createState() => _OrdersScreenState();
+  State<OrdersScreen> createState() => OrdersScreenState();
 }
 
-class _OrdersScreenState extends State<OrdersScreen> {
+class OrdersScreenState extends State<OrdersScreen> {
   List<OrderListItem>? _orders;
   bool _uploading = false;
   String? _error;
@@ -34,6 +34,9 @@ class _OrdersScreenState extends State<OrdersScreen> {
     super.initState();
     _load();
   }
+
+  /// See DeliveryNotesScreenState.refresh() for why this exists.
+  Future<void> refresh() => _load();
 
   Future<void> _load() async {
     try {

@@ -15,10 +15,10 @@ import '../widgets/price_list_picker.dart';
 class QuotesScreen extends StatefulWidget {
   const QuotesScreen({super.key});
   @override
-  State<QuotesScreen> createState() => _QuotesScreenState();
+  State<QuotesScreen> createState() => QuotesScreenState();
 }
 
-class _QuotesScreenState extends State<QuotesScreen> {
+class QuotesScreenState extends State<QuotesScreen> {
   late final QuotesService _svc;
   List<Quote> _quotes = [];
   bool _loading = true;
@@ -31,6 +31,9 @@ class _QuotesScreenState extends State<QuotesScreen> {
     _svc = QuotesService(context.read<ApiService>());
     _load();
   }
+
+  /// See DeliveryNotesScreenState.refresh() for why this exists.
+  Future<void> refresh() => _load();
 
   Future<void> _load() async {
     setState(() => _loading = true);

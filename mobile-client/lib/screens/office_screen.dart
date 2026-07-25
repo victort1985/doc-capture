@@ -23,22 +23,40 @@ class OfficeScreen extends StatefulWidget {
 class _OfficeScreenState extends State<OfficeScreen> {
   int _subIndex = 0;
 
+  // Stable across rebuilds (unlike a GlobalKey created inline inside
+  // build(), which would be a brand new key every time) — lets tab
+  // switches call .refresh() on whichever screen just became visible,
+  // since each one stays alive in the IndexedStack below rather than
+  // being rebuilt from scratch, so it doesn't naturally re-fetch on
+  // its own the way a freshly-built screen would.
+  final _quotesKey = GlobalKey<QuotesScreenState>();
+  final _ordersKey = GlobalKey<OrdersScreenState>();
+  final _deliveryNotesKey = GlobalKey<DeliveryNotesScreenState>();
+  final _invoicesKey = GlobalKey<InvoicesScreenState>();
+  final _paymentsKey = GlobalKey<PaymentsScreenState>();
+
+  void _selectTab(int i, List<(String, IconData, Widget, VoidCallback?)> items) {
+    if (i == _subIndex) return;
+    setState(() => _subIndex = i);
+    items[i].$4?.call();
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final user = context.watch<AppState>().currentUser;
 
-    final items = <(String, IconData, Widget)>[
+    final items = <(String, IconData, Widget, VoidCallback?)>[
       if (user?.hasPermission('office.quotes') ?? false)
-        (l10n.quotesTitle, Icons.request_quote_outlined, const QuotesScreen()),
+        (l10n.quotesTitle, Icons.request_quote_outlined, QuotesScreen(key: _quotesKey), () => _quotesKey.currentState?.refresh()),
       if (user?.hasPermission('office.orders') ?? false)
-        (l10n.navOrders, Icons.inventory_2_outlined, const OrdersScreen()),
+        (l10n.navOrders, Icons.inventory_2_outlined, OrdersScreen(key: _ordersKey), () => _ordersKey.currentState?.refresh()),
       if (user?.hasPermission('office.delivery_notes') ?? false)
-        (l10n.deliveryNotesTitle, Icons.assignment_outlined, const DeliveryNotesScreen()),
+        (l10n.deliveryNotesTitle, Icons.assignment_outlined, DeliveryNotesScreen(key: _deliveryNotesKey), () => _deliveryNotesKey.currentState?.refresh()),
       if (user?.hasPermission('office.invoices') ?? false)
-        (l10n.invoicesTitle, Icons.receipt_long_outlined, const InvoicesScreen()),
+        (l10n.invoicesTitle, Icons.receipt_long_outlined, InvoicesScreen(key: _invoicesKey), () => _invoicesKey.currentState?.refresh()),
       if (user?.hasPermission('office.payments') ?? false)
-        (l10n.paymentsTitle, Icons.payments_outlined, const PaymentsScreen()),
+        (l10n.paymentsTitle, Icons.payments_outlined, PaymentsScreen(key: _paymentsKey), () => _paymentsKey.currentState?.refresh()),
     ];
 
     if (items.isEmpty) {
@@ -65,7 +83,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
                 for (var i = 0; i < items.length; i++)
                   Expanded(
                     child: InkWell(
-                      onTap: () => setState(() => _subIndex = i),
+                      onTap: () => _selectTab(i, items),
                       child: Container(
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         decoration: BoxDecoration(

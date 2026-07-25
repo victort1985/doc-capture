@@ -18,10 +18,10 @@ import '../services/quotes_service.dart';
 class InvoicesScreen extends StatefulWidget {
   const InvoicesScreen({super.key});
   @override
-  State<InvoicesScreen> createState() => _InvoicesScreenState();
+  State<InvoicesScreen> createState() => InvoicesScreenState();
 }
 
-class _InvoicesScreenState extends State<InvoicesScreen> {
+class InvoicesScreenState extends State<InvoicesScreen> {
   late final InvoicesService _svc;
   List<Invoice> _invoices = [];
   bool _loading = true;
@@ -34,6 +34,9 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     _svc = InvoicesService(context.read<ApiService>());
     _load();
   }
+
+  /// See DeliveryNotesScreenState.refresh() for why this exists.
+  Future<void> refresh() => _load();
 
   Future<void> _load() async {
     setState(() => _loading = true);
