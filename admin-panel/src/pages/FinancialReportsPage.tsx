@@ -128,6 +128,20 @@ export default function FinancialReportsPage() {
           }}>
             <Download size={15} /> {t('financialReports.exportCsv')}
           </button>
+          <button type="button" className="ghost" onClick={async () => {
+            const qs = new URLSearchParams({ from, to });
+            if (isSuperAdmin && selOrgId) qs.set('orgId', String(selOrgId));
+            try {
+              const url = await apiFetchBlob(`/financial-reports/export.xml?${qs.toString()}`);
+              const a = document.createElement('a');
+              a.href = url; a.download = `invoices_${from}_${to}.xml`;
+              a.click();
+            } catch (e) {
+              alert(e instanceof Error ? e.message : 'Export failed');
+            }
+          }}>
+            <Download size={15} /> {t('financialReports.exportXml')}
+          </button>
         </div>
       </div>
 

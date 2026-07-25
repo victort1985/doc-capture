@@ -1020,7 +1020,8 @@
     "agingBucket_days61to90": "61–90 days",
     "agingBucket_days91to120": "91–120 days",
     "agingBucket_over120": "Over 120 days",
-    "exportCsv": "Export CSV"
+    "exportCsv": "Export CSV",
+    "exportXml": "Export XML"
   },
   "creditNotes": {
     "eyebrow": "Office",
