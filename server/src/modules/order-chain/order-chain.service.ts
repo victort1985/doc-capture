@@ -13,6 +13,7 @@ import { Order } from '../orders/entities/order.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { PaymentSettings } from '../payments/entities/payment-settings.entity';
 import { StorageService } from '../storage/storage.service';
+import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentStorageSettingsService } from '../document-storage-settings/document-storage-settings.service';
 import { DocumentCategory } from '../document-storage-settings/entities/document-type-settings.entity';
@@ -149,8 +150,8 @@ export class OrderChainService {
     for (const quote of chain.quotes) {
       const settings = await this.quoteSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
       if (settings?.storageConnection && quote.storagePath) {
-        const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
-        await appendPdf(await adapter.read(quote.storagePath).catch(() => null));
+        const { adapter } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
+        await appendPdf(await readMaybeEncrypted(adapter, quote.storagePath).catch(() => null));
       }
     }
 
@@ -162,8 +163,8 @@ export class OrderChainService {
       try {
         const routed = await this.orderStorageSettingsService.findOne(DocumentCategory.ORDER, null);
         const connectionId = routed?.storageConnection?.id ?? parseInt(process.env.ORDERS_STORAGE_CONNECTION_ID || '1', 10);
-        const adapter = await this.storageService.getAdapter(connectionId);
-        await appendPdf(await adapter.read(order.storagePath).catch(() => null));
+        const { adapter } = await this.storageService.getAdapterWithMeta(connectionId);
+        await appendPdf(await readMaybeEncrypted(adapter, order.storagePath).catch(() => null));
       } catch {
         // storage not configured for orders — skip, same as the other document types
       }
@@ -172,16 +173,16 @@ export class OrderChainService {
     for (const note of chain.deliveryNotes) {
       const settings = await this.deliveryNoteSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
       if (settings?.storageConnection && (note as any).pdfPath) {
-        const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
-        await appendPdf(await adapter.read((note as any).pdfPath).catch(() => null));
+        const { adapter } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
+        await appendPdf(await readMaybeEncrypted(adapter, (note as any).pdfPath).catch(() => null));
       }
     }
 
     for (const invoice of chain.invoices) {
       const settings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
       if (settings?.storageConnection && invoice.storagePath) {
-        const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
-        await appendPdf(await adapter.read(invoice.storagePath).catch(() => null));
+        const { adapter } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
+        await appendPdf(await readMaybeEncrypted(adapter, invoice.storagePath).catch(() => null));
       }
     }
 
@@ -224,10 +225,9 @@ export class OrderChainService {
     // conceptually belongs to the completed order as a whole rather
     // than to any one document type.
     if (!paymentSettings?.storageConnection) return null;
-    const adapter = await this.storageService.getAdapter(paymentSettings.storageConnection.id);
+    const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(paymentSettings.storageConnection.id);
     const relativePath = `ChainSummaries/${chainId}.pdf`;
-    await adapter.write(relativePath, bytes);
-    return relativePath;
+    return writeMaybeEncrypted(adapter, relativePath, bytes, encryptAtRest);
   }
 
   /** Resolves just the status summary for a batch of documents in one

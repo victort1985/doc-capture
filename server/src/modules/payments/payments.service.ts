@@ -11,6 +11,7 @@ import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { OrderChainService } from '../order-chain/order-chain.service';
+import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
 
 @Injectable()
@@ -181,9 +182,9 @@ export class PaymentsService {
 
     try {
       const pdfBytes = await this.renderPdfBytes(payment, settings);
-      const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+      const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `Payments/${payment.paymentNumber ?? payment.id}.pdf`;
-      await adapter.write(relativePath, pdfBytes);
+      const finalPath = await writeMaybeEncrypted(adapter, relativePath, pdfBytes, encryptAtRest);
 
       // The very first successful render is "the original" per the
       // business rule that it only ever goes out once, at creation —
@@ -215,7 +216,7 @@ export class PaymentsService {
           .catch(() => {});
       }
 
-      return { path: relativePath, bytes: pdfBytes };
+      return { path: finalPath, bytes: pdfBytes };
     } catch (err) {
       if (throwOnError) throw err;
       return { path: null, bytes: null };
@@ -297,8 +298,8 @@ export class PaymentsService {
       relations: ['storageConnection'],
     });
     if (!settings?.storageConnection) throw new NotFoundException('Storage connection is no longer configured');
-    const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
-    return adapter.read(payment.chainSummaryPath);
+    const { adapter } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
+    return readMaybeEncrypted(adapter, payment.chainSummaryPath);
   }
 
   async remove(id: number, organizationId: number | null): Promise<void> {

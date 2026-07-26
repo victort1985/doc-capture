@@ -9,6 +9,7 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
+import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 
 @Injectable()
 export class ReturnsService {
@@ -98,9 +99,9 @@ export class ReturnsService {
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
       });
-      const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
+      const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `Returns/${returnNote.returnNumber ?? returnNote.id}.pdf`;
-      await adapter.write(relativePath, pdfBytes);
+      const finalPath = await writeMaybeEncrypted(adapter, relativePath, pdfBytes, encryptAtRest);
 
       if (settings.autoSendEmail) {
         this.documentSendingService
@@ -112,7 +113,7 @@ export class ReturnsService {
           })
           .catch(() => {});
       }
-      return relativePath;
+      return finalPath;
     } catch {
       return null;
     }
@@ -126,7 +127,7 @@ export class ReturnsService {
       relations: ['storageConnection'],
     });
     if (!settings?.storageConnection) throw new NotFoundException('Storage connection is no longer configured');
-    const adapter = await this.storageService.getAdapter(settings.storageConnection.id);
-    return adapter.read(returnNote.storagePath);
+    const { adapter } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
+    return readMaybeEncrypted(adapter, returnNote.storagePath);
   }
 }
