@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
@@ -35,6 +36,23 @@ export class ExpensesController {
   async importCsv(@UploadedFile() file: { buffer: Buffer }, @CurrentUser() user: ReqUser) {
     return this.service.importExpensesCsv(user.organizationId, user.id, file.buffer.toString('utf-8'));
   }
+
+  @Post(':id/receipt')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
+  attachReceipt(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: { originalname: string; buffer: Buffer },
+    @CurrentUser() user: ReqUser,
+  ) {
+    return this.service.attachExpenseReceipt(id, user.organizationId, user.id, file);
+  }
+
+  @Get(':id/receipt')
+  async getReceipt(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Res() res: Response) {
+    const buffer = await this.service.getExpenseReceipt(id, user.organizationId, user.id);
+    res.set({ 'Content-Type': 'application/octet-stream', 'Content-Disposition': `inline; filename="receipt-${id}"` });
+    res.send(buffer);
+  }
 }
 
 @Controller('supplier-invoices')
@@ -64,5 +82,22 @@ export class SupplierInvoicesController {
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(@UploadedFile() file: { buffer: Buffer }, @CurrentUser() user: ReqUser) {
     return this.service.importSupplierInvoicesCsv(user.organizationId, user.id, file.buffer.toString('utf-8'));
+  }
+
+  @Post(':id/bill')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
+  attachBill(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: { originalname: string; buffer: Buffer },
+    @CurrentUser() user: ReqUser,
+  ) {
+    return this.service.attachSupplierInvoiceBill(id, user.organizationId, user.id, file);
+  }
+
+  @Get(':id/bill')
+  async getBill(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Res() res: Response) {
+    const buffer = await this.service.getSupplierInvoiceBill(id, user.organizationId, user.id);
+    res.set({ 'Content-Type': 'application/octet-stream', 'Content-Disposition': `inline; filename="bill-${id}"` });
+    res.send(buffer);
   }
 }

@@ -5,9 +5,10 @@ import { SupplierInvoice } from './entities/supplier-invoice.entity';
 import { ExpensesService } from './expenses.service';
 import { ExpensesController, SupplierInvoicesController } from './expenses.controller';
 import { AccountingModule } from '../accounting/accounting.module';
+import { StorageModule } from '../storage/storage.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Expense, SupplierInvoice]), AccountingModule],
+  imports: [TypeOrmModule.forFeature([Expense, SupplierInvoice]), AccountingModule, StorageModule],
   controllers: [ExpensesController, SupplierInvoicesController],
   providers: [ExpensesService],
 })

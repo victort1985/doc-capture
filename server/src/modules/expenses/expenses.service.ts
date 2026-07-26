@@ -6,6 +6,8 @@ import { SupplierInvoice } from './entities/supplier-invoice.entity';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { CreateSupplierInvoiceDto } from './dto/create-supplier-invoice.dto';
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
+import { StorageService } from '../storage/storage.service';
+import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 
 @Injectable()
 export class ExpensesService {
@@ -13,6 +15,7 @@ export class ExpensesService {
     @InjectRepository(Expense) private readonly expensesRepo: Repository<Expense>,
     @InjectRepository(SupplierInvoice) private readonly supplierInvoicesRepo: Repository<SupplierInvoice>,
     private readonly ledgerPostingService: LedgerPostingService,
+    private readonly storageService: StorageService,
   ) {}
 
   // ── Expenses ──────────────────────────────────────────────────
@@ -197,5 +200,68 @@ export class ExpensesService {
       }
     }
     return { imported, failed };
+  }
+
+  // ── Receipt / bill attachment ────────────────────────────────────
+  /** Attaches a scanned receipt to an expense. Uses the same per-user
+   * document storage connection every other scan/photo upload in this
+   * app resolves through (see FleetService.addDocument for the
+   * identical pattern), rather than a dedicated expenses-specific
+   * connection — one less thing for an org to have to configure
+   * separately. */
+  async attachExpenseReceipt(id: number, organizationId: number | null, userId: number, file: { originalname: string; buffer: Buffer }): Promise<Expense> {
+    const expense = await this.expensesRepo.findOne({ where: { id }, relations: ['organization'] });
+    if (!expense) throw new NotFoundException('Expense not found');
+    if (organizationId != null && expense.organization?.id !== organizationId) throw new NotFoundException('Expense not found');
+
+    const settings = await this.storageService.getClientSettings(userId);
+    const connectionId = settings?.documentStorageConnection?.id;
+    if (!connectionId) throw new BadRequestException('No document storage connection configured for this user — set one under Storage settings first.');
+
+    const ext = file.originalname.includes('.') ? file.originalname.slice(file.originalname.lastIndexOf('.')) : '.jpg';
+    const relativePath = `Expenses/${id}_${Date.now()}${ext}`;
+    const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(connectionId);
+    expense.receiptStoragePath = await writeMaybeEncrypted(adapter, relativePath, file.buffer, encryptAtRest);
+    return this.expensesRepo.save(expense);
+  }
+
+  async getExpenseReceipt(id: number, organizationId: number | null, userId: number): Promise<Buffer> {
+    const expense = await this.expensesRepo.findOne({ where: { id }, relations: ['organization'] });
+    if (!expense?.receiptStoragePath) throw new NotFoundException('This expense has no receipt attached');
+    if (organizationId != null && expense.organization?.id !== organizationId) throw new NotFoundException('Expense not found');
+
+    const settings = await this.storageService.getClientSettings(userId);
+    const connectionId = settings?.documentStorageConnection?.id;
+    if (!connectionId) throw new NotFoundException('Storage connection is no longer configured');
+    const { adapter } = await this.storageService.getAdapterWithMeta(connectionId);
+    return readMaybeEncrypted(adapter, expense.receiptStoragePath);
+  }
+
+  async attachSupplierInvoiceBill(id: number, organizationId: number | null, userId: number, file: { originalname: string; buffer: Buffer }): Promise<SupplierInvoice> {
+    const invoice = await this.supplierInvoicesRepo.findOne({ where: { id }, relations: ['organization'] });
+    if (!invoice) throw new NotFoundException('Supplier invoice not found');
+    if (organizationId != null && invoice.organization?.id !== organizationId) throw new NotFoundException('Supplier invoice not found');
+
+    const settings = await this.storageService.getClientSettings(userId);
+    const connectionId = settings?.documentStorageConnection?.id;
+    if (!connectionId) throw new BadRequestException('No document storage connection configured for this user — set one under Storage settings first.');
+
+    const ext = file.originalname.includes('.') ? file.originalname.slice(file.originalname.lastIndexOf('.')) : '.pdf';
+    const relativePath = `SupplierInvoices/${id}_${Date.now()}${ext}`;
+    const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(connectionId);
+    invoice.storagePath = await writeMaybeEncrypted(adapter, relativePath, file.buffer, encryptAtRest);
+    return this.supplierInvoicesRepo.save(invoice);
+  }
+
+  async getSupplierInvoiceBill(id: number, organizationId: number | null, userId: number): Promise<Buffer> {
+    const invoice = await this.supplierInvoicesRepo.findOne({ where: { id }, relations: ['organization'] });
+    if (!invoice?.storagePath) throw new NotFoundException('This supplier invoice has no bill attached');
+    if (organizationId != null && invoice.organization?.id !== organizationId) throw new NotFoundException('Supplier invoice not found');
+
+    const settings = await this.storageService.getClientSettings(userId);
+    const connectionId = settings?.documentStorageConnection?.id;
+    if (!connectionId) throw new NotFoundException('Storage connection is no longer configured');
+    const { adapter } = await this.storageService.getAdapterWithMeta(connectionId);
+    return readMaybeEncrypted(adapter, invoice.storagePath);
   }
 }
