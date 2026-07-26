@@ -396,6 +396,57 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
 
 .language-select { margin-top: 22px; }
 
+/* ---------- Home dashboard (tiles nav mode) ---------- */
+
+.home-page { max-width: 1180px; margin: 0 auto; }
+.home-header { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+.home-logo { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
+.home-title { margin: 4px 0 0; font-family: var(--font-display); font-weight: 600; }
+
+.home-tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 14px;
+  margin: 28px 0 8px;
+}
+.home-tile {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.15s;
+}
+.home-tile:hover { border-color: var(--tile-color); box-shadow: var(--shadow-md); }
+.home-tile.active { border-color: var(--tile-color); box-shadow: var(--shadow-md); }
+.home-tile-icon {
+  width: 42px; height: 42px; border-radius: 12px; margin-bottom: 14px;
+  background: color-mix(in srgb, var(--tile-color) 10%, transparent);
+  color: var(--tile-color);
+  display: flex; align-items: center; justify-content: center;
+}
+.home-tile-title { font-family: var(--font-display); font-weight: 600; font-size: 15.5px; margin-bottom: 2px; }
+.home-tile-count { font-size: 12px; color: var(--ink-soft); }
+
+.home-subsection { margin-top: 28px; }
+.home-subsection-head { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.home-subsection-head h2 { margin: 0; font-family: var(--font-display); font-weight: 600; font-size: 16px; color: var(--ink); }
+.home-subsection-dash { width: 22px; height: 2px; background: var(--stamp); display: inline-block; flex-shrink: 0; }
+
+.home-subgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+.home-item-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 12px; text-align: center; cursor: pointer; transition: all 0.12s;
+}
+.home-item-card:hover { background: var(--primary-wash); border-color: var(--primary-soft); }
+.home-item-icon {
+  width: 34px; height: 34px; margin: 0 auto 8px; border-radius: 9px;
+  background: var(--surface-muted); color: var(--ink-soft);
+  display: flex; align-items: center; justify-content: center;
+}
+.home-item-label { font-size: 12.5px; font-weight: 600; }
+
 /* ---------- Copyright footer (fixed, bottom-left) ---------- */
 
 .copyright-footer {
@@ -613,6 +664,31 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
     font-size: 14px !important;
   }
   .sidebar nav a span { display: block !important; }
+
+  /* The grouped-sidebar (list mode) additions need the same touch
+     sizing .sidebar nav a already gets — they didn't exist when that
+     block was written, so they're not covered by its selector. */
+  .nav-group-toggle {
+    padding: 13px 12px !important;
+    min-height: 48px !important;
+    font-size: 14px !important;
+  }
+  .nav-group-items a {
+    padding: 12px 12px !important;
+    min-height: 44px !important;
+    font-size: 13.5px !important;
+  }
+  .nav-style-toggle button {
+    padding: 10px 4px !important;
+    min-height: 40px !important;
+    font-size: 12.5px !important;
+  }
+  .tiles-home-link {
+    padding: 13px 12px !important;
+    min-height: 48px !important;
+    font-size: 14px !important;
+  }
+
   .sidebar-footer {
     flex-direction: row !important;
     padding-top: 14px;
@@ -637,6 +713,25 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
 
   /* Tables scroll horizontally */
   .card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Home dashboard (tiles mode) — fewer, bigger, thumb-friendly tiles
+     instead of letting auto-fill pack in as many narrow columns as
+     fit; 180px/140px minmax already reflows on a phone but ends up
+     cramped rather than comfortable, which is the whole point of a
+     dedicated mobile treatment here. */
+  .home-header { gap: 12px; margin-bottom: 4px; }
+  .home-logo { width: 30px; height: 30px; }
+  .home-title { font-size: 20px; }
+  .home-tiles-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0 6px; }
+  .home-tile { padding: 16px; min-height: 108px; }
+  .home-tile:active { transform: scale(0.97); }
+  .home-tile-icon { width: 38px; height: 38px; margin-bottom: 10px; }
+  .home-tile-title { font-size: 14px; }
+  .home-subsection { margin-top: 22px; }
+  .home-subgrid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .home-item-card { padding: 16px 10px; min-height: 88px; display: flex; flex-direction: column; justify-content: center; }
+  .home-item-card:active { background: var(--primary-wash); border-color: var(--primary-soft); }
+  .home-item-label { font-size: 13px; }
 
   /* Several modals use fixed pixel widths (360-520px) meant for
      desktop — cap every card to the viewport so none of them overflow
