@@ -68,5 +68,22 @@
     "error": "اسم المستخدم أو كلمة المرور غير صحيحة",
     "totpCode": "رمز المصادقة",
     "totpInvalid": "رمز غير صحيح — حاول مرة أخرى."
+  },
+  "navGroups": {
+    "crm": "العملاء",
+    "documents": "المستندات",
+    "finance": "المالية",
+    "warehouseFleet": "المخزن والأسطول",
+    "team": "الفريق والصلاحيات",
+    "system": "النظام",
+    "organizations": "المؤسسات"
+  },
+  "home": {
+    "welcome": "أهلاً بعودتك",
+    "title": "ماذا تريد أن تفعل؟",
+    "itemCount": "{{count}} قسم",
+    "itemCount_other": "{{count}} أقسام",
+    "backToHome": "العودة للرئيسية",
+    "tilesHint": "اختر فئة أعلاه لرؤية محتوياتها."
   }
 }

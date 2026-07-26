@@ -24,7 +24,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(username, password, needsTotp ? totpCode : undefined);
-      navigate('/users');
+      navigate('/');
     } catch (err) {
       const code = err instanceof ApiError ? err.code : undefined;
       if (code === 'TOTP_REQUIRED') {

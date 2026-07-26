@@ -1,11 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { NavLink, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall,
-  Building2, Contact, Car, Package, BarChart2, ShieldCheck, FileSignature,
-  FileText, CalendarDays, Menu, X, Mail, ReceiptText, Receipt, Users2, FileSpreadsheet, Banknote, CalendarClock, Settings2, Landmark,
-  ChevronDown, Settings, Globe, Smartphone, Tag, CreditCard, TrendingUp, FileMinus, FilePlus2, Undo2, BookOpen, ScrollText,
+  LogOut, Menu, X, Settings, Globe, ChevronDown, ChevronRight, LayoutGrid, ListTree,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { apiFetch } from '../services/api';
@@ -14,58 +11,9 @@ import TermsOfServiceContent from './TermsOfServiceContent';
 import logo from '../assets/logo.png';
 import CopyrightFooter from './CopyrightFooter';
 import LicenseWarningBanner from './LicenseWarningBanner';
+import { visibleGroups, type NavGroup } from '../config/navConfig';
 
-// Flat top-level items. `officeGroup` is rendered separately as a
-// collapsible section — delivery notes / quotes / invoices and their
-// settings live together since they're all "office paperwork" a
-// non-technical admin thinks of as one area, not six unrelated pages.
-const BASE_NAV = [
-  { to: '/calls',             labelKey: 'nav.calls',           icon: PhoneCall },
-  { to: '/users',             labelKey: 'nav.users',           icon: Users },
-  { to: '/phonebook',         labelKey: 'nav.phonebook',       icon: Contact },
-  { to: '/locations',         labelKey: 'nav.locations',       icon: MapPin },
-  { to: '/fleet',             labelKey: 'nav.fleet',           icon: Car },
-  { to: '/warehouse',         labelKey: 'nav.warehouse',       icon: Package },
-  { to: '/reports',           labelKey: 'nav.reports',         icon: BarChart2 },
-  { to: '/permissions',       labelKey: 'nav.permissions',     icon: ShieldCheck },
-  { to: '/groups',            labelKey: 'nav.groups',          icon: Users2 },
-  { to: '/calendar-sync',     labelKey: 'nav.calendarSync',    icon: CalendarDays },
-  { to: '/maintenance',       labelKey: 'nav.maintenance',     icon: CalendarClock },
-  { to: '/storage',           labelKey: 'nav.storage',         icon: HardDrive },
-  { to: '/storage-routing',   labelKey: 'nav.routing',         icon: Route },
-  { to: '/templates',         labelKey: 'nav.templates',       icon: FileSliders },
-  { to: '/files',             labelKey: 'nav.fileLog',         icon: FileStack },
-  { to: '/devices',           labelKey: 'nav.devices',         icon: Smartphone },
-];
-
-// Ordered to match the order-processing chain (see order-chain module):
-// quote -> order -> delivery note (+ signature) -> invoice. Prices comes
-// first since it's the supporting catalog that feeds line items into
-// everything after it, not a step in the chain itself.
-const OFFICE_GROUP = [
-  { to: '/prices',            labelKey: 'nav.prices',               icon: Tag },
-  { to: '/quotes',            labelKey: 'nav.quotes',               icon: FileSpreadsheet },
-  { to: '/quote-settings',    labelKey: 'nav.quoteSettings',        icon: Settings2 },
-  { to: '/orders',            labelKey: 'nav.orders',               icon: ReceiptText },
-  { to: '/orders-email-settings', labelKey: 'nav.orderIntakeEmail', icon: Mail },
-  { to: '/delivery-notes',    labelKey: 'nav.deliveryNotes',        icon: FileText },
-  { to: '/delivery-settings', labelKey: 'nav.deliveryNoteSettings', icon: FileSignature },
-  { to: '/returns',           labelKey: 'nav.returns',              icon: Undo2 },
-  { to: '/return-settings',   labelKey: 'nav.returnSettings',       icon: Settings2 },
-  { to: '/invoices',          labelKey: 'nav.invoices',             icon: Banknote },
-  { to: '/invoice-settings',  labelKey: 'nav.invoiceSettings',      icon: Settings2 },
-  { to: '/credit-notes',      labelKey: 'nav.creditNotes',          icon: FileMinus },
-  { to: '/credit-note-settings', labelKey: 'nav.creditNoteSettings', icon: Settings2 },
-  { to: '/debit-notes',       labelKey: 'nav.debitNotes',           icon: FilePlus2 },
-  { to: '/debit-note-settings', labelKey: 'nav.debitNoteSettings',  icon: Settings2 },
-  { to: '/payments',          labelKey: 'nav.payments',             icon: CreditCard },
-  { to: '/payment-settings',  labelKey: 'nav.paymentSettings',      icon: Settings2 },
-  { to: '/financial-reports', labelKey: 'nav.financialReports',     icon: TrendingUp, adminOnly: true },
-  { to: '/accounting',        labelKey: 'nav.accounting',           icon: BookOpen, adminOnly: true },
-  { to: '/expenses',          labelKey: 'nav.expenses',             icon: Receipt, adminOnly: true },
-  { to: '/tax-authority-settings', labelKey: 'nav.taxAuthority',    icon: Landmark, adminOnly: true },
-  { to: '/audit-log',         labelKey: 'nav.auditLog',             icon: ScrollText, adminOnly: true },
-];
+const NAV_STYLE_KEY = 'vixor-admin-nav-style';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -250,15 +198,33 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const location = useLocation();
+  const navigateTo = useNavigate();
   const [open, setOpen] = useState(false);
-  const [officeOpen, setOfficeOpen] = useState(location.pathname.match(/delivery|quote|invoice/) != null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [navStyle, setNavStyle] = useState<'sidebar' | 'tiles'>(() => (localStorage.getItem(NAV_STYLE_KEY) as 'sidebar' | 'tiles') || 'sidebar');
+  const [openGroups, setOpenGroups] = useState<Set<string>>(() => {
+    const match = location.pathname.match(/delivery|quote|invoice|order|return|payment|credit|debit/) ? 'documents' : null;
+    return new Set(match ? [match] : []);
+  });
   const sidebarRef = React.useRef<HTMLElement>(null);
   const initial = user?.username?.[0]?.toUpperCase() ?? '?';
 
-  const nav = user?.organizationId == null
-    ? [{ to: '/organizations', labelKey: 'nav.organizations', icon: Building2 }, ...BASE_NAV]
-    : BASE_NAV;
+  const isSuperAdmin = user?.organizationId == null;
+  const isAdmin = user?.role === 'admin';
+  const groups = visibleGroups(isSuperAdmin, isAdmin);
+
+  function toggleGroup(key: string) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+  function switchNavStyle(style: 'sidebar' | 'tiles') {
+    setNavStyle(style);
+    localStorage.setItem(NAV_STYLE_KEY, style);
+    if (style === 'tiles') navigateTo('/');
+  }
 
   // Close on route change
   useEffect(() => { setOpen(false); }, [location.pathname]);
@@ -282,6 +248,8 @@ export default function Layout() {
     document.body.style.overflow = open ? 'hidden' : '';
     return () => { document.body.style.overflow = ''; };
   }, [open]);
+
+  const isHome = location.pathname === '/';
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
@@ -336,47 +304,51 @@ export default function Layout() {
           </div>
         </div>
 
-        <nav aria-label="Main navigation">
-          {nav.map(item => {
-            const Icon = item.icon;
-            const label = t(item.labelKey);
-            return (
-              <NavLink key={item.to} to={item.to} aria-label={label}>
-                <Icon size={16} strokeWidth={2} aria-hidden="true" />
-                <span>{label}</span>
-              </NavLink>
-            );
-          })}
-
+        {/* Nav-style toggle — persisted preference, switching to "tiles"
+            jumps to "/" since that's the only place the tile-hub view
+            lives; the list view stays wherever the person already is. */}
+        <div className="nav-style-toggle" role="tablist" aria-label={t('app.navStyleToggle')}>
           <button
             type="button"
-            onClick={() => setOfficeOpen(v => !v)}
-            aria-expanded={officeOpen}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 10, width: '100%',
-              background: 'none', border: 'none', cursor: 'pointer', textAlign: 'start',
-              padding: '9px 14px', color: 'inherit', font: 'inherit', opacity: 0.85,
-            }}
+            role="tab"
+            aria-selected={navStyle === 'sidebar'}
+            className={navStyle === 'sidebar' ? 'active' : ''}
+            onClick={() => switchNavStyle('sidebar')}
+            title={t('app.navStyleList')}
           >
-            <FileSpreadsheet size={16} strokeWidth={2} aria-hidden="true" />
-            <span style={{ flex: 1 }}>{t('nav.groupOffice')}</span>
-            <ChevronDown size={14} style={{ transform: officeOpen ? 'rotate(180deg)' : 'none', transition: 'transform .15s' }} />
+            <ListTree size={14} strokeWidth={2} /> {t('app.navStyleList')}
           </button>
-          {officeOpen && (
-            <div style={{ marginInlineStart: 12, borderInlineStart: '1px solid rgba(255,255,255,0.14)' }}>
-              {OFFICE_GROUP.filter(item => !item.adminOnly || user?.role === 'admin').map(item => {
-                const Icon = item.icon;
-                const label = t(item.labelKey);
-                return (
-                  <NavLink key={item.to} to={item.to} aria-label={label} style={{ paddingInlineStart: 20 }}>
-                    <Icon size={15} strokeWidth={2} aria-hidden="true" />
-                    <span>{label}</span>
-                  </NavLink>
-                );
-              })}
-            </div>
-          )}
-        </nav>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={navStyle === 'tiles'}
+            className={navStyle === 'tiles' ? 'active' : ''}
+            onClick={() => switchNavStyle('tiles')}
+            title={t('app.navStyleTiles')}
+          >
+            <LayoutGrid size={14} strokeWidth={2} /> {t('app.navStyleTiles')}
+          </button>
+        </div>
+
+        {navStyle === 'sidebar' ? (
+          <nav aria-label="Main navigation">
+            {groups.map((group) => (
+              <NavGroupSection key={group.key} group={group} open={openGroups.has(group.key)} onToggle={() => toggleGroup(group.key)} />
+            ))}
+          </nav>
+        ) : (
+          <nav aria-label="Main navigation" style={{ padding: '4px 14px' }}>
+            {!isHome && (
+              <NavLink to="/" className="tiles-home-link">
+                <LayoutGrid size={16} strokeWidth={2} aria-hidden="true" />
+                <span>{t('home.backToHome')}</span>
+              </NavLink>
+            )}
+            {isHome && (
+              <p style={{ fontSize: 12, opacity: 0.6, padding: '10px 0' }}>{t('home.tilesHint')}</p>
+            )}
+          </nav>
+        )}
 
         <div className="sidebar-footer">
           <div className="user-chip">
@@ -401,6 +373,54 @@ export default function Layout() {
       </main>
 
     </div>
+    </div>
+  );
+}
+
+/** One collapsible group in the grouped-sidebar (list) presentation —
+ * a single-item group (e.g. Organizations) renders as a plain link
+ * with no expand/collapse chrome, matching how a lone item shouldn't
+ * pretend to be a section. */
+function NavGroupSection({ group, open, onToggle }: { group: NavGroup; open: boolean; onToggle: () => void }) {
+  const { t } = useTranslation();
+  const GroupIcon = group.icon;
+
+  if (group.items.length === 1) {
+    const item = group.items[0];
+    const Icon = item.icon;
+    return (
+      <NavLink to={item.to} aria-label={t(item.labelKey)}>
+        <Icon size={16} strokeWidth={2} aria-hidden="true" />
+        <span>{t(item.labelKey)}</span>
+      </NavLink>
+    );
+  }
+
+  return (
+    <div className="nav-group">
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={open}
+        className="nav-group-toggle"
+      >
+        <GroupIcon size={16} strokeWidth={2} aria-hidden="true" />
+        <span style={{ flex: 1 }}>{t(group.labelKey)}</span>
+        <ChevronRight size={14} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform .15s' }} />
+      </button>
+      {open && (
+        <div className="nav-group-items">
+          {group.items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink key={item.to} to={item.to} aria-label={t(item.labelKey)} style={{ paddingInlineStart: 20 }}>
+                <Icon size={15} strokeWidth={2} aria-hidden="true" />
+                <span>{t(item.labelKey)}</span>
+              </NavLink>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

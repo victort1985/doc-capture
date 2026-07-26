@@ -43,7 +43,10 @@
   },
   "app": {
     "adminConsole": "פאנל ניהול",
-    "signOut": "התנתקות"
+    "signOut": "התנתקות",
+    "navStyleToggle": "סגנון ניווט",
+    "navStyleList": "רשימה",
+    "navStyleTiles": "אריחים"
   },
   "settings": {
     "title": "הגדרות",
@@ -1235,5 +1238,22 @@
     "connected": "מחובר",
     "notConnected": "עדיין לא מחובר",
     "connectedSuccess": "התחברות לרשות המסים בוצעה בהצלחה."
+  },
+  "navGroups": {
+    "crm": "לקוחות",
+    "documents": "מסמכים",
+    "finance": "כספים",
+    "warehouseFleet": "מחסן וצי רכב",
+    "team": "צוות והרשאות",
+    "system": "מערכת",
+    "organizations": "ארגונים"
+  },
+  "home": {
+    "welcome": "ברוך שובך",
+    "title": "מה תרצה לעשות?",
+    "itemCount": "{{count}} פריט",
+    "itemCount_other": "{{count}} פריטים",
+    "backToHome": "חזרה לדף הבית",
+    "tilesHint": "בחר קטגוריה למעלה כדי לראות מה בפנים."
   }
 }

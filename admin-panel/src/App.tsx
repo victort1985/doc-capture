@@ -18,6 +18,7 @@ import FilesPage from './pages/FilesPage';
 import LocationsPage from './pages/LocationsPage';
 import CallsPage from './pages/CallsPage';
 import OrganizationsPage from './pages/OrganizationsPage';
+import HomePage from './pages/HomePage';
 import PhoneBookPage from './pages/PhoneBookPage';
 import FleetPage from './pages/FleetPage';
 import WarehousePage from './pages/WarehousePage';
@@ -88,6 +89,7 @@ export default function App() {
             </ProtectedRoute>
           }
         >
+          <Route path="/" element={<HomePage />} />
           <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/calls" element={<CallsPage />} />
           <Route path="/phonebook" element={<PhoneBookPage />} />
@@ -128,7 +130,7 @@ export default function App() {
           <Route path="/templates" element={<TemplatesPage />} />
           <Route path="/files" element={<FilesPage />} />
         </Route>
-        <Route path="*" element={<Navigate to="/users" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </SetupWizardGate>
     </AuthProvider>

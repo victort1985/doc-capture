@@ -43,7 +43,10 @@
   },
   "app": {
     "adminConsole": "панель администратора",
-    "signOut": "Выйти"
+    "signOut": "Выйти",
+    "navStyleToggle": "Стиль навигации",
+    "navStyleList": "Список",
+    "navStyleTiles": "Плитки"
   },
   "settings": {
     "title": "Настройки",
@@ -1235,5 +1238,22 @@
     "connected": "Подключено",
     "notConnected": "Ещё не подключено",
     "connectedSuccess": "Успешно подключено к налоговой службе."
+  },
+  "navGroups": {
+    "crm": "Клиенты",
+    "documents": "Документы",
+    "finance": "Финансы",
+    "warehouseFleet": "Склад и автопарк",
+    "team": "Команда и доступ",
+    "system": "Система",
+    "organizations": "Организации"
+  },
+  "home": {
+    "welcome": "С возвращением",
+    "title": "Чем займёмся?",
+    "itemCount": "{{count}} раздел",
+    "itemCount_other": "{{count}} разделов",
+    "backToHome": "На главную",
+    "tilesHint": "Выбери категорию выше, чтобы увидеть, что внутри."
   }
 }
