@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import { DeliveryNote, DeliveryNoteStatus } from './delivery-note.entity';
 import { DeliveryNoteSettings } from './delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
+import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 
 @Injectable()
 export class DeliveryNotesService {
@@ -122,12 +123,12 @@ export class DeliveryNotesService {
     const slug = (note.clientName ?? 'unknown').replace(/[^a-zA-Z0-9א-ת\-_]/g, '_').slice(0, 40);
     const path = `delivery-notes/${slug}/note_${note.noteNumber ?? id}.pdf`;
 
-    const { adapter } = await this.storageService.getAdapterWithMeta(connectionId);
-    await adapter.write(path, pdfBuffer);
-    note.pdfPath = path;
+    const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(connectionId);
+    const finalPath = await writeMaybeEncrypted(adapter, path, pdfBuffer, encryptAtRest);
+    note.pdfPath = finalPath;
     note.status = DeliveryNoteStatus.SIGNED;
     await this.repo.save(note);
-    return path;
+    return finalPath;
   }
 
   async downloadPdf(id: number, organizationId: number | null): Promise<{ buffer: Buffer; filename: string }> {
@@ -137,7 +138,7 @@ export class DeliveryNotesService {
     const connectionId = settings?.documentStorageConnection?.id;
     if (!connectionId) throw new NotFoundException('Storage not configured');
     const { adapter } = await this.storageService.getAdapterWithMeta(connectionId);
-    const buffer = await adapter.read(note.pdfPath);
+    const buffer = await readMaybeEncrypted(adapter, note.pdfPath);
     return { buffer, filename: `note_${note.noteNumber}.pdf` };
   }
 

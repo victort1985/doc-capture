@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { PDFDocument } from 'pdf-lib';
 import { Order, OrderSource } from './entities/order.entity';
 import { StorageService } from '../storage/storage.service';
+import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 import { OrderPdfParserService, ParsedOrderFields } from './order-pdf-parser.service';
 import { OrderNotificationService } from './order-notification.service';
 import { DocumentStorageSettingsService } from '../document-storage-settings/document-storage-settings.service';
@@ -69,7 +70,7 @@ export class OrdersService {
 
   async getPdfBuffer(order: Order): Promise<Buffer> {
     const { adapter } = await this.storageService.getAdapterWithMeta(await this.resolveConnectionId());
-    return adapter.read(order.storagePath);
+    return readMaybeEncrypted(adapter, order.storagePath);
   }
 
   /** Manual capture from the app — the person already scanned/picked
@@ -161,9 +162,8 @@ export class OrdersService {
     const name = this.generateName(fields);
     const safeName = name.replace(/[/\\:*?"<>|\x00-\x1f]/g, '_');
     const storagePath = `Orders/${safeName}.pdf`;
-    const { adapter } = await this.storageService.getAdapterWithMeta(await this.resolveConnectionId());
-    await adapter.write(storagePath, buffer);
-    return storagePath;
+    const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(await this.resolveConnectionId());
+    return writeMaybeEncrypted(adapter, storagePath, buffer, encryptAtRest);
   }
 
   private async deleteStoredFile(storagePath: string): Promise<void> {
