@@ -60,10 +60,10 @@ const OFFICE_GROUP = [
   { to: '/debit-note-settings', labelKey: 'nav.debitNoteSettings',  icon: Settings2 },
   { to: '/payments',          labelKey: 'nav.payments',             icon: CreditCard },
   { to: '/payment-settings',  labelKey: 'nav.paymentSettings',      icon: Settings2 },
-  { to: '/financial-reports', labelKey: 'nav.financialReports',     icon: TrendingUp },
-  { to: '/accounting',        labelKey: 'nav.accounting',           icon: BookOpen },
-  { to: '/expenses',          labelKey: 'nav.expenses',             icon: Receipt },
-  { to: '/audit-log',         labelKey: 'nav.auditLog',             icon: ScrollText },
+  { to: '/financial-reports', labelKey: 'nav.financialReports',     icon: TrendingUp, adminOnly: true },
+  { to: '/accounting',        labelKey: 'nav.accounting',           icon: BookOpen, adminOnly: true },
+  { to: '/expenses',          labelKey: 'nav.expenses',             icon: Receipt, adminOnly: true },
+  { to: '/audit-log',         labelKey: 'nav.auditLog',             icon: ScrollText, adminOnly: true },
 ];
 
 const LANGUAGES = [
@@ -363,7 +363,7 @@ export default function Layout() {
           </button>
           {officeOpen && (
             <div style={{ marginInlineStart: 12, borderInlineStart: '1px solid rgba(255,255,255,0.14)' }}>
-              {OFFICE_GROUP.map(item => {
+              {OFFICE_GROUP.filter(item => !item.adminOnly || user?.role === 'admin').map(item => {
                 const Icon = item.icon;
                 const label = t(item.labelKey);
                 return (
