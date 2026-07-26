@@ -168,7 +168,17 @@
     "statusCancelled": "отменён",
     "preview": "Превью",
     "regeneratePdf": "Перегенерировать PDF",
-    "regenerated": "PDF пересоздан."
+    "regenerated": "PDF пересоздан.",
+    "allocation": "№ распределения",
+    "allocationPending": "В обработке…",
+    "allocationRefused": "Отклонено",
+    "allocationError": "Ошибка",
+    "decide": "Решить",
+    "decideTitle": "Запрос на распределение отклонён",
+    "decideHint": "Налоговая задержала этот счёт. Выбери, как действовать дальше.",
+    "decisionContinue": "Продолжить без номера распределения",
+    "decisionHearing": "Запросить слушание",
+    "decisionCancel": "Отменить этот счёт"
   },
   "deliveryNoteSettings": {
     "eyebrow": "Накладные",

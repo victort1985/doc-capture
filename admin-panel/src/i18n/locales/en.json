@@ -168,7 +168,17 @@
     "statusCancelled": "cancelled",
     "preview": "Preview",
     "regeneratePdf": "Regenerate PDF",
-    "regenerated": "PDF regenerated."
+    "regenerated": "PDF regenerated.",
+    "allocation": "Allocation #",
+    "allocationPending": "Pending…",
+    "allocationRefused": "Refused",
+    "allocationError": "Error",
+    "decide": "Decide",
+    "decideTitle": "Allocation request refused",
+    "decideHint": "The Tax Authority held this invoice back. Choose how to proceed.",
+    "decisionContinue": "Continue without allocation number",
+    "decisionHearing": "Request a hearing",
+    "decisionCancel": "Cancel this invoice"
   },
   "deliveryNoteSettings": {
     "eyebrow": "Delivery notes",

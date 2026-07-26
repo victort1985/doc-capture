@@ -168,7 +168,17 @@
     "statusCancelled": "בוטלה",
     "preview": "תצוגה מקדימה",
     "regeneratePdf": "יצירה מחדש של PDF",
-    "regenerated": "ה-PDF נוצר מחדש."
+    "regenerated": "ה-PDF נוצר מחדש.",
+    "allocation": "מס' הקצאה",
+    "allocationPending": "ממתין…",
+    "allocationRefused": "נדחה",
+    "allocationError": "שגיאה",
+    "decide": "החלטה",
+    "decideTitle": "בקשת ההקצאה נדחתה",
+    "decideHint": "רשות המסים עיכבה חשבונית זו. יש לבחור כיצד להמשיך.",
+    "decisionContinue": "המשך ללא מספר הקצאה",
+    "decisionHearing": "בקשה לשימוע",
+    "decisionCancel": "ביטול חשבונית זו"
   },
   "deliveryNoteSettings": {
     "eyebrow": "תעודות משלוח",

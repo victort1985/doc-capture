@@ -36,6 +36,8 @@ export default function InvoicesPage() {
   const [template, setTemplate] = useState('classic');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [decisionInvoiceId, setDecisionInvoiceId] = useState<number | null>(null);
+  const [submittingDecision, setSubmittingDecision] = useState(false);
 
   const statusLabel: Record<string, string> = {
     draft: t('invoices.statusDraft'), sent: t('invoices.statusSent'), paid: t('invoices.statusPaid'), cancelled: t('invoices.statusCancelled'),
@@ -70,6 +72,18 @@ export default function InvoicesPage() {
   async function send(id: number) {
     await apiFetch(`/invoices/${id}/send`, { method: 'POST' });
     load();
+  }
+  async function submitDecision(id: number, decision: 'cancel' | 'continue' | 'furtherObjection') {
+    setSubmittingDecision(true);
+    try {
+      await apiFetch(`/invoices/${id}/allocation-decision`, { method: 'POST', body: JSON.stringify({ decision }) });
+      setDecisionInvoiceId(null);
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to submit decision');
+    } finally {
+      setSubmittingDecision(false);
+    }
   }
   async function viewPdf(id: number) {
     try {
@@ -154,7 +168,14 @@ export default function InvoicesPage() {
                     <span style={{ color: 'var(--success, green)', fontFamily: 'monospace' }}>{inv.allocationNumber}</span>
                   )}
                   {inv.allocationStatus === 'pending' && <span style={{ color: 'var(--ink-soft)' }}>{t('invoices.allocationPending')}</span>}
-                  {inv.allocationStatus === 'refused' && <span style={{ color: 'var(--danger, crimson)', fontWeight: 700 }}>{t('invoices.allocationRefused')}</span>}
+                  {inv.allocationStatus === 'refused' && (
+                    <span style={{ color: 'var(--danger, crimson)', fontWeight: 700 }}>
+                      {t('invoices.allocationRefused')}{' '}
+                      <button type="button" className="ghost" onClick={() => setDecisionInvoiceId(inv.id)} style={{ padding: '2px 6px', fontSize: 12 }}>
+                        {t('invoices.decide')}
+                      </button>
+                    </span>
+                  )}
                   {inv.allocationStatus === 'error' && <span style={{ color: 'var(--danger, crimson)' }}>{t('invoices.allocationError')}</span>}
                   {(!inv.allocationStatus || inv.allocationStatus === 'not_applicable') && <span style={{ color: 'var(--ink-soft)' }}>—</span>}
                 </td>
@@ -172,11 +193,29 @@ export default function InvoicesPage() {
               </tr>
             ))}
             {invoices.length === 0 && !loading && (
-              <tr><td colSpan={6} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('invoices.empty')}</td></tr>
+              <tr><td colSpan={7} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('invoices.empty')}</td></tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {decisionInvoiceId != null && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setDecisionInvoiceId(null)}>
+          <div className="card" style={{ width: 440, padding: 20 }} onClick={(e) => e.stopPropagation()}>
+            <h2 style={{ marginTop: 0 }}>{t('invoices.decideTitle')}</h2>
+            <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{t('invoices.decideHint')}</p>
+            <button type="button" disabled={submittingDecision} onClick={() => submitDecision(decisionInvoiceId, 'continue')} style={{ width: '100%', marginBottom: 8 }}>
+              {t('invoices.decisionContinue')}
+            </button>
+            <button type="button" className="ghost" disabled={submittingDecision} onClick={() => submitDecision(decisionInvoiceId, 'furtherObjection')} style={{ width: '100%', marginBottom: 8 }}>
+              {t('invoices.decisionHearing')}
+            </button>
+            <button type="button" className="ghost" disabled={submittingDecision} onClick={() => submitDecision(decisionInvoiceId, 'cancel')} style={{ width: '100%', color: 'var(--danger, crimson)' }}>
+              {t('invoices.decisionCancel')}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
