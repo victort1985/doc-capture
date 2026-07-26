@@ -1,0 +1,72 @@
+# Vixor ERP — Docker Compose for ONE tenant (requirement #21).
+#
+# This is an ALTERNATIVE to the existing bare-metal systemd deploy
+# (server/scripts/provision-tenant.sh + deploy-all-tenants.sh), not a
+# replacement — that workflow keeps working exactly as before. Use
+# whichever fits how you're actually hosting this.
+#
+# Multi-tenancy here is unchanged from the bare-metal setup: each
+# tenant is its own separate process + database (Variant B). This
+# file wires up ONE tenant (server + its own Postgres). For a second
+# tenant, copy this file (e.g. docker-compose.test.yml), rename every
+# service/container/volume, and change the host port mappings so they
+# don't collide with the first tenant's.
+#
+# Usage:
+#   cp server/.env.example .env.docker   # then fill in real values
+#   docker compose --env-file .env.docker up -d --build
+#
+# Build context is the repo root on purpose — see server/Dockerfile's
+# own comment for why (it needs both server/ and admin-panel/).
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-doccapture}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in your env file}
+      POSTGRES_DB: ${DB_DATABASE:-doc_capture}
+    volumes:
+      - vixor-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-doccapture}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USERNAME: ${DB_USERNAME:-doccapture}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in your env file}
+      DB_DATABASE: ${DB_DATABASE:-doc_capture}
+      DB_SSL: "false"
+      JWT_SECRET: ${JWT_SECRET:-change_me}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change_me}
+      CORS_ORIGIN: ${CORS_ORIGIN:-}
+      SIGN_BASE_URL: ${SIGN_BASE_URL:-}
+      LICENSE_SERVER_URL: ${LICENSE_SERVER_URL:-}
+    volumes:
+      # Uploaded documents / license files that use local-filesystem
+      # storage need to live outside the container so they survive a
+      # rebuild — adjust the host-side path to wherever you want them
+      # kept. If every storage connection is remote (FTP/WebDAV/S3-
+      # like), this volume just stays empty and unused.
+      - vixor-storage-data:/app/storage
+
+volumes:
+  vixor-db-data:
+  vixor-storage-data:
