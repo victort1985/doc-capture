@@ -5,6 +5,7 @@ import { CreditNote } from './entities/credit-note.entity';
 import { CreditNoteSettings } from './entities/credit-note-settings.entity';
 import { CreateCreditNoteDto } from './dto/create-credit-note.dto';
 import { Invoice } from '../invoices/entities/invoice.entity';
+import { InvoiceSettings } from '../invoices/entities/invoice-settings.entity';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
@@ -18,6 +19,7 @@ export class CreditNotesService {
     @InjectRepository(CreditNote) private readonly repo: Repository<CreditNote>,
     @InjectRepository(CreditNoteSettings) private readonly settingsRepo: Repository<CreditNoteSettings>,
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
+    @InjectRepository(InvoiceSettings) private readonly invoiceSettingsRepo: Repository<InvoiceSettings>,
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
@@ -90,7 +92,8 @@ export class CreditNotesService {
 
     if (organizationId != null) {
       try {
-        await this.ledgerPostingService.postCreditNote(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, result.clientName);
+        const invoiceSettings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } } });
+        await this.ledgerPostingService.postCreditNote(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, result.clientName, invoiceSettings?.vatEnabled ?? true);
       } catch {
         // best-effort — a bookkeeping hiccup must never block issuing the credit note itself
       }
@@ -106,6 +109,11 @@ export class CreditNotesService {
 
     try {
       const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
+      // Credit notes don't have their own VAT setting — they follow
+      // whatever the org's invoices do, since a credit note is always
+      // correcting an invoice and should show VAT consistently with
+      // however that invoice's total was originally taxed.
+      const invoiceSettings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } } });
       const pdfBytes = await generateDocumentPdf({
         docTypeLabel: 'הודעת זיכוי',
         docNumber: creditNote.creditNoteNumber ?? `#${creditNote.id}`,
@@ -118,6 +126,7 @@ export class CreditNotesService {
         header,
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
+        vatEnabled: invoiceSettings?.vatEnabled ?? true,
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `CreditNotes/${creditNote.creditNoteNumber ?? creditNote.id}.pdf`;

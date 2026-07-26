@@ -5,6 +5,7 @@ import { DebitNote } from './entities/debit-note.entity';
 import { DebitNoteSettings } from './entities/debit-note-settings.entity';
 import { CreateDebitNoteDto } from './dto/create-debit-note.dto';
 import { Invoice } from '../invoices/entities/invoice.entity';
+import { InvoiceSettings } from '../invoices/entities/invoice-settings.entity';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
@@ -18,6 +19,7 @@ export class DebitNotesService {
     @InjectRepository(DebitNote) private readonly repo: Repository<DebitNote>,
     @InjectRepository(DebitNoteSettings) private readonly settingsRepo: Repository<DebitNoteSettings>,
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
+    @InjectRepository(InvoiceSettings) private readonly invoiceSettingsRepo: Repository<InvoiceSettings>,
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
@@ -85,7 +87,8 @@ export class DebitNotesService {
 
     if (organizationId != null) {
       try {
-        await this.ledgerPostingService.postDebitNote(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, result.clientName);
+        const invoiceSettings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } } });
+        await this.ledgerPostingService.postDebitNote(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, result.clientName, invoiceSettings?.vatEnabled ?? true);
       } catch {
         // best-effort — a bookkeeping hiccup must never block issuing the debit note itself
       }
@@ -101,6 +104,7 @@ export class DebitNotesService {
 
     try {
       const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
+      const invoiceSettings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } } });
       const pdfBytes = await generateDocumentPdf({
         docTypeLabel: 'הודעת חיוב',
         docNumber: debitNote.debitNoteNumber ?? `#${debitNote.id}`,
@@ -113,6 +117,7 @@ export class DebitNotesService {
         header,
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
+        vatEnabled: invoiceSettings?.vatEnabled ?? true,
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `DebitNotes/${debitNote.debitNoteNumber ?? debitNote.id}.pdf`;

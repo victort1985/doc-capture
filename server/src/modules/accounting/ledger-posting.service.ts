@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { AccountingService } from './accounting.service';
+import { VAT_RATE } from '../documents/document-pdf.util';
 
 /**
  * Auto-posts the standard double-entry pair for each document type
@@ -48,18 +49,35 @@ export class LedgerPostingService {
   /** Credit note: exact reversal of an invoice posting — revenue
    * (and VAT, if any) goes back down, what the client owes goes down
    * by the same amount. */
-  async postCreditNote(organizationId: number, creditNoteId: number, date: string, amount: number, clientName: string): Promise<void> {
+  /** Reverses revenue AND the corresponding VAT (if the invoice being
+   * corrected had any) — a credit note against a VATed invoice isn't
+   * fully reflected in the books if only the revenue side unwinds and
+   * the VAT Payable balance is left untouched, since that VAT was
+   * never actually collectible anymore either. */
+  async postCreditNote(organizationId: number, creditNoteId: number, date: string, amount: number, clientName: string, vatEnabled = false): Promise<void> {
     const ar = await this.accounting.getSystemAccount(organizationId, '1100');
     const revenue = await this.accounting.getSystemAccount(organizationId, '4000');
     await this.accounting.postEntry(organizationId, date, `זיכוי — ${clientName}`, revenue.id, ar.id, amount, 'credit-note', creditNoteId);
+    if (vatEnabled) {
+      const vatAmount = Math.round(amount * VAT_RATE * 100) / 100;
+      const vatPayable = await this.accounting.getSystemAccount(organizationId, '2100');
+      await this.accounting.postEntry(organizationId, date, `מע"מ — זיכוי ${creditNoteId}`, vatPayable.id, ar.id, vatAmount, 'credit-note-vat', creditNoteId);
+    }
   }
 
   /** Debit note: the inverse of a credit note — an additional charge
-   * on top of what was already invoiced. */
-  async postDebitNote(organizationId: number, debitNoteId: number, date: string, amount: number, clientName: string): Promise<void> {
+   * on top of what was already invoiced, including the corresponding
+   * additional VAT if applicable (same reasoning as postCreditNote,
+   * mirrored). */
+  async postDebitNote(organizationId: number, debitNoteId: number, date: string, amount: number, clientName: string, vatEnabled = false): Promise<void> {
     const ar = await this.accounting.getSystemAccount(organizationId, '1100');
     const revenue = await this.accounting.getSystemAccount(organizationId, '4000');
     await this.accounting.postEntry(organizationId, date, `חיוב נוסף — ${clientName}`, ar.id, revenue.id, amount, 'debit-note', debitNoteId);
+    if (vatEnabled) {
+      const vatAmount = Math.round(amount * VAT_RATE * 100) / 100;
+      const vatPayable = await this.accounting.getSystemAccount(organizationId, '2100');
+      await this.accounting.postEntry(organizationId, date, `מע"מ — חיוב נוסף ${debitNoteId}`, ar.id, vatPayable.id, vatAmount, 'debit-note-vat', debitNoteId);
+    }
   }
 
   /** Direct expense: paid immediately, debit General Expenses, credit
