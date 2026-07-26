@@ -1188,6 +1188,9 @@
     "unpaid": "Unpaid",
     "markPaid": "Mark paid",
     "noExpenses": "No expenses yet.",
-    "noSupplierInvoices": "No supplier invoices yet."
+    "noSupplierInvoices": "No supplier invoices yet.",
+    "importCsv": "Import CSV",
+    "importedCount": "Imported {{count}} row(s).",
+    "failedCount": "{{count}} failed"
   }
 }

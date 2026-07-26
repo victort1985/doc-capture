@@ -1188,6 +1188,9 @@
     "unpaid": "Не оплачено",
     "markPaid": "Отметить оплаченным",
     "noExpenses": "Расходов пока нет.",
-    "noSupplierInvoices": "Счетов поставщиков пока нет."
+    "noSupplierInvoices": "Счетов поставщиков пока нет.",
+    "importCsv": "Импорт CSV",
+    "importedCount": "Импортировано строк: {{count}}.",
+    "failedCount": "Ошибок: {{count}}"
   }
 }

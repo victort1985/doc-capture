@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, X, CheckCircle2 } from 'lucide-react';
-import { apiFetch } from '../services/api';
+import { Plus, X, CheckCircle2, Upload } from 'lucide-react';
+import { apiFetch, BASE_URL, getToken } from '../services/api';
 
 interface ExpenseRow { id: number; date: string; description: string; category?: string; amount: number; method: string; }
 interface SupplierInvoiceRow { id: number; supplierName: string; invoiceNumber?: string; date: string; dueDate?: string; amount: number; paidAt?: string; }
@@ -39,9 +39,43 @@ export default function ExpensesPage() {
     <div className="page">
       <div className="topbar">
         <div><div className="eyebrow">{t('expenses.eyebrow')}</div><h1>{t('expenses.title')}</h1></div>
-        <button type="button" onClick={() => tab === 'expenses' ? setShowCreateExpense(true) : setShowCreateSupplierInvoice(true)}>
-          <Plus size={15} /> {tab === 'expenses' ? t('expenses.newExpense') : t('expenses.newSupplierInvoice')}
-        </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <label className="ghost" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <Upload size={15} /> {t('expenses.importCsv')}
+            <input
+              type="file"
+              accept=".csv"
+              style={{ display: 'none' }}
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const formData = new FormData();
+                formData.append('file', file);
+                const path = tab === 'expenses' ? '/expenses/import-csv' : '/supplier-invoices/import-csv';
+                try {
+                  const res = await fetch(`${BASE_URL}${path}`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${getToken()}` },
+                    body: formData,
+                  });
+                  if (!res.ok) throw new Error('Import failed');
+                  const result = await res.json() as { imported: number; failed: { row: number; error: string }[] };
+                  const msg = result.failed.length
+                    ? `${t('expenses.importedCount', { count: result.imported })}\n${t('expenses.failedCount', { count: result.failed.length })}:\n${result.failed.map(f => `#${f.row}: ${f.error}`).join('\n')}`
+                    : t('expenses.importedCount', { count: result.imported });
+                  alert(msg);
+                  load();
+                } catch (err) {
+                  alert(err instanceof Error ? err.message : 'Import failed');
+                }
+                e.target.value = '';
+              }}
+            />
+          </label>
+          <button type="button" onClick={() => tab === 'expenses' ? setShowCreateExpense(true) : setShowCreateSupplierInvoice(true)}>
+            <Plus size={15} /> {tab === 'expenses' ? t('expenses.newExpense') : t('expenses.newSupplierInvoice')}
+          </button>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
