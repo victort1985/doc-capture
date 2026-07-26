@@ -12,6 +12,12 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { Order } from '../orders/entities/order.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { PaymentSettings } from '../payments/entities/payment-settings.entity';
+import { CreditNote } from '../credit-notes/entities/credit-note.entity';
+import { CreditNoteSettings } from '../credit-notes/entities/credit-note-settings.entity';
+import { DebitNote } from '../debit-notes/entities/debit-note.entity';
+import { DebitNoteSettings } from '../debit-notes/entities/debit-note-settings.entity';
+import { ReturnNote } from '../returns/entities/return-note.entity';
+import { ReturnNoteSettings } from '../returns/entities/return-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
@@ -27,6 +33,14 @@ export interface ChainResult {
   deliveryNotes: DeliveryNote[];
   invoices: Invoice[];
   payments: Payment[];
+  /** Corrections/returns tied to this chain — not part of `status`
+   * (a chain isn't "incomplete" for lacking a credit note the way it
+   * is for lacking a payment), just informational: seeing that an
+   * order had a correction or a return is part of the full picture
+   * of what actually happened on it. */
+  creditNotes: CreditNote[];
+  debitNotes: DebitNote[];
+  returns: ReturnNote[];
   status: {
     hasQuote: boolean;
     hasOrder: boolean;
@@ -50,6 +64,12 @@ export class OrderChainService {
     @InjectRepository(InvoiceSettings) private readonly invoiceSettingsRepo: Repository<InvoiceSettings>,
     @InjectRepository(Payment) private readonly paymentsRepo: Repository<Payment>,
     @InjectRepository(PaymentSettings) private readonly paymentSettingsRepo: Repository<PaymentSettings>,
+    @InjectRepository(CreditNote) private readonly creditNotesRepo: Repository<CreditNote>,
+    @InjectRepository(CreditNoteSettings) private readonly creditNoteSettingsRepo: Repository<CreditNoteSettings>,
+    @InjectRepository(DebitNote) private readonly debitNotesRepo: Repository<DebitNote>,
+    @InjectRepository(DebitNoteSettings) private readonly debitNoteSettingsRepo: Repository<DebitNoteSettings>,
+    @InjectRepository(ReturnNote) private readonly returnsRepo: Repository<ReturnNote>,
+    @InjectRepository(ReturnNoteSettings) private readonly returnSettingsRepo: Repository<ReturnNoteSettings>,
     private readonly storageService: StorageService,
     private readonly orderStorageSettingsService: DocumentStorageSettingsService,
   ) {}
@@ -70,19 +90,22 @@ export class OrderChainService {
 
   async getChain(chainId: string, organizationId: number | null): Promise<ChainResult> {
     const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
-    const [quotes, orders, deliveryNotes, invoices, payments] = await Promise.all([
+    const [quotes, orders, deliveryNotes, invoices, payments, creditNotes, debitNotes, returns] = await Promise.all([
       this.quotesRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
       this.ordersRepo.find({ where: { chainId } as any, order: { createdAt: 'ASC' } }),
       this.deliveryNotesRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
       this.invoicesRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
       this.paymentsRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
+      this.creditNotesRepo.find({ where: { chainId, ...orgFilter } as any, order: { createdAt: 'ASC' } }),
+      this.debitNotesRepo.find({ where: { chainId, ...orgFilter } as any, order: { createdAt: 'ASC' } }),
+      this.returnsRepo.find({ where: { chainId, ...orgFilter } as any, order: { createdAt: 'ASC' } }),
     ]);
 
     const signedNote = deliveryNotes.find((n: any) => !!n.lesseeSignedAt || n.status === 'signed');
 
     return {
       chainId,
-      quotes, orders, deliveryNotes, invoices, payments,
+      quotes, orders, deliveryNotes, invoices, payments, creditNotes, debitNotes, returns,
       status: {
         hasQuote: quotes.length > 0,
         hasOrder: orders.length > 0,
@@ -183,6 +206,30 @@ export class OrderChainService {
       if (settings?.storageConnection && invoice.storagePath) {
         const { adapter } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
         await appendPdf(await readMaybeEncrypted(adapter, invoice.storagePath).catch(() => null));
+      }
+    }
+
+    // Corrections/returns — part of the complete audit trail for this
+    // order, same reasoning as everything else in this summary.
+    for (const creditNote of chain.creditNotes) {
+      const settings = await this.creditNoteSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
+      if (settings?.storageConnection && creditNote.storagePath) {
+        const { adapter } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
+        await appendPdf(await readMaybeEncrypted(adapter, creditNote.storagePath).catch(() => null));
+      }
+    }
+    for (const debitNote of chain.debitNotes) {
+      const settings = await this.debitNoteSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
+      if (settings?.storageConnection && debitNote.storagePath) {
+        const { adapter } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
+        await appendPdf(await readMaybeEncrypted(adapter, debitNote.storagePath).catch(() => null));
+      }
+    }
+    for (const returnNote of chain.returns) {
+      const settings = await this.returnSettingsRepo.findOne({ where: { organization: { id: organizationId } }, relations: ['storageConnection'] });
+      if (settings?.storageConnection && returnNote.storagePath) {
+        const { adapter } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
+        await appendPdf(await readMaybeEncrypted(adapter, returnNote.storagePath).catch(() => null));
       }
     }
 
