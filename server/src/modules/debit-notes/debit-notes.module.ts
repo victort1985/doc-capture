@@ -6,6 +6,7 @@ import { DebitNotesService } from './debit-notes.service';
 import { DebitNotesController } from './debit-notes.controller';
 import { DebitNoteSettingsController } from './debit-note-settings.controller';
 import { Invoice } from '../invoices/entities/invoice.entity';
+import { InvoiceSettings } from '../invoices/entities/invoice-settings.entity';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageModule } from '../storage/storage.module';
 import { DocumentEmailModule } from '../document-email/document-email.module';
@@ -14,7 +15,7 @@ import { AccountingModule } from '../accounting/accounting.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([DebitNote, DebitNoteSettings, Invoice, DeliveryNoteSettings]),
+    TypeOrmModule.forFeature([DebitNote, DebitNoteSettings, Invoice, InvoiceSettings, DeliveryNoteSettings]),
     StorageModule,
     DocumentEmailModule,
     UsersModule,
