@@ -10,6 +10,8 @@ import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
+import { WarehouseService } from '../warehouse/warehouse.service';
+import { TransactionType } from '../warehouse/entities/warehouse-transaction.entity';
 
 @Injectable()
 export class ReturnsService {
@@ -20,6 +22,7 @@ export class ReturnsService {
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
+    private readonly warehouseService: WarehouseService,
   ) {}
 
   private async generateReturnNumber(organizationId: number | null): Promise<string> {
@@ -76,7 +79,29 @@ export class ReturnsService {
     });
     const saved = await this.repo.save(returnNote);
     saved.storagePath = await this.tryGeneratePdf(saved, organizationId);
-    return this.repo.save(saved);
+    const result = await this.repo.save(saved);
+
+    // Any line linked to an actual warehouse item comes back into
+    // stock — best-effort per item, since one bad link (e.g. an item
+    // that got deleted from the warehouse since) shouldn't undo an
+    // otherwise-successful return record.
+    for (const item of dto.items) {
+      if (!item.warehouseItemId) continue;
+      try {
+        await this.warehouseService.addTransaction(
+          item.warehouseItemId,
+          TransactionType.IN,
+          item.quantity,
+          `Return ${result.returnNumber ?? `#${result.id}`} — ${result.clientName}`,
+          undefined,
+          userId,
+        );
+      } catch {
+        // best-effort — see comment above
+      }
+    }
+
+    return result;
   }
 
   private async tryGeneratePdf(returnNote: ReturnNote, organizationId: number | null): Promise<string | null> {

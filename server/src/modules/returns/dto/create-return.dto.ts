@@ -9,6 +9,10 @@ export class ReturnItemDto {
   @IsString()
   @IsOptional()
   notes?: string;
+
+  @IsInt()
+  @IsOptional()
+  warehouseItemId?: number;
 }
 
 export class CreateReturnDto {

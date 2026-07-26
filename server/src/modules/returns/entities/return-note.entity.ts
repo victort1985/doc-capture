@@ -39,7 +39,13 @@ export class ReturnNote {
   reason: string;
 
   @Column({ type: 'jsonb', default: [] })
-  items: { name: string; quantity: number; notes?: string }[];
+  /** warehouseItemId is optional — a return doesn't have to be tied
+   * to warehouse inventory at all (e.g. returning a paper document,
+   * or a business that doesn't track this particular thing as stock).
+   * When present, ReturnsService posts a matching IN transaction so
+   * the item's quantity actually reflects it coming back — see
+   * ReturnsService.create(). */
+  items: { name: string; quantity: number; notes?: string; warehouseItemId?: number }[];
 
   @Column({ type: 'varchar', nullable: true })
   storagePath?: string | null;
