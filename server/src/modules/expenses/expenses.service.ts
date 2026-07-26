@@ -101,4 +101,101 @@ export class ExpensesService {
     }
     return saved;
   }
+
+  // ── CSV import (requirement #14) ────────────────────────────────
+  /** Minimal CSV parser (no external dependency) — handles quoted
+   * fields with embedded commas/quotes, which is the one thing a
+   * naive split(',') gets wrong. Doesn't handle embedded newlines
+   * inside a quoted field; good enough for the flat, simple export
+   * format this pairs with (see export.csv), not a general-purpose
+   * CSV library replacement. */
+  private parseCsv(text: string): Record<string, string>[] {
+    const parseLine = (line: string): string[] => {
+      const fields: string[] = [];
+      let cur = '';
+      let inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (inQuotes) {
+          if (ch === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+          else if (ch === '"') { inQuotes = false; }
+          else { cur += ch; }
+        } else if (ch === '"') { inQuotes = true; }
+        else if (ch === ',') { fields.push(cur); cur = ''; }
+        else { cur += ch; }
+      }
+      fields.push(cur);
+      return fields.map((f) => f.trim());
+    };
+
+    const lines = text.split(/\r\n|\n/).filter((l) => l.trim().length > 0);
+    if (lines.length < 2) return [];
+    const headers = parseLine(lines[0]).map((h) => h.trim());
+    return lines.slice(1).map((line) => {
+      const values = parseLine(line);
+      const row: Record<string, string> = {};
+      headers.forEach((h, i) => { row[h] = values[i] ?? ''; });
+      return row;
+    });
+  }
+
+  /** Every row is processed independently and failures don't stop the
+   * rest of the file — a bulk import is exactly the situation where
+   * one malformed row (typo'd amount, missing required field)
+   * shouldn't throw away everything else that parsed fine. Returns a
+   * summary so the person doing the import can see what actually
+   * happened, not just "it worked" or a stack trace. */
+  async importExpensesCsv(organizationId: number | null, userId: number, csvText: string): Promise<{ imported: number; failed: { row: number; error: string }[] }> {
+    const rows = this.parseCsv(csvText);
+    let imported = 0;
+    const failed: { row: number; error: string }[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        const amount = Number(row.amount);
+        if (!row.description) throw new Error('description is required');
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error(`invalid amount: "${row.amount}"`);
+        const method = row.method === 'bank' ? 'bank' : 'cash';
+        await this.createExpense(organizationId, userId, {
+          date: row.date || undefined,
+          description: row.description,
+          category: row.category || undefined,
+          amount,
+          method,
+        });
+        imported++;
+      } catch (e) {
+        failed.push({ row: i + 2, error: e instanceof Error ? e.message : String(e) }); // +2: 1-indexed + header row
+      }
+    }
+    return { imported, failed };
+  }
+
+  async importSupplierInvoicesCsv(organizationId: number | null, userId: number, csvText: string): Promise<{ imported: number; failed: { row: number; error: string }[] }> {
+    const rows = this.parseCsv(csvText);
+    let imported = 0;
+    const failed: { row: number; error: string }[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      try {
+        const amount = Number(row.amount);
+        if (!row.supplierName) throw new Error('supplierName is required');
+        if (!Number.isFinite(amount) || amount <= 0) throw new Error(`invalid amount: "${row.amount}"`);
+        await this.createSupplierInvoice(organizationId, userId, {
+          supplierName: row.supplierName,
+          invoiceNumber: row.invoiceNumber || undefined,
+          date: row.date || undefined,
+          dueDate: row.dueDate || undefined,
+          description: row.description || undefined,
+          amount,
+        });
+        imported++;
+      } catch (e) {
+        failed.push({ row: i + 2, error: e instanceof Error ? e.message : String(e) });
+      }
+    }
+    return { imported, failed };
+  }
 }
