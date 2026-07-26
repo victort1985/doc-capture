@@ -1194,6 +1194,9 @@
     "noSupplierInvoices": "No supplier invoices yet.",
     "importCsv": "Import CSV",
     "importedCount": "Imported {{count}} row(s).",
-    "failedCount": "{{count}} failed"
+    "failedCount": "{{count}} failed",
+    "receipt": "Receipt",
+    "viewReceipt": "View receipt",
+    "viewBill": "View bill"
   }
 }

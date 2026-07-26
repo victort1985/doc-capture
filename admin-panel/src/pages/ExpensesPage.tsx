@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, X, CheckCircle2, Upload } from 'lucide-react';
+import { Plus, X, CheckCircle2, Upload, Paperclip } from 'lucide-react';
 import { apiFetch, BASE_URL, getToken } from '../services/api';
 
-interface ExpenseRow { id: number; date: string; description: string; category?: string; amount: number; method: string; }
-interface SupplierInvoiceRow { id: number; supplierName: string; invoiceNumber?: string; date: string; dueDate?: string; amount: number; paidAt?: string; }
+interface ExpenseRow { id: number; date: string; description: string; category?: string; amount: number; method: string; receiptStoragePath?: string | null; }
+interface SupplierInvoiceRow { id: number; supplierName: string; invoiceNumber?: string; date: string; dueDate?: string; amount: number; paidAt?: string; storagePath?: string | null; }
 
 export default function ExpensesPage() {
   const { t } = useTranslation();
@@ -32,6 +32,31 @@ export default function ExpensesPage() {
       load();
     } catch (e) {
       alert(e instanceof Error ? e.message : 'Failed to mark paid');
+    }
+  }
+
+  async function attachFile(kind: 'expenses' | 'supplier-invoices', id: number, file: File) {
+    const path = kind === 'expenses' ? `/expenses/${id}/receipt` : `/supplier-invoices/${id}/bill`;
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const res = await fetch(`${BASE_URL}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: formData });
+      if (!res.ok) throw new Error('Upload failed');
+      load();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to attach file');
+    }
+  }
+
+  async function viewFile(kind: 'expenses' | 'supplier-invoices', id: number) {
+    const path = kind === 'expenses' ? `/expenses/${id}/receipt` : `/supplier-invoices/${id}/bill`;
+    try {
+      const res = await fetch(`${BASE_URL}${path}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      if (!res.ok) throw new Error('Not found');
+      const blob = await res.blob();
+      window.open(URL.createObjectURL(blob), '_blank');
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Failed to open file');
     }
   }
 
@@ -103,6 +128,7 @@ export default function ExpensesPage() {
                 <th style={{ padding: '8px 12px' }}>{t('expenses.category')}</th>
                 <th style={{ padding: '8px 12px' }}>{t('expenses.method')}</th>
                 <th style={{ padding: '8px 12px' }}>{t('expenses.amount')}</th>
+                <th style={{ padding: '8px 12px' }}>{t('expenses.receipt')}</th>
               </tr>
             </thead>
             <tbody>
@@ -113,9 +139,20 @@ export default function ExpensesPage() {
                   <td style={{ padding: '8px 12px', color: 'var(--ink-soft)' }}>{e.category ?? ''}</td>
                   <td style={{ padding: '8px 12px' }}>{e.method === 'cash' ? t('expenses.cash') : t('expenses.bank')}</td>
                   <td style={{ padding: '8px 12px', fontWeight: 700 }}>₪{Number(e.amount).toFixed(2)}</td>
+                  <td style={{ padding: '8px 12px' }}>
+                    {e.receiptStoragePath && (
+                      <button type="button" className="ghost" onClick={() => viewFile('expenses', e.id)} title={t('expenses.viewReceipt')} style={{ marginInlineEnd: 6 }}>
+                        <Paperclip size={15} />
+                      </button>
+                    )}
+                    <label className="ghost" style={{ cursor: 'pointer', display: 'inline-flex', padding: '4px 8px' }}>
+                      <Upload size={14} />
+                      <input type="file" style={{ display: 'none' }} onChange={(ev) => { const f = ev.target.files?.[0]; if (f) attachFile('expenses', e.id, f); ev.target.value = ''; }} />
+                    </label>
+                  </td>
                 </tr>
               ))}
-              {expenses.length === 0 && <tr><td colSpan={5} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('expenses.noExpenses')}</td></tr>}
+              {expenses.length === 0 && <tr><td colSpan={6} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('expenses.noExpenses')}</td></tr>}
             </tbody>
           </table>
         </div>
@@ -148,10 +185,19 @@ export default function ExpensesPage() {
                   </td>
                   <td style={{ padding: '8px 12px' }}>
                     {!si.paidAt && (
-                      <button type="button" className="ghost" onClick={() => markPaid(si.id)} title={t('expenses.markPaid')}>
+                      <button type="button" className="ghost" onClick={() => markPaid(si.id)} title={t('expenses.markPaid')} style={{ marginInlineEnd: 6 }}>
                         <CheckCircle2 size={15} />
                       </button>
                     )}
+                    {si.storagePath && (
+                      <button type="button" className="ghost" onClick={() => viewFile('supplier-invoices', si.id)} title={t('expenses.viewBill')} style={{ marginInlineEnd: 6 }}>
+                        <Paperclip size={15} />
+                      </button>
+                    )}
+                    <label className="ghost" style={{ cursor: 'pointer', display: 'inline-flex', padding: '4px 8px' }}>
+                      <Upload size={14} />
+                      <input type="file" style={{ display: 'none' }} onChange={(ev) => { const f = ev.target.files?.[0]; if (f) attachFile('supplier-invoices', si.id, f); ev.target.value = ''; }} />
+                    </label>
                   </td>
                 </tr>
               ))}

@@ -1194,6 +1194,9 @@
     "noSupplierInvoices": "אין עדיין חשבוניות ספקים.",
     "importCsv": "ייבוא CSV",
     "importedCount": "יובאו {{count}} שורות.",
-    "failedCount": "{{count}} נכשלו"
+    "failedCount": "{{count}} נכשלו",
+    "receipt": "קבלה",
+    "viewReceipt": "צפייה בקבלה",
+    "viewBill": "צפייה בחשבונית"
   }
 }

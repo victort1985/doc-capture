@@ -1194,6 +1194,9 @@
     "noSupplierInvoices": "Счетов поставщиков пока нет.",
     "importCsv": "Импорт CSV",
     "importedCount": "Импортировано строк: {{count}}.",
-    "failedCount": "Ошибок: {{count}}"
+    "failedCount": "Ошибок: {{count}}",
+    "receipt": "Чек",
+    "viewReceipt": "Открыть чек",
+    "viewBill": "Открыть счёт"
   }
 }
