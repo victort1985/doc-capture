@@ -10,7 +10,8 @@ import { UserRole } from '../users/entities/user.entity';
 type ReqUser = { organizationId: number | null };
 
 @Controller('accounting')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 export class AccountingController {
   constructor(private readonly service: AccountingService) {}
 
@@ -20,8 +21,6 @@ export class AccountingController {
   }
 
   @Post('accounts/seed-defaults')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
   seedDefaults(@CurrentUser() user: ReqUser) {
     if (user.organizationId == null) return [];
     return this.service.seedDefaultAccounts(user.organizationId);

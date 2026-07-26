@@ -7,6 +7,9 @@ import { InvoiceSettings } from '../invoices/entities/invoice-settings.entity';
 import { Quote } from '../quotes/entities/quote.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { RolesGuard } from '../../common/guards/roles.guard';
+import { Roles } from '../../common/decorators/roles.decorator';
+import { UserRole } from '../users/entities/user.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { VAT_RATE } from '../documents/document-pdf.util';
 
@@ -23,7 +26,8 @@ type ReqUser = { id: number; organizationId: number | null };
  * correct rather than several slightly-different ones.
  */
 @Controller('financial-reports')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(UserRole.ADMIN)
 export class FinancialReportsController {
   constructor(
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
