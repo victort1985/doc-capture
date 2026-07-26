@@ -92,24 +92,24 @@ export class AccountingService {
    * credits) if every posting went through postEntry() correctly. */
   async trialBalance(organizationId: number | null, from: string, to: string) {
     const accounts = await this.findAllAccounts(organizationId);
-    const orgFilter = organizationId != null ? 'AND e."organizationId" = :orgId' : '';
 
-    const debitSums = await this.ledgerRepo
+    const debitQb = this.ledgerRepo
       .createQueryBuilder('e')
       .select('e."debitAccountId"', 'accountId')
       .addSelect('SUM(e.amount)', 'total')
       .where('e.date BETWEEN :from AND :to', { from, to })
-      .andWhere(orgFilter, { orgId: organizationId })
-      .groupBy('e."debitAccountId"')
-      .getRawMany<{ accountId: number; total: string }>();
-    const creditSums = await this.ledgerRepo
+      .groupBy('e."debitAccountId"');
+    if (organizationId != null) debitQb.andWhere('e."organizationId" = :orgId', { orgId: organizationId });
+    const debitSums = await debitQb.getRawMany<{ accountId: number; total: string }>();
+
+    const creditQb = this.ledgerRepo
       .createQueryBuilder('e')
       .select('e."creditAccountId"', 'accountId')
       .addSelect('SUM(e.amount)', 'total')
       .where('e.date BETWEEN :from AND :to', { from, to })
-      .andWhere(orgFilter, { orgId: organizationId })
-      .groupBy('e."creditAccountId"')
-      .getRawMany<{ accountId: number; total: string }>();
+      .groupBy('e."creditAccountId"');
+    if (organizationId != null) creditQb.andWhere('e."organizationId" = :orgId', { orgId: organizationId });
+    const creditSums = await creditQb.getRawMany<{ accountId: number; total: string }>();
 
     const debitMap = new Map(debitSums.map((r) => [r.accountId, Number(r.total)]));
     const creditMap = new Map(creditSums.map((r) => [r.accountId, Number(r.total)]));
@@ -181,17 +181,16 @@ export class AccountingService {
   /** General ledger for one account — every entry that touched it,
    * in date order, with a running balance. */
   async generalLedger(organizationId: number | null, accountId: number, from: string, to: string) {
-    const orgFilter = organizationId != null ? 'AND e."organizationId" = :orgId' : '';
-    const rows = await this.ledgerRepo
+    const qb = this.ledgerRepo
       .createQueryBuilder('e')
       .leftJoinAndSelect('e.debitAccount', 'debitAccount')
       .leftJoinAndSelect('e.creditAccount', 'creditAccount')
       .where('(e."debitAccountId" = :accountId OR e."creditAccountId" = :accountId)', { accountId })
       .andWhere('e.date BETWEEN :from AND :to', { from, to })
-      .andWhere(orgFilter, { orgId: organizationId })
       .orderBy('e.date', 'ASC')
-      .addOrderBy('e.id', 'ASC')
-      .getMany();
+      .addOrderBy('e.id', 'ASC');
+    if (organizationId != null) qb.andWhere('e."organizationId" = :orgId', { orgId: organizationId });
+    const rows = await qb.getMany();
 
     let balance = 0;
     return rows.map((e) => {
