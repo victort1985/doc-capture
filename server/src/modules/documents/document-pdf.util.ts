@@ -50,6 +50,13 @@ export interface GenerateDocumentPdfParams {
    * total. Undefined/false means the org is VAT-exempt for this
    * document type — the printed total simply equals params.total. */
   vatEnabled?: boolean;
+
+  /** requirement #6 ("Invoice Israel") — the short (9-digit)
+   * allocation number, printed per the ITA spec's exact instruction:
+   * prominently, under the heading "הקצאה מספר:". Undefined/null
+   * means no number applies (below threshold, integration not
+   * enabled, or not yet received) and nothing gets printed. */
+  allocationNumber?: string | null;
 }
 
 /** Israel's standard VAT rate. Not read from anywhere configurable on
@@ -173,7 +180,19 @@ function drawDiagonalStamp(page: PDFPage, fonts: Fonts, text: string, color: { r
   }
 }
 
-export async function generateDocumentPdf(params: GenerateDocumentPdfParams): Promise<Buffer> {
+export async function generateDocumentPdf(rawParams: GenerateDocumentPdfParams): Promise<Buffer> {
+  // requirement #6 ("Invoice Israel") — the allocation number gets
+  // folded into footerText as a forced first line rather than adding
+  // template-specific drawing code to all 3 layouts (classic/modern/
+  // minimal each have their own pixel-level positioning) — this way
+  // every template prints it the same way footerText already renders
+  // consistently everywhere, satisfying the spec's "prominently
+  // displayed" requirement without three separate implementations to
+  // keep in sync.
+  const params: GenerateDocumentPdfParams = rawParams.allocationNumber
+    ? { ...rawParams, footerText: `הקצאה מספר: ${rawParams.allocationNumber}${rawParams.footerText ? `\n${rawParams.footerText}` : ''}` }
+    : rawParams;
+
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit as any);
 

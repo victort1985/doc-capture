@@ -24,6 +24,10 @@ export class CreateInvoiceDto {
 
   @IsString()
   @IsOptional()
+  clientTaxId?: string;
+
+  @IsString()
+  @IsOptional()
   date?: string;
 
   @IsArray()

@@ -48,6 +48,14 @@ export class Invoice {
   @Column({ nullable: true })
   clientEmail?: string;
 
+  /** ח.פ./עוסק מורשה number — required for requirement #6 ("Invoice
+   * Israel") when the client needs to claim input VAT on this
+   * invoice, per the spec's note that number_vat_customer is
+   * "required when required by law" rather than unconditionally.
+   * Not required for B2C sales to individual consumers. */
+  @Column({ nullable: true })
+  clientTaxId?: string;
+
   @Column({ type: 'jsonb', default: [] })
   items: InvoiceItem[];
 
@@ -62,6 +70,25 @@ export class Invoice {
 
   @Column({ type: 'timestamp', nullable: true })
   paidAt?: Date;
+
+  /** requirement #6, "Invoice Israel" — the confirmation_number
+   * returned by the ITA's Approval API, printed on the invoice per
+   * the spec's instructions (rightmost 9 digits, under "הקצאה מספר:").
+   * Null means either this invoice was under the reporting threshold,
+   * the integration isn't enabled for this org, or the request hasn't
+   * been made/hasn't succeeded yet — allocationStatus distinguishes
+   * these cases. */
+  @Column({ type: 'varchar', nullable: true })
+  allocationNumber?: string | null;
+
+  @Column({ type: 'enum', enum: ['not_applicable', 'pending', 'approved', 'refused', 'error'], default: 'not_applicable' })
+  allocationStatus: 'not_applicable' | 'pending' | 'approved' | 'refused' | 'error';
+
+  /** Which of the 4 alternatives (see requirement #6's "עיכוב חשבונית")
+   * was chosen when a request came back refused — cancel/continue/
+   * reverse-charge/hearing-request. Null until a decision is made. */
+  @Column({ type: 'varchar', nullable: true })
+  allocationDecision?: string | null;
 
   /** Relative path (within the configured storage connection) to the
    * generated PDF, set once at creation. Null if no storage

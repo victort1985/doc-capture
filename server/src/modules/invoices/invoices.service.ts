@@ -5,6 +5,7 @@ import * as crypto from 'crypto';
 import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoiceSettings } from './entities/invoice-settings.entity';
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
+import { TaxAuthorityAllocationService } from '../invoice-israel/tax-authority-allocation.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
@@ -25,6 +26,7 @@ export class InvoicesService {
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
     private readonly ledgerPostingService: LedgerPostingService,
+    private readonly taxAuthorityAllocationService: TaxAuthorityAllocationService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -76,6 +78,7 @@ export class InvoicesService {
       invoiceNumber: await this.generateInvoiceNumber(organizationId),
       clientName: dto.clientName,
       clientEmail: dto.clientEmail,
+      clientTaxId: dto.clientTaxId,
       date: dto.date ?? new Date().toISOString().slice(0, 10),
       items: dto.items,
       total: this.computeTotal(dto.items),
@@ -91,15 +94,33 @@ export class InvoicesService {
     saved.storagePath = await this.tryGeneratePdf(saved, organizationId);
     const result = await this.repo.save(saved);
 
+    let vatEnabledForAllocation = true;
     if (organizationId != null) {
       try {
         const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } });
         const vatEnabled = settings?.vatEnabled ?? true;
+        vatEnabledForAllocation = vatEnabled;
         const vatAmount = vatEnabled ? Math.round(result.total * VAT_RATE * 100) / 100 : 0;
         await this.ledgerPostingService.postInvoice(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, vatAmount, result.clientName);
       } catch {
         // Ledger posting is best-effort — a bookkeeping hiccup must
         // never block issuing the invoice itself.
+      }
+
+      // requirement #6 ("Invoice Israel") — best-effort, never blocks
+      // issuing the invoice. maybeRequestAllocation() itself decides
+      // whether this invoice is even eligible (threshold/VAT/
+      // clientTaxId) and whether the integration is turned on at all.
+      await this.taxAuthorityAllocationService.maybeRequestAllocation(result, organizationId, vatEnabledForAllocation);
+
+      // The PDF above was already generated and stored WITHOUT the
+      // allocation number, since that request only just happened —
+      // reprint it now that result.allocationNumber may be set, so
+      // the stored/emailed PDF actually carries the number rather
+      // than requiring a separate manual "regenerate" action.
+      if (result.allocationNumber) {
+        result.storagePath = await this.tryGeneratePdf(result, organizationId);
+        await this.repo.save(result);
       }
     }
 
@@ -164,6 +185,7 @@ export class InvoicesService {
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
         vatEnabled: settings.vatEnabled,
+        allocationNumber: invoice.allocationNumber,
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `Invoices/${invoice.invoiceNumber ?? invoice.id}.pdf`;
