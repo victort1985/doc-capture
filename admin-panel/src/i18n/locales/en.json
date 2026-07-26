@@ -38,7 +38,8 @@
     "returnSettings": "Return settings",
     "accounting": "Accounting",
     "auditLog": "Audit Log",
-    "expenses": "Expenses & Purchases"
+    "expenses": "Expenses & Purchases",
+    "taxAuthority": "Tax Authority"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1200,5 +1201,29 @@
     "receipt": "Receipt",
     "viewReceipt": "View receipt",
     "viewBill": "View bill"
+  },
+  "taxAuthority": {
+    "eyebrow": "Compliance",
+    "title": "Tax Authority (Invoice Israel)",
+    "disclaimer": "This connects to Israel's Tax Authority \"Invoice Israel\" (חשבונית ישראל) system to obtain allocation numbers for eligible invoices. Requires signing up separately at the Tax Authority's developer portal — this only integrates with that account, it doesn't create one for you.",
+    "enable": "Enable this integration",
+    "environment": "Environment",
+    "sandbox": "Sandbox (testing)",
+    "production": "Production (live)",
+    "vatNumber": "VAT/Business Number (ח.פ./עוסק מורשה)",
+    "softwareRegistrationNumber": "Software Registration Number",
+    "softwareRegistrationHint": "Leave blank to use your VAT number instead",
+    "thresholdAmount": "Reporting threshold (₪, before VAT)",
+    "thresholdHint": "Invoices above this amount request an allocation number. Verify this against the Tax Authority's current published threshold — it has changed faster than originally scheduled.",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret",
+    "clientSecretHint": "Leave blank to keep the existing value",
+    "oauthScope": "OAuth Scope",
+    "oauthScopeHint": "Find this on your app's page in the Tax Authority developer portal",
+    "connect": "Connect to Tax Authority",
+    "reconnect": "Reconnect",
+    "connected": "Connected",
+    "notConnected": "Not connected yet",
+    "connectedSuccess": "Successfully connected to the Tax Authority."
   }
 }

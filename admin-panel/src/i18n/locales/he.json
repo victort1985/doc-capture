@@ -38,7 +38,8 @@
     "returnSettings": "הגדרות החזרה",
     "accounting": "הנהלת חשבונות",
     "auditLog": "יומן פעולות",
-    "expenses": "הוצאות ורכישות"
+    "expenses": "הוצאות ורכישות",
+    "taxAuthority": "רשות המסים"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -1200,5 +1201,29 @@
     "receipt": "קבלה",
     "viewReceipt": "צפייה בקבלה",
     "viewBill": "צפייה בחשבונית"
+  },
+  "taxAuthority": {
+    "eyebrow": "עמידה ברגולציה",
+    "title": "רשות המסים (חשבונית ישראל)",
+    "disclaimer": "חיבור למערכת \"חשבונית ישראל\" של רשות המסים לקבלת מספרי הקצאה לחשבוניות. יש להירשם בנפרד בפורטל המפתחים של רשות המסים — כאן רק מתבצע חיבור לחשבון קיים, לא נרשם חשבון חדש.",
+    "enable": "הפעלת האינטגרציה",
+    "environment": "סביבה",
+    "sandbox": "בדיקות (Sandbox)",
+    "production": "ייצור (חי)",
+    "vatNumber": "מספר עוסק מורשה / ח.פ.",
+    "softwareRegistrationNumber": "מספר רישום תוכנה",
+    "softwareRegistrationHint": "השאירו ריק לשימוש במספר העוסק",
+    "thresholdAmount": "סף דיווח (₪, לפני מע\"מ)",
+    "thresholdHint": "חשבוניות מעל סכום זה מבקשות מספר הקצאה. יש לוודא מול הסף העדכני שפורסם — הוא השתנה מהר יותר מהתכנון המקורי.",
+    "clientId": "Client ID",
+    "clientSecret": "Client Secret",
+    "clientSecretHint": "השאירו ריק לשמירת הערך הקיים",
+    "oauthScope": "OAuth Scope",
+    "oauthScopeHint": "ניתן למצוא בעמוד האפליקציה בפורטל המפתחים",
+    "connect": "התחברות לרשות המסים",
+    "reconnect": "התחברות מחדש",
+    "connected": "מחובר",
+    "notConnected": "עדיין לא מחובר",
+    "connectedSuccess": "התחברות לרשות המסים בוצעה בהצלחה."
   }
 }

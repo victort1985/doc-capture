@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Users, HardDrive, Route, FileSliders, FileStack, LogOut, MapPin, PhoneCall,
   Building2, Contact, Car, Package, BarChart2, ShieldCheck, FileSignature,
-  FileText, CalendarDays, Menu, X, Mail, ReceiptText, Receipt, Users2, FileSpreadsheet, Banknote, CalendarClock, Settings2,
+  FileText, CalendarDays, Menu, X, Mail, ReceiptText, Receipt, Users2, FileSpreadsheet, Banknote, CalendarClock, Settings2, Landmark,
   ChevronDown, Settings, Globe, Smartphone, Tag, CreditCard, TrendingUp, FileMinus, FilePlus2, Undo2, BookOpen, ScrollText,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -63,6 +63,7 @@ const OFFICE_GROUP = [
   { to: '/financial-reports', labelKey: 'nav.financialReports',     icon: TrendingUp, adminOnly: true },
   { to: '/accounting',        labelKey: 'nav.accounting',           icon: BookOpen, adminOnly: true },
   { to: '/expenses',          labelKey: 'nav.expenses',             icon: Receipt, adminOnly: true },
+  { to: '/tax-authority-settings', labelKey: 'nav.taxAuthority',    icon: Landmark, adminOnly: true },
   { to: '/audit-log',         labelKey: 'nav.auditLog',             icon: ScrollText, adminOnly: true },
 ];
 
