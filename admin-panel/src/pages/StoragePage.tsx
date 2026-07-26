@@ -10,10 +10,10 @@ interface Connection {
   host?: string;
   port?: number;
   basePath: string;
-  extraConfig?: { secure?: boolean } | null;
+  extraConfig?: { secure?: boolean; encryptAtRest?: boolean } | null;
 }
 
-const EMPTY_FORM = { name: '', type: 'local', host: '', port: '', username: '', password: '', basePath: '', secure: false };
+const EMPTY_FORM = { name: '', type: 'local', host: '', port: '', username: '', password: '', basePath: '', secure: false, encryptAtRest: false };
 
 export default function StoragePage() {
   const { t } = useTranslation();
@@ -51,6 +51,7 @@ export default function StoragePage() {
       password: '',
       basePath: c.basePath,
       secure: Boolean(c.extraConfig?.secure),
+      encryptAtRest: Boolean(c.extraConfig?.encryptAtRest),
     });
     setShowForm(true);
   }
@@ -76,9 +77,14 @@ export default function StoragePage() {
       if (form.username) body.username = form.username;
       if (form.password) body.password = form.password; // omit entirely if blank — keeps existing on edit
     }
-    if (form.type === 'synology' || form.type === 'ftp') {
-      body.extraConfig = { secure: form.secure };
-    }
+    // encryptAtRest applies to every connection type — a local disk
+    // can be stolen/copied just as easily as a remote one can be
+    // breached, so this isn't limited to the "secure" toggle's ftp/
+    // synology scope the way that one is.
+    body.extraConfig = {
+      ...(form.type === 'synology' || form.type === 'ftp' ? { secure: form.secure } : {}),
+      encryptAtRest: form.encryptAtRest,
+    };
 
     try {
       if (editingId != null) {
@@ -195,6 +201,18 @@ export default function StoragePage() {
               </div>
             )}
             <div>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  type="checkbox"
+                  checked={form.encryptAtRest}
+                  onChange={(e) => setForm({ ...form, encryptAtRest: e.target.checked })}
+                  style={{ width: 'auto' }}
+                />
+                {t('storage.encryptAtRest')}
+              </label>
+              <p style={{ fontSize: 12, color: 'var(--ink-soft)', margin: '4px 0 0' }}>{t('storage.encryptAtRestHint')}</p>
+            </div>
+            <div>
               <label>{t('storage.basePath')}</label>
               <input
                 className="mono"
@@ -238,6 +256,11 @@ export default function StoragePage() {
                   <tr key={c.id}>
                     <td>
                       {c.name}
+                      {c.extraConfig?.encryptAtRest && (
+                        <span className="stamp-badge neutral" style={{ marginInlineStart: 6, fontSize: 11 }} title={t('storage.encryptAtRestHint')}>
+                          🔒 {t('storage.encrypted')}
+                        </span>
+                      )}
                       {result && result !== 'pending' && (
                         <div
                           style={{

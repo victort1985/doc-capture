@@ -527,7 +527,10 @@
     "createConnection": "Create connection",
     "emptyTitle": "No storage connections yet",
     "emptyBody": "Add a local folder, FTP server, or Synology NAS to send captured files to.",
-    "testConnection": "Test connection"
+    "testConnection": "Test connection",
+    "encryptAtRest": "Encrypt files at rest",
+    "encryptAtRestHint": "Every file written to this connection is encrypted (AES-256-GCM) before being stored, and decrypted only when read back through the app. Applies to new files going forward — existing files already stored aren't retroactively re-encrypted.",
+    "encrypted": "Encrypted"
   },
   "storageRouting": {
     "eyebrow": "Routing",
