@@ -186,6 +186,7 @@ export class InvoicesService {
         isDemoMode: settings.organization?.isDemoMode ?? false,
         vatEnabled: settings.vatEnabled,
         allocationNumber: invoice.allocationNumber,
+        continuedWithoutAllocation: invoice.allocationDecision === 'continue',
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `Invoices/${invoice.invoiceNumber ?? invoice.id}.pdf`;
@@ -239,6 +240,22 @@ export class InvoicesService {
     invoice.status = InvoiceStatus.PAID;
     invoice.paidAt = new Date();
     return this.repo.save(invoice);
+  }
+
+  async submitAllocationDecision(id: number, organizationId: number | null, decision: 'cancel' | 'continue' | 'furtherObjection'): Promise<Invoice> {
+    const invoice = await this.findOne(id, organizationId);
+    if (organizationId == null) throw new BadRequestException('No organization context.');
+    if (invoice.allocationStatus !== 'refused') throw new BadRequestException('This invoice has no refused allocation request to decide on.');
+    await this.taxAuthorityAllocationService.submitDecision(invoice, organizationId, decision);
+    if (decision === 'continue') {
+      // Per the spec: an invoice that continues without an allocation
+      // number must prominently state that input VAT can't be
+      // deducted for it — folded into footerText the same way the
+      // allocation number itself is, rather than new template code.
+      invoice.storagePath = await this.tryGeneratePdf(invoice, organizationId);
+      await this.repo.save(invoice);
+    }
+    return invoice;
   }
 
   /** Deliberately does NOT delete — an invoice is a fiscal document

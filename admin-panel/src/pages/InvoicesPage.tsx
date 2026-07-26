@@ -12,9 +12,12 @@ interface InvoiceRow {
   date?: string;
   clientName: string;
   clientEmail?: string;
+  clientTaxId?: string;
   items: InvoiceItem[];
   total: number;
   status: 'draft' | 'sent' | 'paid' | 'cancelled';
+  allocationNumber?: string | null;
+  allocationStatus?: 'not_applicable' | 'pending' | 'approved' | 'refused' | 'error';
   createdAt: string;
 }
 interface Org { id: number; name: string; }
@@ -124,6 +127,7 @@ export default function InvoicesPage() {
               <th style={{ padding: '8px 12px' }}>{t('invoices.number')}</th>
               <th style={{ padding: '8px 12px' }}>{t('invoices.total')}</th>
               <th style={{ padding: '8px 12px' }}>{t('invoices.status')}</th>
+              <th style={{ padding: '8px 12px' }}>{t('invoices.allocation')}</th>
               <th style={{ padding: '8px 12px' }}></th>
             </tr>
           </thead>
@@ -145,6 +149,15 @@ export default function InvoicesPage() {
                 <td style={{ padding: '8px 12px' }}>{inv.invoiceNumber || `#${inv.id}`}</td>
                 <td style={{ padding: '8px 12px' }}>₪{Number(inv.total).toFixed(2)}</td>
                 <td style={{ padding: '8px 12px', color: statusColor[inv.status] }}>{statusLabel[inv.status]}</td>
+                <td style={{ padding: '8px 12px', fontSize: 12.5 }}>
+                  {inv.allocationStatus === 'approved' && inv.allocationNumber && (
+                    <span style={{ color: 'var(--success, green)', fontFamily: 'monospace' }}>{inv.allocationNumber}</span>
+                  )}
+                  {inv.allocationStatus === 'pending' && <span style={{ color: 'var(--ink-soft)' }}>{t('invoices.allocationPending')}</span>}
+                  {inv.allocationStatus === 'refused' && <span style={{ color: 'var(--danger, crimson)', fontWeight: 700 }}>{t('invoices.allocationRefused')}</span>}
+                  {inv.allocationStatus === 'error' && <span style={{ color: 'var(--danger, crimson)' }}>{t('invoices.allocationError')}</span>}
+                  {(!inv.allocationStatus || inv.allocationStatus === 'not_applicable') && <span style={{ color: 'var(--ink-soft)' }}>—</span>}
+                </td>
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                   <button type="button" onClick={() => viewPdf(inv.id)} title={t('invoices.viewPdf')} style={{ marginRight: 8 }}><FileText size={15} /></button>
                   <button type="button" onClick={() => regeneratePdf(inv.id)} title={t('invoices.regeneratePdf')} style={{ marginRight: 8 }}><RefreshCw size={15} /></button>

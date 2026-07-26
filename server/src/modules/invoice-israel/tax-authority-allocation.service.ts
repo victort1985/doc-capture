@@ -97,4 +97,20 @@ export class TaxAuthorityAllocationService {
       this.logger.error(`Allocation request failed for invoice ${invoice.id}: ${(err as Error).message}`);
     }
   }
+
+  /** Submits one of the 3 non-reverse-charge alternatives for an
+   * invoice whose allocation was refused (see maybeRequestAllocation's
+   * doc comment on the eligibility conditions, and requirement #6's
+   * "עיכוב חשבונית" for the full set of 4 alternatives). Not
+   * best-effort like the request above — if this fails, the caller
+   * needs to know and retry, since leaving the ITA unaware of the
+   * chosen alternative is a compliance gap, not a minor hiccup. */
+  async submitDecision(invoice: Invoice, organizationId: number, decision: 'cancel' | 'continue' | 'furtherObjection'): Promise<void> {
+    const settings = await this.settingsService.findWithSecrets(organizationId);
+    if (!settings?.enabled) throw new Error('Tax Authority integration is not enabled for this organization.');
+    const result = await this.api.submitDecision(settings, `inv-${invoice.id}`, decision);
+    if (!result.ok) throw new Error(result.message);
+    invoice.allocationDecision = decision;
+    await this.invoicesRepo.save(invoice);
+  }
 }

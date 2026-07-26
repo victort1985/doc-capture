@@ -57,6 +57,13 @@ export interface GenerateDocumentPdfParams {
    * means no number applies (below threshold, integration not
    * enabled, or not yet received) and nothing gets printed. */
   allocationNumber?: string | null;
+
+  /** True when an invoice is being issued WITHOUT an allocation
+   * number after the ITA explicitly refused one and the "continue
+   * anyway" alternative was chosen — the spec requires this specific
+   * disclaimer to appear prominently in that case ("אין לנכות מס
+   * תשומות בגין חשבונית זו"). */
+  continuedWithoutAllocation?: boolean;
 }
 
 /** Israel's standard VAT rate. Not read from anywhere configurable on
@@ -191,7 +198,9 @@ export async function generateDocumentPdf(rawParams: GenerateDocumentPdfParams):
   // keep in sync.
   const params: GenerateDocumentPdfParams = rawParams.allocationNumber
     ? { ...rawParams, footerText: `הקצאה מספר: ${rawParams.allocationNumber}${rawParams.footerText ? `\n${rawParams.footerText}` : ''}` }
-    : rawParams;
+    : rawParams.continuedWithoutAllocation
+      ? { ...rawParams, footerText: `אין לנכות מס תשומות בגין חשבונית זו${rawParams.footerText ? `\n${rawParams.footerText}` : ''}` }
+      : rawParams;
 
   const pdf = await PDFDocument.create();
   pdf.registerFontkit(fontkit as any);

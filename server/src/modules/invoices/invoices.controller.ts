@@ -50,6 +50,20 @@ export class InvoicesController {
     return this.invoicesService.markPaid(id, user.organizationId);
   }
 
+  /** requirement #6 ("Invoice Israel") — one of the "4 alternatives"
+   * when an allocation request came back refused (not a technical
+   * error, an actual ITA hold). Reverse-charge isn't offered here
+   * since the spec routes that through a completely separate zero-VAT
+   * invoice submission, not a decision call. */
+  @Post(':id/allocation-decision')
+  submitAllocationDecision(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() body: { decision: 'cancel' | 'continue' | 'furtherObjection' },
+    @CurrentUser() user: ReqUser,
+  ) {
+    return this.invoicesService.submitAllocationDecision(id, user.organizationId, body.decision);
+  }
+
   @Delete(':id')
   async remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
     await this.invoicesService.remove(id, user.organizationId);
