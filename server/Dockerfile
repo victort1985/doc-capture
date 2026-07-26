@@ -53,6 +53,8 @@ RUN npm ci --omit=dev
 
 COPY --from=build-server /app/dist ./dist
 COPY --from=build-admin /admin/dist ./public
+COPY server/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 
 # Runs as a non-root user — same reasoning as the systemd deploy using
 # a dedicated `doccapture` service account rather than root.
@@ -64,4 +66,4 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
   CMD node -e "require('http').get('http://127.0.0.1:3000/api/auth/login', r => process.exit(r.statusCode < 500 ? 0 : 1)).on('error', () => process.exit(1))"
 
-CMD ["node", "dist/main.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
