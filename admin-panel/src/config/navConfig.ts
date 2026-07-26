@@ -2,7 +2,7 @@ import {
   PhoneCall, Contact, MapPin, Tag, FileSpreadsheet, ReceiptText, FileText, Undo2, Banknote,
   FileMinus, FilePlus2, CreditCard, TrendingUp, BookOpen, Receipt, Landmark, Package, Car,
   CalendarClock, BarChart2, Users, ShieldCheck, Users2, HardDrive, FileSliders, FileStack,
-  Smartphone, CalendarDays, ScrollText, Building2, Mail, FileSignature, Settings2,
+  Smartphone, CalendarDays, ScrollText, Building2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -48,21 +48,13 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/prices', labelKey: 'nav.prices', icon: Tag },
       { to: '/quotes', labelKey: 'nav.quotes', icon: FileSpreadsheet },
-      { to: '/quote-settings', labelKey: 'nav.quoteSettings', icon: Settings2 },
       { to: '/orders', labelKey: 'nav.orders', icon: ReceiptText },
-      { to: '/orders-email-settings', labelKey: 'nav.orderIntakeEmail', icon: Mail },
       { to: '/delivery-notes', labelKey: 'nav.deliveryNotes', icon: FileText },
-      { to: '/delivery-settings', labelKey: 'nav.deliveryNoteSettings', icon: FileSignature },
       { to: '/returns', labelKey: 'nav.returns', icon: Undo2 },
-      { to: '/return-settings', labelKey: 'nav.returnSettings', icon: Settings2 },
       { to: '/invoices', labelKey: 'nav.invoices', icon: Banknote },
-      { to: '/invoice-settings', labelKey: 'nav.invoiceSettings', icon: Settings2 },
       { to: '/credit-notes', labelKey: 'nav.creditNotes', icon: FileMinus },
-      { to: '/credit-note-settings', labelKey: 'nav.creditNoteSettings', icon: Settings2 },
       { to: '/debit-notes', labelKey: 'nav.debitNotes', icon: FilePlus2 },
-      { to: '/debit-note-settings', labelKey: 'nav.debitNoteSettings', icon: Settings2 },
       { to: '/payments', labelKey: 'nav.payments', icon: CreditCard },
-      { to: '/payment-settings', labelKey: 'nav.paymentSettings', icon: Settings2 },
     ],
   },
   {

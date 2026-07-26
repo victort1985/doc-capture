@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, Send, CheckCircle2, FileText, Building2 } from 'lucide-react';
+import { Trash2, RefreshCw, Send, CheckCircle2, FileText, Building2, Settings } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
+import SettingsModal from '../components/SettingsModal';
+import InvoiceSettingsPage from './InvoiceSettingsPage';
 
 interface InvoiceItem { description: string; quantity: number; unitPrice: number; }
 interface InvoiceRow {
@@ -35,6 +37,7 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<InvoiceRow[]>([]);
   const [template, setTemplate] = useState('classic');
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [decisionInvoiceId, setDecisionInvoiceId] = useState<number | null>(null);
   const [submittingDecision, setSubmittingDecision] = useState(false);
@@ -126,8 +129,14 @@ export default function InvoicesPage() {
             </div>
           )}
           <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('invoices.loading') : t('invoices.refresh')}</button>
+          <button type="button" className="ghost" onClick={() => setShowSettings(true)} title={t('documentSeries.numbering')}><Settings size={15} /></button>
         </div>
       </div>
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)}>
+          <InvoiceSettingsPage />
+        </SettingsModal>
+      )}
       <div className="card" style={{ marginBottom: 16, padding: '10px 16px', background: 'var(--surface-muted)', fontSize: 13 }}>
         {t('invoices.disclaimer')}
       </div>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, FileText, RefreshCw } from 'lucide-react';
+import { Trash2, FileText, RefreshCw, Settings } from 'lucide-react';
+import SettingsModal from '../components/SettingsModal';
+import OrdersEmailSettingsPage from './OrdersEmailSettingsPage';
 import { apiFetch, apiFetchBlob } from '../services/api';
 
 interface OrderListItem {
@@ -18,6 +20,7 @@ export default function OrdersListPage() {
   const { t } = useTranslation();
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
@@ -67,10 +70,18 @@ export default function OrdersListPage() {
           <div className="eyebrow">{t('orders.eyebrow')}</div>
           <h1>{t('orders.title')}</h1>
         </div>
-        <button type="button" onClick={load} disabled={loading}>
-          <RefreshCw size={15} /> {loading ? t('common.loading') : t('common.refresh')}
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button type="button" onClick={load} disabled={loading}>
+            <RefreshCw size={15} /> {loading ? t('common.loading') : t('common.refresh')}
+          </button>
+          <button type="button" className="ghost" onClick={() => setShowSettings(true)} title={t('nav.orderIntakeEmail')}><Settings size={15} /></button>
+        </div>
       </div>
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)}>
+          <OrdersEmailSettingsPage />
+        </SettingsModal>
+      )}
 
       {error && <div className="error-banner">{error}</div>}
 

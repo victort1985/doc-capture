@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pencil, Trash2, Plus, AlertTriangle, X, FileText, Building2 } from 'lucide-react';
+import { Pencil, Trash2, Plus, AlertTriangle, X, FileText, Building2, Settings } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import SettingsModal from '../components/SettingsModal';
+import DeliveryNoteSettingsPage from './DeliveryNoteSettingsPage';
 
 interface NoteItem { quantity: number; name: string; notes?: string; }
 interface DeliveryNote {
@@ -131,6 +133,7 @@ export default function DeliveryNotesPage() {
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [selectedOrgId, setSelectedOrgId] = useState<string>('');
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<DeliveryNote | null>(null);
   const [editTarget, setEditTarget] = useState<Partial<DeliveryNote> | null | undefined>(undefined);
@@ -207,10 +210,18 @@ export default function DeliveryNotesPage() {
           <span className="eyebrow">{t('deliveryNotes.eyebrow')}</span>
           <h1 className="page-title">{t('nav.deliveryNotes')}</h1>
         </div>
-        <button onClick={() => setEditTarget({})} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <Plus size={16} /> {t('deliveryNotes.newNote')}
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={() => setEditTarget({})} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Plus size={16} /> {t('deliveryNotes.newNote')}
+          </button>
+          <button type="button" className="ghost" onClick={() => setShowSettings(true)} title={t('deliveryNoteSettings.title')}><Settings size={15} /></button>
+        </div>
       </div>
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)}>
+          <DeliveryNoteSettingsPage />
+        </SettingsModal>
+      )}
 
       {/* Filters row */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>

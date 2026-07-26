@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, Building2, Plus, X } from 'lucide-react';
+import { FileText, Building2, Plus, X, Settings } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import SettingsModal from '../components/SettingsModal';
+import DebitNoteSettingsPage from './DebitNoteSettingsPage';
 
 interface DebitNoteRow {
   id: number;
@@ -25,6 +27,7 @@ export default function DebitNotesPage() {
   const [selOrgId, setSelOrgId] = useState<number | null>(null);
   const [notes, setNotes] = useState<DebitNoteRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -67,8 +70,14 @@ export default function DebitNotesPage() {
             </div>
           )}
           <button type="button" onClick={() => setShowCreate(true)}><Plus size={15} /> {t('debitNotes.create')}</button>
+          <button type="button" className="ghost" onClick={() => setShowSettings(true)} title={t('documentSeries.numbering')}><Settings size={15} /></button>
         </div>
       </div>
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)}>
+          <DebitNoteSettingsPage />
+        </SettingsModal>
+      )}
       <div className="card" style={{ marginBottom: 16, padding: '10px 16px', background: 'var(--surface-muted)', fontSize: 13 }}>
         {t('debitNotes.legalNotice')}
       </div>

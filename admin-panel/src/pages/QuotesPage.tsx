@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, Send, FileText, Building2 } from 'lucide-react';
+import { Trash2, RefreshCw, Send, FileText, Building2, Settings } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
+import SettingsModal from '../components/SettingsModal';
+import QuoteSettingsPage from './QuoteSettingsPage';
 
 interface QuoteItem { description: string; quantity: number; unitPrice: number; }
 interface QuoteRow {
@@ -32,6 +34,7 @@ export default function QuotesPage() {
   const [quotes, setQuotes] = useState<QuoteRow[]>([]);
   const [template, setTemplate] = useState('classic');
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const statusLabel: Record<string, string> = {
@@ -108,8 +111,14 @@ export default function QuotesPage() {
             </div>
           )}
           <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('quotes.loading') : t('quotes.refresh')}</button>
+          <button type="button" className="ghost" onClick={() => setShowSettings(true)} title={t('documentSeries.numbering')}><Settings size={15} /></button>
         </div>
       </div>
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)}>
+          <QuoteSettingsPage />
+        </SettingsModal>
+      )}
       {error && <div className="error-banner">{error}</div>}
       <div className="card" style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>

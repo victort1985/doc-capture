@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, FileText, Building2, CreditCard, Banknote, ArrowLeftRight, Receipt, Smartphone, Repeat, ShieldCheck, PackageOpen } from 'lucide-react';
+import { Trash2, RefreshCw, FileText, Building2, CreditCard, Banknote, ArrowLeftRight, Receipt, Smartphone, Repeat, ShieldCheck, PackageOpen, Settings } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import SettingsModal from '../components/SettingsModal';
+import PaymentSettingsPage from './PaymentSettingsPage';
 
 interface PaymentRow {
   id: number;
@@ -30,6 +32,7 @@ export default function PaymentsPage() {
   const [selOrgId, setSelOrgId] = useState<number | null>(null);
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const methodLabel: Record<string, string> = {
@@ -109,8 +112,14 @@ export default function PaymentsPage() {
             </div>
           )}
           <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('payments.loading') : t('payments.refresh')}</button>
+          <button type="button" className="ghost" onClick={() => setShowSettings(true)} title={t('documentSeries.numbering')}><Settings size={15} /></button>
         </div>
       </div>
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)}>
+          <PaymentSettingsPage />
+        </SettingsModal>
+      )}
       <div className="card" style={{ marginBottom: 16, padding: '10px 16px', background: 'var(--surface-muted)', fontSize: 13 }}>
         {t('payments.simulatorDisclaimer')}
       </div>
