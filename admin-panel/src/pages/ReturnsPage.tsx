@@ -121,12 +121,14 @@ function CreateReturnModal({ onClose, onCreated }: { onClose: () => void; onCrea
   const [notes, setNotes] = useState<NoteOption[]>([]);
   const [selectedNote, setSelectedNote] = useState<NoteOption | null>(null);
   const [reason, setReason] = useState('');
-  const [items, setItems] = useState<{ name: string; quantity: number; notes: string }[]>([{ name: '', quantity: 1, notes: '' }]);
+  const [items, setItems] = useState<{ name: string; quantity: number; notes: string; warehouseItemId: number | '' }[]>([{ name: '', quantity: 1, notes: '', warehouseItemId: '' }]);
+  const [warehouseItems, setWarehouseItems] = useState<{ id: number; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<NoteOption[]>('/delivery-notes').then(setNotes).catch(() => {});
+    apiFetch<{ id: number; name: string }[]>('/warehouse/items').then(setWarehouseItems).catch(() => {});
   }, []);
 
   const filteredNotes = notes.filter((n) =>
@@ -139,7 +141,7 @@ function CreateReturnModal({ onClose, onCreated }: { onClose: () => void; onCrea
     // Prefill from the note's own items as a starting point — the
     // person adjusts quantities down to however much actually came back.
     if (n.items?.length) {
-      setItems(n.items.map((i) => ({ name: i.name, quantity: i.quantity, notes: '' })));
+      setItems(n.items.map((i) => ({ name: i.name, quantity: i.quantity, notes: '', warehouseItemId: '' as number | '' })));
     }
   }
 
@@ -154,7 +156,10 @@ function CreateReturnModal({ onClose, onCreated }: { onClose: () => void; onCrea
           clientName: selectedNote.clientName ?? '',
           clientEmail: selectedNote.clientEmail,
           reason: reason.trim(),
-          items: items.filter((i) => i.name.trim()),
+          items: items.filter((i) => i.name.trim()).map((i) => ({
+            name: i.name, quantity: i.quantity, notes: i.notes || undefined,
+            warehouseItemId: i.warehouseItemId === '' ? undefined : i.warehouseItemId,
+          })),
         }),
       });
       onCreated();
@@ -194,13 +199,22 @@ function CreateReturnModal({ onClose, onCreated }: { onClose: () => void; onCrea
             <textarea value={reason} onChange={e => setReason(e.target.value)} rows={2} style={{ width: '100%', marginBottom: 10 }} placeholder={t('returns.reasonPlaceholder')} />
 
             {items.map((item, i) => (
-              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                 <input type="text" value={item.name} onChange={e => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, name: e.target.value } : it))} placeholder={t('returns.itemName')} style={{ flex: 2 }} />
                 <input type="number" value={item.quantity} onChange={e => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, quantity: Number(e.target.value) } : it))} style={{ width: 70 }} />
                 <input type="text" value={item.notes} onChange={e => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, notes: e.target.value } : it))} placeholder={t('returns.itemNotes')} style={{ flex: 1 }} />
+                <select
+                  value={item.warehouseItemId}
+                  onChange={e => setItems(prev => prev.map((it, idx) => idx === i ? { ...it, warehouseItemId: e.target.value ? Number(e.target.value) : '' } : it))}
+                  style={{ flex: 1, minWidth: 140 }}
+                  title={t('returns.restockHint')}
+                >
+                  <option value="">{t('returns.noRestock')}</option>
+                  {warehouseItems.map(wi => <option key={wi.id} value={wi.id}>{wi.name}</option>)}
+                </select>
               </div>
             ))}
-            <button type="button" className="ghost" onClick={() => setItems(prev => [...prev, { name: '', quantity: 1, notes: '' }])} style={{ marginBottom: 12 }}>
+            <button type="button" className="ghost" onClick={() => setItems(prev => [...prev, { name: '', quantity: 1, notes: '', warehouseItemId: '' }])} style={{ marginBottom: 12 }}>
               + {t('returns.addItem')}
             </button>
 

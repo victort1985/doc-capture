@@ -1103,7 +1103,9 @@
     "items": "Items",
     "viewPdf": "View PDF",
     "noPdf": "No PDF available.",
-    "empty": "No returns yet."
+    "empty": "No returns yet.",
+    "noRestock": "No restock",
+    "restockHint": "Link to a warehouse item to automatically add this quantity back into stock"
   },
   "accounting": {
     "eyebrow": "Office",
