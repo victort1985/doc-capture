@@ -70,6 +70,7 @@ const LANGUAGES = [
   { code: 'en', label: 'English' },
   { code: 'ru', label: 'Русский' },
   { code: 'he', label: 'עברית' },
+  { code: 'ar', label: 'العربية' },
 ];
 
 /** Requirement #16 ("двухфакторная аутентификация") — self-contained
