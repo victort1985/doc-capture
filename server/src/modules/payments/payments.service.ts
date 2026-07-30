@@ -71,6 +71,7 @@ export class PaymentsService {
    * an original may only be issued once. */
   async create(organizationId: number | null, userId: number, dto: CreatePaymentDto): Promise<{ payment: Payment; originalPdfBase64: string | null }> {
     const chainId = await this.resolveChainIdForCreate(dto.invoiceId, dto.chainId);
+    const linkedInvoice = dto.invoiceId ? await this.invoicesRepo.findOne({ where: { id: dto.invoiceId } }) : null;
     const payment = this.repo.create({
       paymentNumber: await this.generatePaymentNumber(organizationId),
       clientName: dto.clientName,
@@ -91,6 +92,9 @@ export class PaymentsService {
       referenceNumber: dto.referenceNumber,
       invoiceId: dto.invoiceId,
       chainId,
+      currency: linkedInvoice?.currency ?? 'ILS',
+      exchangeRateToIls: linkedInvoice?.exchangeRateToIls ?? null,
+      vatCategory: linkedInvoice?.vatCategory ?? 'standard',
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
@@ -115,7 +119,9 @@ export class PaymentsService {
 
     if (organizationId != null) {
       try {
-        await this.ledgerPostingService.postPayment(organizationId, saved.id, saved.date ?? new Date().toISOString().slice(0, 10), saved.amount, saved.method, saved.clientName);
+        const rateToIls = saved.exchangeRateToIls ?? 1;
+        const amountIls = Math.round(saved.amount * rateToIls * 100) / 100;
+        await this.ledgerPostingService.postPayment(organizationId, saved.id, saved.date ?? new Date().toISOString().slice(0, 10), amountIls, saved.method, saved.clientName);
       } catch {
         // best-effort — see comment above
       }
@@ -160,7 +166,10 @@ export class PaymentsService {
       header,
       template: (settings.template as any) ?? 'classic',
       isDemoMode: settings.organization?.isDemoMode ?? false,
-      vatEnabled: settings.vatEnabled,
+      vatEnabled: settings.vatEnabled && payment.vatCategory !== 'exempt',
+      vatCategory: payment.vatCategory,
+      currency: payment.currency,
+      exchangeRateToIls: payment.exchangeRateToIls ?? undefined,
       stampText,
     });
   }

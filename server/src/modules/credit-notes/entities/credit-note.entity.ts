@@ -45,6 +45,20 @@ export class CreditNote {
   @Column({ type: 'jsonb', default: [] })
   items: { description: string; quantity: number; unitPrice: number }[];
 
+  /** Inherited from the invoice being corrected, never chosen
+   * separately — a credit note has to match the currency/VAT
+   * treatment of what it's correcting, not pick its own. Set in
+   * CreditNotesService.create() from invoice.currency/
+   * exchangeRateToIls/vatCategory, not from client input. */
+  @Column({ type: 'varchar', default: 'ILS' })
+  currency: string;
+
+  @Column({ type: 'numeric', precision: 12, scale: 6, nullable: true, transformer: numericTransformer })
+  exchangeRateToIls?: number | null;
+
+  @Column({ type: 'varchar', default: 'standard' })
+  vatCategory: 'standard' | 'zero' | 'exempt';
+
   /** Always positive — this is the amount being credited back, not a
    * negative invoice total. Whether it equals the full original
    * invoice (a full void) or less (a partial correction) is up to

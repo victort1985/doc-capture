@@ -83,6 +83,9 @@ export class CreditNotesService {
       total,
       invoiceId: dto.invoiceId,
       chainId: invoice.chainId,
+      currency: invoice.currency,
+      exchangeRateToIls: invoice.exchangeRateToIls,
+      vatCategory: invoice.vatCategory,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
@@ -92,8 +95,11 @@ export class CreditNotesService {
 
     if (organizationId != null) {
       try {
-        const invoiceSettings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } } });
-        await this.ledgerPostingService.postCreditNote(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, result.clientName, invoiceSettings?.vatEnabled ?? true);
+        // Ledger always posts in ILS regardless of billing currency.
+        const rateToIls = result.exchangeRateToIls ?? 1;
+        const totalIls = Math.round(result.total * rateToIls * 100) / 100;
+        const vatEnabledForLedger = result.vatCategory === 'standard';
+        await this.ledgerPostingService.postCreditNote(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), totalIls, result.clientName, vatEnabledForLedger);
       } catch {
         // best-effort — a bookkeeping hiccup must never block issuing the credit note itself
       }
@@ -109,11 +115,10 @@ export class CreditNotesService {
 
     try {
       const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
-      // Credit notes don't have their own VAT setting — they follow
-      // whatever the org's invoices do, since a credit note is always
-      // correcting an invoice and should show VAT consistently with
-      // however that invoice's total was originally taxed.
-      const invoiceSettings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } } });
+      // vatCategory/currency/exchangeRateToIls are inherited from the
+      // original invoice at creation time (see create()), not looked
+      // up again here — the credit note should reflect how THAT
+      // invoice was actually taxed, not the org's current setting.
       const pdfBytes = await generateDocumentPdf({
         docTypeLabel: 'הודעת זיכוי',
         docNumber: creditNote.creditNoteNumber ?? `#${creditNote.id}`,
@@ -126,7 +131,10 @@ export class CreditNotesService {
         header,
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
-        vatEnabled: invoiceSettings?.vatEnabled ?? true,
+        vatEnabled: creditNote.vatCategory !== 'exempt',
+        vatCategory: creditNote.vatCategory,
+        currency: creditNote.currency,
+        exchangeRateToIls: creditNote.exchangeRateToIls ?? undefined,
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `CreditNotes/${creditNote.creditNoteNumber ?? creditNote.id}.pdf`;

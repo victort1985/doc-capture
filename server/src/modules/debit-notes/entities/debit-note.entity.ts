@@ -40,6 +40,15 @@ export class DebitNote {
   @Column({ type: 'jsonb', default: [] })
   items: { description: string; quantity: number; unitPrice: number }[];
 
+  @Column({ type: 'varchar', default: 'ILS' })
+  currency: string;
+
+  @Column({ type: 'numeric', precision: 12, scale: 6, nullable: true, transformer: numericTransformer })
+  exchangeRateToIls?: number | null;
+
+  @Column({ type: 'varchar', default: 'standard' })
+  vatCategory: 'standard' | 'zero' | 'exempt';
+
   @Column({ type: 'numeric', precision: 12, scale: 2, default: 0, transformer: numericTransformer })
   total: number;
 

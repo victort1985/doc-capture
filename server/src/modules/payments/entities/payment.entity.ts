@@ -131,6 +131,20 @@ export class Payment {
   @Column({ nullable: true })
   invoiceId?: number;
 
+  /** Inherited from the linked invoice when there is one (same
+   * reasoning as CreditNote/DebitNote — a payment settling an
+   * invoice should reflect that invoice's currency/VAT treatment,
+   * not something chosen independently). Defaults to ILS/standard
+   * for a standalone payment with no invoiceId. */
+  @Column({ type: 'varchar', default: 'ILS' })
+  currency: string;
+
+  @Column({ type: 'numeric', precision: 12, scale: 6, nullable: true, transformer: numericTransformer })
+  exchangeRateToIls?: number | null;
+
+  @Column({ type: 'varchar', default: 'standard' })
+  vatCategory: 'standard' | 'zero' | 'exempt';
+
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   organization?: Organization;
 

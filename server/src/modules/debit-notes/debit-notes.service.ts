@@ -78,6 +78,9 @@ export class DebitNotesService {
       total,
       invoiceId: dto.invoiceId,
       chainId: invoice.chainId,
+      currency: invoice.currency,
+      exchangeRateToIls: invoice.exchangeRateToIls,
+      vatCategory: invoice.vatCategory,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
@@ -87,8 +90,10 @@ export class DebitNotesService {
 
     if (organizationId != null) {
       try {
-        const invoiceSettings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } } });
-        await this.ledgerPostingService.postDebitNote(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, result.clientName, invoiceSettings?.vatEnabled ?? true);
+        const rateToIls = result.exchangeRateToIls ?? 1;
+        const totalIls = Math.round(result.total * rateToIls * 100) / 100;
+        const vatEnabledForLedger = result.vatCategory === 'standard';
+        await this.ledgerPostingService.postDebitNote(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), totalIls, result.clientName, vatEnabledForLedger);
       } catch {
         // best-effort — a bookkeeping hiccup must never block issuing the debit note itself
       }
@@ -104,7 +109,6 @@ export class DebitNotesService {
 
     try {
       const header = (await this.noteSettingsRepo.findOne({ where: { organization: { id: organizationId } } })) ?? {};
-      const invoiceSettings = await this.invoiceSettingsRepo.findOne({ where: { organization: { id: organizationId } } });
       const pdfBytes = await generateDocumentPdf({
         docTypeLabel: 'הודעת חיוב',
         docNumber: debitNote.debitNoteNumber ?? `#${debitNote.id}`,
@@ -117,7 +121,10 @@ export class DebitNotesService {
         header,
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
-        vatEnabled: invoiceSettings?.vatEnabled ?? true,
+        vatEnabled: debitNote.vatCategory !== 'exempt',
+        vatCategory: debitNote.vatCategory,
+        currency: debitNote.currency,
+        exchangeRateToIls: debitNote.exchangeRateToIls ?? undefined,
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `DebitNotes/${debitNote.debitNoteNumber ?? debitNote.id}.pdf`;
