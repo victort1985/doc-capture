@@ -229,7 +229,7 @@ export default function DeliveryNoteSettingsPage() {
               <TemplatePicker
                 value={settings.template ?? 'classic'}
                 onChange={(v) => set('template', v)}
-                labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist') }}
+                labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist'), ledger: t('documentSeries.templateLedger'), atelier: t('documentSeries.templateAtelier'), blueprint: t('documentSeries.templateBlueprint'), marquee: t('documentSeries.templateMarquee'), minimalMono: t('documentSeries.templateMinimalMono'), stampSeal: t('documentSeries.templateStampSeal') }}
               />
               <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 10 }}>{t('deliveryNoteSettings.templateMobileNote')}</p>
             </div>

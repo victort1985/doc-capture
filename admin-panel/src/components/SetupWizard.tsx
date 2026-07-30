@@ -110,7 +110,7 @@ export default function SetupWizard({ onClose }: { onClose: (completed: boolean)
             <TemplatePicker
               value={template}
               onChange={setTemplate}
-              labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist') }}
+              labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist'), ledger: t('documentSeries.templateLedger'), atelier: t('documentSeries.templateAtelier'), blueprint: t('documentSeries.templateBlueprint'), marquee: t('documentSeries.templateMarquee'), minimalMono: t('documentSeries.templateMinimalMono'), stampSeal: t('documentSeries.templateStampSeal') }}
             />
             <div className="form-actions" style={{ marginTop: 18 }}>
               <button className="ghost" onClick={back}><ChevronLeft size={15} /> {t('wizard.back')}</button>

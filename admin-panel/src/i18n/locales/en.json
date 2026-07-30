@@ -124,7 +124,13 @@
     "vatConfirmTitle": "Disable VAT?",
     "vatConfirmBody": "Turning this off means VAT will no longer be calculated or shown on these documents. This is a real accounting/legal decision under Israeli tax law, not a display preference — it must be approved by an accountant (or the organization's recognized VAT-exempt status confirmed) before disabling.",
     "vatConfirmCheckbox": "I confirm this has been reviewed and approved by an accountant, in line with Israeli VAT law.",
-    "vatConfirmApply": "Confirm and disable VAT"
+    "vatConfirmApply": "Confirm and disable VAT",
+    "templateLedger": "Ledger",
+    "templateAtelier": "Atelier",
+    "templateBlueprint": "Blueprint",
+    "templateMarquee": "Marquee",
+    "templateMinimalMono": "Minimal Mono",
+    "templateStampSeal": "Stamp & Seal"
   },
   "quotes": {
     "eyebrow": "OFFICE",

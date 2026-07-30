@@ -124,7 +124,13 @@
     "vatConfirmTitle": "לכבות מע\"מ?",
     "vatConfirmBody": "כיבוי אפשרות זו משמעו שמע\"מ לא יחושב ולא יוצג במסמכים אלה עוד. זוהי החלטה חשבונאית/משפטית אמיתית לפי דיני המס בישראל, לא הגדרת תצוגה — יש לוודא אישור רואה חשבון (או סטטוס עוסק פטור מוכר) לפני הכיבוי.",
     "vatConfirmCheckbox": "אני מאשר/ת כי הדבר נבדק ואושר על ידי רואה חשבון, בהתאם לחוק מע\"מ בישראל.",
-    "vatConfirmApply": "אישור וכיבוי מע\"מ"
+    "vatConfirmApply": "אישור וכיבוי מע\"מ",
+    "templateLedger": "פנקס",
+    "templateAtelier": "אטלייה",
+    "templateBlueprint": "שרטוט",
+    "templateMarquee": "מרקיזה",
+    "templateMinimalMono": "מינימל מונו",
+    "templateStampSeal": "חותם ואישור"
   },
   "quotes": {
     "eyebrow": "משרד",

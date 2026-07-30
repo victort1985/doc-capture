@@ -225,7 +225,7 @@ export default function DocumentSeriesSettings({ kind, navLabelKey }: { kind: 'q
               <TemplatePicker
                 value={template}
                 onChange={setTemplate}
-                labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist') }}
+                labels={{ classic: t('documentSeries.templateClassic'), modern: t('documentSeries.templateModern'), minimalist: t('documentSeries.templateMinimalist'), ledger: t('documentSeries.templateLedger'), atelier: t('documentSeries.templateAtelier'), blueprint: t('documentSeries.templateBlueprint'), marquee: t('documentSeries.templateMarquee'), minimalMono: t('documentSeries.templateMinimalMono'), stampSeal: t('documentSeries.templateStampSeal') }}
               />
             </div>
 
