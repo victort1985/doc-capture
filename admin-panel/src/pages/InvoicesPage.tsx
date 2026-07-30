@@ -17,6 +17,7 @@ interface InvoiceRow {
   clientTaxId?: string;
   items: InvoiceItem[];
   total: number;
+  currency?: string;
   status: 'draft' | 'sent' | 'paid' | 'cancelled';
   allocationNumber?: string | null;
   allocationStatus?: 'not_applicable' | 'pending' | 'approved' | 'refused' | 'error';
@@ -170,7 +171,9 @@ export default function InvoicesPage() {
                 </td>
                 <td style={{ padding: '8px 12px' }}>{inv.clientName}</td>
                 <td style={{ padding: '8px 12px' }}>{inv.invoiceNumber || `#${inv.id}`}</td>
-                <td style={{ padding: '8px 12px' }}>₪{Number(inv.total).toFixed(2)}</td>
+                <td style={{ padding: '8px 12px' }}>
+                  {inv.currency && inv.currency !== 'ILS' ? `${inv.currency} ${Number(inv.total).toFixed(2)}` : `₪${Number(inv.total).toFixed(2)}`}
+                </td>
                 <td style={{ padding: '8px 12px', color: statusColor[inv.status] }}>{statusLabel[inv.status]}</td>
                 <td style={{ padding: '8px 12px', fontSize: 12.5 }}>
                   {inv.allocationStatus === 'approved' && inv.allocationNumber && (
