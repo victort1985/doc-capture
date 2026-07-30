@@ -18,13 +18,17 @@ interface TaxAuthoritySettings {
 export default function TaxAuthoritySettingsPage() {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<TaxAuthoritySettings | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [clientSecret, setClientSecret] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<TaxAuthoritySettings>('/tax-authority/settings').then(setSettings).catch((e) => setError(e.message));
+    apiFetch<TaxAuthoritySettings | null>('/tax-authority/settings')
+      .then((s) => setSettings(s))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoaded(true));
     const params = new URLSearchParams(window.location.search);
     if (params.get('connected')) setNotice(t('taxAuthority.connectedSuccess'));
     if (params.get('error')) setError(decodeURIComponent(params.get('error') ?? ''));
@@ -53,7 +57,8 @@ export default function TaxAuthoritySettingsPage() {
     }
   }
 
-  if (!settings) return <div className="page"><p>{t('common.loading')}</p></div>;
+  if (!loaded) return <div className="page"><p>{t('common.loading')}</p></div>;
+  if (!settings) return <div className="page"><div className="error-banner">{t('taxAuthority.noOrganization')}</div></div>;
 
   return (
     <div className="page">

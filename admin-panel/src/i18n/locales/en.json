@@ -1239,7 +1239,8 @@
     "reconnect": "Reconnect",
     "connected": "Connected",
     "notConnected": "Not connected yet",
-    "connectedSuccess": "Successfully connected to the Tax Authority."
+    "connectedSuccess": "Successfully connected to the Tax Authority.",
+    "noOrganization": "This account isn't assigned to a specific organization (super-admin) — switch to a tenant-scoped account to manage its Tax Authority settings."
   },
   "navGroups": {
     "crm": "Clients",
