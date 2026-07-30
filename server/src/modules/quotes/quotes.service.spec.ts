@@ -6,6 +6,7 @@ import { QuoteSettings } from './entities/quote-settings.entity';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
 import { DocumentSendingService } from '../document-email/document-sending.service';
+import { ExchangeRateService } from '../currency/exchange-rate.service';
 
 describe('QuotesService number generation (private generateQuoteNumber, tested via bracket access)', () => {
   let service: QuotesService;
@@ -29,6 +30,7 @@ describe('QuotesService number generation (private generateQuoteNumber, tested v
         { provide: getRepositoryToken(DeliveryNoteSettings), useValue: {} },
         { provide: StorageService, useValue: {} },
         { provide: DocumentSendingService, useValue: {} },
+        { provide: ExchangeRateService, useValue: { getRate: jest.fn().mockResolvedValue(1) } },
       ],
     }).compile();
 

@@ -9,6 +9,7 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
+import { ExchangeRateService } from '../currency/exchange-rate.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class QuotesService {
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
+    private readonly exchangeRateService: ExchangeRateService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -79,6 +81,10 @@ export class QuotesService {
   }
 
   async create(organizationId: number | null, userId: number, dto: CreateQuoteDto): Promise<Quote> {
+    const currency = dto.currency ?? 'ILS';
+    const exchangeRateToIls = currency === 'ILS'
+      ? 1
+      : dto.exchangeRateToIls ?? (await this.exchangeRateService.getRate(currency)) ?? undefined;
     const quote = this.repo.create({
       quoteNumber: await this.generateQuoteNumber(organizationId),
       clientName: dto.clientName,
@@ -89,6 +95,9 @@ export class QuotesService {
       notes: dto.notes,
       status: QuoteStatus.DRAFT,
       approvalToken: Quote.generateToken(),
+      currency,
+      exchangeRateToIls,
+      vatCategory: dto.vatCategory ?? 'standard',
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
       chainId: dto.chainId || crypto.randomUUID(),
@@ -134,7 +143,10 @@ export class QuotesService {
         header,
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
-        vatEnabled: settings.vatEnabled,
+        vatEnabled: settings.vatEnabled && quote.vatCategory !== 'exempt',
+        vatCategory: quote.vatCategory,
+        currency: quote.currency,
+        exchangeRateToIls: quote.exchangeRateToIls ?? undefined,
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `Quotes/${quote.quoteNumber ?? quote.id}.pdf`;

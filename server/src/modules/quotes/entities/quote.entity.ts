@@ -45,6 +45,15 @@ export class Quote {
   @Column({ nullable: true })
   clientEmail?: string;
 
+  @Column({ type: 'varchar', default: 'ILS' })
+  currency: string;
+
+  @Column({ type: 'numeric', precision: 12, scale: 6, nullable: true, transformer: numericTransformer })
+  exchangeRateToIls?: number | null;
+
+  @Column({ type: 'varchar', default: 'standard' })
+  vatCategory: 'standard' | 'zero' | 'exempt';
+
   @Column({ type: 'jsonb', default: [] })
   items: QuoteItem[];
 
