@@ -10,6 +10,7 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
+import { TemplateDesignService } from '../template-design/template-design.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
 
@@ -23,6 +24,7 @@ export class CreditNotesService {
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
+    private readonly templateDesignService: TemplateDesignService,
     private readonly ledgerPostingService: LedgerPostingService,
   ) {}
 
@@ -135,6 +137,7 @@ export class CreditNotesService {
         vatCategory: creditNote.vatCategory,
         currency: creditNote.currency,
         exchangeRateToIls: creditNote.exchangeRateToIls ?? undefined,
+        design: await this.templateDesignService.getConfigForOrg(organizationId),
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `CreditNotes/${creditNote.creditNoteNumber ?? creditNote.id}.pdf`;

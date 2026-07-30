@@ -11,6 +11,7 @@ import { DocumentSendingService } from '../document-email/document-sending.servi
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
 import { TaxAuthorityAllocationService } from '../invoice-israel/tax-authority-allocation.service';
 import { ExchangeRateService } from '../currency/exchange-rate.service';
+import { TemplateDesignService } from '../template-design/template-design.service';
 
 describe('InvoicesService number generation (private generateInvoiceNumber, tested via bracket access)', () => {
   let service: InvoicesService;
@@ -39,6 +40,7 @@ describe('InvoicesService number generation (private generateInvoiceNumber, test
         { provide: LedgerPostingService, useValue: { postInvoice: jest.fn() } },
         { provide: TaxAuthorityAllocationService, useValue: { maybeRequestAllocation: jest.fn() } },
         { provide: ExchangeRateService, useValue: { getRate: jest.fn().mockResolvedValue(1) } },
+        { provide: TemplateDesignService, useValue: { getConfigForOrg: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 

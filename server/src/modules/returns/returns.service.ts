@@ -9,6 +9,7 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
+import { TemplateDesignService } from '../template-design/template-design.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 import { WarehouseService } from '../warehouse/warehouse.service';
 import { TransactionType } from '../warehouse/entities/warehouse-transaction.entity';
@@ -22,6 +23,7 @@ export class ReturnsService {
     @InjectRepository(DeliveryNoteSettings) private readonly noteSettingsRepo: Repository<DeliveryNoteSettings>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
+    private readonly templateDesignService: TemplateDesignService,
     private readonly warehouseService: WarehouseService,
   ) {}
 
@@ -123,6 +125,7 @@ export class ReturnsService {
         header,
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
+        design: await this.templateDesignService.getConfigForOrg(organizationId),
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `Returns/${returnNote.returnNumber ?? returnNote.id}.pdf`;

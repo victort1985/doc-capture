@@ -12,6 +12,7 @@ import { StorageModule } from '../storage/storage.module';
 import { DocumentEmailModule } from '../document-email/document-email.module';
 import { UsersModule } from '../users/users.module';
 import { AccountingModule } from '../accounting/accounting.module';
+import { TemplateDesignModule } from '../template-design/template-design.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { AccountingModule } from '../accounting/accounting.module';
     DocumentEmailModule,
     UsersModule,
     AccountingModule,
+    TemplateDesignModule,
   ],
   controllers: [CreditNotesController, CreditNoteSettingsController],
   providers: [CreditNotesService],

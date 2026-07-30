@@ -21,7 +21,31 @@ export interface DocHeader {
   logoBase64?: string; // data URI
 }
 
-export type DocTemplate = 'classic' | 'modern' | 'minimalist';
+export type DocTemplate =
+  | 'classic' | 'modern' | 'minimalist'
+  | 'ledger' | 'atelier' | 'blueprint' | 'marquee' | 'minimalMono' | 'stampSeal';
+
+/** Per-org customization on top of a chosen template's own default
+ * look — a "theme", not a different layout. Every field is optional;
+ * anything unset falls back to that template's own defaults (see
+ * TEMPLATE_DEFAULTS below), so an org that never opens the Template
+ * Designer gets a fully-designed document regardless. */
+export interface TemplateDesignConfig {
+  colors?: { primary?: string; accent?: string; text?: string }; // hex, e.g. '#1D3557'
+  /** Percentages of page width/height, top-left origin (matches how
+   * a visual editor naturally works) — converted to pdf-lib's
+   * bottom-left point system at render time. heightPercent alone
+   * determines size; width follows the logo image's own aspect
+   * ratio, same convention the fixed-position templates already use. */
+  logo?: { xPercent: number; yPercent: number; heightPercent: number };
+  /** Where the company name/address block starts — also top-left-
+   * origin percentages. Only x/y move; text stays the size/alignment
+   * the template itself defines, since letting font size become
+   * freely draggable risks text overflowing other elements in ways
+   * this renderer (no collision detection) can't protect against. */
+  companyInfo?: { xPercent: number; yPercent: number };
+}
+
 
 export interface GenerateDocumentPdfParams {
   /** e.g. "הצעת מחיר" / "חשבונית" — printed as the document title. */
@@ -85,6 +109,9 @@ export interface GenerateDocumentPdfParams {
    * disclaimer to appear prominently in that case ("אין לנכות מס
    * תשומות בגין חשבונית זו"). */
   continuedWithoutAllocation?: boolean;
+
+  /** Optional per-org theme override — see TemplateDesignConfig. */
+  design?: TemplateDesignConfig;
 }
 
 /** Israel's standard VAT rate. Not read from anywhere configurable on
@@ -123,6 +150,63 @@ function ilsEquivalentLine(params: GenerateDocumentPdfParams, amount: number): s
   if (!params.currency || params.currency === 'ILS' || !params.exchangeRateToIls) return '';
   const ils = amount * params.exchangeRateToIls;
   return `(≈ ₪ ${ils.toFixed(2)} לפי שער ${params.exchangeRateToIls.toFixed(4)})`;
+}
+
+// ── Theming: colors + logo/company-info placement ──────────────────────
+// Each of the 9 templates has its own default palette/positions
+// (below), so an org that never opens the Template Designer still
+// gets a fully-designed, non-generic document — TemplateDesignConfig
+// only ever overrides specific fields, never requires all of them.
+
+function hexToRgbColor(hex: string, fallback: ReturnType<typeof rgb>): ReturnType<typeof rgb> {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return fallback;
+  const int = parseInt(m[1], 16);
+  return rgb(((int >> 16) & 255) / 255, ((int >> 8) & 255) / 255, (int & 255) / 255);
+}
+
+interface TemplatePalette { primary: ReturnType<typeof rgb>; accent: ReturnType<typeof rgb>; text: ReturnType<typeof rgb>; }
+
+function resolvePalette(defaults: { primary: string; accent: string; text: string }, design?: TemplateDesignConfig): TemplatePalette {
+  const fallbackPrimary = hexToRgbColor(defaults.primary, rgb(0.1, 0.1, 0.1));
+  const fallbackAccent = hexToRgbColor(defaults.accent, rgb(0.5, 0.5, 0.5));
+  const fallbackText = hexToRgbColor(defaults.text, rgb(0.15, 0.15, 0.15));
+  return {
+    primary: design?.colors?.primary ? hexToRgbColor(design.colors.primary, fallbackPrimary) : fallbackPrimary,
+    accent: design?.colors?.accent ? hexToRgbColor(design.colors.accent, fallbackAccent) : fallbackAccent,
+    text: design?.colors?.text ? hexToRgbColor(design.colors.text, fallbackText) : fallbackText,
+  };
+}
+
+const PAGE_W = 595.28;
+const PAGE_H = 841.89;
+
+/** Resolves the logo's actual drawing box for this page, given a
+ * default (top-left-origin percentages, matching the template's own
+ * built-in placement) and an optional org override. Width always
+ * follows the embedded image's own aspect ratio — only position and
+ * height are ever configurable, so a stretched/distorted logo isn't
+ * a state the editor can produce. */
+function resolveLogoBox(
+  defaultPct: { xPercent: number; yPercent: number; heightPercent: number },
+  design: TemplateDesignConfig | undefined,
+  logo: { width: number; height: number },
+): { x: number; y: number; width: number; height: number } {
+  const pct = design?.logo ?? defaultPct;
+  const heightPt = (pct.heightPercent / 100) * PAGE_H;
+  const widthPt = (logo.width / logo.height) * heightPt;
+  const x = (pct.xPercent / 100) * PAGE_W;
+  const topY = (pct.yPercent / 100) * PAGE_H;
+  const y = PAGE_H - topY - heightPt; // top-left percent -> pdf-lib's bottom-left point origin
+  return { x, y, width: widthPt, height: heightPt };
+}
+
+/** Same top-left-to-bottom-left conversion for the company info
+ * block's anchor point (text baseline, not a box — height isn't
+ * meaningful for a text anchor the way it is for an image). */
+function resolveCompanyInfoAnchor(defaultPct: { xPercent: number; yPercent: number }, design?: TemplateDesignConfig): { x: number; y: number } {
+  const pct = design?.companyInfo ?? defaultPct;
+  return { x: (pct.xPercent / 100) * PAGE_W, y: PAGE_H - (pct.yPercent / 100) * PAGE_H };
 }
 
 // ── Minimal RTL layout ───────────────────────────────────────────────
@@ -278,6 +362,24 @@ export async function generateDocumentPdf(rawParams: GenerateDocumentPdfParams):
       break;
     case 'minimalist':
       drawMinimalistLayout(page, fonts, params);
+      break;
+    case 'ledger':
+      await drawLedgerLayout(pdf, page, fonts, params);
+      break;
+    case 'atelier':
+      await drawAtelierLayout(pdf, page, fonts, params);
+      break;
+    case 'blueprint':
+      await drawBlueprintLayout(pdf, page, fonts, params);
+      break;
+    case 'marquee':
+      await drawMarqueeLayout(pdf, page, fonts, params);
+      break;
+    case 'minimalMono':
+      await drawMinimalMonoLayout(pdf, page, fonts, params);
+      break;
+    case 'stampSeal':
+      await drawStampSealLayout(pdf, page, fonts, params);
       break;
     case 'classic':
     default:
@@ -627,3 +729,394 @@ function drawMinimalistLayout(page: PDFPage, fonts: Fonts, params: GenerateDocum
     }
   }
 }
+
+// ════════════════════════════════════════════════════════════════════
+// Shared item-table + totals renderers for the 6 new templates below —
+// avoids re-deriving the VAT/currency/allocation-number logic 6 times
+// the way the original 3 templates each did separately.
+// ════════════════════════════════════════════════════════════════════
+
+function drawThemedItemTable(
+  page: PDFPage, fonts: Fonts, params: GenerateDocumentPdfParams,
+  opts: { M: number; W: number; y: number; headerColor: ReturnType<typeof rgb>; textColor: ReturnType<typeof rgb>; ruleColor: ReturnType<typeof rgb>; headerBg?: ReturnType<typeof rgb>; mono?: boolean },
+): number {
+  let { y } = opts;
+  const { M, W, headerColor, textColor, ruleColor, headerBg, mono } = opts;
+  const col = { total: W - M, unit: W - M - 100, qty: W - M - 180, desc: W - M - 240 };
+  const rowH = 20;
+  const bodyFont = mono ? fonts.latin : fonts.latin; // pdf-lib has no bundled monospace face — mono templates lean on tight tabular alignment instead of an actual mono glyph
+
+  if (headerBg) page.drawRectangle({ x: M, y: y - 6, width: W - 2 * M, height: rowH, color: headerBg });
+  drawBidiText(page, 'תיאור', { x: col.desc, y, size: 9.5, fonts, bold: true, align: 'right', color: headerColor });
+  drawBidiText(page, 'כמות', { x: col.qty, y, size: 9.5, fonts, bold: true, align: 'right', color: headerColor });
+  drawBidiText(page, 'מחיר', { x: col.unit, y, size: 9.5, fonts, bold: true, align: 'right', color: headerColor });
+  drawBidiText(page, 'סה"כ', { x: col.total, y, size: 9.5, fonts, bold: true, align: 'right', color: headerColor });
+  y -= rowH;
+  page.drawLine({ start: { x: M, y: y + 12 }, end: { x: W - M, y: y + 12 }, thickness: mono ? 0.75 : 0.5, color: ruleColor });
+
+  for (const item of params.items) {
+    if (y < 140) break;
+    const lineTotal = item.quantity * item.unitPrice;
+    drawBidiText(page, item.description, { x: col.desc, y, size: 10, fonts, align: 'right', color: textColor });
+    const qtyStr = String(item.quantity);
+    page.drawText(qtyStr, { x: col.qty - bodyFont.widthOfTextAtSize(qtyStr, 10), y, size: 10, font: bodyFont, color: textColor });
+    const priceStr = item.unitPrice.toFixed(2);
+    page.drawText(priceStr, { x: col.unit - bodyFont.widthOfTextAtSize(priceStr, 10), y, size: 10, font: bodyFont, color: textColor });
+    const totalStr = lineTotal.toFixed(2);
+    page.drawText(totalStr, { x: col.total - bodyFont.widthOfTextAtSize(totalStr, 10), y, size: 10, font: bodyFont, color: textColor });
+    y -= rowH;
+    page.drawLine({ start: { x: M, y: y + 8 }, end: { x: W - M, y: y + 8 }, thickness: 0.4, color: ruleColor });
+  }
+  return y;
+}
+
+function drawThemedTotals(
+  page: PDFPage, fonts: Fonts, params: GenerateDocumentPdfParams,
+  opts: { M: number; W: number; y: number; labelColor: ReturnType<typeof rgb>; totalColor: ReturnType<typeof rgb>; totalSize?: number; ruled?: ReturnType<typeof rgb> },
+): number {
+  let { y } = opts;
+  const { M, W, labelColor, totalColor } = opts;
+  const totalSize = opts.totalSize ?? 15;
+  const sym = currencySymbol(params.currency);
+  const vd = params.vatEnabled ? resolveVatDisplay(params.vatCategory) : { rate: 0, label: '', showLine: false };
+
+  if (opts.ruled) { page.drawLine({ start: { x: M, y: y + 14 }, end: { x: W - M, y: y + 14 }, thickness: 0.75, color: opts.ruled }); }
+
+  let grandTotal = params.total;
+  if (vd.showLine) {
+    const vatAmount = params.total * vd.rate;
+    grandTotal = params.total + vatAmount;
+    drawBidiText(page, `סה"כ לפני מע"מ:  ${sym} ${params.total.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: labelColor });
+    y -= 15;
+    drawBidiText(page, `${vd.label}  ${sym} ${vatAmount.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: labelColor });
+    y -= 22;
+  }
+  drawBidiText(page, `${sym} ${grandTotal.toFixed(2)}`, { x: W - M, y, size: totalSize, fonts, bold: true, align: 'right', color: totalColor });
+  const ilsLine = ilsEquivalentLine(params, grandTotal);
+  if (ilsLine) { y -= 14; drawBidiText(page, ilsLine, { x: W - M, y, size: 8, fonts, align: 'right', color: labelColor }); }
+  if (params.allocationNumber) { y -= 16; drawBidiText(page, `הקצאה מספר: ${params.allocationNumber}`, { x: W - M, y, size: 8.5, fonts, bold: true, align: 'right', color: labelColor }); }
+  return y;
+}
+
+function drawThemedFooter(page: PDFPage, fonts: Fonts, params: GenerateDocumentPdfParams, M: number, W: number, color: ReturnType<typeof rgb>) {
+  if (!params.footerText) return;
+  const lines = params.footerText.split('\n').slice(0, 4);
+  let fy = 50;
+  for (const line of lines) {
+    drawBidiText(page, line, { x: W - M, y: fy, size: 8.5, fonts, align: 'right', color });
+    fy -= 12;
+  }
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+// LEDGER — deep navy + brass, on cream paper. Grounded in the world of
+// a real accounting ledger book: a ruled double-line under the doc
+// title (like an underlined ledger heading), a small diamond bullet
+// before section labels, and a ruled horizontal rhythm through the
+// totals block echoing ledger-paper rows. For accounting-forward
+// tenants who want the document to visually read as "the books".
+// ════════════════════════════════════════════════════════════════════
+const LEDGER_DEFAULTS = { primary: '#1B2A4A', accent: '#B8935B', text: '#2A2A28' };
+
+async function drawLedgerLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, params: GenerateDocumentPdfParams) {
+  const M = 50;
+  const W = page.getWidth();
+  const H = page.getHeight();
+  const cream = rgb(0.980, 0.973, 0.953);
+  const c = resolvePalette(LEDGER_DEFAULTS, params.design);
+
+  page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: cream });
+  page.drawRectangle({ x: 0, y: H - 8, width: W, height: 8, color: c.primary });
+
+  let y = H - M - 4;
+
+  const logo = await embedLogo(pdf, params.header);
+  if (logo) {
+    const box = resolveLogoBox({ xPercent: (M / W) * 100, yPercent: ((H - y) / H) * 100, heightPercent: (36 / H) * 100 }, params.design, logo);
+    page.drawImage(logo.img, box);
+  }
+  const infoAnchor = resolveCompanyInfoAnchor({ xPercent: ((W - M) / W) * 100, yPercent: ((H - (y - 8)) / H) * 100 }, params.design);
+  drawCompanyBlock(page, fonts, params.header, { x: infoAnchor.x, y: infoAnchor.y, nameSize: 13, lineSize: 8.5, nameColor: c.primary, lineColor: c.text, align: 'right' });
+
+  y -= 66;
+  page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 1.5, color: c.primary });
+  page.drawLine({ start: { x: M, y: y - 2.5 }, end: { x: W - M, y: y - 2.5 }, thickness: 0.5, color: c.accent });
+  y -= 24;
+
+  // Small drawn diamond marker (rotated square) — a real shape, not a
+  // text glyph, since not every symbol is in pdf-lib's standard-font
+  // WinAnsi encoding and this sidesteps that entirely.
+  page.drawRectangle({ x: W - M - 6, y: y + 6, width: 7, height: 7, color: c.accent, rotate: degrees(45) });
+  drawBidiText(page, `${params.docTypeLabel} ${params.docNumber}`, { x: W - M - 16, y, size: 16, fonts, bold: true, align: 'right', color: c.primary });
+  y -= 18;
+  drawBidiText(page, params.date, { x: W - M, y, size: 9.5, fonts, align: 'right', color: c.text });
+  y -= 22;
+  drawBidiText(page, params.clientName, { x: W - M, y, size: 12, fonts, bold: true, align: 'right', color: c.text });
+  if (params.clientEmail) { y -= 13; page.drawText(params.clientEmail, { x: M, y, size: 8.5, font: fonts.latin, color: c.text }); }
+  y -= 24;
+
+  y = drawThemedItemTable(page, fonts, params, { M, W, y, headerColor: c.primary, textColor: c.text, ruleColor: rgb(0.85, 0.82, 0.74), headerBg: rgb(0.94, 0.92, 0.86) });
+
+  y -= 12;
+  y = drawThemedTotals(page, fonts, params, { M, W, y, labelColor: c.text, totalColor: c.primary, ruled: c.accent });
+
+  drawThemedFooter(page, fonts, params, M, W, c.text);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ATELIER — sage + dusty rose on soft ivory, for hospitality/boutique
+// tenants (hotels, salons, studios). Signature: thin architectural
+// corner brackets framing the header, evoking printed boutique
+// stationery rather than a generic invoice.
+// ════════════════════════════════════════════════════════════════════
+const ATELIER_DEFAULTS = { primary: '#6B7C5E', accent: '#C99A87', text: '#3D3B36' };
+
+async function drawAtelierLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, params: GenerateDocumentPdfParams) {
+  const M = 54;
+  const W = page.getWidth();
+  const H = page.getHeight();
+  const ivory = rgb(0.984, 0.976, 0.965);
+  const c = resolvePalette(ATELIER_DEFAULTS, params.design);
+
+  page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: ivory });
+
+  // Corner brackets — the signature element
+  const bracket = 22;
+  const bx = M - 10, by = H - M + 6;
+  page.drawLine({ start: { x: bx, y: by }, end: { x: bx + bracket, y: by }, thickness: 1.25, color: c.accent });
+  page.drawLine({ start: { x: bx, y: by }, end: { x: bx, y: by - bracket }, thickness: 1.25, color: c.accent });
+  page.drawLine({ start: { x: W - bx, y: by }, end: { x: W - bx - bracket, y: by }, thickness: 1.25, color: c.accent });
+  page.drawLine({ start: { x: W - bx, y: by }, end: { x: W - bx, y: by - bracket }, thickness: 1.25, color: c.accent });
+
+  let y = H - M - 14;
+  const logo = await embedLogo(pdf, params.header);
+  if (logo) {
+    const box = resolveLogoBox({ xPercent: (M / W) * 100, yPercent: ((H - y) / H) * 100, heightPercent: (34 / H) * 100 }, params.design, logo);
+    page.drawImage(logo.img, box);
+  }
+  const infoAnchor = resolveCompanyInfoAnchor({ xPercent: ((W - M) / W) * 100, yPercent: ((H - (y - 6)) / H) * 100 }, params.design);
+  drawCompanyBlock(page, fonts, params.header, { x: infoAnchor.x, y: infoAnchor.y, nameSize: 15, lineSize: 9, nameColor: c.primary, lineColor: c.text, align: 'right' });
+
+  y -= 74;
+  drawBidiText(page, params.docTypeLabel.toUpperCase(), { x: W - M, y, size: 10, fonts, align: 'right', color: c.accent });
+  y -= 18;
+  drawBidiText(page, params.docNumber, { x: W - M, y, size: 20, fonts, bold: true, align: 'right', color: c.primary });
+  y -= 16;
+  drawBidiText(page, params.date, { x: W - M, y, size: 9, fonts, align: 'right', color: c.text });
+  y -= 22;
+  drawBidiText(page, params.clientName, { x: W - M, y, size: 12, fonts, bold: true, align: 'right', color: c.text });
+  if (params.clientEmail) { y -= 13; page.drawText(params.clientEmail, { x: M, y, size: 8.5, font: fonts.latin, color: c.text }); }
+  y -= 26;
+
+  y = drawThemedItemTable(page, fonts, params, { M, W, y, headerColor: c.accent, textColor: c.text, ruleColor: rgb(0.9, 0.87, 0.83) });
+
+  y -= 12;
+  y = drawThemedTotals(page, fonts, params, { M, W, y, labelColor: c.text, totalColor: c.primary });
+
+  drawThemedFooter(page, fonts, params, M, W, c.text);
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+// BLUEPRINT — deep cyan-blue + safety orange on pale blue-white, for
+// trades/field-service tenants (plumbers, electricians, HVAC, techs).
+// Signature: a faint technical grid across the header band and corner
+// ruler-tick marks, drawing on real blueprint/spec-sheet convention —
+// this is a genuine trade document aesthetic, not decoration.
+// ════════════════════════════════════════════════════════════════════
+const BLUEPRINT_DEFAULTS = { primary: '#1E4D6B', accent: '#E67E22', text: '#243138' };
+
+async function drawBlueprintLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, params: GenerateDocumentPdfParams) {
+  const M = 48;
+  const W = page.getWidth();
+  const H = page.getHeight();
+  const paleBlue = rgb(0.965, 0.976, 0.984);
+  const c = resolvePalette(BLUEPRINT_DEFAULTS, params.design);
+
+  page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: paleBlue });
+  const bandH = 90;
+  page.drawRectangle({ x: 0, y: H - bandH, width: W, height: bandH, color: c.primary });
+  // Faint technical grid inside the header band
+  for (let gx = M; gx < W - M; gx += 24) {
+    page.drawLine({ start: { x: gx, y: H - bandH }, end: { x: gx, y: H }, thickness: 0.4, color: rgb(1, 1, 1), opacity: 0.06 });
+  }
+  // Corner tick marks — ruler convention
+  page.drawLine({ start: { x: M, y: H - 10 }, end: { x: M, y: H - 18 }, thickness: 1, color: c.accent });
+  page.drawLine({ start: { x: W - M, y: H - 10 }, end: { x: W - M, y: H - 18 }, thickness: 1, color: c.accent });
+
+  let y = H - 24;
+  const logo = await embedLogo(pdf, params.header);
+  if (logo) {
+    const box = resolveLogoBox({ xPercent: (M / W) * 100, yPercent: ((H - y) / H) * 100, heightPercent: (36 / H) * 100 }, params.design, logo);
+    page.drawImage(logo.img, box);
+  }
+  const infoAnchor = resolveCompanyInfoAnchor({ xPercent: ((W - M) / W) * 100, yPercent: ((H - y) / H) * 100 }, params.design);
+  drawCompanyBlock(page, fonts, params.header, { x: infoAnchor.x, y: infoAnchor.y, nameSize: 13, lineSize: 8.5, nameColor: rgb(1, 1, 1), lineColor: rgb(0.85, 0.9, 0.94), align: 'right' });
+
+  y = H - bandH - 26;
+  drawBidiText(page, `${params.docTypeLabel}  #${params.docNumber}`, { x: W - M, y, size: 15, fonts, bold: true, align: 'right', color: c.primary });
+  y -= 17;
+  drawBidiText(page, params.date, { x: W - M, y, size: 9, fonts, align: 'right', color: c.text });
+  y -= 20;
+  drawBidiText(page, params.clientName, { x: W - M, y, size: 11.5, fonts, bold: true, align: 'right', color: c.text });
+  if (params.clientEmail) { y -= 12; page.drawText(params.clientEmail, { x: M, y, size: 8.5, font: fonts.latin, color: c.text }); }
+  y -= 24;
+
+  page.drawLine({ start: { x: M, y: y + 8 }, end: { x: W - M, y: y + 8 }, thickness: 0.75, color: c.accent });
+  y -= 6;
+
+  y = drawThemedItemTable(page, fonts, params, { M, W, y, headerColor: c.primary, textColor: c.text, ruleColor: rgb(0.8, 0.86, 0.9), headerBg: rgb(0.92, 0.95, 0.97), mono: true });
+
+  y -= 12;
+  y = drawThemedTotals(page, fonts, params, { M, W, y, labelColor: c.text, totalColor: c.primary, ruled: c.accent });
+
+  drawThemedFooter(page, fonts, params, M, W, c.text);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MARQUEE — deep plum + amber, for entertainment/event/music venues.
+// Signature: a perforated "ticket stub" edge down the left margin
+// (dashed line + small punched circles), borrowing directly from
+// physical ticket stationery rather than a generic invoice motif.
+// ════════════════════════════════════════════════════════════════════
+const MARQUEE_DEFAULTS = { primary: '#4A1942', accent: '#FFB627', text: '#2B2129' };
+
+async function drawMarqueeLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, params: GenerateDocumentPdfParams) {
+  const M = 58;
+  const W = page.getWidth();
+  const H = page.getHeight();
+  const c = resolvePalette(MARQUEE_DEFAULTS, params.design);
+
+  page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: rgb(0.995, 0.99, 0.985) });
+
+  // Ticket-stub perforation down the left margin
+  const stubX = 34;
+  for (let py = H - 20; py > 20; py -= 14) {
+    page.drawCircle({ x: stubX, y: py, size: 1.4, color: rgb(0.85, 0.85, 0.85) });
+  }
+  page.drawLine({ start: { x: stubX + 12, y: H - 10 }, end: { x: stubX + 12, y: 10 }, thickness: 0.75, color: rgb(0.88, 0.88, 0.88), dashArray: [3, 3] });
+
+  let y = H - M;
+  const logo = await embedLogo(pdf, params.header);
+  if (logo) {
+    const box = resolveLogoBox({ xPercent: (M / W) * 100, yPercent: ((H - y) / H) * 100, heightPercent: (38 / H) * 100 }, params.design, logo);
+    page.drawImage(logo.img, box);
+  }
+  const infoAnchor = resolveCompanyInfoAnchor({ xPercent: ((W - M) / W) * 100, yPercent: ((H - (y - 10)) / H) * 100 }, params.design);
+  drawCompanyBlock(page, fonts, params.header, { x: infoAnchor.x, y: infoAnchor.y, nameSize: 14, lineSize: 9, nameColor: c.primary, lineColor: c.text, align: 'right' });
+
+  y -= 72;
+  page.drawRectangle({ x: M, y: y - 6, width: W - 2 * M, height: 40, color: c.primary });
+  drawBidiText(page, `${params.docTypeLabel}  ·  ${params.docNumber}`, { x: W - M - 14, y: y + 6, size: 15, fonts, bold: true, align: 'right', color: rgb(1, 1, 1) });
+  drawBidiText(page, params.date, { x: M + 14, y: y + 6, size: 9, fonts, align: 'left', color: c.accent });
+  y -= 58;
+
+  drawBidiText(page, params.clientName, { x: W - M, y, size: 12, fonts, bold: true, align: 'right', color: c.text });
+  if (params.clientEmail) { y -= 13; page.drawText(params.clientEmail, { x: M, y, size: 8.5, font: fonts.latin, color: c.text }); }
+  y -= 24;
+
+  y = drawThemedItemTable(page, fonts, params, { M, W, y, headerColor: c.primary, textColor: c.text, ruleColor: rgb(0.9, 0.87, 0.9) });
+
+  y -= 12;
+  y = drawThemedTotals(page, fonts, params, { M, W, y, labelColor: c.text, totalColor: c.primary, totalSize: 17 });
+
+  drawThemedFooter(page, fonts, params, M, W, c.text);
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+// MINIMAL MONO — true black/white/gray, print-practical (no ink-heavy
+// fills), a single oversized total as the only loud element on the
+// page. For tenants who want understatement over branding.
+// ════════════════════════════════════════════════════════════════════
+const MINIMAL_MONO_DEFAULTS = { primary: '#111111', accent: '#111111', text: '#444444' };
+
+async function drawMinimalMonoLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, params: GenerateDocumentPdfParams) {
+  const M = 64;
+  const W = page.getWidth();
+  const H = page.getHeight();
+  const c = resolvePalette(MINIMAL_MONO_DEFAULTS, params.design);
+  const hair = rgb(0.85, 0.85, 0.85);
+
+  let y = H - M;
+  const logo = await embedLogo(pdf, params.header);
+  if (logo) {
+    const box = resolveLogoBox({ xPercent: (M / W) * 100, yPercent: ((H - y) / H) * 100, heightPercent: (28 / H) * 100 }, params.design, logo);
+    page.drawImage(logo.img, box);
+  }
+  const infoAnchor = resolveCompanyInfoAnchor({ xPercent: ((W - M) / W) * 100, yPercent: ((H - y) / H) * 100 }, params.design);
+  drawCompanyBlock(page, fonts, params.header, { x: infoAnchor.x, y: infoAnchor.y, nameSize: 11, lineSize: 8, nameColor: c.text, lineColor: c.text, align: 'right' });
+
+  y -= 64;
+  drawBidiText(page, params.docTypeLabel, { x: W - M, y, size: 10, fonts, align: 'right', color: c.text });
+  y -= 30;
+  drawBidiText(page, params.docNumber, { x: W - M, y, size: 26, fonts, bold: true, align: 'right', color: c.primary });
+  y -= 20;
+  drawBidiText(page, params.date, { x: W - M, y, size: 9, fonts, align: 'right', color: c.text });
+  y -= 26;
+  page.drawLine({ start: { x: M, y: y + 10 }, end: { x: W - M, y: y + 10 }, thickness: 0.5, color: hair });
+  drawBidiText(page, params.clientName, { x: W - M, y, size: 11, fonts, bold: true, align: 'right', color: c.primary });
+  if (params.clientEmail) { y -= 13; page.drawText(params.clientEmail, { x: M, y, size: 8.5, font: fonts.latin, color: c.text }); }
+  y -= 28;
+
+  y = drawThemedItemTable(page, fonts, params, { M, W, y, headerColor: c.text, textColor: c.primary, ruleColor: hair });
+
+  y -= 16;
+  y = drawThemedTotals(page, fonts, params, { M, W, y, labelColor: c.text, totalColor: c.primary, totalSize: 22 });
+
+  drawThemedFooter(page, fonts, params, M, W, c.text);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// STAMP & SEAL — burgundy + aged gold on warm parchment, formal
+// letterhead register for tenants who want the document to read as an
+// official/legal-adjacent instrument. Signature: a double-ring "seal"
+// medallion drawn beside the header, in the tradition of an embossed
+// corporate/notary seal.
+// ════════════════════════════════════════════════════════════════════
+const STAMP_SEAL_DEFAULTS = { primary: '#6B1E23', accent: '#A67C3D', text: '#3A2E24' };
+
+async function drawStampSealLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, params: GenerateDocumentPdfParams) {
+  const M = 52;
+  const W = page.getWidth();
+  const H = page.getHeight();
+  const parchment = rgb(0.973, 0.949, 0.890);
+  const c = resolvePalette(STAMP_SEAL_DEFAULTS, params.design);
+
+  page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: parchment });
+  page.drawRectangle({ x: 10, y: 10, width: W - 20, height: H - 20, borderWidth: 1, borderColor: c.accent });
+
+  let y = H - M - 6;
+  const logo = await embedLogo(pdf, params.header);
+  if (logo) {
+    const box = resolveLogoBox({ xPercent: (M / W) * 100, yPercent: ((H - y) / H) * 100, heightPercent: (34 / H) * 100 }, params.design, logo);
+    page.drawImage(logo.img, box);
+  }
+  // Seal medallion — double ring beside the logo
+  const sealCx = M + 66, sealCy = y - 18;
+  page.drawCircle({ x: sealCx, y: sealCy, size: 16, borderWidth: 1.4, borderColor: c.accent });
+  page.drawCircle({ x: sealCx, y: sealCy, size: 11, borderWidth: 0.8, borderColor: c.accent });
+
+  const infoAnchor = resolveCompanyInfoAnchor({ xPercent: ((W - M) / W) * 100, yPercent: ((H - y) / H) * 100 }, params.design);
+  drawCompanyBlock(page, fonts, params.header, { x: infoAnchor.x, y: infoAnchor.y, nameSize: 14, lineSize: 8.5, nameColor: c.primary, lineColor: c.text, align: 'right' });
+
+  y -= 66;
+  page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 0.75, color: c.accent });
+  y -= 22;
+  drawBidiText(page, `${params.docTypeLabel}  |  ${params.docNumber}`, { x: W - M, y, size: 15, fonts, bold: true, align: 'right', color: c.primary });
+  y -= 18;
+  drawBidiText(page, params.date, { x: W - M, y, size: 9, fonts, align: 'right', color: c.text });
+  y -= 22;
+  drawBidiText(page, params.clientName, { x: W - M, y, size: 12, fonts, bold: true, align: 'right', color: c.text });
+  if (params.clientEmail) { y -= 13; page.drawText(params.clientEmail, { x: M, y, size: 8.5, font: fonts.latin, color: c.text }); }
+  y -= 26;
+
+  y = drawThemedItemTable(page, fonts, params, { M, W, y, headerColor: c.primary, textColor: c.text, ruleColor: rgb(0.85, 0.78, 0.68), headerBg: rgb(0.93, 0.88, 0.78) });
+
+  y -= 12;
+  y = drawThemedTotals(page, fonts, params, { M, W, y, labelColor: c.text, totalColor: c.primary, ruled: c.accent });
+
+  drawThemedFooter(page, fonts, params, M, W, c.text);
+}
+

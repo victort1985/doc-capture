@@ -19,6 +19,7 @@ import { DebitNoteSettings } from '../debit-notes/entities/debit-note-settings.e
 import { ReturnNote } from '../returns/entities/return-note.entity';
 import { ReturnNoteSettings } from '../returns/entities/return-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
+import { TemplateDesignService } from '../template-design/template-design.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentStorageSettingsService } from '../document-storage-settings/document-storage-settings.service';
@@ -71,6 +72,7 @@ export class OrderChainService {
     @InjectRepository(ReturnNote) private readonly returnsRepo: Repository<ReturnNote>,
     @InjectRepository(ReturnNoteSettings) private readonly returnSettingsRepo: Repository<ReturnNoteSettings>,
     private readonly storageService: StorageService,
+    private readonly templateDesignService: TemplateDesignService,
     private readonly orderStorageSettingsService: DocumentStorageSettingsService,
   ) {}
 
@@ -259,6 +261,7 @@ export class OrderChainService {
         template: (paymentSettings.template as any) ?? 'classic',
         isDemoMode: paymentSettings.organization?.isDemoMode ?? false,
         vatEnabled: paymentSettings.vatEnabled,
+        design: await this.templateDesignService.getConfigForOrg(organizationId),
         stampText: 'נאמן למקור',
       });
       await appendPdf(bytes);

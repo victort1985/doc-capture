@@ -9,6 +9,7 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
+import { TemplateDesignService } from '../template-design/template-design.service';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { OrderChainService } from '../order-chain/order-chain.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
@@ -23,6 +24,7 @@ export class PaymentsService {
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
+    private readonly templateDesignService: TemplateDesignService,
     private readonly orderChainService: OrderChainService,
     private readonly ledgerPostingService: LedgerPostingService,
   ) {}
@@ -170,6 +172,7 @@ export class PaymentsService {
       vatCategory: payment.vatCategory,
       currency: payment.currency,
       exchangeRateToIls: payment.exchangeRateToIls ?? undefined,
+      design: await this.templateDesignService.getConfigForOrg(settings.organization?.id ?? null),
       stampText,
     });
   }

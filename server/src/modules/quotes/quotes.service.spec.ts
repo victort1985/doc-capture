@@ -7,6 +7,7 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageService } from '../storage/storage.service';
 import { DocumentSendingService } from '../document-email/document-sending.service';
 import { ExchangeRateService } from '../currency/exchange-rate.service';
+import { TemplateDesignService } from '../template-design/template-design.service';
 
 describe('QuotesService number generation (private generateQuoteNumber, tested via bracket access)', () => {
   let service: QuotesService;
@@ -31,6 +32,7 @@ describe('QuotesService number generation (private generateQuoteNumber, tested v
         { provide: StorageService, useValue: {} },
         { provide: DocumentSendingService, useValue: {} },
         { provide: ExchangeRateService, useValue: { getRate: jest.fn().mockResolvedValue(1) } },
+        { provide: TemplateDesignService, useValue: { getConfigForOrg: jest.fn().mockResolvedValue(undefined) } },
       ],
     }).compile();
 

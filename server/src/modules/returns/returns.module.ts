@@ -11,6 +11,7 @@ import { StorageModule } from '../storage/storage.module';
 import { DocumentEmailModule } from '../document-email/document-email.module';
 import { UsersModule } from '../users/users.module';
 import { WarehouseModule } from '../warehouse/warehouse.module';
+import { TemplateDesignModule } from '../template-design/template-design.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { WarehouseModule } from '../warehouse/warehouse.module';
     DocumentEmailModule,
     UsersModule,
     WarehouseModule,
+    TemplateDesignModule,
   ],
   controllers: [ReturnsController, ReturnSettingsController],
   providers: [ReturnsService],

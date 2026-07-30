@@ -10,9 +10,10 @@ import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.e
 import { StorageModule } from '../storage/storage.module';
 import { DocumentEmailModule } from '../document-email/document-email.module';
 import { CurrencyModule } from '../currency/currency.module';
+import { TemplateDesignModule } from '../template-design/template-design.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Quote, QuoteSettings, DeliveryNoteSettings]), UsersModule, StorageModule, DocumentEmailModule, CurrencyModule],
+  imports: [TypeOrmModule.forFeature([Quote, QuoteSettings, DeliveryNoteSettings]), UsersModule, StorageModule, DocumentEmailModule, CurrencyModule, TemplateDesignModule],
   controllers: [QuotesController, QuoteSettingsController],
   providers: [QuotesService],
 })

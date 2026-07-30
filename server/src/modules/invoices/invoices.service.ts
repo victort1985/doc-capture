@@ -7,6 +7,7 @@ import { InvoiceSettings } from './entities/invoice-settings.entity';
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
 import { TaxAuthorityAllocationService } from '../invoice-israel/tax-authority-allocation.service';
 import { ExchangeRateService } from '../currency/exchange-rate.service';
+import { TemplateDesignService } from '../template-design/template-design.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
@@ -29,6 +30,7 @@ export class InvoicesService {
     private readonly ledgerPostingService: LedgerPostingService,
     private readonly taxAuthorityAllocationService: TaxAuthorityAllocationService,
     private readonly exchangeRateService: ExchangeRateService,
+    private readonly templateDesignService: TemplateDesignService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -211,6 +213,7 @@ export class InvoicesService {
         exchangeRateToIls: invoice.exchangeRateToIls ?? undefined,
         allocationNumber: invoice.allocationNumber,
         continuedWithoutAllocation: invoice.allocationDecision === 'continue',
+        design: await this.templateDesignService.getConfigForOrg(organizationId),
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `Invoices/${invoice.invoiceNumber ?? invoice.id}.pdf`;

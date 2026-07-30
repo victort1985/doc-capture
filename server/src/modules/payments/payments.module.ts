@@ -12,9 +12,10 @@ import { DocumentEmailModule } from '../document-email/document-email.module';
 import { Invoice } from '../invoices/entities/invoice.entity';
 import { OrderChainModule } from '../order-chain/order-chain.module';
 import { AccountingModule } from '../accounting/accounting.module';
+import { TemplateDesignModule } from '../template-design/template-design.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Payment, PaymentSettings, DeliveryNoteSettings, Invoice]), UsersModule, StorageModule, DocumentEmailModule, OrderChainModule, AccountingModule],
+  imports: [TypeOrmModule.forFeature([Payment, PaymentSettings, DeliveryNoteSettings, Invoice]), UsersModule, StorageModule, DocumentEmailModule, OrderChainModule, AccountingModule, TemplateDesignModule],
   controllers: [PaymentsController, PaymentSettingsController],
   providers: [PaymentsService],
 })

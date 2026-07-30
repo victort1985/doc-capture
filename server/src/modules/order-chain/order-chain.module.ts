@@ -17,6 +17,7 @@ import { ReturnNote } from '../returns/entities/return-note.entity';
 import { ReturnNoteSettings } from '../returns/entities/return-note-settings.entity';
 import { StorageModule } from '../storage/storage.module';
 import { DocumentStorageSettingsModule } from '../document-storage-settings/document-storage-settings.module';
+import { TemplateDesignModule } from '../template-design/template-design.module';
 import { OrderChainService } from './order-chain.service';
 import { OrderChainController } from './order-chain.controller';
 
@@ -29,6 +30,7 @@ import { OrderChainController } from './order-chain.controller';
     ]),
     StorageModule,
     DocumentStorageSettingsModule,
+    TemplateDesignModule,
   ],
   controllers: [OrderChainController],
   providers: [OrderChainService],

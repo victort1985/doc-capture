@@ -46,6 +46,7 @@ import { AccountingModule } from './modules/accounting/accounting.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
 import { InvoiceIsraelModule } from './modules/invoice-israel/invoice-israel.module';
 import { CurrencyModule } from './modules/currency/currency.module';
+import { TemplateDesignModule } from './modules/template-design/template-design.module';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -109,6 +110,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     ExpensesModule,
     InvoiceIsraelModule,
     CurrencyModule,
+    TemplateDesignModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

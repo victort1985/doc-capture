@@ -10,6 +10,7 @@ import { StorageService } from '../storage/storage.service';
 import { generateDocumentPdf } from '../documents/document-pdf.util';
 import { DocumentSendingService } from '../document-email/document-sending.service';
 import { ExchangeRateService } from '../currency/exchange-rate.service';
+import { TemplateDesignService } from '../template-design/template-design.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
 
 @Injectable()
@@ -21,6 +22,7 @@ export class QuotesService {
     private readonly storageService: StorageService,
     private readonly documentSendingService: DocumentSendingService,
     private readonly exchangeRateService: ExchangeRateService,
+    private readonly templateDesignService: TemplateDesignService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -147,6 +149,7 @@ export class QuotesService {
         vatCategory: quote.vatCategory,
         currency: quote.currency,
         exchangeRateToIls: quote.exchangeRateToIls ?? undefined,
+        design: await this.templateDesignService.getConfigForOrg(organizationId),
       });
       const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(settings.storageConnection.id);
       const relativePath = `Quotes/${quote.quoteNumber ?? quote.id}.pdf`;
