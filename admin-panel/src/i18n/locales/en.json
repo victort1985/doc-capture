@@ -39,7 +39,8 @@
     "accounting": "Accounting",
     "auditLog": "Audit Log",
     "expenses": "Expenses & Purchases",
-    "taxAuthority": "Tax Authority"
+    "taxAuthority": "Tax Authority",
+    "currencyRates": "Currency Rates"
   },
   "app": {
     "adminConsole": "admin console",
@@ -235,7 +236,8 @@
     "status": "Status",
     "actions": "Actions",
     "createdAt": "Created",
-    "back": "Back"
+    "back": "Back",
+    "date": "Date"
   },
   "license": {
     "lockedFullTitle": "This installation is locked",
@@ -1255,5 +1257,17 @@
     "itemCount_other": "{{count}} sections",
     "backToHome": "Back to Home",
     "tilesHint": "Pick a category above to see what's inside."
+  },
+  "currency": {
+    "eyebrow": "Finance",
+    "title": "Currency Exchange Rates",
+    "disclaimer": "Rates are fetched daily from the Bank of Israel's public API. This integration hasn't been verified against a live response yet — if a rate looks wrong, add a manual override below; it takes priority over the automatic one for that date.",
+    "addManual": "Add manual rate",
+    "rateToIls": "{{currency}} to ILS",
+    "rate": "Rate",
+    "source": "Source",
+    "manual": "Manual",
+    "boi": "Bank of Israel",
+    "empty": "No rates recorded yet for this currency."
   }
 }

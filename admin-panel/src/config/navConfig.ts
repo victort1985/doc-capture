@@ -67,6 +67,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/accounting', labelKey: 'nav.accounting', icon: BookOpen },
       { to: '/expenses', labelKey: 'nav.expenses', icon: Receipt },
       { to: '/tax-authority-settings', labelKey: 'nav.taxAuthority', icon: Landmark },
+      { to: '/currency-rates', labelKey: 'nav.currencyRates', icon: TrendingUp },
     ],
   },
   {
