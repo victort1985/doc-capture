@@ -40,7 +40,8 @@
     "auditLog": "Audit Log",
     "expenses": "Expenses & Purchases",
     "taxAuthority": "Tax Authority",
-    "currencyRates": "Currency Rates"
+    "currencyRates": "Currency Rates",
+    "templateDesigner": "Document Designer"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1276,5 +1277,21 @@
     "manual": "Manual",
     "boi": "Bank of Israel",
     "empty": "No rates recorded yet for this currency."
+  },
+  "templateDesigner": {
+    "eyebrow": "System",
+    "title": "Document Designer",
+    "disclaimer": "Colors and logo/company-info placement here apply to every document type (quotes, invoices, delivery notes, etc.) regardless of which of the 9 templates each one uses — this is your brand's look, not a per-document setting.",
+    "colors": "Colors",
+    "primaryColor": "Primary color",
+    "accentColor": "Accent color",
+    "textColor": "Text color",
+    "usingDefault": "using template default",
+    "colorsHint": "Leave a color unset to use the chosen template's own default palette.",
+    "layout": "Logo & company info placement",
+    "layoutHint": "Drag the boxes below to reposition. Drag the small circle to resize the logo.",
+    "logoLabel": "LOGO",
+    "companyInfoLabel": "Company info",
+    "dragHint": "Changes save automatically when you release."
   }
 }

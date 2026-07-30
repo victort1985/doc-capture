@@ -2,7 +2,7 @@ import {
   PhoneCall, Contact, MapPin, Tag, FileSpreadsheet, ReceiptText, FileText, Undo2, Banknote,
   FileMinus, FilePlus2, CreditCard, TrendingUp, BookOpen, Receipt, Landmark, Package, Car,
   CalendarClock, BarChart2, Users, ShieldCheck, Users2, HardDrive, FileSliders, FileStack,
-  Smartphone, CalendarDays, ScrollText, Building2,
+  Smartphone, CalendarDays, ScrollText, Building2, Palette,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -100,6 +100,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/storage', labelKey: 'nav.storage', icon: HardDrive },
       { to: '/storage-routing', labelKey: 'nav.routing', icon: FileSliders },
       { to: '/templates', labelKey: 'nav.templates', icon: FileSliders },
+      { to: '/template-designer', labelKey: 'nav.templateDesigner', icon: Palette },
       { to: '/files', labelKey: 'nav.fileLog', icon: FileStack },
       { to: '/devices', labelKey: 'nav.devices', icon: Smartphone },
       { to: '/calendar-sync', labelKey: 'nav.calendarSync', icon: CalendarDays },

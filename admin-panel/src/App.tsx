@@ -51,6 +51,7 @@ import AuditLogPage from './pages/AuditLogPage';
 import ExpensesPage from './pages/ExpensesPage';
 import TaxAuthoritySettingsPage from './pages/TaxAuthoritySettingsPage';
 import CurrencyRatesPage from './pages/CurrencyRatesPage';
+import TemplateDesignerPage from './pages/TemplateDesignerPage';
 import PriceListPage from './pages/PriceListPage';
 import DevicesPage from './pages/DevicesPage';
 
@@ -122,6 +123,7 @@ export default function App() {
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/tax-authority-settings" element={<TaxAuthoritySettingsPage />} />
           <Route path="/currency-rates" element={<CurrencyRatesPage />} />
+          <Route path="/template-designer" element={<TemplateDesignerPage />} />
           <Route path="/payment-settings" element={<PaymentSettingsPage />} />
           <Route path="/prices" element={<PriceListPage />} />
           <Route path="/devices" element={<DevicesPage />} />
