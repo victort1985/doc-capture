@@ -58,7 +58,17 @@ sudo -u postgres createdb "$DB_NAME"
 sudo -u postgres psql -d "$DB_NAME" -c "GRANT ALL PRIVILEGES ON SCHEMA public TO doccapture;"
 
 echo "==> Restoring from backup"
-gunzip -c "$BACKUP_FILE" | sudo -u postgres psql -d "$DB_NAME"
+if [[ "$BACKUP_FILE" == *.enc ]]; then
+  ENC_KEY="$(grep -m1 '^ENCRYPTION_KEY=' "$TENANT_ENV" | cut -d= -f2-)"
+  if [[ -z "$ENC_KEY" ]]; then
+    echo "Backup is encrypted but no ENCRYPTION_KEY found in $TENANT_ENV — cannot decrypt." >&2
+    exit 1
+  fi
+  IV="$(head -n1 "$BACKUP_FILE")"
+  tail -n +2 "$BACKUP_FILE" | openssl enc -d -aes-256-cbc -K "$ENC_KEY" -iv "$IV" -pbkdf2 | gunzip -c | sudo -u postgres psql -d "$DB_NAME"
+else
+  gunzip -c "$BACKUP_FILE" | sudo -u postgres psql -d "$DB_NAME"
+fi
 
 echo "==> Restarting doc-capture@$SLUG"
 systemctl start "doc-capture@$SLUG"

@@ -51,6 +51,27 @@ export interface GenerateDocumentPdfParams {
    * document type — the printed total simply equals params.total. */
   vatEnabled?: boolean;
 
+  /** Israeli VAT has three practical categories a whole document
+   * normally falls into (mixed-rate line items within one document
+   * are a real but rare edge case, not handled here): 'standard'
+   * (18%, default), 'zero' (0% — export sales/inbound tourism, VAT
+   * Act sec. 30 — still shows a VAT line, just at 0%, since that's
+   * what distinguishes a documented zero-rated sale from one that
+   * was never subject to VAT at all), 'exempt' (עוסק פטור or exempt
+   * goods/services — no VAT line at all, same visual result as
+   * vatEnabled=false but recorded distinctly for reporting). Only
+   * takes effect when vatEnabled is true; ignored otherwise. */
+  vatCategory?: 'standard' | 'zero' | 'exempt';
+
+  /** ISO 4217 code. Undefined/'ILS' means plain shekels, no
+   * additional line. Any other currency shows the document totals in
+   * that currency AND a converted ILS-equivalent line using
+   * exchangeRateToIls (locked at document creation time) — Israeli
+   * tax reporting always needs the ILS figure regardless of what
+   * currency the customer was actually billed in. */
+  currency?: string;
+  exchangeRateToIls?: number;
+
   /** requirement #6 ("Invoice Israel") — the short (9-digit)
    * allocation number, printed per the ITA spec's exact instruction:
    * prominently, under the heading "הקצאה מספר:". Undefined/null
@@ -70,6 +91,39 @@ export interface GenerateDocumentPdfParams {
  * purpose — if/when the statutory rate changes, this is the one place
  * to update, and every document type picks it up together. */
 export const VAT_RATE = 0.18;
+
+/** Resolves the actual rate + Hebrew label to print for a document's
+ * vatCategory, so the 3 templates don't each re-implement this
+ * mapping. 'exempt' returns rate 0 with showLine=false (no VAT line
+ * printed at all, distinct from 'zero' which prints "מע"מ (0%)"). */
+function resolveVatDisplay(category: GenerateDocumentPdfParams['vatCategory']): { rate: number; label: string; showLine: boolean } {
+  if (category === 'exempt') return { rate: 0, label: '', showLine: false };
+  if (category === 'zero') return { rate: 0, label: 'מע"מ (0% — עסקת חוץ):', showLine: true };
+  return { rate: VAT_RATE, label: `מע"מ (${(VAT_RATE * 100).toFixed(0)}%):`, showLine: true };
+}
+
+/** Currency symbol for the handful of currencies this app is
+ * actually likely to see (ILS-based Israeli business dealing
+ * occasionally in USD/EUR/GBP) — not a general-purpose ISO 4217
+ * lookup table. */
+function currencySymbol(code?: string): string {
+  switch (code) {
+    case 'USD': return '$';
+    case 'EUR': return '€';
+    case 'GBP': return '£';
+    default: return '₪';
+  }
+}
+
+/** The converted-ILS line shown under a foreign-currency document's
+ * total, since Israeli tax reporting needs the ILS figure regardless
+ * of billing currency. Returns '' when the document is already in
+ * ILS or has no locked rate (nothing to convert). */
+function ilsEquivalentLine(params: GenerateDocumentPdfParams, amount: number): string {
+  if (!params.currency || params.currency === 'ILS' || !params.exchangeRateToIls) return '';
+  const ils = amount * params.exchangeRateToIls;
+  return `(≈ ₪ ${ils.toFixed(2)} לפי שער ${params.exchangeRateToIls.toFixed(4)})`;
+}
 
 // ── Minimal RTL layout ───────────────────────────────────────────────
 // pdf-lib has no bidi/shaping engine. Hebrew doesn't need glyph
@@ -344,20 +398,24 @@ async function drawClassicLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, 
   }
 
   y -= 10;
-  if (params.vatEnabled) {
-    const vatAmount = params.total * VAT_RATE;
-    const grandTotal = params.total + vatAmount;
-    const subtotalStr = `סה"כ לפני מע"מ:  ₪ ${params.total.toFixed(2)}`;
-    drawBidiText(page, subtotalStr, { x: W - M, y, size: 10, fonts, align: 'right', color: gray });
-    y -= 16;
-    const vatStr = `מע"מ (${(VAT_RATE * 100).toFixed(0)}%):  ₪ ${vatAmount.toFixed(2)}`;
-    drawBidiText(page, vatStr, { x: W - M, y, size: 10, fonts, align: 'right', color: gray });
-    y -= 20;
-    const grandTotalStr = `סה"כ לתשלום:  ₪ ${grandTotal.toFixed(2)}`;
-    drawBidiText(page, grandTotalStr, { x: W - M, y, size: 14, fonts, bold: true, align: 'right', color: navy });
-  } else {
-    const totalStr = `₪ ${params.total.toFixed(2)}`;
-    drawBidiText(page, totalStr, { x: W - M, y, size: 14, fonts, bold: true, align: 'right', color: navy });
+  {
+    const sym = currencySymbol(params.currency);
+    const vd = params.vatEnabled ? resolveVatDisplay(params.vatCategory) : { rate: 0, label: '', showLine: false };
+    if (vd.showLine) {
+      const vatAmount = params.total * vd.rate;
+      const grandTotal = params.total + vatAmount;
+      drawBidiText(page, `סה"כ לפני מע"מ:  ${sym} ${params.total.toFixed(2)}`, { x: W - M, y, size: 10, fonts, align: 'right', color: gray });
+      y -= 16;
+      drawBidiText(page, `${vd.label}  ${sym} ${vatAmount.toFixed(2)}`, { x: W - M, y, size: 10, fonts, align: 'right', color: gray });
+      y -= 20;
+      drawBidiText(page, `סה"כ לתשלום:  ${sym} ${grandTotal.toFixed(2)}`, { x: W - M, y, size: 14, fonts, bold: true, align: 'right', color: navy });
+      const ilsLine = ilsEquivalentLine(params, grandTotal);
+      if (ilsLine) { y -= 14; drawBidiText(page, ilsLine, { x: W - M, y, size: 8.5, fonts, align: 'right', color: gray }); }
+    } else {
+      drawBidiText(page, `${sym} ${params.total.toFixed(2)}`, { x: W - M, y, size: 14, fonts, bold: true, align: 'right', color: navy });
+      const ilsLine = ilsEquivalentLine(params, params.total);
+      if (ilsLine) { y -= 14; drawBidiText(page, ilsLine, { x: W - M, y, size: 8.5, fonts, align: 'right', color: gray }); }
+    }
   }
 
   drawClassicFooter(page, fonts, params, M, W, gray);
@@ -448,26 +506,26 @@ async function drawModernLayout(pdf: PDFDocument, page: PDFPage, fonts: Fonts, p
   }
 
   y -= 14;
-  if (params.vatEnabled) {
-    const vatAmount = params.total * VAT_RATE;
-    const grandTotal = params.total + vatAmount;
-    drawBidiText(page, `סה"כ לפני מע"מ:  ₪ ${params.total.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
-    y -= 15;
-    drawBidiText(page, `מע"מ (${(VAT_RATE * 100).toFixed(0)}%):  ₪ ${vatAmount.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
-    y -= 18;
-    const grandTotalStr = `₪ ${grandTotal.toFixed(2)}`;
-    const totalRuns = toVisualRuns(grandTotalStr);
-    const totalTextW = totalRuns.reduce((sum, r) => sum + runWidth(r, fonts, 14, true), 0);
-    const totalPillW = totalTextW + 28;
-    page.drawRectangle({ x: W - M - totalPillW, y: y - 8, width: totalPillW, height: 28, color: navy });
-    drawBidiText(page, grandTotalStr, { x: W - M - 14, y, size: 14, fonts, bold: true, align: 'right', color: rgb(1, 1, 1) });
-  } else {
-    const totalStr = `₪ ${params.total.toFixed(2)}`;
+  {
+    const sym = currencySymbol(params.currency);
+    const vd = params.vatEnabled ? resolveVatDisplay(params.vatCategory) : { rate: 0, label: '', showLine: false };
+    let grandTotal = params.total;
+    if (vd.showLine) {
+      const vatAmount = params.total * vd.rate;
+      grandTotal = params.total + vatAmount;
+      drawBidiText(page, `סה"כ לפני מע"מ:  ${sym} ${params.total.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
+      y -= 15;
+      drawBidiText(page, `${vd.label}  ${sym} ${vatAmount.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
+      y -= 18;
+    }
+    const totalStr = `${sym} ${grandTotal.toFixed(2)}`;
     const totalRuns = toVisualRuns(totalStr);
     const totalTextW = totalRuns.reduce((sum, r) => sum + runWidth(r, fonts, 14, true), 0);
     const totalPillW = totalTextW + 28;
     page.drawRectangle({ x: W - M - totalPillW, y: y - 8, width: totalPillW, height: 28, color: navy });
     drawBidiText(page, totalStr, { x: W - M - 14, y, size: 14, fonts, bold: true, align: 'right', color: rgb(1, 1, 1) });
+    const ilsLine = ilsEquivalentLine(params, grandTotal);
+    if (ilsLine) { y -= 24; drawBidiText(page, ilsLine, { x: W - M, y, size: 8, fonts, align: 'right', color: gray }); }
   }
 
   if (params.footerText) {
@@ -539,17 +597,24 @@ function drawMinimalistLayout(page: PDFPage, fonts: Fonts, params: GenerateDocum
 
   y -= 4;
   page.drawLine({ start: { x: M, y: y + 16 }, end: { x: W - M, y: y + 16 }, thickness: 0.75, color: black });
-  if (params.vatEnabled) {
-    const vatAmount = params.total * VAT_RATE;
-    const grandTotal = params.total + vatAmount;
-    drawBidiText(page, `סה"כ לפני מע"מ:  ₪ ${params.total.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
-    y -= 15;
-    drawBidiText(page, `מע"מ (${(VAT_RATE * 100).toFixed(0)}%):  ₪ ${vatAmount.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
-    y -= 20;
-    drawBidiText(page, `₪ ${grandTotal.toFixed(2)}`, { x: W - M, y, size: 15, fonts, align: 'right', color: black });
-  } else {
-    const totalStr = `₪ ${params.total.toFixed(2)}`;
-    drawBidiText(page, totalStr, { x: W - M, y, size: 15, fonts, align: 'right', color: black });
+  {
+    const sym = currencySymbol(params.currency);
+    const vd = params.vatEnabled ? resolveVatDisplay(params.vatCategory) : { rate: 0, label: '', showLine: false };
+    if (vd.showLine) {
+      const vatAmount = params.total * vd.rate;
+      const grandTotal = params.total + vatAmount;
+      drawBidiText(page, `סה"כ לפני מע"מ:  ${sym} ${params.total.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
+      y -= 15;
+      drawBidiText(page, `${vd.label}  ${sym} ${vatAmount.toFixed(2)}`, { x: W - M, y, size: 9.5, fonts, align: 'right', color: gray });
+      y -= 20;
+      drawBidiText(page, `${sym} ${grandTotal.toFixed(2)}`, { x: W - M, y, size: 15, fonts, align: 'right', color: black });
+      const ilsLine = ilsEquivalentLine(params, grandTotal);
+      if (ilsLine) { y -= 14; drawBidiText(page, ilsLine, { x: W - M, y, size: 8, fonts, align: 'right', color: gray }); }
+    } else {
+      drawBidiText(page, `${sym} ${params.total.toFixed(2)}`, { x: W - M, y, size: 15, fonts, align: 'right', color: black });
+      const ilsLine = ilsEquivalentLine(params, params.total);
+      if (ilsLine) { y -= 14; drawBidiText(page, ilsLine, { x: W - M, y, size: 8, fonts, align: 'right', color: gray }); }
+    }
   }
 
   if (params.footerText) {

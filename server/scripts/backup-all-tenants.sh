@@ -46,20 +46,36 @@ for tenant_env in "$TENANTS_DIR"/*/.env; do
 
   out_dir="$BACKUP_DIR/$slug"
   mkdir -p "$out_dir"
-  out_file="$out_dir/${db_name}_${DATE_STAMP}.sql.gz"
+  plain_file="$out_dir/${db_name}_${DATE_STAMP}.sql.gz"
+  enc_file="${plain_file}.enc"
 
-  echo "==> Backing up $slug ($db_name) -> $out_file"
-  if sudo -u postgres pg_dump "$db_name" | gzip > "$out_file"; then
-    echo "    OK ($(du -h "$out_file" | cut -f1))"
+  enc_key="$(grep -m1 '^ENCRYPTION_KEY=' "$tenant_env" | cut -d= -f2-)"
+
+  echo "==> Backing up $slug ($db_name) -> $enc_file"
+  if sudo -u postgres pg_dump "$db_name" | gzip > "$plain_file"; then
+    if [[ -n "$enc_key" ]]; then
+      iv="$(openssl rand -hex 16)"
+      if openssl enc -aes-256-cbc -K "$enc_key" -iv "$iv" -pbkdf2 -in "$plain_file" -out "${enc_file}.body" 2>/dev/null; then
+        printf '%s\n' "$iv" > "${enc_file}.iv"
+        cat "${enc_file}.iv" "${enc_file}.body" > "$enc_file"
+        rm -f "$plain_file" "${enc_file}.iv" "${enc_file}.body"
+        echo "    OK, encrypted ($(du -h "$enc_file" | cut -f1))"
+      else
+        echo "    Encryption FAILED — leaving unencrypted dump at $plain_file" >&2
+        FAILED=1
+      fi
+    else
+      echo "    WARNING: no ENCRYPTION_KEY found in $tenant_env — backup left unencrypted at $plain_file" >&2
+    fi
   else
     echo "    FAILED — see error above" >&2
-    rm -f "$out_file"
+    rm -f "$plain_file"
     FAILED=1
   fi
 done
 
 echo "==> Pruning backups older than $RETENTION_DAYS days"
-find "$BACKUP_DIR" -name '*.sql.gz' -mtime "+$RETENTION_DAYS" -print -delete
+find "$BACKUP_DIR" \( -name '*.sql.gz' -o -name '*.sql.gz.enc' \) -mtime "+$RETENTION_DAYS" -print -delete
 
 if [[ "$FAILED" -eq 1 ]]; then
   echo "==> One or more tenant backups FAILED — see above." >&2

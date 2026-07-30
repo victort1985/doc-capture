@@ -56,6 +56,22 @@ export class Invoice {
   @Column({ nullable: true })
   clientTaxId?: string;
 
+  /** requirement #19 ("мультивалюта") + VAT category (standard 18%/
+   * zero-rated export/exempt — requirement #5's multi-rate gap).
+   * `total` below always stays denominated in `currency`; ledger
+   * postings and the Tax Authority allocation request both convert
+   * to ILS themselves using exchangeRateToIls at post time, rather
+   * than storing a second pre-converted total column that could
+   * drift out of sync with it. */
+  @Column({ type: 'varchar', default: 'ILS' })
+  currency: string;
+
+  @Column({ type: 'numeric', precision: 12, scale: 6, nullable: true, transformer: numericTransformer })
+  exchangeRateToIls?: number | null;
+
+  @Column({ type: 'varchar', default: 'standard' })
+  vatCategory: 'standard' | 'zero' | 'exempt';
+
   @Column({ type: 'jsonb', default: [] })
   items: InvoiceItem[];
 

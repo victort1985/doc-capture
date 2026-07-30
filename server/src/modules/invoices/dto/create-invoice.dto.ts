@@ -1,4 +1,4 @@
-import { IsArray, IsEmail, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsEmail, IsIn, IsInt, IsNumber, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class InvoiceItemDto {
@@ -29,6 +29,21 @@ export class CreateInvoiceDto {
   @IsString()
   @IsOptional()
   date?: string;
+
+  @IsString()
+  @IsOptional()
+  currency?: string;
+
+  /** Locks a specific rate instead of auto-fetching the day's Bank
+   * of Israel rate — useful when a price was already negotiated at a
+   * specific rate with the client. */
+  @IsNumber()
+  @IsOptional()
+  exchangeRateToIls?: number;
+
+  @IsIn(['standard', 'zero', 'exempt'])
+  @IsOptional()
+  vatCategory?: 'standard' | 'zero' | 'exempt';
 
   @IsArray()
   @ValidateNested({ each: true })

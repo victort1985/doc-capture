@@ -6,6 +6,7 @@ import { Invoice, InvoiceStatus } from './entities/invoice.entity';
 import { InvoiceSettings } from './entities/invoice-settings.entity';
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
 import { TaxAuthorityAllocationService } from '../invoice-israel/tax-authority-allocation.service';
+import { ExchangeRateService } from '../currency/exchange-rate.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
 import { DeliveryNoteSettings } from '../delivery-notes/delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
@@ -27,6 +28,7 @@ export class InvoicesService {
     private readonly documentSendingService: DocumentSendingService,
     private readonly ledgerPostingService: LedgerPostingService,
     private readonly taxAuthorityAllocationService: TaxAuthorityAllocationService,
+    private readonly exchangeRateService: ExchangeRateService,
   ) {}
 
   private computeTotal(items: { quantity: number; unitPrice: number }[]): number {
@@ -74,6 +76,10 @@ export class InvoicesService {
 
   async create(organizationId: number | null, userId: number, dto: CreateInvoiceDto): Promise<Invoice> {
     const chainId = await this.resolveChainIdForCreate(dto.quoteId, dto.deliveryNoteId, dto.chainId, organizationId);
+    const currency = dto.currency ?? 'ILS';
+    const exchangeRateToIls = currency === 'ILS'
+      ? 1
+      : dto.exchangeRateToIls ?? (await this.exchangeRateService.getRate(currency)) ?? undefined;
     const invoice = this.repo.create({
       invoiceNumber: await this.generateInvoiceNumber(organizationId),
       clientName: dto.clientName,
@@ -87,6 +93,9 @@ export class InvoicesService {
       quoteId: dto.quoteId,
       deliveryNoteId: dto.deliveryNoteId,
       chainId,
+      currency,
+      exchangeRateToIls,
+      vatCategory: dto.vatCategory ?? 'standard',
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
@@ -98,10 +107,18 @@ export class InvoicesService {
     if (organizationId != null) {
       try {
         const settings = await this.settingsRepo.findOne({ where: { organization: { id: organizationId } } });
-        const vatEnabled = settings?.vatEnabled ?? true;
-        vatEnabledForAllocation = vatEnabled;
-        const vatAmount = vatEnabled ? Math.round(result.total * VAT_RATE * 100) / 100 : 0;
-        await this.ledgerPostingService.postInvoice(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), result.total, vatAmount, result.clientName);
+        const orgVatEnabled = settings?.vatEnabled ?? true;
+        const effectiveVatRate = result.vatCategory === 'exempt' ? 0 : result.vatCategory === 'zero' ? 0 : VAT_RATE;
+        const vatEnabled = orgVatEnabled && result.vatCategory !== 'exempt';
+        vatEnabledForAllocation = vatEnabled && result.vatCategory === 'standard';
+        // Ledger always posts in ILS regardless of the document's
+        // billing currency — Israeli bookkeeping/reporting has no
+        // concept of a foreign-currency ledger, only a converted
+        // figure using whatever rate was locked on the document.
+        const rateToIls = result.exchangeRateToIls ?? 1;
+        const totalIls = Math.round(result.total * rateToIls * 100) / 100;
+        const vatAmountIls = vatEnabled ? Math.round(totalIls * effectiveVatRate * 100) / 100 : 0;
+        await this.ledgerPostingService.postInvoice(organizationId, result.id, result.date ?? new Date().toISOString().slice(0, 10), totalIls, vatAmountIls, result.clientName);
       } catch {
         // Ledger posting is best-effort — a bookkeeping hiccup must
         // never block issuing the invoice itself.
@@ -111,6 +128,10 @@ export class InvoicesService {
       // issuing the invoice. maybeRequestAllocation() itself decides
       // whether this invoice is even eligible (threshold/VAT/
       // clientTaxId) and whether the integration is turned on at all.
+      // Zero-rated/exempt invoices are deliberately excluded here too
+      // (vatEnabledForAllocation only true for 'standard') since an
+      // allocation number is specifically about standard-rated VAT
+      // collectible on the sale.
       await this.taxAuthorityAllocationService.maybeRequestAllocation(result, organizationId, vatEnabledForAllocation);
 
       // The PDF above was already generated and stored WITHOUT the
@@ -184,7 +205,10 @@ export class InvoicesService {
         header,
         template: (settings.template as any) ?? 'classic',
         isDemoMode: settings.organization?.isDemoMode ?? false,
-        vatEnabled: settings.vatEnabled,
+        vatEnabled: settings.vatEnabled && invoice.vatCategory !== 'exempt',
+        vatCategory: invoice.vatCategory,
+        currency: invoice.currency,
+        exchangeRateToIls: invoice.exchangeRateToIls ?? undefined,
         allocationNumber: invoice.allocationNumber,
         continuedWithoutAllocation: invoice.allocationDecision === 'continue',
       });

@@ -13,9 +13,10 @@ import { Quote } from '../quotes/entities/quote.entity';
 import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
 import { AccountingModule } from '../accounting/accounting.module';
 import { InvoiceIsraelModule } from '../invoice-israel/invoice-israel.module';
+import { CurrencyModule } from '../currency/currency.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Invoice, InvoiceSettings, DeliveryNoteSettings, Quote, DeliveryNote]), UsersModule, StorageModule, DocumentEmailModule, AccountingModule, InvoiceIsraelModule],
+  imports: [TypeOrmModule.forFeature([Invoice, InvoiceSettings, DeliveryNoteSettings, Quote, DeliveryNote]), UsersModule, StorageModule, DocumentEmailModule, AccountingModule, InvoiceIsraelModule, CurrencyModule],
   controllers: [InvoicesController, InvoiceSettingsController],
   providers: [InvoicesService],
 })

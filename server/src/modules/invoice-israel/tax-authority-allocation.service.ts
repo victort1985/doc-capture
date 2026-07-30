@@ -48,8 +48,14 @@ export class TaxAuthorityAllocationService {
       const settings = await this.settingsService.findWithSecrets(organizationId);
       if (!settings?.enabled) return; // integration not turned on for this org — leave allocationStatus as not_applicable
 
-      const vatAmount = vatEnabled ? Math.round(invoice.total * VAT_RATE * 100) / 100 : 0;
-      const eligible = invoice.total > settings.thresholdAmount && vatAmount > 0 && !!invoice.clientTaxId;
+      // Israeli tax reporting is always ILS-denominated regardless of
+      // what currency the customer was actually billed in — convert
+      // using whatever rate was locked on the invoice at creation
+      // time (1 for a plain-ILS invoice).
+      const rateToIls = invoice.exchangeRateToIls ?? 1;
+      const totalIls = Math.round(invoice.total * rateToIls * 100) / 100;
+      const vatAmount = vatEnabled ? Math.round(totalIls * VAT_RATE * 100) / 100 : 0;
+      const eligible = totalIls > settings.thresholdAmount && vatAmount > 0 && !!invoice.clientTaxId;
       if (!eligible) return;
 
       invoice.allocationStatus = 'pending';
@@ -63,19 +69,19 @@ export class TaxAuthorityAllocationService {
         customerName: invoice.clientName,
         date: invoice.date ?? new Date().toISOString().slice(0, 10),
         issuanceDate: new Date().toISOString().slice(0, 10),
-        discountBeforeAmount: invoice.total,
+        discountBeforeAmount: totalIls,
         discount: 0,
-        amountPayment: invoice.total,
+        amountPayment: totalIls,
         amountVat: vatAmount,
-        paymentAmountIncludingVat: invoice.total + vatAmount,
+        paymentAmountIncludingVat: totalIls + vatAmount,
         items: invoice.items.map((item, i) => {
-          const lineTotal = item.quantity * item.unitPrice;
+          const lineTotal = Math.round(item.quantity * item.unitPrice * rateToIls * 100) / 100;
           const lineVat = Math.round(lineTotal * VAT_RATE * 100) / 100;
           return {
             index: i + 1,
             description: item.description,
             quantity: item.quantity,
-            pricePerUnit: item.unitPrice,
+            pricePerUnit: Math.round(item.unitPrice * rateToIls * 100) / 100,
             amountTotal: lineTotal,
             vatRate: VAT_RATE * 100,
             vatAmount: lineVat,
