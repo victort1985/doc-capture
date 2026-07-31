@@ -54,6 +54,7 @@ import CurrencyRatesPage from './pages/CurrencyRatesPage';
 import TemplateDesignerPage from './pages/TemplateDesignerPage';
 import BackupPage from './pages/BackupPage';
 import TimeThresholdsPage from './pages/TimeThresholdsPage';
+import RentalsPage from './pages/RentalsPage';
 import PriceListPage from './pages/PriceListPage';
 import DevicesPage from './pages/DevicesPage';
 
@@ -128,6 +129,7 @@ export default function App() {
           <Route path="/template-designer" element={<TemplateDesignerPage />} />
           <Route path="/backup" element={<BackupPage />} />
           <Route path="/time-thresholds" element={<TimeThresholdsPage />} />
+          <Route path="/rentals" element={<RentalsPage />} />
           <Route path="/payment-settings" element={<PaymentSettingsPage />} />
           <Route path="/prices" element={<PriceListPage />} />
           <Route path="/devices" element={<DevicesPage />} />

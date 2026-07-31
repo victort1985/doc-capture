@@ -43,7 +43,8 @@
     "currencyRates": "Currency Rates",
     "templateDesigner": "Document Designer",
     "backup": "Backups",
-    "timeThresholds": "Time Thresholds"
+    "timeThresholds": "Time Thresholds",
+    "rentals": "Rentals"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1371,5 +1372,30 @@
     "dangerAfter": "Red after",
     "warningBefore": "Yellow starting",
     "dangerBefore": "Red starting"
+  },
+  "rentals": {
+    "eyebrow": "Management",
+    "title": "Rentals",
+    "newRental": "New rental",
+    "statusActive": "Active",
+    "statusReturned": "Returned",
+    "statusAll": "All",
+    "number": "Number",
+    "item": "Item",
+    "client": "Client",
+    "dueDate": "Due date",
+    "markReturned": "Mark returned",
+    "confirmReturn": "Mark this rental as returned? Stock will be restored.",
+    "empty": "No rentals yet.",
+    "equipment": "Equipment",
+    "equipmentSearchHint": "Search by name or barcode…",
+    "quantity": "Quantity",
+    "clientPhone": "Client phone",
+    "clientSearchHint": "Search phone book, or type a new name…",
+    "description": "Description",
+    "startDate": "Start date",
+    "inStock": "in stock",
+    "formInvalid": "Pick equipment, enter a client name, and a due date.",
+    "submit": "Create rental"
   }
 }
