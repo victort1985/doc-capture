@@ -1349,6 +1349,12 @@
       "thu": "Thursday",
       "fri": "Friday",
       "sat": "Saturday"
-    }
+    },
+    "mergeTitle": "Restore from a device file (safe merge)",
+    "mergeHint": "Adds anything missing from this file — existing data is never deleted or overwritten, only rows that don't already exist get added.",
+    "mergeChooseFile": "Choose file…",
+    "merging": "Merging…",
+    "mergeConfirm": "Merge in the contents of {{filename}}? Existing data will not be touched — only missing rows will be added.",
+    "mergeSuccess": "Merge complete — {{count}} insert statements processed (rows already present were skipped automatically)."
   }
 }

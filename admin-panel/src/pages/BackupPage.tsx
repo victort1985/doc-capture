@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Save, Trash2, RefreshCw, HardDriveDownload, RotateCcw, Clock } from 'lucide-react';
+import { Save, Trash2, RefreshCw, HardDriveDownload, RotateCcw, Clock, Upload } from 'lucide-react';
 import { apiFetch, apiFetchBlob, BASE_URL, getToken } from '../services/api';
 
 interface BackupFileInfo {
@@ -33,6 +33,7 @@ export default function BackupPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [restoreTarget, setRestoreTarget] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   const [schedule, setSchedule] = useState<BackupSchedule | null>(null);
   const [scheduleSaving, setScheduleSaving] = useState(false);
@@ -102,6 +103,30 @@ export default function BackupPage() {
       load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to delete backup');
+    }
+  }
+
+  async function mergeRestoreFromFile(file: File) {
+    if (!confirm(t('backup.mergeConfirm', { filename: file.name }))) return;
+    setUploading(true); setError(null); setNotice(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${BASE_URL}/backup/restore-merge`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+        body: formData,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(typeof body.message === 'string' ? body.message : 'Merge restore failed');
+      }
+      const result = await res.json() as { statementsAttempted: number };
+      setNotice(t('backup.mergeSuccess', { count: result.statementsAttempted }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Merge restore failed');
+    } finally {
+      setUploading(false);
     }
   }
 
@@ -238,6 +263,28 @@ export default function BackupPage() {
           )}
         </div>
       )}
+
+      <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <Upload size={16} />
+          <h3 style={{ margin: 0 }}>{t('backup.mergeTitle')}</h3>
+        </div>
+        <p style={{ fontSize: 12.5, color: 'var(--ink-soft)', margin: '0 0 12px' }}>{t('backup.mergeHint')}</p>
+        <label className="ghost" style={{ cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6, padding: '9px 16px' }}>
+          <Upload size={15} /> {uploading ? t('backup.merging') : t('backup.mergeChooseFile')}
+          <input
+            type="file"
+            accept=".sql,.gz,.enc"
+            style={{ display: 'none' }}
+            disabled={uploading}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) mergeRestoreFromFile(file);
+              e.target.value = '';
+            }}
+          />
+        </label>
+      </div>
 
       <div className="card" style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
