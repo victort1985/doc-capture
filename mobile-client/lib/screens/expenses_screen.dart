@@ -4,6 +4,7 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/expenses_service.dart';
+import '../services/payments_service.dart' show PaymentMethod;
 import 'expense_form_screen.dart';
 
 class ExpensesScreen extends StatefulWidget {
@@ -70,7 +71,7 @@ class ExpensesScreenState extends State<ExpensesScreen> {
                             leading: CircleAvatar(
                               backgroundColor: AppColors.stampWash,
                               child: Icon(
-                                e.method == 'cash' ? Icons.payments_outlined : Icons.account_balance_outlined,
+                                e.method == PaymentMethod.cash ? Icons.payments_outlined : Icons.account_balance_outlined,
                                 color: AppColors.stamp, size: 20,
                               ),
                             ),

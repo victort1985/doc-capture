@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/expenses_service.dart';
+import '../services/payments_service.dart' show PaymentMethod;
 
 class ExpenseFormScreen extends StatefulWidget {
   const ExpenseFormScreen({super.key});
@@ -15,8 +16,23 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   final _categoryController = TextEditingController();
   final _amountController = TextEditingController();
   DateTime _date = DateTime.now();
-  String _method = 'cash';
+  PaymentMethod _method = PaymentMethod.cash;
   bool _saving = false;
+
+  // Method-specific controllers — same set/shape as PaymentsScreen's
+  // own create form, reused here rather than a narrower expense-only
+  // subset, since an expense can be paid by card/check/Bit exactly
+  // like a payment can be received that way.
+  final _cardLast4Controller = TextEditingController();
+  String _cardType = 'visa';
+  final _approvalNumberController = TextEditingController();
+  final _installmentsController = TextEditingController(text: '1');
+  final _checkNumberController = TextEditingController();
+  final _bankNameController = TextEditingController();
+  final _branchNumberController = TextEditingController();
+  final _accountNumberController = TextEditingController();
+  DateTime? _checkDate;
+  final _referenceNumberController = TextEditingController();
 
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
@@ -26,6 +42,102 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       lastDate: DateTime.now().add(const Duration(days: 30)),
     );
     if (picked != null) setState(() => _date = picked);
+  }
+
+  String _methodLabel(PaymentMethod m, AppLocalizations l10n) => switch (m) {
+        PaymentMethod.cash => l10n.paymentMethodCash,
+        PaymentMethod.creditCard => l10n.paymentMethodCreditCard,
+        PaymentMethod.bankTransfer => l10n.paymentMethodBankTransfer,
+        PaymentMethod.check => l10n.paymentMethodCheck,
+        PaymentMethod.bit => l10n.paymentMethodBit,
+        PaymentMethod.standingOrder => l10n.paymentMethodStandingOrder,
+      };
+
+  /// Mirrors PaymentsScreen's _methodSpecificFields exactly — only
+  /// show the fields relevant to whichever method is selected.
+  List<Widget> _methodSpecificFields(AppLocalizations l10n) {
+    switch (_method) {
+      case PaymentMethod.creditCard:
+        return [
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: _cardLast4Controller,
+                keyboardType: TextInputType.number,
+                maxLength: 4,
+                decoration: InputDecoration(labelText: l10n.paymentCardLast4, counterText: ''),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _cardType,
+                decoration: InputDecoration(labelText: l10n.paymentCardType),
+                items: const [
+                  DropdownMenuItem(value: 'visa', child: Text('Visa')),
+                  DropdownMenuItem(value: 'mastercard', child: Text('Mastercard')),
+                  DropdownMenuItem(value: 'isracard', child: Text('Isracard')),
+                  DropdownMenuItem(value: 'amex', child: Text('Amex')),
+                  DropdownMenuItem(value: 'diners', child: Text('Diners')),
+                ],
+                onChanged: (v) => setState(() => _cardType = v ?? 'visa'),
+              ),
+            ),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: TextField(controller: _approvalNumberController, decoration: InputDecoration(labelText: l10n.paymentApprovalNumber))),
+            const SizedBox(width: 10),
+            Expanded(child: TextField(controller: _installmentsController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.paymentInstallments))),
+          ]),
+        ];
+      case PaymentMethod.check:
+        return [
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: TextField(controller: _checkNumberController, decoration: InputDecoration(labelText: l10n.paymentCheckNumber))),
+            const SizedBox(width: 10),
+            Expanded(child: TextField(controller: _bankNameController, decoration: InputDecoration(labelText: l10n.paymentBankName))),
+          ]),
+          const SizedBox(height: 12),
+          Row(children: [
+            Expanded(child: TextField(controller: _branchNumberController, decoration: InputDecoration(labelText: l10n.paymentBranchNumber))),
+            const SizedBox(width: 10),
+            Expanded(child: TextField(controller: _accountNumberController, decoration: InputDecoration(labelText: l10n.paymentAccountNumber))),
+          ]),
+          const SizedBox(height: 12),
+          InkWell(
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context, initialDate: _checkDate ?? DateTime.now(),
+                firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                lastDate: DateTime.now().add(const Duration(days: 365)),
+              );
+              if (picked != null) setState(() => _checkDate = picked);
+            },
+            child: InputDecorator(
+              decoration: InputDecoration(labelText: l10n.paymentCheckDate),
+              child: Text(_checkDate == null ? l10n.paymentCheckDateHint : '${_checkDate!.day}/${_checkDate!.month}/${_checkDate!.year}'),
+            ),
+          ),
+        ];
+      case PaymentMethod.bankTransfer:
+        return [
+          const SizedBox(height: 12),
+          TextField(controller: _bankNameController, decoration: InputDecoration(labelText: l10n.paymentBankName)),
+          const SizedBox(height: 12),
+          TextField(controller: _referenceNumberController, decoration: InputDecoration(labelText: l10n.paymentReferenceNumber)),
+        ];
+      case PaymentMethod.bit:
+      case PaymentMethod.standingOrder:
+        return [
+          const SizedBox(height: 12),
+          TextField(controller: _referenceNumberController, decoration: InputDecoration(labelText: l10n.paymentReferenceNumber)),
+        ];
+      case PaymentMethod.cash:
+        return [];
+    }
   }
 
   Future<void> _save() async {
@@ -44,6 +156,18 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         category: _categoryController.text.trim(),
         amount: amount,
         method: _method,
+        cardLast4: _method == PaymentMethod.creditCard ? _cardLast4Controller.text.trim() : null,
+        cardType: _method == PaymentMethod.creditCard ? _cardType : null,
+        approvalNumber: _method == PaymentMethod.creditCard ? _approvalNumberController.text.trim() : null,
+        installments: _method == PaymentMethod.creditCard ? int.tryParse(_installmentsController.text.trim()) : null,
+        checkNumber: _method == PaymentMethod.check ? _checkNumberController.text.trim() : null,
+        bankName: (_method == PaymentMethod.check || _method == PaymentMethod.bankTransfer) ? _bankNameController.text.trim() : null,
+        branchNumber: _method == PaymentMethod.check ? _branchNumberController.text.trim() : null,
+        accountNumber: _method == PaymentMethod.check ? _accountNumberController.text.trim() : null,
+        checkDate: _method == PaymentMethod.check ? _checkDate?.toIso8601String().substring(0, 10) : null,
+        referenceNumber: (_method == PaymentMethod.bankTransfer || _method == PaymentMethod.bit || _method == PaymentMethod.standingOrder)
+            ? _referenceNumberController.text.trim()
+            : null,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (_) {
@@ -79,15 +203,13 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             onTap: _pickDate,
           ),
           const SizedBox(height: 6),
-          DropdownButtonFormField<String>(
+          DropdownButtonFormField<PaymentMethod>(
             value: _method,
             decoration: InputDecoration(labelText: l10n.expenseMethod),
-            items: [
-              DropdownMenuItem(value: 'cash', child: Text(l10n.expenseMethodCash)),
-              DropdownMenuItem(value: 'bank', child: Text(l10n.expenseMethodBank)),
-            ],
-            onChanged: (v) { if (v != null) setState(() => _method = v); },
+            items: PaymentMethod.values.map((m) => DropdownMenuItem(value: m, child: Text(_methodLabel(m, l10n)))).toList(),
+            onChanged: (v) => setState(() => _method = v ?? PaymentMethod.cash),
           ),
+          ..._methodSpecificFields(l10n),
           const SizedBox(height: 20),
           FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? '…' : l10n.expenseSave)),
         ],
