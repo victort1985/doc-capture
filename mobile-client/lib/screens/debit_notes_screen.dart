@@ -4,6 +4,7 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/debit_notes_service.dart';
+import 'credit_debit_form_screen.dart';
 
 class DebitNotesScreen extends StatefulWidget {
   const DebitNotesScreen({super.key});
@@ -50,6 +51,15 @@ class DebitNotesScreenState extends State<DebitNotesScreen> {
       appBar: AppBar(
         title: Text(l10n.debitNotesTitle),
         backgroundColor: Colors.transparent,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final created = await Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => const CreditDebitFormScreen(kind: CreditDebitKind.debit),
+          ));
+          if (created == true) _load();
+        },
+        child: const Icon(Icons.add),
       ),
       body: SafeArea(
         child: _loading

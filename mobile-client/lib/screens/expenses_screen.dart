@@ -4,6 +4,7 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/expenses_service.dart';
+import 'expense_form_screen.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -43,6 +44,13 @@ class ExpensesScreenState extends State<ExpensesScreen> {
       appBar: AppBar(
         title: Text(l10n.expensesTitle),
         backgroundColor: Colors.transparent,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final created = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ExpenseFormScreen()));
+          if (created == true) _load();
+        },
+        child: const Icon(Icons.add),
       ),
       body: SafeArea(
         child: _loading

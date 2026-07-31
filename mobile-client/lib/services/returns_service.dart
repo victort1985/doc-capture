@@ -42,11 +42,11 @@ class ReturnNote {
       );
 }
 
-/// Read-only for now — this app didn't have any UI for returns before
-/// (admin panel only). Creating a return still requires picking a
-/// warehouse item mapping per line, which needs more design work to
-/// do safely on a phone; listing what already exists is the lower-
-/// risk first step.
+/// Creating a return picks a delivery note to return against — see
+/// ReturnFormScreen. warehouseItemId (per line, for restocking the
+/// right warehouse item) isn't set from mobile yet — that mapping
+/// needs its own UI design, so items created here land unmapped and
+/// can be matched to a warehouse item later from the admin panel.
 class ReturnsService {
   ReturnsService(this._api);
   final ApiService _api;
@@ -54,5 +54,24 @@ class ReturnsService {
   Future<List<ReturnNote>> list() async {
     final res = await _api.get('/returns');
     return (res as List<dynamic>).map((e) => ReturnNote.fromJson(e)).toList();
+  }
+
+  Future<ReturnNote> create({
+    required int deliveryNoteId,
+    required String clientName,
+    String? clientEmail,
+    String? date,
+    required String reason,
+    required List<ReturnItem> items,
+  }) async {
+    final res = await _api.post('/returns', {
+      'deliveryNoteId': deliveryNoteId,
+      'clientName': clientName,
+      if (clientEmail != null && clientEmail.isNotEmpty) 'clientEmail': clientEmail,
+      if (date != null && date.isNotEmpty) 'date': date,
+      'reason': reason,
+      'items': items.map((i) => {'name': i.name, 'quantity': i.quantity, if (i.notes != null && i.notes!.isNotEmpty) 'notes': i.notes}).toList(),
+    });
+    return ReturnNote.fromJson(res);
   }
 }

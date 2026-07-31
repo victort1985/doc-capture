@@ -25,11 +25,10 @@ class Expense {
       );
 }
 
-/// Read-only for now — see the same note on ReturnsService. A field
-/// worker logging a receipt on the spot (photo + amount) is exactly
-/// the kind of thing this screen should eventually support creating,
-/// but that needs its own camera/upload flow design, not a quick
-/// addition alongside three other new read-only screens at once.
+/// A field worker logging a receipt on the spot still doesn't have a
+/// camera/photo-upload flow here — that's its own bit of design work.
+/// Creating an expense with just amount/description/category/method
+/// (no receipt attachment) is covered though.
 class ExpensesService {
   ExpensesService(this._api);
   final ApiService _api;
@@ -37,5 +36,22 @@ class ExpensesService {
   Future<List<Expense>> list() async {
     final res = await _api.get('/expenses');
     return (res as List<dynamic>).map((e) => Expense.fromJson(e)).toList();
+  }
+
+  Future<Expense> create({
+    String? date,
+    required String description,
+    String? category,
+    required double amount,
+    String method = 'cash',
+  }) async {
+    final res = await _api.post('/expenses', {
+      if (date != null && date.isNotEmpty) 'date': date,
+      'description': description,
+      if (category != null && category.isNotEmpty) 'category': category,
+      'amount': amount,
+      'method': method,
+    });
+    return Expense.fromJson(res);
   }
 }

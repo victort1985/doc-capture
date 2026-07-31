@@ -4,6 +4,7 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/returns_service.dart';
+import 'return_form_screen.dart';
 
 class ReturnsScreen extends StatefulWidget {
   const ReturnsScreen({super.key});
@@ -43,6 +44,13 @@ class ReturnsScreenState extends State<ReturnsScreen> {
       appBar: AppBar(
         title: Text(l10n.returnsTitle),
         backgroundColor: Colors.transparent,
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final created = await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReturnFormScreen()));
+          if (created == true) _load();
+        },
+        child: const Icon(Icons.add),
       ),
       body: SafeArea(
         child: _loading

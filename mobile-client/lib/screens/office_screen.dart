@@ -8,6 +8,10 @@ import 'quotes_screen.dart';
 import 'invoices_screen.dart';
 import 'orders_screen.dart';
 import 'payments_screen.dart';
+import 'returns_screen.dart';
+import 'credit_notes_screen.dart';
+import 'debit_notes_screen.dart';
+import 'expenses_screen.dart';
 
 /// The "Office" tab: a small sub-navigation of admin-style features
 /// (delivery notes, quotes, invoices), each independently gated by an
@@ -34,6 +38,10 @@ class _OfficeScreenState extends State<OfficeScreen> {
   final _deliveryNotesKey = GlobalKey<DeliveryNotesScreenState>();
   final _invoicesKey = GlobalKey<InvoicesScreenState>();
   final _paymentsKey = GlobalKey<PaymentsScreenState>();
+  final _returnsKey = GlobalKey<ReturnsScreenState>();
+  final _creditNotesKey = GlobalKey<CreditNotesScreenState>();
+  final _debitNotesKey = GlobalKey<DebitNotesScreenState>();
+  final _expensesKey = GlobalKey<ExpensesScreenState>();
 
   void _selectTab(int i, List<(String, IconData, Widget, VoidCallback?)> items) {
     if (i == _subIndex) return;
@@ -46,6 +54,17 @@ class _OfficeScreenState extends State<OfficeScreen> {
     final l10n = AppLocalizations.of(context)!;
     final user = context.watch<AppState>().currentUser;
 
+    // No dedicated office.returns / office.credit_notes / office.debit_notes
+    // / office.expenses permission keys exist yet (see
+    // permissions.constants.ts) — shown whenever the user has ANY
+    // existing office.* access, same broad gate root_screen.dart uses
+    // to decide whether to show the Office tab at all.
+    final hasOfficeAccess = (user?.hasPermission('office.delivery_notes') ?? false) ||
+        (user?.hasPermission('office.quotes') ?? false) ||
+        (user?.hasPermission('office.invoices') ?? false) ||
+        (user?.hasPermission('office.orders') ?? false) ||
+        (user?.hasPermission('office.payments') ?? false);
+
     final items = <(String, IconData, Widget, VoidCallback?)>[
       if (user?.hasPermission('office.quotes') ?? false)
         (l10n.quotesTitle, Icons.request_quote_outlined, QuotesScreen(key: _quotesKey), () => _quotesKey.currentState?.refresh()),
@@ -53,10 +72,18 @@ class _OfficeScreenState extends State<OfficeScreen> {
         (l10n.navOrders, Icons.inventory_2_outlined, OrdersScreen(key: _ordersKey), () => _ordersKey.currentState?.refresh()),
       if (user?.hasPermission('office.delivery_notes') ?? false)
         (l10n.deliveryNotesTitle, Icons.assignment_outlined, DeliveryNotesScreen(key: _deliveryNotesKey), () => _deliveryNotesKey.currentState?.refresh()),
+      if (hasOfficeAccess)
+        (l10n.returnsTitle, Icons.assignment_return_outlined, ReturnsScreen(key: _returnsKey), () => _returnsKey.currentState?.refresh()),
       if (user?.hasPermission('office.invoices') ?? false)
         (l10n.invoicesTitle, Icons.receipt_long_outlined, InvoicesScreen(key: _invoicesKey), () => _invoicesKey.currentState?.refresh()),
+      if (hasOfficeAccess)
+        (l10n.creditNotesTitle, Icons.receipt_long_outlined, CreditNotesScreen(key: _creditNotesKey), () => _creditNotesKey.currentState?.refresh()),
+      if (hasOfficeAccess)
+        (l10n.debitNotesTitle, Icons.receipt_outlined, DebitNotesScreen(key: _debitNotesKey), () => _debitNotesKey.currentState?.refresh()),
       if (user?.hasPermission('office.payments') ?? false)
         (l10n.paymentsTitle, Icons.payments_outlined, PaymentsScreen(key: _paymentsKey), () => _paymentsKey.currentState?.refresh()),
+      if (hasOfficeAccess)
+        (l10n.expensesTitle, Icons.account_balance_wallet_outlined, ExpensesScreen(key: _expensesKey), () => _expensesKey.currentState?.refresh()),
     ];
 
     if (items.isEmpty) {
@@ -78,39 +105,42 @@ class _OfficeScreenState extends State<OfficeScreen> {
           elevation: 1,
           child: SafeArea(
             bottom: false,
-            child: Row(
-              children: [
-                for (var i = 0; i < items.length; i++)
-                  Expanded(
-                    child: InkWell(
-                      onTap: () => _selectTab(i, items),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        decoration: BoxDecoration(
-                          border: Border(
-                            bottom: BorderSide(
-                              color: i == index ? AppColors.primary : Colors.transparent,
-                              width: 2.5,
-                            ),
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(items[i].$2, size: 20, color: i == index ? AppColors.primary : AppColors.inkSoft),
-                            const SizedBox(height: 3),
-                            Text(
-                              items[i].$1,
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 10.5,
-                                fontWeight: i == index ? FontWeight.w700 : FontWeight.w500,
-                                color: i == index ? AppColors.primary : AppColors.inkSoft,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    SizedBox(
+                      width: 78,
+                      child: InkWell(
+                        onTap: () => _selectTab(i, items),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: i == index ? AppColors.primary : Colors.transparent,
+                                width: 2.5,
                               ),
                             ),
-                          ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(items[i].$2, size: 20, color: i == index ? AppColors.primary : AppColors.inkSoft),
+                              const SizedBox(height: 3),
+                              Text(
+                                items[i].$1,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: i == index ? FontWeight.w700 : FontWeight.w500,
+                                  color: i == index ? AppColors.primary : AppColors.inkSoft,
+                                ),
+                              ),
+                            ],
                         ),
                       ),
                     ),
@@ -119,6 +149,7 @@ class _OfficeScreenState extends State<OfficeScreen> {
             ),
           ),
         ),
+      ),
         Expanded(child: IndexedStack(index: index, children: items.map((e) => e.$3).toList())),
       ],
     );

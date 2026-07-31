@@ -35,7 +35,8 @@ class DebitNote {
       );
 }
 
-/// Read-only — see the same note on ReturnsService/CreditNotesService.
+/// Creating a debit note needs an invoice to correct — see
+/// DebitCreditFormScreen (shared with credit notes).
 class DebitNotesService {
   DebitNotesService(this._api);
   final ApiService _api;
@@ -43,5 +44,24 @@ class DebitNotesService {
   Future<List<DebitNote>> list() async {
     final res = await _api.get('/debit-notes');
     return (res as List<dynamic>).map((e) => DebitNote.fromJson(e)).toList();
+  }
+
+  Future<DebitNote> create({
+    required int invoiceId,
+    required String clientName,
+    String? clientEmail,
+    String? date,
+    required String reason,
+    required List<CreditDebitItem> items,
+  }) async {
+    final res = await _api.post('/debit-notes', {
+      'invoiceId': invoiceId,
+      'clientName': clientName,
+      if (clientEmail != null && clientEmail.isNotEmpty) 'clientEmail': clientEmail,
+      if (date != null && date.isNotEmpty) 'date': date,
+      'reason': reason,
+      'items': items.map((i) => {'description': i.description, 'quantity': i.quantity, 'unitPrice': i.unitPrice}).toList(),
+    });
+    return DebitNote.fromJson(res);
   }
 }

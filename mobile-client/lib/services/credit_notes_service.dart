@@ -47,10 +47,8 @@ class CreditNote {
       );
 }
 
-/// Read-only — see the same note on ReturnsService. Creating a credit
-/// note needs an invoice picker plus its own VAT/reason handling;
-/// listing what already exists (created from the admin panel) is the
-/// lower-risk first step for mobile.
+/// Creating a credit note needs an invoice to correct — see
+/// CreditNoteFormScreen, shared with debit notes via DebitCreditFormScreen.
 class CreditNotesService {
   CreditNotesService(this._api);
   final ApiService _api;
@@ -58,5 +56,24 @@ class CreditNotesService {
   Future<List<CreditNote>> list() async {
     final res = await _api.get('/credit-notes');
     return (res as List<dynamic>).map((e) => CreditNote.fromJson(e)).toList();
+  }
+
+  Future<CreditNote> create({
+    required int invoiceId,
+    required String clientName,
+    String? clientEmail,
+    String? date,
+    required String reason,
+    required List<CreditDebitItem> items,
+  }) async {
+    final res = await _api.post('/credit-notes', {
+      'invoiceId': invoiceId,
+      'clientName': clientName,
+      if (clientEmail != null && clientEmail.isNotEmpty) 'clientEmail': clientEmail,
+      if (date != null && date.isNotEmpty) 'date': date,
+      'reason': reason,
+      'items': items.map((i) => {'description': i.description, 'quantity': i.quantity, 'unitPrice': i.unitPrice}).toList(),
+    });
+    return CreditNote.fromJson(res);
   }
 }
