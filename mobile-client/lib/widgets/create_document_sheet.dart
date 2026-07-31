@@ -24,17 +24,10 @@ class _DocShortcut {
 
 /// Shows a grid of every document type as a one-tap shortcut — the
 /// "Action Hub" nav style's replacement for digging through the
-/// classic nav's Office sub-tabs. Each existing type (quotes/orders/
-/// delivery notes/invoices/payments) still respects its own
-/// office.* permission exactly like OfficeScreen does. The 4 new
-/// types (returns/credit notes/debit notes/expenses) don't have
-/// their own permission keys yet on the backend — see
-/// permissions.constants.ts — so they're shown whenever the user has
-/// ANY office.* access at all, the same broad gate root_screen.dart
-/// already uses to decide whether to show the Office tab in the
-/// first place. Worth tightening once dedicated permission keys
-/// exist for these.
-Future<void> showCreateDocumentSheet(BuildContext context, {required bool hasOfficeAccess}) {
+/// classic nav's Office sub-tabs. Every type (including the 4 newer
+/// ones — returns/credit notes/debit notes/expenses) respects its
+/// own dedicated office.* permission, exactly like OfficeScreen does.
+Future<void> showCreateDocumentSheet(BuildContext context) {
   final l10n = AppLocalizations.of(context)!;
   final user = context.read<AppState>().currentUser;
 
@@ -45,17 +38,17 @@ Future<void> showCreateDocumentSheet(BuildContext context, {required bool hasOff
       _DocShortcut(icon: Icons.inventory_2_outlined, label: (l) => l.navOrders, open: () => const OrdersScreen()),
     if (user?.hasPermission('office.delivery_notes') ?? false)
       _DocShortcut(icon: Icons.assignment_outlined, label: (l) => l.deliveryNotesTitle, open: () => const DeliveryNotesScreen()),
-    if (hasOfficeAccess)
+    if (user?.hasPermission('office.returns') ?? false)
       _DocShortcut(icon: Icons.assignment_return_outlined, label: (l) => l.returnsTitle, open: () => const ReturnsScreen(), isNew: true),
     if (user?.hasPermission('office.invoices') ?? false)
       _DocShortcut(icon: Icons.receipt_long_outlined, label: (l) => l.invoicesTitle, open: () => const InvoicesScreen()),
-    if (hasOfficeAccess)
+    if (user?.hasPermission('office.credit_notes') ?? false)
       _DocShortcut(icon: Icons.receipt_long_outlined, label: (l) => l.creditNotesTitle, open: () => const CreditNotesScreen(), isNew: true),
-    if (hasOfficeAccess)
+    if (user?.hasPermission('office.debit_notes') ?? false)
       _DocShortcut(icon: Icons.receipt_outlined, label: (l) => l.debitNotesTitle, open: () => const DebitNotesScreen(), isNew: true),
     if (user?.hasPermission('office.payments') ?? false)
       _DocShortcut(icon: Icons.payments_outlined, label: (l) => l.paymentsTitle, open: () => const PaymentsScreen()),
-    if (hasOfficeAccess)
+    if (user?.hasPermission('office.expenses') ?? false)
       _DocShortcut(icon: Icons.account_balance_wallet_outlined, label: (l) => l.expensesTitle, open: () => const ExpensesScreen(), isNew: true),
   ];
 

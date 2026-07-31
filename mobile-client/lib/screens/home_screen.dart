@@ -24,12 +24,9 @@ class _StatCardData {
 
 /// The default tab on app open — an overview built entirely from
 /// whatever the signed-in user actually has permission to see. Each
-/// stat is fetched independently and gated by the same office.*
-/// permission (or the broad hasOfficeAccess fallback for the 4 types
-/// that don't have their own permission key yet — same note as
-/// office_screen.dart/create_document_sheet.dart) the rest of the app
-/// already uses, so a user with only Calls access sees just the
-/// Calls card, not an empty wall of cards they can't act on.
+/// stat is fetched independently and gated by its own dedicated
+/// office.* permission, so a user with only Calls access sees just
+/// the Calls card, not an empty wall of cards they can't act on.
 ///
 /// No dedicated "/dashboard/stats" backend endpoint exists — each
 /// card's number comes from calling that feature's own list()
@@ -60,11 +57,6 @@ class HomeScreenState extends State<HomeScreen> {
     final l10n = AppLocalizations.of(context)!;
     final api = context.read<ApiService>();
     final user = context.read<AppState>().currentUser;
-    final hasOfficeAccess = (user?.hasPermission('office.delivery_notes') ?? false) ||
-        (user?.hasPermission('office.quotes') ?? false) ||
-        (user?.hasPermission('office.invoices') ?? false) ||
-        (user?.hasPermission('office.orders') ?? false) ||
-        (user?.hasPermission('office.payments') ?? false);
 
     final cards = <_StatCardData>[];
 
@@ -99,19 +91,25 @@ class HomeScreenState extends State<HomeScreen> {
       } catch (_) {}
     }
 
-    if (hasOfficeAccess) {
+    if (user?.hasPermission('office.returns') ?? false) {
       try {
         final returns = await ReturnsService(api).list();
         cards.add(_StatCardData(icon: Icons.assignment_return_outlined, label: l10n.homeReturns, value: '${returns.length}', color: AppColors.primarySoft));
       } catch (_) {}
+    }
+    if (user?.hasPermission('office.credit_notes') ?? false) {
       try {
         final creditNotes = await CreditNotesService(api).list();
         cards.add(_StatCardData(icon: Icons.receipt_long_outlined, label: l10n.homeCreditNotes, value: '${creditNotes.length}', color: AppColors.stamp));
       } catch (_) {}
+    }
+    if (user?.hasPermission('office.debit_notes') ?? false) {
       try {
         final debitNotes = await DebitNotesService(api).list();
         cards.add(_StatCardData(icon: Icons.receipt_outlined, label: l10n.homeDebitNotes, value: '${debitNotes.length}', color: AppColors.stamp));
       } catch (_) {}
+    }
+    if (user?.hasPermission('office.expenses') ?? false) {
       try {
         final expenses = await ExpensesService(api).list();
         final total = expenses.fold<double>(0, (sum, e) => sum + e.amount);

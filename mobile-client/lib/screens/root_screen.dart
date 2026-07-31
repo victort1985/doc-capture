@@ -248,7 +248,7 @@ class _RootScreenState extends State<RootScreen> {
         ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: AppColors.stamp,
-          onPressed: () => showCreateDocumentSheet(context, hasOfficeAccess: hasOfficeAccess),
+          onPressed: () => showCreateDocumentSheet(context),
           child: const Icon(Icons.add, color: Colors.white),
         ),
         floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,

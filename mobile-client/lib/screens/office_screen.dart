@@ -54,17 +54,6 @@ class _OfficeScreenState extends State<OfficeScreen> {
     final l10n = AppLocalizations.of(context)!;
     final user = context.watch<AppState>().currentUser;
 
-    // No dedicated office.returns / office.credit_notes / office.debit_notes
-    // / office.expenses permission keys exist yet (see
-    // permissions.constants.ts) — shown whenever the user has ANY
-    // existing office.* access, same broad gate root_screen.dart uses
-    // to decide whether to show the Office tab at all.
-    final hasOfficeAccess = (user?.hasPermission('office.delivery_notes') ?? false) ||
-        (user?.hasPermission('office.quotes') ?? false) ||
-        (user?.hasPermission('office.invoices') ?? false) ||
-        (user?.hasPermission('office.orders') ?? false) ||
-        (user?.hasPermission('office.payments') ?? false);
-
     final items = <(String, IconData, Widget, VoidCallback?)>[
       if (user?.hasPermission('office.quotes') ?? false)
         (l10n.quotesTitle, Icons.request_quote_outlined, QuotesScreen(key: _quotesKey), () => _quotesKey.currentState?.refresh()),
@@ -72,17 +61,17 @@ class _OfficeScreenState extends State<OfficeScreen> {
         (l10n.navOrders, Icons.inventory_2_outlined, OrdersScreen(key: _ordersKey), () => _ordersKey.currentState?.refresh()),
       if (user?.hasPermission('office.delivery_notes') ?? false)
         (l10n.deliveryNotesTitle, Icons.assignment_outlined, DeliveryNotesScreen(key: _deliveryNotesKey), () => _deliveryNotesKey.currentState?.refresh()),
-      if (hasOfficeAccess)
+      if (user?.hasPermission('office.returns') ?? false)
         (l10n.returnsTitle, Icons.assignment_return_outlined, ReturnsScreen(key: _returnsKey), () => _returnsKey.currentState?.refresh()),
       if (user?.hasPermission('office.invoices') ?? false)
         (l10n.invoicesTitle, Icons.receipt_long_outlined, InvoicesScreen(key: _invoicesKey), () => _invoicesKey.currentState?.refresh()),
-      if (hasOfficeAccess)
+      if (user?.hasPermission('office.credit_notes') ?? false)
         (l10n.creditNotesTitle, Icons.receipt_long_outlined, CreditNotesScreen(key: _creditNotesKey), () => _creditNotesKey.currentState?.refresh()),
-      if (hasOfficeAccess)
+      if (user?.hasPermission('office.debit_notes') ?? false)
         (l10n.debitNotesTitle, Icons.receipt_outlined, DebitNotesScreen(key: _debitNotesKey), () => _debitNotesKey.currentState?.refresh()),
       if (user?.hasPermission('office.payments') ?? false)
         (l10n.paymentsTitle, Icons.payments_outlined, PaymentsScreen(key: _paymentsKey), () => _paymentsKey.currentState?.refresh()),
-      if (hasOfficeAccess)
+      if (user?.hasPermission('office.expenses') ?? false)
         (l10n.expensesTitle, Icons.account_balance_wallet_outlined, ExpensesScreen(key: _expensesKey), () => _expensesKey.currentState?.refresh()),
     ];
 
