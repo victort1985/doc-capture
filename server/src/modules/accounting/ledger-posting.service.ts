@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { AccountingService } from './accounting.service';
 import { VAT_RATE } from '../documents/document-pdf.util';
+import { PaymentMethod } from '../payments/entities/payment.entity';
 
 /**
  * Auto-posts the standard double-entry pair for each document type
@@ -82,9 +83,9 @@ export class LedgerPostingService {
 
   /** Direct expense: paid immediately, debit General Expenses, credit
    * whichever of Cash/Bank it came from. */
-  async postExpense(organizationId: number, expenseId: number, date: string, amount: number, method: 'cash' | 'bank', description: string): Promise<void> {
+  async postExpense(organizationId: number, expenseId: number, date: string, amount: number, method: PaymentMethod, description: string): Promise<void> {
     const expenses = await this.accounting.getSystemAccount(organizationId, '5000');
-    const cashLike = method === 'cash'
+    const cashLike = method === PaymentMethod.CASH
       ? await this.accounting.getSystemAccount(organizationId, '1000')
       : await this.accounting.getSystemAccount(organizationId, '1010');
     await this.accounting.postEntry(organizationId, date, `הוצאה — ${description}`, expenses.id, cashLike.id, amount, 'expense', expenseId);
@@ -101,9 +102,9 @@ export class LedgerPostingService {
 
   /** Marking a supplier invoice paid: debit Accounts Payable (what's
    * owed goes down), credit Cash/Bank (money actually left). */
-  async postSupplierPayment(organizationId: number, supplierInvoiceId: number, date: string, amount: number, method: 'cash' | 'bank', supplierName: string): Promise<void> {
+  async postSupplierPayment(organizationId: number, supplierInvoiceId: number, date: string, amount: number, method: PaymentMethod, supplierName: string): Promise<void> {
     const ap = await this.accounting.getSystemAccount(organizationId, '2000');
-    const cashLike = method === 'cash'
+    const cashLike = method === PaymentMethod.CASH
       ? await this.accounting.getSystemAccount(organizationId, '1000')
       : await this.accounting.getSystemAccount(organizationId, '1010');
     await this.accounting.postEntry(organizationId, date, `תשלום לספק — ${supplierName}`, ap.id, cashLike.id, amount, 'supplier-payment', supplierInvoiceId);

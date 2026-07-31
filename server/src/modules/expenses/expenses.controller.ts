@@ -9,6 +9,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { PaymentMethod } from '../payments/entities/payment.entity';
 
 type ReqUser = { id: number; organizationId: number | null };
 
@@ -72,8 +73,8 @@ export class SupplierInvoicesController {
   }
 
   @Post(':id/mark-paid')
-  markPaid(@Param('id', ParseIntPipe) id: number, @Body() body: { method?: 'cash' | 'bank' }, @CurrentUser() user: ReqUser) {
-    return this.service.markSupplierInvoicePaid(id, user.organizationId, body.method ?? 'cash');
+  markPaid(@Param('id', ParseIntPipe) id: number, @Body() body: { method?: PaymentMethod }, @CurrentUser() user: ReqUser) {
+    return this.service.markSupplierInvoicePaid(id, user.organizationId, body.method ?? PaymentMethod.CASH);
   }
 
   /** CSV columns: supplierName,invoiceNumber,date,dueDate,amount,

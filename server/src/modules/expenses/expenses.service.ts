@@ -8,6 +8,7 @@ import { CreateSupplierInvoiceDto } from './dto/create-supplier-invoice.dto';
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
 import { StorageService } from '../storage/storage.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
+import { PaymentMethod } from '../payments/entities/payment.entity';
 
 @Injectable()
 export class ExpensesService {
@@ -32,7 +33,17 @@ export class ExpensesService {
       description: dto.description,
       category: dto.category,
       amount: dto.amount,
-      method: dto.method ?? 'cash',
+      method: dto.method ?? PaymentMethod.CASH,
+      cardLast4: dto.cardLast4,
+      cardType: dto.cardType,
+      approvalNumber: dto.approvalNumber,
+      installments: dto.installments,
+      checkNumber: dto.checkNumber,
+      bankName: dto.bankName,
+      branchNumber: dto.branchNumber,
+      accountNumber: dto.accountNumber,
+      checkDate: dto.checkDate,
+      referenceNumber: dto.referenceNumber,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
@@ -86,7 +97,7 @@ export class ExpensesService {
    * itself still guards against marking an already-paid invoice paid
    * again, since that's a genuine user-facing mistake to prevent, not
    * just a retry to no-op. */
-  async markSupplierInvoicePaid(id: number, organizationId: number | null, method: 'cash' | 'bank'): Promise<SupplierInvoice> {
+  async markSupplierInvoicePaid(id: number, organizationId: number | null, method: PaymentMethod): Promise<SupplierInvoice> {
     const invoice = await this.supplierInvoicesRepo.findOne({ where: { id }, relations: ['organization'] });
     if (!invoice) throw new NotFoundException('Supplier invoice not found');
     if (organizationId != null && invoice.organization?.id !== organizationId) throw new NotFoundException('Supplier invoice not found');
@@ -159,7 +170,7 @@ export class ExpensesService {
         const amount = Number(row.amount);
         if (!row.description) throw new Error('description is required');
         if (!Number.isFinite(amount) || amount <= 0) throw new Error(`invalid amount: "${row.amount}"`);
-        const method = row.method === 'bank' ? 'bank' : 'cash';
+        const method = row.method === 'bank' ? PaymentMethod.BANK_TRANSFER : PaymentMethod.CASH;
         await this.createExpense(organizationId, userId, {
           date: row.date || undefined,
           description: row.description,

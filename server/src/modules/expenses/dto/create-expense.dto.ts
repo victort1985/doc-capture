@@ -1,4 +1,5 @@
-import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { IsEnum, IsInt, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import { PaymentMethod } from '../../payments/entities/payment.entity';
 
 export class CreateExpenseDto {
   @IsString()
@@ -17,7 +18,47 @@ export class CreateExpenseDto {
   @IsPositive()
   amount: number;
 
-  @IsIn(['cash', 'bank'])
+  @IsEnum(PaymentMethod)
   @IsOptional()
-  method?: 'cash' | 'bank';
+  method?: PaymentMethod;
+
+  @IsString()
+  @IsOptional()
+  cardLast4?: string;
+
+  @IsString()
+  @IsOptional()
+  cardType?: string;
+
+  @IsString()
+  @IsOptional()
+  approvalNumber?: string;
+
+  @IsInt()
+  @IsOptional()
+  installments?: number;
+
+  @IsString()
+  @IsOptional()
+  checkNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  bankName?: string;
+
+  @IsString()
+  @IsOptional()
+  branchNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  accountNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  checkDate?: string;
+
+  @IsString()
+  @IsOptional()
+  referenceNumber?: string;
 }
