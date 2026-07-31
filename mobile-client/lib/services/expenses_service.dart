@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:dio/dio.dart';
 import '../services/api_service.dart';
 import 'payments_service.dart' show PaymentMethod, paymentMethodValue;
 
@@ -87,5 +89,16 @@ class ExpensesService {
       if (referenceNumber != null && referenceNumber.isNotEmpty) 'referenceNumber': referenceNumber,
     });
     return Expense.fromJson(res);
+  }
+
+  /// Uploads a receipt photo for an already-created expense — a
+  /// separate call rather than part of create(), matching the
+  /// backend's own POST /expenses/:id/receipt (attach-after-create),
+  /// which the admin panel's file upload already used the same way.
+  Future<void> attachReceipt(int expenseId, File photo) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(photo.path, filename: 'receipt.jpg'),
+    });
+    await _api.postFormData('/expenses/$expenseId/receipt', formData);
   }
 }

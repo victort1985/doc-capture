@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/expenses_service.dart';
@@ -17,6 +19,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   final _amountController = TextEditingController();
   DateTime _date = DateTime.now();
   PaymentMethod _method = PaymentMethod.cash;
+  File? _receiptPhoto;
   bool _saving = false;
 
   // Method-specific controllers — same set/shape as PaymentsScreen's
@@ -42,6 +45,18 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       lastDate: DateTime.now().add(const Duration(days: 30)),
     );
     if (picked != null) setState(() => _date = picked);
+  }
+
+  Future<void> _pickReceiptFromCamera() async {
+    final photo = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 90);
+    if (photo == null || !mounted) return;
+    setState(() => _receiptPhoto = File(photo.path));
+  }
+
+  Future<void> _pickReceiptFromGallery() async {
+    final photo = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
+    if (photo == null || !mounted) return;
+    setState(() => _receiptPhoto = File(photo.path));
   }
 
   String _methodLabel(PaymentMethod m, AppLocalizations l10n) => switch (m) {
@@ -150,7 +165,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     setState(() => _saving = true);
     try {
       final svc = ExpensesService(context.read<ApiService>());
-      await svc.create(
+      final created = await svc.create(
         date: _date.toIso8601String().substring(0, 10),
         description: _descriptionController.text.trim(),
         category: _categoryController.text.trim(),
@@ -169,6 +184,16 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             ? _referenceNumberController.text.trim()
             : null,
       );
+      // A failed receipt upload shouldn't undo an already-successful
+      // expense creation — the expense itself is the important part;
+      // the receipt photo is a nice-to-have attached after the fact.
+      if (_receiptPhoto != null) {
+        try {
+          await svc.attachReceipt(created.id, _receiptPhoto!);
+        } catch (_) {
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.expenseReceiptUploadError)));
+        }
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (_) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.expenseSaveError)));
@@ -210,6 +235,39 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             onChanged: (v) => setState(() => _method = v ?? PaymentMethod.cash),
           ),
           ..._methodSpecificFields(l10n),
+          const SizedBox(height: 16),
+          Text(l10n.expenseReceiptPhoto, style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          if (_receiptPhoto != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.file(_receiptPhoto!, height: 160, width: double.infinity, fit: BoxFit.cover),
+              ),
+            ),
+          Row(children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _pickReceiptFromCamera,
+                icon: const Icon(Icons.camera_alt_outlined, size: 18),
+                label: Text(l10n.expenseReceiptCamera),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: _pickReceiptFromGallery,
+                icon: const Icon(Icons.photo_library_outlined, size: 18),
+                label: Text(l10n.expenseReceiptGallery),
+              ),
+            ),
+          ]),
+          if (_receiptPhoto != null)
+            TextButton(
+              onPressed: () => setState(() => _receiptPhoto = null),
+              child: Text(l10n.expenseReceiptRemove),
+            ),
           const SizedBox(height: 20),
           FilledButton(onPressed: _saving ? null : _save, child: Text(_saving ? '…' : l10n.expenseSave)),
         ],

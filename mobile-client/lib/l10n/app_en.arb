@@ -609,5 +609,10 @@
   "returnPickWarehouseItemTitle": "Link warehouse item",
   "returnPickWarehouseItemHint": "Search by name or barcode",
   "returnWarehouseItemLinked": "Linked",
-  "returnWarehouseQtyInStock": "in stock"
+  "returnWarehouseQtyInStock": "in stock",
+  "expenseReceiptPhoto": "Receipt photo",
+  "expenseReceiptCamera": "Take photo",
+  "expenseReceiptGallery": "Choose from gallery",
+  "expenseReceiptRemove": "Remove photo",
+  "expenseReceiptUploadError": "Expense saved, but the receipt photo failed to upload — try attaching it again later."
 }

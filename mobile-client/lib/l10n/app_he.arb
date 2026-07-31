@@ -609,5 +609,10 @@
   "returnPickWarehouseItemTitle": "קישור לפריט מלאי",
   "returnPickWarehouseItemHint": "חיפוש לפי שם או ברקוד",
   "returnWarehouseItemLinked": "מקושר",
-  "returnWarehouseQtyInStock": "במלאי"
+  "returnWarehouseQtyInStock": "במלאי",
+  "expenseReceiptPhoto": "תמונת קבלה",
+  "expenseReceiptCamera": "צילום תמונה",
+  "expenseReceiptGallery": "בחירה מהגלריה",
+  "expenseReceiptRemove": "הסרת תמונה",
+  "expenseReceiptUploadError": "ההוצאה נשמרה, אך העלאת תמונת הקבלה נכשלה — נסה לצרף אותה מאוחר יותר."
 }
