@@ -42,7 +42,8 @@
     "taxAuthority": "Tax Authority",
     "currencyRates": "Currency Rates",
     "templateDesigner": "Document Designer",
-    "backup": "Backups"
+    "backup": "Backups",
+    "timeThresholds": "Time Thresholds"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1356,5 +1357,19 @@
     "merging": "Merging…",
     "mergeConfirm": "Merge in the contents of {{filename}}? Existing data will not be touched — only missing rows will be added.",
     "mergeSuccess": "Merge complete — {{count}} insert statements processed (rows already present were skipped automatically)."
+  },
+  "timeThresholds": {
+    "eyebrow": "System",
+    "title": "Time Thresholds",
+    "disclaimer": "These control the yellow/red color-coding used throughout the app — the whole card/row, not just a small dot — for calls, vehicle inspections, and equipment rentals as they approach their deadline.",
+    "calls": "Calls",
+    "vehicles": "Vehicle inspections/tests",
+    "rentals": "Equipment rentals",
+    "hours": "hours",
+    "days": "days",
+    "warningAfter": "Yellow after",
+    "dangerAfter": "Red after",
+    "warningBefore": "Yellow starting",
+    "dangerBefore": "Red starting"
   }
 }
