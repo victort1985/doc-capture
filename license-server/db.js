@@ -35,5 +35,7 @@ try { db.exec('ALTER TABLE licenses ADD COLUMN provisioned INTEGER NOT NULL DEFA
 try { db.exec('ALTER TABLE licenses ADD COLUMN public_url TEXT'); } catch {}
 try { db.exec('ALTER TABLE licenses ADD COLUMN cf_access_client_id TEXT'); } catch {}
 try { db.exec('ALTER TABLE licenses ADD COLUMN cf_access_client_secret TEXT'); } catch {}
+try { db.exec('ALTER TABLE admin_users ADD COLUMN reset_token_hash TEXT'); } catch {}
+try { db.exec('ALTER TABLE admin_users ADD COLUMN reset_token_expires TEXT'); } catch {}
 
 module.exports = db;

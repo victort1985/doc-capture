@@ -59,6 +59,43 @@ app.post('/admin/login', (req, res) => {
   res.json({ token });
 });
 
+/** Completes a password reset started with
+ * scripts/generate-reset-token.js on the server itself — no prior
+ * login needed (that's the whole point of a "forgot password" flow),
+ * just a valid, unexpired token. The token's hash is compared with
+ * crypto.timingSafeEqual rather than ===/db lookup-by-value, so this
+ * endpoint's response time doesn't leak how many hash characters
+ * matched to an attacker guessing token values. */
+app.post('/admin/reset-password', (req, res) => {
+  const { username, token, newPassword } = req.body || {};
+  if (!username || !token || !newPassword) {
+    return res.status(400).json({ error: 'username, token, and newPassword are all required' });
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({ error: 'newPassword must be at least 8 characters' });
+  }
+
+  const user = db.prepare('SELECT * FROM admin_users WHERE username = ?').get(username);
+  if (!user || !user.reset_token_hash || !user.reset_token_expires) {
+    return res.status(400).json({ error: 'No reset in progress for this user — generate a new token from the server terminal.' });
+  }
+  if (new Date(user.reset_token_expires).getTime() < Date.now()) {
+    return res.status(400).json({ error: 'This reset link has expired — generate a new one from the server terminal.' });
+  }
+
+  const suppliedHash = crypto.createHash('sha256').update(token).digest('hex');
+  const storedHash = user.reset_token_hash;
+  const matches = suppliedHash.length === storedHash.length &&
+    crypto.timingSafeEqual(Buffer.from(suppliedHash), Buffer.from(storedHash));
+  if (!matches) {
+    return res.status(400).json({ error: 'Invalid reset token' });
+  }
+
+  const newHash = bcrypt.hashSync(newPassword, 10);
+  db.prepare('UPDATE admin_users SET password_hash = ?, reset_token_hash = NULL, reset_token_expires = NULL WHERE id = ?').run(newHash, user.id);
+  res.json({ success: true });
+});
+
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization || '';
   const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;

@@ -53,6 +53,9 @@
     <input id="loginPass" type="password" placeholder="Password">
     <button onclick="login()">Sign in</button>
     <div id="loginError" style="color:#b3261e;font-size:13px;margin-top:8px;"></div>
+    <div style="color:var(--ink-soft);font-size:11.5px;margin-top:12px;">
+      Forgot your password? Run <code>node scripts/generate-reset-token.js &lt;username&gt;</code> on the server — it prints a one-time link to set a new one.
+    </div>
   </div>
 
   <div id="mainArea" class="hidden">
