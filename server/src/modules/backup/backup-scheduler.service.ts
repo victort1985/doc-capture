@@ -2,16 +2,44 @@ import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { BackupSchedule, BackupFrequency } from './entities/backup-schedule.entity';
 import { BackupService } from './backup.service';
 
 export class UpdateBackupScheduleDto {
+  @IsBoolean()
+  @IsOptional()
   enabled?: boolean;
+
+  @IsEnum(BackupFrequency)
+  @IsOptional()
   frequency?: BackupFrequency;
+
+  @IsInt()
+  @Min(1)
+  @Max(24)
+  @IsOptional()
   intervalHours?: number;
+
+  @IsString()
+  @IsOptional()
   timeOfDay?: string;
+
+  @IsInt()
+  @Min(0)
+  @Max(6)
+  @IsOptional()
   dayOfWeek?: number | null;
+
+  @IsInt()
+  @Min(1)
+  @Max(31)
+  @IsOptional()
   dayOfMonth?: number | null;
+
+  @IsInt()
+  @Min(0)
+  @IsOptional()
   retentionCount?: number;
 }
 
