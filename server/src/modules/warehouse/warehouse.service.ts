@@ -90,6 +90,10 @@ export class WarehouseService {
     });
   }
 
+  async getItemById(id: number): Promise<WarehouseItem | null> {
+    return this.itemsRepo.findOne({ where: { id } });
+  }
+
   async createItem(dto: Partial<WarehouseItem> & { categoryId?: number; locationId?: number }, organizationId: number | null): Promise<WarehouseItem> {
     const barcode = dto.barcode || await this.generateBarcode();
     const existing = await this.itemsRepo.findOne({ where: { barcode } });

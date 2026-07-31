@@ -48,6 +48,8 @@ import { InvoiceIsraelModule } from './modules/invoice-israel/invoice-israel.mod
 import { CurrencyModule } from './modules/currency/currency.module';
 import { TemplateDesignModule } from './modules/template-design/template-design.module';
 import { BackupModule } from './modules/backup/backup.module';
+import { TimeThresholdsModule } from './modules/time-thresholds/time-thresholds.module';
+import { RentalsModule } from './modules/rentals/rentals.module';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -113,6 +115,8 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     CurrencyModule,
     TemplateDesignModule,
     BackupModule,
+    TimeThresholdsModule,
+    RentalsModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
