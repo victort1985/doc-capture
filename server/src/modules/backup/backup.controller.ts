@@ -1,4 +1,5 @@
-import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Res, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
 import { BackupService } from './backup.service';
 import { BackupSchedulerService, UpdateBackupScheduleDto } from './backup-scheduler.service';
@@ -65,5 +66,18 @@ export class BackupController {
   @Post('schedule')
   updateSchedule(@Body() dto: UpdateBackupScheduleDto) {
     return this.scheduler.update(dto);
+  }
+
+  /** Restore-from-a-device-file, non-destructive: existing rows are
+   * never deleted or overwritten, only rows missing from the current
+   * database get added — see BackupService.mergeRestoreFromUpload()'s
+   * own doc comment for exactly how. No confirm-string requirement
+   * here the way the destructive restore has, since this mode can't
+   * delete or overwrite anything by design. */
+  @Post('restore-merge')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 500 * 1024 * 1024 } }))
+  async restoreMerge(@UploadedFile() file: { buffer: Buffer } | undefined) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    return this.service.mergeRestoreFromUpload(file.buffer);
   }
 }

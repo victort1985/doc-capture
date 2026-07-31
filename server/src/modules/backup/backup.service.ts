@@ -182,6 +182,75 @@ export class BackupService {
     this.logger.warn(`Database restored from backup ${filename}`);
   }
 
+  /** Non-destructive restore from an UPLOADED file (a device-local
+   * backup, not necessarily one already sitting in this server's own
+   * backup directory) — the opposite safety trade-off from restore()
+   * above: existing rows are never touched or deleted, only rows that
+   * don't already exist (by primary key / unique constraint) get
+   * added. Requires the file to be one of this app's own --inserts-
+   * format dumps (see runPgDump) — a plain per-row INSERT statement
+   * is what makes "skip on conflict" possible at all; the default
+   * COPY bulk format has no per-row granularity to do this with.
+   *
+   * Accepts the file either still encrypted+gzipped (this app's own
+   * backup format) or already plain SQL text — tries decrypt+gunzip
+   * first and falls back to treating the upload as plain text if
+   * that fails, so a backup someone already manually decrypted still
+   * works.
+   *
+   * Deliberately strips out anything that isn't a plain "INSERT INTO"
+   * line (CREATE TABLE, ALTER TABLE, sequence setup, COPY blocks,
+   * etc.) — the target database already has its own correct,
+   * currently-running schema; re-executing schema DDL from a
+   * (possibly older-version) uploaded file risks conflicting with it
+   * outright, which "merge, don't destroy" should never risk.
+   *
+   * Returns a rough statement count rather than a precise "N rows
+   * actually added vs M skipped as duplicates" — getting an exact
+   * per-row count would need parsing each individual statement's
+   * result from psql's output, which isn't worth the complexity for
+   * what is already a best-effort reconciliation tool, not a precise
+   * migration mechanism. */
+  async mergeRestoreFromUpload(uploadBuffer: Buffer): Promise<{ statementsAttempted: number }> {
+    let sql: Buffer;
+    try {
+      const decrypted = decryptBuffer(uploadBuffer);
+      sql = zlib.gunzipSync(decrypted);
+    } catch {
+      try {
+        sql = zlib.gunzipSync(uploadBuffer); // maybe gzipped but not encrypted
+      } catch {
+        sql = uploadBuffer; // maybe plain SQL text already
+      }
+    }
+
+    const text = sql.toString('utf8');
+    const insertLines = text
+      .split('\n')
+      .filter((line) => /^INSERT INTO /i.test(line.trim()));
+
+    if (insertLines.length === 0) {
+      throw new BadRequestException(
+        'No INSERT statements found in this file — merge-restore only works with this app\'s own backups ' +
+        '(created with --inserts format), not a plain pg_dump or one from before this feature existed.',
+      );
+    }
+
+    const mergeableSql = insertLines
+      .map((line) => {
+        const trimmed = line.trimEnd();
+        // Every pg_dump --inserts line ends in exactly one semicolon —
+        // replace only that trailing one, not any semicolon that
+        // might appear inside a quoted string value earlier in the line.
+        return trimmed.endsWith(';') ? `${trimmed.slice(0, -1)} ON CONFLICT DO NOTHING;` : `${trimmed} ON CONFLICT DO NOTHING;`;
+      })
+      .join('\n');
+
+    await this.runPsqlRestore(Buffer.from(mergeableSql, 'utf8'));
+    this.logger.warn(`Merge-restored from an uploaded file: ${insertLines.length} insert statements processed (existing rows never touched, only missing ones added)`);
+    return { statementsAttempted: insertLines.length };
+  }
+
   /** Filenames are only ever ones this service itself generated, but
    * validate anyway since the value arrives from a URL param — this
    * is the one thing standing between "read a file in the backup
@@ -199,6 +268,13 @@ export class BackupService {
         '-h', process.env.DB_HOST || 'localhost',
         '-p', process.env.DB_PORT || '5432',
         '-U', process.env.DB_USERNAME || 'postgres',
+        // --inserts (row-by-row INSERT statements instead of the
+        // default bulk COPY format) is what makes mergeRestore()
+        // possible below — COPY's tab-separated block format has no
+        // per-row granularity to add ON CONFLICT DO NOTHING to.
+        // Larger files and a slower dump/restore than COPY, but this
+        // app's data sizes don't make that a real concern.
+        '--inserts',
         process.env.DB_DATABASE || 'doc_capture',
       ];
       const child = spawn('pg_dump', args, {
