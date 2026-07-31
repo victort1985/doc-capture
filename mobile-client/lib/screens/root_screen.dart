@@ -14,6 +14,7 @@ import '../widgets/organization_logo_background.dart';
 import '../widgets/customizable_bottom_nav.dart';
 import '../widgets/create_document_sheet.dart';
 import 'more_screen.dart';
+import 'home_screen.dart';
 import '../app/theme.dart';
 
 class RootScreen extends StatefulWidget {
@@ -26,7 +27,7 @@ class RootScreen extends StatefulWidget {
 class _RootScreenState extends State<RootScreen> {
   int _index = 0; // still used for the desktop NavigationRail, which doesn't need reordering
   String? _selectedId;
-  String _actionHubSelectedId = 'home';
+  String _actionHubSelectedId = 'dashboard';
   List<String>? _tabOrder;
   Set<String>? _lastBaseTabIds;
   final _callsListKey = GlobalKey<CallsListScreenState>();
@@ -85,6 +86,7 @@ class _RootScreenState extends State<RootScreen> {
         (user?.hasPermission('office.payments') ?? false);
 
     final screensById = <String, Widget>{
+      'dashboard': const HomeScreen(),
       'home': const InventoryScreen(),
       'calls': CallsListScreen(key: _callsListKey),
       'phonebook': const PhoneBookScreen(),
@@ -100,7 +102,8 @@ class _RootScreenState extends State<RootScreen> {
     final canonicalIds = screensById.keys.toList();
 
     final baseTabs = [
-      BottomNavTab(id: 'home', icon: Icons.inventory_2_outlined, selectedIcon: Icons.inventory_2, label: l10n.navHome),
+      BottomNavTab(id: 'dashboard', icon: Icons.dashboard_outlined, selectedIcon: Icons.dashboard, label: l10n.navHome),
+      BottomNavTab(id: 'home', icon: Icons.inventory_2_outlined, selectedIcon: Icons.inventory_2, label: l10n.navScan),
       BottomNavTab(id: 'calls', icon: Icons.support_agent_outlined, selectedIcon: Icons.support_agent, label: l10n.callsTitle),
       BottomNavTab(id: 'phonebook', icon: Icons.contacts_outlined, selectedIcon: Icons.contacts, label: l10n.phoneBookTitle),
       BottomNavTab(id: 'calendar', icon: Icons.calendar_month_outlined, selectedIcon: Icons.calendar_month, label: l10n.calendarTitle),
@@ -203,12 +206,12 @@ class _RootScreenState extends State<RootScreen> {
       // Settings; the classic customizable nav (orderedTabs above)
       // stays the default and is left completely untouched by this
       // branch, including its own reorder-persistence logic.
-      final actionHubIds = ['home', 'calls', 'phonebook', 'more'];
-      if (!actionHubIds.contains(_actionHubSelectedId)) _actionHubSelectedId = 'home';
+      final actionHubIds = ['dashboard', 'calls', 'phonebook', 'more'];
+      if (!actionHubIds.contains(_actionHubSelectedId)) _actionHubSelectedId = 'dashboard';
       final actionHubIndex = canonicalIds.indexOf(_actionHubSelectedId).clamp(0, canonicalIds.length - 1);
 
       final actionHubTabs = [
-        (id: 'home', icon: Icons.inventory_2_outlined, selectedIcon: Icons.inventory_2, label: l10n.navHome),
+        (id: 'dashboard', icon: Icons.dashboard_outlined, selectedIcon: Icons.dashboard, label: l10n.navHome),
         (id: 'calls', icon: Icons.support_agent_outlined, selectedIcon: Icons.support_agent, label: l10n.callsTitle),
         (id: 'phonebook', icon: Icons.contacts_outlined, selectedIcon: Icons.contacts, label: l10n.navContacts),
         (id: 'more', icon: Icons.menu_outlined, selectedIcon: Icons.menu, label: l10n.navMore),

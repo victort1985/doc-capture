@@ -11,7 +11,7 @@
   "languageHebrew": "Иврит",
   "languageEnglish": "Английский",
   "languageRussian": "Русский",
-  "homeTitle": "Загрузка файлов",
+  "homeTitle": "Домашняя",
   "place": "Место",
   "placeHint": "например: филиал Тель-Авив",
   "docType": "Тип файла",
@@ -579,5 +579,24 @@
   "returnReason": "Причина",
   "returnItems": "Позиции",
   "returnItemName": "Наименование",
-  "returnItemNotes": "Заметки"
+  "returnItemNotes": "Заметки",
+  "homeGreeting": "С возвращением, {username}",
+  "homeNoStats": "Пока нечего показать для твоего уровня доступа.",
+  "homeOpenCalls": "Открытые звонки",
+  "homeDraftQuotes": "Черновики квот",
+  "homeOpenOrders": "Заказы",
+  "homeUnpaidInvoices": "Неоплаченные счета",
+  "homeAmountDue": "К оплате",
+  "homeReturns": "Возвраты",
+  "homeCreditNotes": "Кредит-ноты",
+  "homeDebitNotes": "Дебет-ноты",
+  "homeExpensesTotal": "Всего расходов",
+  "@homeGreeting": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "navScan": "Сканирование"
 }

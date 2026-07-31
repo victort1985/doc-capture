@@ -11,7 +11,7 @@
   "languageHebrew": "Hebrew",
   "languageEnglish": "English",
   "languageRussian": "Russian",
-  "homeTitle": "Upload files",
+  "homeTitle": "Home",
   "place": "Place",
   "placeHint": "e.g. Tel Aviv branch",
   "docType": "File type",
@@ -579,5 +579,24 @@
   "returnReason": "Reason",
   "returnItems": "Items",
   "returnItemName": "Item",
-  "returnItemNotes": "Notes"
+  "returnItemNotes": "Notes",
+  "homeGreeting": "Welcome back, {username}",
+  "homeNoStats": "Nothing to show yet for your access level.",
+  "homeOpenCalls": "Open calls",
+  "homeDraftQuotes": "Draft quotes",
+  "homeOpenOrders": "Orders",
+  "homeUnpaidInvoices": "Unpaid invoices",
+  "homeAmountDue": "Amount due",
+  "homeReturns": "Returns",
+  "homeCreditNotes": "Credit notes",
+  "homeDebitNotes": "Debit notes",
+  "homeExpensesTotal": "Total expenses",
+  "@homeGreeting": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "navScan": "Scan"
 }

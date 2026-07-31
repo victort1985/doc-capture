@@ -11,7 +11,7 @@
   "languageHebrew": "עברית",
   "languageEnglish": "אנגלית",
   "languageRussian": "רוסית",
-  "homeTitle": "העלאת קבצים",
+  "homeTitle": "בית",
   "place": "מקום",
   "placeHint": "לדוגמה: סניף תל אביב",
   "docType": "סוג קובץ",
@@ -579,5 +579,24 @@
   "returnReason": "סיבה",
   "returnItems": "פריטים",
   "returnItemName": "פריט",
-  "returnItemNotes": "הערות"
+  "returnItemNotes": "הערות",
+  "homeGreeting": "ברוך שובך, {username}",
+  "homeNoStats": "אין עדיין מה להציג לרמת ההרשאה שלך.",
+  "homeOpenCalls": "שיחות פתוחות",
+  "homeDraftQuotes": "הצעות מחיר בטיוטה",
+  "homeOpenOrders": "הזמנות",
+  "homeUnpaidInvoices": "חשבוניות שלא שולמו",
+  "homeAmountDue": "סכום לתשלום",
+  "homeReturns": "החזרות",
+  "homeCreditNotes": "הודעות זיכוי",
+  "homeDebitNotes": "הודעות חיוב",
+  "homeExpensesTotal": "סך ההוצאות",
+  "@homeGreeting": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "navScan": "סריקה"
 }
