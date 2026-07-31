@@ -1004,7 +1004,17 @@
     "methodStandingOrder": "הרשאה לחיוב חשבון",
     "viewCopy": "הדפסה כעותק נאמן למקור",
     "viewSummary": "הורדת סיכום מלא של ההזמנה",
-    "summaryUnavailable": "סיכום ההזמנה עדיין לא זמין."
+    "summaryUnavailable": "סיכום ההזמנה עדיין לא זמין.",
+    "cardLast4": "4 ספרות אחרונות של הכרטיס",
+    "cardType": "סוג כרטיס",
+    "approvalNumber": "מספר אישור",
+    "installments": "מספר תשלומים",
+    "checkNumber": "מספר צ'ק",
+    "bankName": "שם בנק",
+    "branchNumber": "מספר סניף",
+    "accountNumber": "מספר חשבון",
+    "checkDate": "תאריך הצ'ק",
+    "referenceNumber": "מספר אסמכתא"
   },
   "financialReports": {
     "eyebrow": "משרד",

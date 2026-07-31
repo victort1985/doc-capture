@@ -1004,7 +1004,17 @@
     "methodStandingOrder": "Standing order",
     "viewCopy": "Print as certified copy (נאמן למקור)",
     "viewSummary": "Download full order summary",
-    "summaryUnavailable": "Order summary not available yet."
+    "summaryUnavailable": "Order summary not available yet.",
+    "cardLast4": "Card last 4 digits",
+    "cardType": "Card type",
+    "approvalNumber": "Approval number",
+    "installments": "Installments",
+    "checkNumber": "Check number",
+    "bankName": "Bank name",
+    "branchNumber": "Branch number",
+    "accountNumber": "Account number",
+    "checkDate": "Check date",
+    "referenceNumber": "Reference number"
   },
   "financialReports": {
     "eyebrow": "Office",

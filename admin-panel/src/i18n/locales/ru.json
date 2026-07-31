@@ -1004,7 +1004,17 @@
     "methodStandingOrder": "Постоянное поручение",
     "viewCopy": "Печать как заверенная копия (נאמן למקור)",
     "viewSummary": "Скачать сводный документ по заказу",
-    "summaryUnavailable": "Сводный документ ещё не готов."
+    "summaryUnavailable": "Сводный документ ещё не готов.",
+    "cardLast4": "Последние 4 цифры карты",
+    "cardType": "Тип карты",
+    "approvalNumber": "Номер авторизации",
+    "installments": "Число платежей",
+    "checkNumber": "Номер чека",
+    "bankName": "Банк",
+    "branchNumber": "Номер отделения",
+    "accountNumber": "Номер счёта",
+    "checkDate": "Дата чека",
+    "referenceNumber": "Номер подтверждения"
   },
   "financialReports": {
     "eyebrow": "Офис",
