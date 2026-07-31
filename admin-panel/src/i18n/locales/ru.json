@@ -420,7 +420,11 @@
     "office.quotes": "Сметы",
     "office.invoices": "Счета",
     "office.orders": "Заказы",
-    "office.payments": "Оплаты"
+    "office.payments": "Оплаты",
+    "office.returns": "Возвраты",
+    "office.credit_notes": "Кредит-ноты",
+    "office.debit_notes": "Дебет-ноты",
+    "office.expenses": "Расходы"
   },
   "groups": {
     "eyebrow": "Управление доступом",

@@ -420,7 +420,11 @@
     "office.quotes": "Quotes",
     "office.invoices": "Invoices",
     "office.orders": "Orders",
-    "office.payments": "Payments"
+    "office.payments": "Payments",
+    "office.returns": "Returns",
+    "office.credit_notes": "Credit notes",
+    "office.debit_notes": "Debit notes",
+    "office.expenses": "Expenses"
   },
   "groups": {
     "eyebrow": "Access control",

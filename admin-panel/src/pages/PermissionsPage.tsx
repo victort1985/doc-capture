@@ -40,6 +40,10 @@ const FEATURE_KEYS: { key: string; group: string }[] = [
   { key: 'office.invoices', group: 'office' },
   { key: 'office.orders', group: 'office' },
   { key: 'office.payments', group: 'office' },
+  { key: 'office.returns', group: 'office' },
+  { key: 'office.credit_notes', group: 'office' },
+  { key: 'office.debit_notes', group: 'office' },
+  { key: 'office.expenses', group: 'office' },
 ];
 
 const ROLE_DEFAULTS: Record<string, Record<string, boolean>> = {
@@ -54,6 +58,7 @@ const ROLE_DEFAULTS: Record<string, Record<string, boolean>> = {
     'calls.edit': false, 'calls.delete': false,
     'orgs.switch': false,
     'office.delivery_notes': false, 'office.quotes': false, 'office.invoices': false, 'office.orders': false, 'office.payments': false,
+    'office.returns': false, 'office.credit_notes': false, 'office.debit_notes': false, 'office.expenses': false,
   },
 };
 

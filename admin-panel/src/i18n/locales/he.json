@@ -420,7 +420,11 @@
     "office.quotes": "הצעות מחיר",
     "office.invoices": "חשבוניות",
     "office.orders": "הזמנות",
-    "office.payments": "תשלומים"
+    "office.payments": "תשלומים",
+    "office.returns": "החזרות",
+    "office.credit_notes": "הודעות זיכוי",
+    "office.debit_notes": "הודעות חיוב",
+    "office.expenses": "הוצאות"
   },
   "groups": {
     "eyebrow": "בקרת גישה",
