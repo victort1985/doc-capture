@@ -1321,6 +1321,34 @@
     "size": "Size",
     "saveAs": "Save as",
     "empty": "No backups yet.",
-    "confirmDelete": "Delete backup {{filename}}? This cannot be undone."
+    "confirmDelete": "Delete backup {{filename}}? This cannot be undone.",
+    "scheduleTitle": "Automatic backups",
+    "scheduleEnable": "Enable scheduled backups",
+    "frequency": "Frequency",
+    "freqHourly": "Every N hours",
+    "freqDaily": "Daily",
+    "freqWeekly": "Weekly",
+    "freqMonthly": "Monthly",
+    "everyNHours": "Every (hours)",
+    "timeOfDay": "Time",
+    "dayOfWeek": "Day of week",
+    "dayOfMonth": "Day of month",
+    "retention": "Keep last N",
+    "retentionHint": "Older scheduled backups beyond this count are deleted automatically. 0 = keep all. Backups you create manually via \"Create now\" are never auto-deleted.",
+    "lastRun": "Last run",
+    "restore": "Restore",
+    "restoreSuccess": "Database restored successfully.",
+    "restoreConfirmTitle": "Restore from this backup?",
+    "restoreConfirmBody": "This will DELETE everything currently in the database and replace it with the contents of {{filename}}. Anything created or changed since that backup was taken will be lost. This cannot be undone.",
+    "restoreConfirmButton": "Yes, restore and overwrite everything",
+    "weekday": {
+      "sun": "Sunday",
+      "mon": "Monday",
+      "tue": "Tuesday",
+      "wed": "Wednesday",
+      "thu": "Thursday",
+      "fri": "Friday",
+      "sat": "Saturday"
+    }
   }
 }
