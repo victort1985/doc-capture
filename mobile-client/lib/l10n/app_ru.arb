@@ -605,5 +605,9 @@
   "vatCategoryZero": "Нулевая ставка (экспорт)",
   "vatCategoryExempt": "Освобождён",
   "invoiceClientTaxId": "ИНН клиента (ח.פ./עוסק מורשה)",
-  "invoiceClientTaxIdHint": "Нужен для номера распределения от налоговой на крупных счетах"
+  "invoiceClientTaxIdHint": "Нужен для номера распределения от налоговой на крупных счетах",
+  "returnPickWarehouseItemTitle": "Привязать складскую позицию",
+  "returnPickWarehouseItemHint": "Поиск по названию или штрихкоду",
+  "returnWarehouseItemLinked": "Привязано",
+  "returnWarehouseQtyInStock": "на складе"
 }

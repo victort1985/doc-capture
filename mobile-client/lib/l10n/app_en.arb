@@ -605,5 +605,9 @@
   "vatCategoryZero": "Zero-rated (export)",
   "vatCategoryExempt": "Exempt",
   "invoiceClientTaxId": "Client's tax ID (ח.פ./עוסק מורשה)",
-  "invoiceClientTaxIdHint": "Needed for the Tax Authority allocation number on large invoices"
+  "invoiceClientTaxIdHint": "Needed for the Tax Authority allocation number on large invoices",
+  "returnPickWarehouseItemTitle": "Link warehouse item",
+  "returnPickWarehouseItemHint": "Search by name or barcode",
+  "returnWarehouseItemLinked": "Linked",
+  "returnWarehouseQtyInStock": "in stock"
 }

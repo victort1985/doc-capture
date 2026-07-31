@@ -4,12 +4,14 @@ class ReturnItem {
   final String name;
   final double quantity;
   final String? notes;
-  ReturnItem({required this.name, required this.quantity, this.notes});
+  final int? warehouseItemId;
+  ReturnItem({required this.name, required this.quantity, this.notes, this.warehouseItemId});
 
   factory ReturnItem.fromJson(Map<String, dynamic> j) => ReturnItem(
         name: j['name'] ?? '',
         quantity: (j['quantity'] as num?)?.toDouble() ?? 0,
         notes: j['notes'],
+        warehouseItemId: j['warehouseItemId'],
       );
 }
 
@@ -42,11 +44,9 @@ class ReturnNote {
       );
 }
 
-/// Creating a return picks a delivery note to return against — see
-/// ReturnFormScreen. warehouseItemId (per line, for restocking the
-/// right warehouse item) isn't set from mobile yet — that mapping
-/// needs its own UI design, so items created here land unmapped and
-/// can be matched to a warehouse item later from the admin panel.
+/// Creating a return picks a delivery note to return against, and
+/// optionally a warehouse item per line (see ReturnFormScreen) —
+/// linking one is what lets the backend auto-restock it.
 class ReturnsService {
   ReturnsService(this._api);
   final ApiService _api;
@@ -70,7 +70,12 @@ class ReturnsService {
       if (clientEmail != null && clientEmail.isNotEmpty) 'clientEmail': clientEmail,
       if (date != null && date.isNotEmpty) 'date': date,
       'reason': reason,
-      'items': items.map((i) => {'name': i.name, 'quantity': i.quantity, if (i.notes != null && i.notes!.isNotEmpty) 'notes': i.notes}).toList(),
+      'items': items.map((i) => {
+            'name': i.name,
+            'quantity': i.quantity,
+            if (i.notes != null && i.notes!.isNotEmpty) 'notes': i.notes,
+            if (i.warehouseItemId != null) 'warehouseItemId': i.warehouseItemId,
+          }).toList(),
     });
     return ReturnNote.fromJson(res);
   }

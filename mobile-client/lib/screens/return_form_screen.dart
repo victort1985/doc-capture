@@ -1,10 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
+import '../app/theme.dart';
 import '../services/api_service.dart';
 import '../services/delivery_notes_service.dart';
 import '../services/returns_service.dart';
+import '../services/management_services.dart' show WarehouseItem, WarehouseService;
 import '../widgets/search_picker_field.dart';
+
+/// A mutable row (not a tuple, since the picked warehouse item needs
+/// to update in place after the row already exists — plain records
+/// can't do that once created).
+class _ReturnItemRow {
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController qtyController = TextEditingController(text: '1');
+  final TextEditingController notesController = TextEditingController();
+  int? warehouseItemId;
+  String? warehouseItemLabel;
+}
 
 class ReturnFormScreen extends StatefulWidget {
   const ReturnFormScreen({super.key});
@@ -16,11 +29,12 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
   final _clientController = TextEditingController();
   final _emailController = TextEditingController();
   final _reasonController = TextEditingController();
-  final List<(TextEditingController, TextEditingController, TextEditingController)> _items = [];
+  final List<_ReturnItemRow> _items = [];
   int? _deliveryNoteId;
   String? _deliveryNoteLabel;
   bool _saving = false;
   List<DeliveryNote>? _notesCache;
+  List<WarehouseItem>? _warehouseCache;
 
   @override
   void initState() {
@@ -29,7 +43,7 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
   }
 
   void _addItem() {
-    setState(() => _items.add((TextEditingController(), TextEditingController(text: '1'), TextEditingController())));
+    setState(() => _items.add(_ReturnItemRow()));
   }
 
   Future<List<DeliveryNote>> _searchNotes(String query) async {
@@ -37,6 +51,14 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     final q = query.toLowerCase();
     return _notesCache!
         .where((n) => (n.noteNumber ?? '').toLowerCase().contains(q) || (n.clientName ?? '').toLowerCase().contains(q))
+        .toList();
+  }
+
+  Future<List<WarehouseItem>> _searchWarehouseItems(String query) async {
+    _warehouseCache ??= await WarehouseService(context.read<ApiService>()).listItems();
+    final q = query.toLowerCase();
+    return _warehouseCache!
+        .where((w) => w.name.toLowerCase().contains(q) || w.barcode.toLowerCase().contains(q))
         .toList();
   }
 
@@ -72,6 +94,44 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     });
   }
 
+  /// Linking a row to a warehouse item is what lets the backend
+  /// automatically restock it when the return is created (see
+  /// returns.service.ts — this was already wired server-side, just
+  /// never had a picker on mobile to actually set it). Optional —
+  /// a row can stay unlinked if there's no matching catalog item or
+  /// the person doesn't want to restock automatically.
+  Future<void> _pickWarehouseItem(_ReturnItemRow row) async {
+    final l10n = AppLocalizations.of(context)!;
+    final picked = await showModalBottomSheet<WarehouseItem>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 16, bottom: MediaQuery.of(ctx).viewInsets.bottom + 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l10n.returnPickWarehouseItemTitle, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+            const SizedBox(height: 12),
+            SearchPickerField<WarehouseItem>(
+              search: _searchWarehouseItems,
+              displayString: (w) => w.name,
+              listLabel: (w) => '${w.name} · ${w.barcode} · ${l10n.returnWarehouseQtyInStock}: ${w.quantity}',
+              hintText: l10n.returnPickWarehouseItemHint,
+              onSelected: (w) => Navigator.of(ctx).pop(w),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null) return;
+    setState(() {
+      row.warehouseItemId = picked.id;
+      row.warehouseItemLabel = picked.name;
+      if (row.nameController.text.trim().isEmpty) row.nameController.text = picked.name;
+    });
+  }
+
   Future<void> _save() async {
     final l10n = AppLocalizations.of(context)!;
     if (_deliveryNoteId == null || _clientController.text.trim().isEmpty || _reasonController.text.trim().isEmpty) {
@@ -81,11 +141,12 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
     setState(() => _saving = true);
     try {
       final items = _items
-          .where((i) => i.$1.text.trim().isNotEmpty)
-          .map((i) => ReturnItem(
-                name: i.$1.text.trim(),
-                quantity: double.tryParse(i.$2.text) ?? 1,
-                notes: i.$3.text.trim().isEmpty ? null : i.$3.text.trim(),
+          .where((row) => row.nameController.text.trim().isNotEmpty)
+          .map((row) => ReturnItem(
+                name: row.nameController.text.trim(),
+                quantity: double.tryParse(row.qtyController.text) ?? 1,
+                notes: row.notesController.text.trim().isEmpty ? null : row.notesController.text.trim(),
+                warehouseItemId: row.warehouseItemId,
               ))
           .toList();
       await ReturnsService(context.read<ApiService>()).create(
@@ -125,15 +186,35 @@ class _ReturnFormScreenState extends State<ReturnFormScreen> {
           const SizedBox(height: 16),
           Text(l10n.returnItems, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          ..._items.map((item) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(children: [
-                  Expanded(flex: 2, child: TextField(controller: item.$1, decoration: InputDecoration(labelText: l10n.returnItemName))),
-                  const SizedBox(width: 8),
-                  Expanded(child: TextField(controller: item.$2, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.quoteItemQty))),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 2, child: TextField(controller: item.$3, decoration: InputDecoration(labelText: l10n.returnItemNotes))),
-                ]),
+          ..._items.map((row) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(border: Border.all(color: AppColors.primaryWash), borderRadius: BorderRadius.circular(10)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Expanded(flex: 2, child: TextField(controller: row.nameController, decoration: InputDecoration(labelText: l10n.returnItemName))),
+                      const SizedBox(width: 8),
+                      Expanded(child: TextField(controller: row.qtyController, keyboardType: TextInputType.number, decoration: InputDecoration(labelText: l10n.quoteItemQty))),
+                    ]),
+                    const SizedBox(height: 8),
+                    TextField(controller: row.notesController, decoration: InputDecoration(labelText: l10n.returnItemNotes)),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => _pickWarehouseItem(row),
+                      icon: Icon(row.warehouseItemId == null ? Icons.inventory_2_outlined : Icons.check_circle_outline, size: 16),
+                      label: Text(
+                        row.warehouseItemLabel == null
+                            ? l10n.returnPickWarehouseItemTitle
+                            : '${l10n.returnWarehouseItemLinked}: ${row.warehouseItemLabel}',
+                        style: const TextStyle(fontSize: 12.5),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: OutlinedButton.styleFrom(minimumSize: const Size(0, 36), padding: const EdgeInsets.symmetric(horizontal: 10)),
+                    ),
+                  ],
+                ),
               )),
           TextButton.icon(onPressed: _addItem, icon: const Icon(Icons.add), label: Text(l10n.quoteAddItem)),
           const SizedBox(height: 20),

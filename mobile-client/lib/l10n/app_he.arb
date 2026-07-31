@@ -605,5 +605,9 @@
   "vatCategoryZero": "אפס (יצוא)",
   "vatCategoryExempt": "פטור",
   "invoiceClientTaxId": "ח.פ./עוסק מורשה של הלקוח",
-  "invoiceClientTaxIdHint": "נדרש למספר הקצאה מרשות המסים בחשבוניות גדולות"
+  "invoiceClientTaxIdHint": "נדרש למספר הקצאה מרשות המסים בחשבוניות גדולות",
+  "returnPickWarehouseItemTitle": "קישור לפריט מלאי",
+  "returnPickWarehouseItemHint": "חיפוש לפי שם או ברקוד",
+  "returnWarehouseItemLinked": "מקושר",
+  "returnWarehouseQtyInStock": "במלאי"
 }
