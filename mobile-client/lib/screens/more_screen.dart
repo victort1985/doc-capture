@@ -7,6 +7,7 @@ import 'calendar_screen.dart';
 import 'management_screen.dart';
 import 'settings_screen.dart';
 import 'inventory_screen.dart';
+import '../widgets/organization_logo_background.dart';
 
 /// The 4th bottom tab in the "Action Hub" nav style — everything that
 /// doesn't fit in Home/Calls/Contacts, reached one tap further in
@@ -33,7 +34,7 @@ class MoreScreen extends StatelessWidget {
                 title: Text(l10n.navScan, style: const TextStyle(fontWeight: FontWeight.w600)),
                 trailing: const Icon(Icons.chevron_right, size: 18),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const InventoryScreen()),
+                  MaterialPageRoute(builder: (_) => const OrganizationLogoBackground(child: InventoryScreen())),
                 ),
               ),
             ),
@@ -44,7 +45,7 @@ class MoreScreen extends StatelessWidget {
                 title: Text(l10n.calendarTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
                 trailing: const Icon(Icons.chevron_right, size: 18),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const CalendarScreen()),
+                  MaterialPageRoute(builder: (_) => const OrganizationLogoBackground(child: CalendarScreen())),
                 ),
               ),
             ),
@@ -55,7 +56,7 @@ class MoreScreen extends StatelessWidget {
                 title: Text(l10n.managementTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
                 trailing: const Icon(Icons.chevron_right, size: 18),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const ManagementScreen()),
+                  MaterialPageRoute(builder: (_) => const OrganizationLogoBackground(child: ManagementScreen())),
                 ),
               ),
             ),

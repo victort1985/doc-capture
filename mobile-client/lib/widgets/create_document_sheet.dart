@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../store/app_state.dart';
+import 'organization_logo_background.dart';
 import '../screens/quotes_screen.dart';
 import '../screens/orders_screen.dart';
 import '../screens/delivery_notes_screen.dart';
@@ -105,7 +106,7 @@ class _ShortcutTile extends StatelessWidget {
       borderRadius: BorderRadius.circular(14),
       onTap: () {
         Navigator.of(context).pop();
-        Navigator.of(context).push(MaterialPageRoute(builder: (_) => shortcut.open()));
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrganizationLogoBackground(child: shortcut.open())));
       },
       child: Column(
         mainAxisSize: MainAxisSize.min,
