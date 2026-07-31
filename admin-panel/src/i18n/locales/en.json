@@ -41,7 +41,8 @@
     "expenses": "Expenses & Purchases",
     "taxAuthority": "Tax Authority",
     "currencyRates": "Currency Rates",
-    "templateDesigner": "Document Designer"
+    "templateDesigner": "Document Designer",
+    "backup": "Backups"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1307,5 +1308,19 @@
     "logoLabel": "LOGO",
     "companyInfoLabel": "Company info",
     "dragHint": "Changes save automatically when you release."
+  },
+  "backup": {
+    "eyebrow": "System",
+    "title": "Backups",
+    "disclaimer": "Backups are encrypted at rest on the server (same key as every other secret in this app). Downloaded files are decrypted for you automatically — 'Save As' gives you a ready-to-use .sql.gz, not something requiring the server's encryption key.",
+    "createNow": "Create now",
+    "creating": "Creating…",
+    "createdSuccess": "Backup created: {{filename}}",
+    "filename": "File",
+    "created": "Created",
+    "size": "Size",
+    "saveAs": "Save as",
+    "empty": "No backups yet.",
+    "confirmDelete": "Delete backup {{filename}}? This cannot be undone."
   }
 }

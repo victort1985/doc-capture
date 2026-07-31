@@ -41,7 +41,8 @@
     "expenses": "הוצאות ורכישות",
     "taxAuthority": "רשות המסים",
     "currencyRates": "שערי מטבע",
-    "templateDesigner": "מעצב מסמכים"
+    "templateDesigner": "מעצב מסמכים",
+    "backup": "גיבויים"
   },
   "app": {
     "adminConsole": "פאנל ניהול",
@@ -1307,5 +1308,19 @@
     "logoLabel": "לוגו",
     "companyInfoLabel": "פרטי חברה",
     "dragHint": "השינויים נשמרים אוטומטית עם השחרור."
+  },
+  "backup": {
+    "eyebrow": "מערכת",
+    "title": "גיבויים",
+    "disclaimer": "הגיבויים מוצפנים בשרת (אותו מפתח כמו כל סוד אחר באפליקציה). קבצים שמורדים מפוענחים אוטומטית — 'שמירה בשם' נותנת קובץ .sql.gz מוכן לשימוש, לא כזה שדורש את מפתח ההצפנה של השרת.",
+    "createNow": "יצירה עכשיו",
+    "creating": "יוצר…",
+    "createdSuccess": "גיבוי נוצר: {{filename}}",
+    "filename": "קובץ",
+    "created": "נוצר",
+    "size": "גודל",
+    "saveAs": "שמירה בשם",
+    "empty": "אין עדיין גיבויים.",
+    "confirmDelete": "למחוק את הגיבוי {{filename}}? לא ניתן לבטל."
   }
 }
