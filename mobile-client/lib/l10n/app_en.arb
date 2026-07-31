@@ -638,5 +638,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "phoneBookClientIdentifier": "Client ID",
+  "phoneBookClientIdentifierHint": "Leave blank to auto-assign"
 }

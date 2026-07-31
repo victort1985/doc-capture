@@ -25,7 +25,21 @@ class PhoneBookService {
     return Contact.fromJson(json);
   }
 
+  /// Backs "type the client's identifier number, everything else
+  /// fills in" wherever client data is entered — returns null on no
+  /// match rather than throwing, since callers use this to check as
+  /// the person types, not as a hard lookup where a miss is an error.
+  Future<Contact?> findByIdentifier(int identifier) async {
+    try {
+      final json = await _api.get('/phonebook/by-identifier/$identifier') as Map<String, dynamic>?;
+      return json == null ? null : Contact.fromJson(json);
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<Contact> create({
+    int? clientIdentifier,
     required ContactCategory category,
     required String firstName,
     required String lastName,
@@ -38,6 +52,7 @@ class PhoneBookService {
     File? photo,
   }) async {
     final formData = FormData.fromMap({
+      if (clientIdentifier != null) 'clientIdentifier': clientIdentifier.toString(),
       'category': categoryToJson(category),
       'firstName': firstName,
       'lastName': lastName,
@@ -55,6 +70,7 @@ class PhoneBookService {
 
   Future<Contact> update(
     int id, {
+    int? clientIdentifier,
     ContactCategory? category,
     String? firstName,
     String? lastName,
@@ -67,6 +83,7 @@ class PhoneBookService {
     File? photo,
   }) async {
     final formData = FormData.fromMap({
+      if (clientIdentifier != null) 'clientIdentifier': clientIdentifier.toString(),
       if (category != null) 'category': categoryToJson(category),
       if (firstName != null) 'firstName': firstName,
       if (lastName != null) 'lastName': lastName,

@@ -24,6 +24,7 @@ class ContactEditScreen extends StatefulWidget {
 }
 
 class _ContactEditScreenState extends State<ContactEditScreen> {
+  late final _clientIdentifier = TextEditingController(text: widget.contact?.clientIdentifier?.toString() ?? '');
   late final _firstName = TextEditingController(text: widget.contact?.firstName ?? '');
   late final _lastName = TextEditingController(text: widget.contact?.lastName ?? '');
   late final _position = TextEditingController(text: widget.contact?.position ?? '');
@@ -59,6 +60,7 @@ class _ContactEditScreenState extends State<ContactEditScreen> {
       if (_isEdit) {
         await service.update(
           widget.contact!.id,
+          clientIdentifier: int.tryParse(_clientIdentifier.text.trim()),
           category: _category,
           firstName: _firstName.text.trim(),
           lastName: _lastName.text.trim(),
@@ -72,6 +74,7 @@ class _ContactEditScreenState extends State<ContactEditScreen> {
         );
       } else {
         await service.create(
+          clientIdentifier: int.tryParse(_clientIdentifier.text.trim()),
           category: _category,
           firstName: _firstName.text.trim(),
           lastName: _lastName.text.trim(),
@@ -144,6 +147,8 @@ class _ContactEditScreenState extends State<ContactEditScreen> {
               selected: {_category},
               onSelectionChanged: (s) => setState(() => _category = s.first),
             ),
+            _label(l10n.phoneBookClientIdentifier.toUpperCase()),
+            TextField(controller: _clientIdentifier, keyboardType: TextInputType.number, decoration: InputDecoration(hintText: l10n.phoneBookClientIdentifierHint)),
             _label(l10n.phoneBookFieldFirstName.toUpperCase()),
             TextField(controller: _firstName),
             _label(l10n.phoneBookFieldLastName.toUpperCase()),

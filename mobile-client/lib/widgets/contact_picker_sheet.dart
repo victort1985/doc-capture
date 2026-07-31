@@ -40,6 +40,22 @@ class _ContactPickerSheetState extends State<_ContactPickerSheet> {
   Future<void> _search(String q) async {
     setState(() => _loading = true);
     try {
+      // A purely-numeric query is almost certainly someone typing a
+      // client identifier rather than searching by name — try the
+      // exact-match lookup first and auto-select on a hit, so typing
+      // the number alone is enough without an extra tap. Falls
+      // through to the normal name/phone search either way.
+      final trimmed = q.trim();
+      if (RegExp(r'^\d+$').hasMatch(trimmed)) {
+        final identifier = int.tryParse(trimmed);
+        if (identifier != null) {
+          final match = await context.read<PhoneBookService>().findByIdentifier(identifier);
+          if (match != null && mounted) {
+            Navigator.of(context).pop(match);
+            return;
+          }
+        }
+      }
       final results = await context.read<PhoneBookService>().search(
             q: q,
             organizationId: widget.organizationId,

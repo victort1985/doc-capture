@@ -26,6 +26,7 @@ String categoryToJson(ContactCategory c) {
 
 class Contact {
   final int id;
+  final int? clientIdentifier;
   final ContactCategory category;
   final String firstName;
   final String lastName;
@@ -39,6 +40,7 @@ class Contact {
 
   Contact({
     required this.id,
+    this.clientIdentifier,
     required this.category,
     required this.firstName,
     required this.lastName,
@@ -55,6 +57,7 @@ class Contact {
 
   factory Contact.fromJson(Map<String, dynamic> json) => Contact(
         id: json['id'],
+        clientIdentifier: json['clientIdentifier'],
         category: categoryFromJson(json['category']),
         firstName: json['firstName'] ?? '',
         lastName: json['lastName'] ?? '',

@@ -638,5 +638,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "phoneBookClientIdentifier": "מזהה לקוח",
+  "phoneBookClientIdentifierHint": "השאר ריק להקצאה אוטומטית"
 }

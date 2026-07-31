@@ -638,5 +638,7 @@
         "type": "String"
       }
     }
-  }
+  },
+  "phoneBookClientIdentifier": "ID клиента",
+  "phoneBookClientIdentifierHint": "Оставь пустым для автоназначения"
 }
