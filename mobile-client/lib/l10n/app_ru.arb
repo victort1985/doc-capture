@@ -640,5 +640,25 @@
     }
   },
   "phoneBookClientIdentifier": "ID клиента",
-  "phoneBookClientIdentifierHint": "Оставь пустым для автоназначения"
+  "phoneBookClientIdentifierHint": "Оставь пустым для автоназначения",
+  "rentalsTitle": "Прокат",
+  "rentalsStatusActive": "Активные",
+  "rentalsStatusReturned": "Возвращённые",
+  "rentalsStatusAll": "Все",
+  "rentalsEmpty": "Пока нет проката.",
+  "rentalsDueDate": "Срок возврата",
+  "rentalsMarkReturned": "Отметить возвращённым",
+  "rentalsNewRental": "Новый прокат",
+  "rentalPickEquipmentTitle": "Выбрать оборудование",
+  "rentalPickEquipmentHint": "Поиск по названию или штрихкоду",
+  "rentalInStock": "на складе",
+  "rentalQuantity": "Количество",
+  "rentalPickClientTitle": "Выбрать клиента из телефонной книги",
+  "rentalClientPhone": "Телефон клиента",
+  "rentalDescription": "Описание",
+  "rentalStartDate": "Дата начала",
+  "rentalFormInvalid": "Выбери оборудование, укажи клиента и срок возврата.",
+  "rentalSaveError": "Не удалось сохранить прокат",
+  "rentalSubmit": "Создать прокат",
+  "homeActiveRentals": "Активный прокат"
 }

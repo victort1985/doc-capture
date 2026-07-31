@@ -640,5 +640,25 @@
     }
   },
   "phoneBookClientIdentifier": "מזהה לקוח",
-  "phoneBookClientIdentifierHint": "השאר ריק להקצאה אוטומטית"
+  "phoneBookClientIdentifierHint": "השאר ריק להקצאה אוטומטית",
+  "rentalsTitle": "השכרות",
+  "rentalsStatusActive": "פעילות",
+  "rentalsStatusReturned": "הוחזרו",
+  "rentalsStatusAll": "הכל",
+  "rentalsEmpty": "אין עדיין השכרות.",
+  "rentalsDueDate": "תאריך יעד",
+  "rentalsMarkReturned": "סימון כהוחזר",
+  "rentalsNewRental": "השכרה חדשה",
+  "rentalPickEquipmentTitle": "בחירת ציוד",
+  "rentalPickEquipmentHint": "חיפוש לפי שם או ברקוד",
+  "rentalInStock": "במלאי",
+  "rentalQuantity": "כמות",
+  "rentalPickClientTitle": "בחירת לקוח מספר הטלפונים",
+  "rentalClientPhone": "טלפון לקוח",
+  "rentalDescription": "תיאור",
+  "rentalStartDate": "תאריך התחלה",
+  "rentalFormInvalid": "בחר ציוד, הזן שם לקוח ותאריך יעד.",
+  "rentalSaveError": "לא ניתן לשמור את ההשכרה",
+  "rentalSubmit": "יצירת השכרה",
+  "homeActiveRentals": "השכרות פעילות"
 }

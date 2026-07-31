@@ -5,6 +5,7 @@ import '../store/app_state.dart';
 import 'fleet_screen.dart';
 import 'warehouse_screen.dart';
 import 'transfer_screen.dart';
+import 'rentals_screen.dart';
 
 class ManagementScreen extends StatelessWidget {
   const ManagementScreen({super.key});
@@ -13,22 +14,24 @@ class ManagementScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final canTransfer = context.watch<AppState>().currentUser?.hasPermission('warehouseTransfer') ?? false;
-    final tabCount = canTransfer ? 3 : 2;
+    final tabCount = canTransfer ? 4 : 3;
     return DefaultTabController(
       length: tabCount,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           title: Text(l10n.managementTitle),
-          bottom: TabBar(tabs: [
+          bottom: TabBar(isScrollable: true, tabs: [
             Tab(icon: const Icon(Icons.directions_car_outlined), text: l10n.fleetTitle),
             Tab(icon: const Icon(Icons.warehouse_outlined), text: l10n.warehouseTitle),
+            Tab(icon: const Icon(Icons.inventory_2_outlined), text: l10n.rentalsTitle),
             if (canTransfer) Tab(icon: const Icon(Icons.swap_horiz), text: l10n.transferTitle),
           ]),
         ),
         body: TabBarView(children: [
           const FleetScreen(),
           const WarehouseScreen(),
+          const RentalsScreen(),
           if (canTransfer) const TransferScreen(),
         ]),
       ),

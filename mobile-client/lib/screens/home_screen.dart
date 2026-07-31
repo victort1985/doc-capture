@@ -12,15 +12,26 @@ import '../services/returns_service.dart';
 import '../services/credit_notes_service.dart';
 import '../services/debit_notes_service.dart';
 import '../services/expenses_service.dart';
+import '../services/rentals_service.dart';
 import '../models/service_call.dart';
 import '../widgets/attention_notifications_sheet.dart';
+import 'calls/calls_list_screen.dart';
+import 'quotes_screen.dart';
+import 'orders_screen.dart';
+import 'invoices_screen.dart';
+import 'returns_screen.dart';
+import 'credit_notes_screen.dart';
+import 'debit_notes_screen.dart';
+import 'expenses_screen.dart';
+import 'rentals_screen.dart';
 
 class _StatCardData {
   final IconData icon;
   final String Function(AppLocalizations) label;
   final String value;
   final Color color;
-  _StatCardData({required this.icon, required this.label, required this.value, required this.color});
+  final Widget Function() destination;
+  _StatCardData({required this.icon, required this.label, required this.value, required this.color, required this.destination});
 }
 
 /// The default tab on app open — an overview built entirely from
@@ -69,21 +80,21 @@ class HomeScreenState extends State<HomeScreen> {
     try {
       final calls = await CallsService(api).list();
       final openCalls = calls.where((c) => c.status != CallStatus.closed).length;
-      cards.add(_StatCardData(icon: Icons.support_agent_outlined, label: (l) => l.homeOpenCalls, value: '$openCalls', color: AppColors.primary));
+      cards.add(_StatCardData(icon: Icons.support_agent_outlined, label: (l) => l.homeOpenCalls, value: '$openCalls', color: AppColors.primary, destination: () => const CallsListScreen()));
     } catch (_) {}
 
     if (user?.hasPermission('office.quotes') ?? false) {
       try {
         final quotes = await QuotesService(api).list();
         final draft = quotes.where((q) => q.status == QuoteStatus.draft).length;
-        cards.add(_StatCardData(icon: Icons.request_quote_outlined, label: (l) => l.homeDraftQuotes, value: '$draft', color: AppColors.stamp));
+        cards.add(_StatCardData(icon: Icons.request_quote_outlined, label: (l) => l.homeDraftQuotes, value: '$draft', color: AppColors.stamp, destination: () => const QuotesScreen()));
       } catch (_) {}
     }
 
     if (user?.hasPermission('office.orders') ?? false) {
       try {
         final orders = await OrderService(api).list();
-        cards.add(_StatCardData(icon: Icons.inventory_2_outlined, label: (l) => l.homeOpenOrders, value: '${orders.length}', color: AppColors.primarySoft));
+        cards.add(_StatCardData(icon: Icons.inventory_2_outlined, label: (l) => l.homeOpenOrders, value: '${orders.length}', color: AppColors.primarySoft, destination: () => const OrdersScreen()));
       } catch (_) {}
     }
 
@@ -92,36 +103,41 @@ class HomeScreenState extends State<HomeScreen> {
         final invoices = await InvoicesService(api).list();
         final unpaid = invoices.where((i) => i.status != InvoiceStatus.paid && i.status != InvoiceStatus.cancelled).toList();
         final unpaidTotal = unpaid.fold<double>(0, (sum, i) => sum + i.total);
-        cards.add(_StatCardData(icon: Icons.receipt_long_outlined, label: (l) => l.homeUnpaidInvoices, value: '${unpaid.length}', color: AppColors.stamp));
-        cards.add(_StatCardData(icon: Icons.payments_outlined, label: (l) => l.homeAmountDue, value: '₪${unpaidTotal.toStringAsFixed(0)}', color: AppColors.primary));
+        cards.add(_StatCardData(icon: Icons.receipt_long_outlined, label: (l) => l.homeUnpaidInvoices, value: '${unpaid.length}', color: AppColors.stamp, destination: () => const InvoicesScreen()));
+        cards.add(_StatCardData(icon: Icons.payments_outlined, label: (l) => l.homeAmountDue, value: '₪${unpaidTotal.toStringAsFixed(0)}', color: AppColors.primary, destination: () => const InvoicesScreen()));
       } catch (_) {}
     }
 
     if (user?.hasPermission('office.returns') ?? false) {
       try {
         final returns = await ReturnsService(api).list();
-        cards.add(_StatCardData(icon: Icons.assignment_return_outlined, label: (l) => l.homeReturns, value: '${returns.length}', color: AppColors.primarySoft));
+        cards.add(_StatCardData(icon: Icons.assignment_return_outlined, label: (l) => l.homeReturns, value: '${returns.length}', color: AppColors.primarySoft, destination: () => const ReturnsScreen()));
       } catch (_) {}
     }
     if (user?.hasPermission('office.credit_notes') ?? false) {
       try {
         final creditNotes = await CreditNotesService(api).list();
-        cards.add(_StatCardData(icon: Icons.receipt_long_outlined, label: (l) => l.homeCreditNotes, value: '${creditNotes.length}', color: AppColors.stamp));
+        cards.add(_StatCardData(icon: Icons.receipt_long_outlined, label: (l) => l.homeCreditNotes, value: '${creditNotes.length}', color: AppColors.stamp, destination: () => const CreditNotesScreen()));
       } catch (_) {}
     }
     if (user?.hasPermission('office.debit_notes') ?? false) {
       try {
         final debitNotes = await DebitNotesService(api).list();
-        cards.add(_StatCardData(icon: Icons.receipt_outlined, label: (l) => l.homeDebitNotes, value: '${debitNotes.length}', color: AppColors.stamp));
+        cards.add(_StatCardData(icon: Icons.receipt_outlined, label: (l) => l.homeDebitNotes, value: '${debitNotes.length}', color: AppColors.stamp, destination: () => const DebitNotesScreen()));
       } catch (_) {}
     }
     if (user?.hasPermission('office.expenses') ?? false) {
       try {
         final expenses = await ExpensesService(api).list();
         final total = expenses.fold<double>(0, (sum, e) => sum + e.amount);
-        cards.add(_StatCardData(icon: Icons.account_balance_wallet_outlined, label: (l) => l.homeExpensesTotal, value: '₪${total.toStringAsFixed(0)}', color: AppColors.primarySoft));
+        cards.add(_StatCardData(icon: Icons.account_balance_wallet_outlined, label: (l) => l.homeExpensesTotal, value: '₪${total.toStringAsFixed(0)}', color: AppColors.primarySoft, destination: () => const ExpensesScreen()));
       } catch (_) {}
     }
+
+    try {
+      final rentals = await RentalsService(api).listActive();
+      cards.add(_StatCardData(icon: Icons.inventory_2_outlined, label: (l) => l.homeActiveRentals, value: '${rentals.length}', color: AppColors.primary, destination: () => const RentalsScreen()));
+    } catch (_) {}
 
     if (mounted) setState(() { _cards = cards; _loading = false; });
   }
@@ -164,16 +180,20 @@ class HomeScreenState extends State<HomeScreen> {
                         crossAxisSpacing: 10,
                         childAspectRatio: 1.5,
                         children: _cards.map((c) => Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(14),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Icon(c.icon, color: c.color, size: 22),
-                                    Text(c.value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: c.color)),
-                                    Text(c.label(l10n), style: const TextStyle(fontSize: 11.5, color: AppColors.inkSoft), maxLines: 2, overflow: TextOverflow.ellipsis),
-                                  ],
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => c.destination())),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Icon(c.icon, color: c.color, size: 22),
+                                      Text(c.value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: c.color)),
+                                      Text(c.label(l10n), style: const TextStyle(fontSize: 11.5, color: AppColors.inkSoft), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    ],
+                                  ),
                                 ),
                               ),
                             )).toList(),

@@ -640,5 +640,25 @@
     }
   },
   "phoneBookClientIdentifier": "Client ID",
-  "phoneBookClientIdentifierHint": "Leave blank to auto-assign"
+  "phoneBookClientIdentifierHint": "Leave blank to auto-assign",
+  "rentalsTitle": "Rentals",
+  "rentalsStatusActive": "Active",
+  "rentalsStatusReturned": "Returned",
+  "rentalsStatusAll": "All",
+  "rentalsEmpty": "No rentals yet.",
+  "rentalsDueDate": "Due date",
+  "rentalsMarkReturned": "Mark returned",
+  "rentalsNewRental": "New rental",
+  "rentalPickEquipmentTitle": "Pick equipment",
+  "rentalPickEquipmentHint": "Search by name or barcode",
+  "rentalInStock": "in stock",
+  "rentalQuantity": "Quantity",
+  "rentalPickClientTitle": "Pick a client from phone book",
+  "rentalClientPhone": "Client phone",
+  "rentalDescription": "Description",
+  "rentalStartDate": "Start date",
+  "rentalFormInvalid": "Pick equipment, enter a client name, and a due date.",
+  "rentalSaveError": "Could not save the rental",
+  "rentalSubmit": "Create rental",
+  "homeActiveRentals": "Active rentals"
 }
