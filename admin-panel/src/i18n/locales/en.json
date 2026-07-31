@@ -1309,7 +1309,9 @@
     "layoutHint": "Drag the boxes below to reposition. Drag the small circle to resize the logo.",
     "logoLabel": "LOGO",
     "companyInfoLabel": "Company info",
-    "dragHint": "Changes save automatically when you release."
+    "dragHint": "Changes save automatically when you release.",
+    "chooseTemplate": "Choose a template to preview and customize",
+    "renderingPreview": "Rendering preview…"
   },
   "backup": {
     "eyebrow": "System",

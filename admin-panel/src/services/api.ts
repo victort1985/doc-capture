@@ -106,3 +106,32 @@ export async function apiFetchBlob(path: string): Promise<string> {
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }
+
+/** Same as apiFetchBlob but POSTs a JSON body first — for endpoints
+ * like /template-design/preview that render a binary response FROM
+ * request-body parameters (the currently-on-screen design values),
+ * not from something already stored server-side. */
+export async function apiFetchBlobPost(path: string, body: unknown): Promise<string> {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Client-Type': 'admin-panel',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    const message =
+      typeof errBody.message === 'string'
+        ? errBody.message
+        : Array.isArray(errBody.message)
+          ? errBody.message.join(', ')
+          : errBody?.message?.message ?? `Request failed (${res.status})`;
+    throw new Error(message);
+  }
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
