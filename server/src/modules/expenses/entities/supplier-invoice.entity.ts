@@ -5,6 +5,7 @@ import {
 import { Organization } from '../../organizations/entities/organization.entity';
 import { User } from '../../users/entities/user.entity';
 import { numericTransformer } from '../../../common/transformers/numeric.transformer';
+import { PaymentMethod } from '../../payments/entities/payment.entity';
 
 /**
  * An incoming bill from a supplier (requirement #9/#13 — "покупки").
@@ -46,6 +47,43 @@ export class SupplierInvoice {
   @Column({ type: 'timestamp', nullable: true })
   @Index()
   paidAt?: Date | null;
+
+  /** How it was actually paid, and the same method-specific detail
+   * columns Payment/Expense use — set once, at mark-paid time,
+   * alongside paidAt rather than only ever being passed through to
+   * the ledger posting call and then lost. */
+  @Column({ type: 'enum', enum: PaymentMethod, nullable: true })
+  paidMethod?: PaymentMethod | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  cardLast4?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  cardType?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  approvalNumber?: string | null;
+
+  @Column({ type: 'integer', nullable: true })
+  installments?: number | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  checkNumber?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  bankName?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  branchNumber?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  accountNumber?: string | null;
+
+  @Column({ type: 'date', nullable: true })
+  checkDate?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  referenceNumber?: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   storagePath?: string | null;

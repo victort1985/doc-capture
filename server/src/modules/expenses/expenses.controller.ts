@@ -4,12 +4,12 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { ExpensesService } from './expenses.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { CreateSupplierInvoiceDto } from './dto/create-supplier-invoice.dto';
+import { MarkSupplierInvoicePaidDto } from './dto/mark-supplier-invoice-paid.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { PaymentMethod } from '../payments/entities/payment.entity';
 
 type ReqUser = { id: number; organizationId: number | null };
 
@@ -73,8 +73,8 @@ export class SupplierInvoicesController {
   }
 
   @Post(':id/mark-paid')
-  markPaid(@Param('id', ParseIntPipe) id: number, @Body() body: { method?: PaymentMethod }, @CurrentUser() user: ReqUser) {
-    return this.service.markSupplierInvoicePaid(id, user.organizationId, body.method ?? PaymentMethod.CASH);
+  markPaid(@Param('id', ParseIntPipe) id: number, @Body() body: MarkSupplierInvoicePaidDto, @CurrentUser() user: ReqUser) {
+    return this.service.markSupplierInvoicePaid(id, user.organizationId, body);
   }
 
   /** CSV columns: supplierName,invoiceNumber,date,dueDate,amount,

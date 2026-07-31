@@ -5,6 +5,7 @@ import { Expense } from './entities/expense.entity';
 import { SupplierInvoice } from './entities/supplier-invoice.entity';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { CreateSupplierInvoiceDto } from './dto/create-supplier-invoice.dto';
+import { MarkSupplierInvoicePaidDto } from './dto/mark-supplier-invoice-paid.dto';
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
 import { StorageService } from '../storage/storage.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
@@ -97,13 +98,25 @@ export class ExpensesService {
    * itself still guards against marking an already-paid invoice paid
    * again, since that's a genuine user-facing mistake to prevent, not
    * just a retry to no-op. */
-  async markSupplierInvoicePaid(id: number, organizationId: number | null, method: PaymentMethod): Promise<SupplierInvoice> {
+  async markSupplierInvoicePaid(id: number, organizationId: number | null, dto: MarkSupplierInvoicePaidDto): Promise<SupplierInvoice> {
     const invoice = await this.supplierInvoicesRepo.findOne({ where: { id }, relations: ['organization'] });
     if (!invoice) throw new NotFoundException('Supplier invoice not found');
     if (organizationId != null && invoice.organization?.id !== organizationId) throw new NotFoundException('Supplier invoice not found');
     if (invoice.paidAt) throw new BadRequestException('This supplier invoice is already marked paid');
 
+    const method = dto.method ?? PaymentMethod.CASH;
     invoice.paidAt = new Date();
+    invoice.paidMethod = method;
+    invoice.cardLast4 = dto.cardLast4;
+    invoice.cardType = dto.cardType;
+    invoice.approvalNumber = dto.approvalNumber;
+    invoice.installments = dto.installments;
+    invoice.checkNumber = dto.checkNumber;
+    invoice.bankName = dto.bankName;
+    invoice.branchNumber = dto.branchNumber;
+    invoice.accountNumber = dto.accountNumber;
+    invoice.checkDate = dto.checkDate;
+    invoice.referenceNumber = dto.referenceNumber;
     const saved = await this.supplierInvoicesRepo.save(invoice);
 
     if (organizationId != null) {
