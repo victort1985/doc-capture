@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import { PhoneBookContact, ContactCategory } from './entities/phonebook-contact.entity';
@@ -84,6 +84,19 @@ export class PhoneBookService {
     return contact;
   }
 
+  /** Backs the "type a client's identifier number, everything else
+   * fills in" feature — used everywhere a form collects client data
+   * (quotes, invoices, rentals, etc), not just the phone book itself.
+   * Returns null rather than throwing on no match, since callers use
+   * this to check-as-you-type, not as a hard lookup where a miss is
+   * an error condition. */
+  async findByIdentifier(identifier: number, tenantId: number | null): Promise<PhoneBookContact | null> {
+    return this.contactsRepo.findOne({
+      where: tenantId != null ? { clientIdentifier: identifier, tenant: { id: tenantId } } : { clientIdentifier: identifier },
+      relations: ['city', 'city.region', 'organization'],
+    });
+  }
+
   async create(
     userId: number,
     tenantId: number | null,
@@ -95,7 +108,12 @@ export class PhoneBookService {
       ? await this.locationsService.findLocationById(dto.organizationId, tenantId)
       : undefined;
 
+    const clientIdentifier = dto.clientIdentifier != null
+      ? await this.claimIdentifier(dto.clientIdentifier, tenantId)
+      : await this.assignSmallestFreeIdentifier(tenantId);
+
     const contact = this.contactsRepo.create({
+      clientIdentifier,
       category: dto.category,
       firstName: dto.firstName,
       lastName: dto.lastName,
@@ -133,7 +151,18 @@ export class PhoneBookService {
       ? (dto.organizationId ? await this.locationsService.findLocationById(dto.organizationId, tenantId) : undefined)
       : contact.organization;
 
+    let clientIdentifier = contact.clientIdentifier;
+    if (dto.clientIdentifier !== undefined && dto.clientIdentifier !== contact.clientIdentifier) {
+      if (dto.clientIdentifier < 1) throw new BadRequestException('Client identifier must be a positive number');
+      const existing = await this.contactsRepo.findOne({
+        where: tenantId != null ? { clientIdentifier: dto.clientIdentifier, tenant: { id: tenantId } } : { clientIdentifier: dto.clientIdentifier },
+      });
+      if (existing && existing.id !== contact.id) throw new BadRequestException(`Client identifier ${dto.clientIdentifier} is already in use`);
+      clientIdentifier = dto.clientIdentifier;
+    }
+
     Object.assign(contact, {
+      clientIdentifier,
       category: dto.category ?? contact.category,
       firstName: dto.firstName ?? contact.firstName,
       lastName: dto.lastName ?? contact.lastName,
@@ -305,6 +334,36 @@ export class PhoneBookService {
    * named per the admin-configurable pattern (Templates →
    * appliesTo=phonebook), falling back to a sane default if none is set.
    */
+  /** Manually-specified identifier — just needs to not already belong
+   * to another contact in this organization (0/negative rejected too;
+   * a "smallest FREE number" scheme starting anywhere but 1 would be
+   * confusing). */
+  private async claimIdentifier(identifier: number, tenantId: number | null): Promise<number> {
+    if (identifier < 1) throw new BadRequestException('Client identifier must be a positive number');
+    const existing = await this.contactsRepo.findOne({
+      where: tenantId != null ? { clientIdentifier: identifier, tenant: { id: tenantId } } : { clientIdentifier: identifier },
+    });
+    if (existing) throw new BadRequestException(`Client identifier ${identifier} is already in use`);
+    return identifier;
+  }
+
+  /** The smallest positive integer not already assigned to another
+   * contact in this organization — reuses a gap left by a deleted
+   * contact rather than only ever growing (plain max+1 wouldn't do
+   * that). Fine at this app's contact-list sizes to do in application
+   * code rather than a single SQL query; would be worth revisiting if
+   * any organization's contact list grows into the tens of thousands. */
+  private async assignSmallestFreeIdentifier(tenantId: number | null): Promise<number> {
+    const rows = await this.contactsRepo.find({
+      where: tenantId != null ? { tenant: { id: tenantId } } : {},
+      select: ['clientIdentifier'],
+    });
+    const used = new Set(rows.map((r) => r.clientIdentifier).filter((n): n is number => n != null));
+    let candidate = 1;
+    while (used.has(candidate)) candidate++;
+    return candidate;
+  }
+
   private async writeContactFiles(
     contact: PhoneBookContact,
     userId: number,

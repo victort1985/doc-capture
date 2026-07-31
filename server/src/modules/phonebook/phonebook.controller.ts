@@ -71,6 +71,13 @@ export class PhoneBookController {
     });
   }
 
+  /** Must come before @Get(':id') — otherwise "by-identifier" would
+   * be swallowed as if it were an :id value. */
+  @Get('by-identifier/:identifier')
+  findByIdentifier(@Param('identifier', ParseIntPipe) identifier: number, @CurrentUser() user: RequestUser) {
+    return this.phoneBookService.findByIdentifier(identifier, user.organizationId);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     return this.phoneBookService.findOne(id, user.organizationId);

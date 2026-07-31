@@ -2,6 +2,10 @@ import { IsEmail, IsEnum, IsInt, IsOptional, IsString, MinLength } from 'class-v
 import { ContactCategory } from '../entities/phonebook-contact.entity';
 
 export class CreateContactDto {
+  @IsInt()
+  @IsOptional()
+  clientIdentifier?: number;
+
   @IsEnum(ContactCategory)
   category: ContactCategory;
 

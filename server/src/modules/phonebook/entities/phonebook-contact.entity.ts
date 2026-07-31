@@ -2,6 +2,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -32,6 +33,19 @@ export enum ContactCategory {
 export class PhoneBookContact {
   @PrimaryGeneratedColumn()
   id: number;
+
+  /** A short, memorable number a person can type to instantly pull up
+   * this contact's data elsewhere in the app (quotes, rentals, etc) —
+   * distinct from the internal `id` (which exists on every table and
+   * isn't meant to be something a person memorizes or types by hand).
+   * Assignable manually at creation, or left blank to auto-assign the
+   * smallest number not already in use by another contact in this
+   * organization — not just max+1, so a gap left by a deleted contact
+   * gets reused rather than numbers only ever growing. See
+   * PhoneBookService.assignSmallestFreeIdentifier(). */
+  @Column({ type: 'integer', nullable: true })
+  @Index()
+  clientIdentifier?: number | null;
 
   @Column({ type: 'enum', enum: ContactCategory })
   category: ContactCategory;
