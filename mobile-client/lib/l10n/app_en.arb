@@ -614,5 +614,6 @@
   "expenseReceiptCamera": "Take photo",
   "expenseReceiptGallery": "Choose from gallery",
   "expenseReceiptRemove": "Remove photo",
-  "expenseReceiptUploadError": "Expense saved, but the receipt photo failed to upload — try attaching it again later."
+  "expenseReceiptUploadError": "Expense saved, but the receipt photo failed to upload — try attaching it again later.",
+  "expenseReceiptParsing": "Reading receipt…"
 }

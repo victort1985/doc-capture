@@ -91,6 +91,25 @@ class ExpensesService {
     return Expense.fromJson(res);
   }
 
+  /// Extracts amount/date/vendor from a receipt photo BEFORE the
+  /// expense is created, to pre-fill the form — separate from
+  /// attachReceipt() above, which needs an existing expense id.
+  /// Every field can come back null if OCR couldn't confidently find
+  /// it; the form treats these as a starting point to review/edit,
+  /// never as final.
+  Future<({double? amount, String? date, String? vendor})> parseReceipt(File photo) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(photo.path, filename: 'receipt.jpg'),
+    });
+    final res = await _api.postFormData('/expenses/parse-receipt', formData);
+    final map = res as Map<String, dynamic>;
+    return (
+      amount: (map['amount'] as num?)?.toDouble(),
+      date: map['date'] as String?,
+      vendor: map['vendor'] as String?,
+    );
+  }
+
   /// Uploads a receipt photo for an already-created expense — a
   /// separate call rather than part of create(), matching the
   /// backend's own POST /expenses/:id/receipt (attach-after-create),

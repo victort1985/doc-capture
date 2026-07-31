@@ -20,6 +20,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   DateTime _date = DateTime.now();
   PaymentMethod _method = PaymentMethod.cash;
   File? _receiptPhoto;
+  bool _parsingReceipt = false;
   bool _saving = false;
 
   // Method-specific controllers — same set/shape as PaymentsScreen's
@@ -50,13 +51,50 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   Future<void> _pickReceiptFromCamera() async {
     final photo = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 90);
     if (photo == null || !mounted) return;
-    setState(() => _receiptPhoto = File(photo.path));
+    await _useReceiptPhoto(File(photo.path));
   }
 
   Future<void> _pickReceiptFromGallery() async {
     final photo = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
     if (photo == null || !mounted) return;
-    setState(() => _receiptPhoto = File(photo.path));
+    await _useReceiptPhoto(File(photo.path));
+  }
+
+  /// Shared by both camera and gallery pick — sets the photo
+  /// immediately (so the thumbnail shows up right away), then tries
+  /// OCR in the background. A failed/empty OCR result just means the
+  /// form stays exactly as manually-fillable as it always was; it
+  /// never blocks attaching the photo itself, and it only ever fills
+  /// in fields the person hasn't already typed something into —
+  /// never overwrites a value they entered themselves.
+  Future<void> _useReceiptPhoto(File photo) async {
+    setState(() {
+      _receiptPhoto = photo;
+      _parsingReceipt = true;
+    });
+    try {
+      final svc = ExpensesService(context.read<ApiService>());
+      final parsed = await svc.parseReceipt(photo);
+      if (!mounted) return;
+      setState(() {
+        if (_amountController.text.trim().isEmpty && parsed.amount != null) {
+          _amountController.text = parsed.amount!.toStringAsFixed(2);
+        }
+        if (parsed.date != null) {
+          final d = DateTime.tryParse(parsed.date!);
+          if (d != null) _date = d;
+        }
+        if (_descriptionController.text.trim().isEmpty && parsed.vendor != null) {
+          _descriptionController.text = parsed.vendor!;
+        }
+      });
+    } catch (_) {
+      // OCR failing is not an error worth interrupting the person
+      // over — they can just type the fields in manually, same as
+      // before this feature existed.
+    } finally {
+      if (mounted) setState(() => _parsingReceipt = false);
+    }
   }
 
   String _methodLabel(PaymentMethod m, AppLocalizations l10n) => switch (m) {
@@ -238,6 +276,15 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           const SizedBox(height: 16),
           Text(l10n.expenseReceiptPhoto, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
+          if (_parsingReceipt)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(children: [
+                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
+                const SizedBox(width: 8),
+                Text(l10n.expenseReceiptParsing, style: const TextStyle(fontSize: 12.5)),
+              ]),
+            ),
           if (_receiptPhoto != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
