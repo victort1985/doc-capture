@@ -891,7 +891,9 @@
     "noContacts": "אין אנשי קשר",
     "taxId": "ח.פ. / ת.ז.",
     "paymentTermsDays": "תנאי תשלום (ימים)",
-    "creditLimit": "מסגרת אשראי"
+    "creditLimit": "מסגרת אשראי",
+    "clientIdentifier": "מזהה לקוח",
+    "clientIdentifierHint": "השאר ריק להקצאה אוטומטית"
   },
   "demoNotice": {
     "title": "זוהי התקנת דמו",

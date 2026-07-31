@@ -891,7 +891,9 @@
     "noContacts": "Контактов нет",
     "taxId": "ח.פ. / ИНН",
     "paymentTermsDays": "Отсрочка платежа (дней)",
-    "creditLimit": "Кредитный лимит"
+    "creditLimit": "Кредитный лимит",
+    "clientIdentifier": "ID клиента",
+    "clientIdentifierHint": "Оставь пустым для автоназначения"
   },
   "demoNotice": {
     "title": "Это демо-версия",

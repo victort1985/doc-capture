@@ -891,7 +891,9 @@
     "noContacts": "No contacts",
     "taxId": "ח.פ. / Tax ID",
     "paymentTermsDays": "Payment terms (days)",
-    "creditLimit": "Credit limit"
+    "creditLimit": "Credit limit",
+    "clientIdentifier": "Client ID",
+    "clientIdentifierHint": "Leave blank to auto-assign"
   },
   "demoNotice": {
     "title": "This is a demo installation",

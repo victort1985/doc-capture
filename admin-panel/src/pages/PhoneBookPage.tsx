@@ -7,6 +7,7 @@ interface City { id: number; name: string; region?: { id: number; name: string }
 interface Location { id: number; name: string; city?: City }
 interface Contact {
   id: number;
+  clientIdentifier?: number | null;
   category: 'client' | 'technician' | 'supplier';
   firstName: string;
   lastName: string;
@@ -32,6 +33,7 @@ interface ParsedContact {
 }
 
 const EMPTY_FORM = {
+  clientIdentifier: '',
   category: 'client', firstName: '', lastName: '', cityId: '', organizationId: '',
   position: '', phone: '', email: '', notes: '', taxId: '', paymentTermsDays: '', creditLimit: '',
 };
@@ -139,6 +141,7 @@ export default function PhoneBookPage() {
   function openEditForm(c: Contact) {
     setEditingId(c.id);
     setForm({
+      clientIdentifier: c.clientIdentifier != null ? String(c.clientIdentifier) : '',
       category: c.category,
       firstName: c.firstName,
       lastName: c.lastName,
@@ -462,6 +465,14 @@ export default function PhoneBookPage() {
           <h3 style={{ marginTop: 0 }}>{editingId ? t('phonebook.editContact') : t('phonebook.newContact')}</h3>
           <div className="form-grid">
             <div>
+              <label>{t('phonebook.clientIdentifier')}</label>
+              <input
+                type="number" min={1} value={form.clientIdentifier}
+                onChange={(e) => setForm({ ...form, clientIdentifier: e.target.value })}
+                placeholder={t('phonebook.clientIdentifierHint')}
+              />
+            </div>
+            <div>
               <label>{t('phonebook.category')}</label>
               <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
                 <option value="client">{t('phonebook.client')}</option>
@@ -567,6 +578,7 @@ export default function PhoneBookPage() {
                   onChange={toggleSelectAll}
                 />
               </th>
+              <th>{t('phonebook.clientIdentifier')}</th>
               <th>{t('common.name')}</th>
               <th>{t('phonebook.category')}</th>
               <th>{t('phonebook.organization')}</th>
@@ -581,6 +593,7 @@ export default function PhoneBookPage() {
                 <td>
                   <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => toggleSelected(c.id)} />
                 </td>
+                <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>{c.clientIdentifier ?? '—'}</td>
                 <td>
                   {c.firstName} {c.lastName}
                   {c.position && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{c.position}</div>}

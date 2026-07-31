@@ -157,10 +157,24 @@ function CreateRentalModal({ onClose, onCreated }: { onClose: () => void; onCrea
   useEffect(() => {
     if (!contactQuery.trim() || selectedContact) { setContactResults([]); return; }
     const handle = setTimeout(() => {
+      // A purely-numeric query is almost certainly someone typing a
+      // client identifier rather than searching by name — try the
+      // exact-match lookup first and auto-select on a hit, so typing
+      // the number is enough to fill in the rest without an extra
+      // click. Falls through to the normal name/phone search either
+      // way (a numeric string could coincidentally also be someone's
+      // actual name search, however unlikely).
+      const trimmed = contactQuery.trim();
+      if (/^\d+$/.test(trimmed)) {
+        apiFetch<Contact | null>(`/phonebook/by-identifier/${trimmed}`)
+          .then((c) => { if (c) pickContact(c); })
+          .catch(() => {});
+      }
       apiFetch<Contact[]>(`/phonebook/search?q=${encodeURIComponent(contactQuery)}&type=client`)
         .then(setContactResults).catch(() => setContactResults([]));
     }, 300);
     return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contactQuery, selectedContact]);
 
   useEffect(() => {
