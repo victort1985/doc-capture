@@ -536,5 +536,21 @@
   "warehouseSupplier": "ספק",
   "warehouseSupplierPhone": "טלפון ספק",
   "warehouseSupplierEmail": "מייל ספק",
-  "warehouseSentAt": "נשלח"
+  "warehouseSentAt": "נשלח",
+  "returnsTitle": "החזרות",
+  "returnsNoneYet": "אין עדיין החזרות",
+  "creditNotesTitle": "הודעות זיכוי",
+  "creditNotesNoneYet": "אין עדיין הודעות זיכוי",
+  "debitNotesTitle": "הודעות חיוב",
+  "debitNotesNoneYet": "אין עדיין הודעות חיוב",
+  "expensesTitle": "הוצאות",
+  "expensesNoneYet": "אין עדיין הוצאות",
+  "navMore": "עוד",
+  "navContacts": "אנשי קשר",
+  "createDocumentTitle": "יצירת מסמך",
+  "createDocumentHint": "בחר סוג כדי להתחיל",
+  "navStyleSectionTitle": "סגנון ניווט",
+  "navStyleClassic": "קלאסי (טאבים הניתנים להתאמה)",
+  "navStyleActionHub": "פעולות מהירות (פחות טאבים + קיצורים)",
+  "navStyleHint": "ייכנס לתוקף בפעם הבאה שתפתח את האפליקציה."
 }

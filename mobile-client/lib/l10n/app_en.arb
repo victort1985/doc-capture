@@ -536,5 +536,21 @@
   "warehouseSupplier": "Supplier",
   "warehouseSupplierPhone": "Supplier phone",
   "warehouseSupplierEmail": "Supplier email",
-  "warehouseSentAt": "Sent"
+  "warehouseSentAt": "Sent",
+  "returnsTitle": "Returns",
+  "returnsNoneYet": "No returns yet",
+  "creditNotesTitle": "Credit Notes",
+  "creditNotesNoneYet": "No credit notes yet",
+  "debitNotesTitle": "Debit Notes",
+  "debitNotesNoneYet": "No debit notes yet",
+  "expensesTitle": "Expenses",
+  "expensesNoneYet": "No expenses yet",
+  "navMore": "More",
+  "navContacts": "Contacts",
+  "createDocumentTitle": "Create document",
+  "createDocumentHint": "Choose a type to get started",
+  "navStyleSectionTitle": "Navigation style",
+  "navStyleClassic": "Classic (customizable tabs)",
+  "navStyleActionHub": "Quick Actions (fewer tabs + shortcuts)",
+  "navStyleHint": "Takes effect the next time you open the app."
 }

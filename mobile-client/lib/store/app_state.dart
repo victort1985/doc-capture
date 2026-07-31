@@ -21,6 +21,7 @@ class AppState extends ChangeNotifier {
   AuthService get authService => _authService;
 
   String languageCode = SettingsService.defaultLanguage; // 'he' by default
+  String navStyle = SettingsService.defaultNavStyle; // 'classic' by default
   AuthUser? currentUser;
   bool initialized = false;
 
@@ -52,6 +53,7 @@ class AppState extends ChangeNotifier {
 
   Future<void> bootstrap() async {
     languageCode = await _settingsService.getLanguage();
+    navStyle = await _settingsService.getNavStyle();
 
     // Apply the saved server address *before* doing anything else that
     // talks to the network — otherwise restoreToken()/fetchCurrentUser()
@@ -113,6 +115,12 @@ class AppState extends ChangeNotifier {
   Future<void> setLanguage(String code) async {
     languageCode = code;
     await _settingsService.setLanguage(code);
+    notifyListeners();
+  }
+
+  Future<void> setNavStyle(String style) async {
+    navStyle = style;
+    await _settingsService.setNavStyle(style);
     notifyListeners();
   }
 

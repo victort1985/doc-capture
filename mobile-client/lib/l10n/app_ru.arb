@@ -536,5 +536,21 @@
   "warehouseSupplier": "Поставщик",
   "warehouseSupplierPhone": "Телефон поставщика",
   "warehouseSupplierEmail": "Email поставщика",
-  "warehouseSentAt": "Отправлено"
+  "warehouseSentAt": "Отправлено",
+  "returnsTitle": "Возвраты",
+  "returnsNoneYet": "Пока нет возвратов",
+  "creditNotesTitle": "Кредит-ноты",
+  "creditNotesNoneYet": "Пока нет кредит-нот",
+  "debitNotesTitle": "Дебет-ноты",
+  "debitNotesNoneYet": "Пока нет дебет-нот",
+  "expensesTitle": "Расходы",
+  "expensesNoneYet": "Пока нет расходов",
+  "navMore": "Ещё",
+  "navContacts": "Контакты",
+  "createDocumentTitle": "Создать документ",
+  "createDocumentHint": "Выбери тип, чтобы начать",
+  "navStyleSectionTitle": "Стиль навигации",
+  "navStyleClassic": "Классический (настраиваемые вкладки)",
+  "navStyleActionHub": "Быстрые действия (меньше вкладок + ярлыки)",
+  "navStyleHint": "Применится при следующем открытии приложения."
 }

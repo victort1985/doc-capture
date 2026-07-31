@@ -12,6 +12,9 @@ import '../store/app_state.dart';
 import 'calls_stats_screen.dart';
 import '../widgets/organization_logo_background.dart';
 import '../widgets/customizable_bottom_nav.dart';
+import '../widgets/create_document_sheet.dart';
+import 'more_screen.dart';
+import '../app/theme.dart';
 
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
@@ -23,6 +26,7 @@ class RootScreen extends StatefulWidget {
 class _RootScreenState extends State<RootScreen> {
   int _index = 0; // still used for the desktop NavigationRail, which doesn't need reordering
   String? _selectedId;
+  String _actionHubSelectedId = 'home';
   List<String>? _tabOrder;
   Set<String>? _lastBaseTabIds;
   final _callsListKey = GlobalKey<CallsListScreenState>();
@@ -43,7 +47,7 @@ class _RootScreenState extends State<RootScreen> {
       onCallCreated: (id, place, createdBy) => _popup(
         l10n.callPopupCreated(place, createdBy),
         onTap: () {
-          setState(() { _index = 1; _selectedId = 'calls'; }); // switch to the Calls tab
+          setState(() { _index = 1; _selectedId = 'calls'; _actionHubSelectedId = 'calls'; }); // switch to the Calls tab
           _callsListKey.currentState?.openCall(id);
         },
       ),
@@ -87,6 +91,7 @@ class _RootScreenState extends State<RootScreen> {
       'calendar': const CalendarScreen(),
       'management': const ManagementScreen(),
       if (hasOfficeAccess) 'office': const OfficeScreen(),
+      'more': const MoreScreen(),
     };
     // Fixed regardless of the customizable nav bar's visual order —
     // this is what keeps IndexedStack's state-preservation (scroll
@@ -187,7 +192,81 @@ class _RootScreenState extends State<RootScreen> {
       );
     }
 
-    // ── Mobile layout: customizable bottom nav ────────────────────────────
+    // ── Mobile layout ───────────────────────────────────────────────────
+    final navStyle = context.watch<AppState>().navStyle;
+
+    if (navStyle == 'actionHub') {
+      // ── Action Hub: fewer bottom tabs + a FAB opening a full grid of
+      // every document type (including the 4 new ones — see
+      // create_document_sheet.dart) instead of digging through the
+      // classic nav's Office sub-tabs. Selectable per-device in
+      // Settings; the classic customizable nav (orderedTabs above)
+      // stays the default and is left completely untouched by this
+      // branch, including its own reorder-persistence logic.
+      final actionHubIds = ['home', 'calls', 'phonebook', 'more'];
+      if (!actionHubIds.contains(_actionHubSelectedId)) _actionHubSelectedId = 'home';
+      final actionHubIndex = canonicalIds.indexOf(_actionHubSelectedId).clamp(0, canonicalIds.length - 1);
+
+      final actionHubTabs = [
+        (id: 'home', icon: Icons.inventory_2_outlined, selectedIcon: Icons.inventory_2, label: l10n.navHome),
+        (id: 'calls', icon: Icons.support_agent_outlined, selectedIcon: Icons.support_agent, label: l10n.callsTitle),
+        (id: 'phonebook', icon: Icons.contacts_outlined, selectedIcon: Icons.contacts, label: l10n.navContacts),
+        (id: 'more', icon: Icons.menu_outlined, selectedIcon: Icons.menu, label: l10n.navMore),
+      ];
+      // Split around the middle so the FAB notch sits centered between
+      // two tabs on each side, matching CircularNotchedRectangle's
+      // expectation of a symmetric BottomAppBar.
+      final leftTabs = actionHubTabs.sublist(0, 2);
+      final rightTabs = actionHubTabs.sublist(2);
+
+      Widget buildTab(({String id, IconData icon, IconData selectedIcon, String label}) tab) {
+        final selected = tab.id == _actionHubSelectedId;
+        return Expanded(
+          child: InkWell(
+            onTap: () => setState(() => _actionHubSelectedId = tab.id),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(selected ? tab.selectedIcon : tab.icon, size: 22, color: selected ? AppColors.primary : Colors.grey.shade500),
+                const SizedBox(height: 2),
+                Text(tab.label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: selected ? AppColors.primary : Colors.grey.shade500)),
+              ],
+            ),
+          ),
+        );
+      }
+
+      return Scaffold(
+        body: OrganizationLogoBackground(
+          child: IndexedStack(
+            index: actionHubIndex,
+            children: canonicalIds.map((id) => screensById[id]!).toList(),
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          backgroundColor: AppColors.stamp,
+          onPressed: () => showCreateDocumentSheet(context, hasOfficeAccess: hasOfficeAccess),
+          child: const Icon(Icons.add, color: Colors.white),
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        bottomNavigationBar: BottomAppBar(
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 8,
+          child: SafeArea(
+            child: SizedBox(
+              height: 56,
+              child: Row(children: [
+                ...leftTabs.map(buildTab),
+                const SizedBox(width: 40), // room for the FAB notch
+                ...rightTabs.map(buildTab),
+              ]),
+            ),
+          ),
+        ),
+      );
+    }
+
+    // ── Classic mobile layout: customizable bottom nav ─────────────────────
     return Scaffold(
       body: OrganizationLogoBackground(
         child: IndexedStack(
