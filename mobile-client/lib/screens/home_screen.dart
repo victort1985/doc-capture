@@ -13,6 +13,7 @@ import '../services/credit_notes_service.dart';
 import '../services/debit_notes_service.dart';
 import '../services/expenses_service.dart';
 import '../models/service_call.dart';
+import '../widgets/attention_notifications_sheet.dart';
 
 class _StatCardData {
   final IconData icon;
@@ -47,6 +48,12 @@ class HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _load();
+    // Post-frame, not inside _load() — refresh() also calls _load()
+    // for pull-to-refresh, and this should only ever run once per
+    // app open, not nag again every time someone refreshes the tab.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) checkAttentionItems(context);
+    });
   }
 
   Future<void> refresh() => _load();

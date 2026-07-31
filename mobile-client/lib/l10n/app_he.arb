@@ -615,5 +615,28 @@
   "expenseReceiptGallery": "בחירה מהגלריה",
   "expenseReceiptRemove": "הסרת תמונה",
   "expenseReceiptUploadError": "ההוצאה נשמרה, אך העלאת תמונת הקבלה נכשלה — נסה לצרף אותה מאוחר יותר.",
-  "expenseReceiptParsing": "קורא את הקבלה…"
+  "expenseReceiptParsing": "קורא את הקבלה…",
+  "attentionTitle": "דורש תשומת לב",
+  "attentionSubtitle": "שיחות פתוחות, לוח השנה של היום ובדיקות רכב קרובות",
+  "attentionDaysOpen": "פתוח {days} ימים",
+  "attentionInspection": "טסט",
+  "attentionTest": "רישוי",
+  "attentionDueOn": "{type} עד {date}",
+  "@attentionDaysOpen": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "@attentionDueOn": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -615,5 +615,28 @@
   "expenseReceiptGallery": "Выбрать из галереи",
   "expenseReceiptRemove": "Убрать фото",
   "expenseReceiptUploadError": "Расход сохранён, но фото чека не загрузилось — попробуй прикрепить его позже.",
-  "expenseReceiptParsing": "Читаю чек…"
+  "expenseReceiptParsing": "Читаю чек…",
+  "attentionTitle": "Требует внимания",
+  "attentionSubtitle": "Открытые звонки, сегодняшний календарь и приближающиеся техосмотры",
+  "attentionDaysOpen": "Открыт {days} дн.",
+  "attentionInspection": "Техосмотр",
+  "attentionTest": "Тест",
+  "attentionDueOn": "{type} до {date}",
+  "@attentionDaysOpen": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "@attentionDueOn": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

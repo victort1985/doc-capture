@@ -615,5 +615,28 @@
   "expenseReceiptGallery": "Choose from gallery",
   "expenseReceiptRemove": "Remove photo",
   "expenseReceiptUploadError": "Expense saved, but the receipt photo failed to upload — try attaching it again later.",
-  "expenseReceiptParsing": "Reading receipt…"
+  "expenseReceiptParsing": "Reading receipt…",
+  "attentionTitle": "Needs attention",
+  "attentionSubtitle": "Open calls, today's calendar, and upcoming vehicle checks",
+  "attentionDaysOpen": "Open {days} days",
+  "attentionInspection": "Inspection",
+  "attentionTest": "Test",
+  "attentionDueOn": "{type} due {date}",
+  "@attentionDaysOpen": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "@attentionDueOn": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      },
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }
