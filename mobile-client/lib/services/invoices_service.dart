@@ -1,5 +1,8 @@
 import 'dart:typed_data';
 import '../services/api_service.dart';
+import 'quotes_service.dart' show VatCategory, vatCategoryValue, parseVatCategory, kSupportedCurrencies;
+
+export 'quotes_service.dart' show VatCategory, vatCategoryValue, parseVatCategory, kSupportedCurrencies;
 
 class InvoiceItem {
   final String description;
@@ -30,14 +33,18 @@ class Invoice {
   final String? invoiceNumber;
   final String clientName;
   final String? clientEmail;
+  final String? clientTaxId;
   final List<InvoiceItem> items;
   final double total;
   final InvoiceStatus status;
+  final String currency;
+  final VatCategory vatCategory;
   final DateTime createdAt;
 
   Invoice({
-    required this.id, this.invoiceNumber, required this.clientName, this.clientEmail,
-    required this.items, required this.total, required this.status, required this.createdAt,
+    required this.id, this.invoiceNumber, required this.clientName, this.clientEmail, this.clientTaxId,
+    required this.items, required this.total, required this.status,
+    required this.currency, required this.vatCategory, required this.createdAt,
   });
 
   factory Invoice.fromJson(Map<String, dynamic> j) => Invoice(
@@ -45,9 +52,12 @@ class Invoice {
         invoiceNumber: j['invoiceNumber'],
         clientName: j['clientName'] ?? '',
         clientEmail: j['clientEmail'],
+        clientTaxId: j['clientTaxId'],
         items: (j['items'] as List<dynamic>? ?? []).map((e) => InvoiceItem.fromJson(e)).toList(),
         total: (j['total'] as num?)?.toDouble() ?? 0,
         status: _parseInvoiceStatus(j['status']),
+        currency: j['currency'] ?? 'ILS',
+        vatCategory: parseVatCategory(j['vatCategory']),
         createdAt: DateTime.tryParse(j['createdAt'] ?? '') ?? DateTime.now(),
       );
 }
@@ -66,20 +76,26 @@ class InvoicesService {
   Future<Invoice> create({
     required String clientName,
     String? clientEmail,
+    String? clientTaxId,
     required List<InvoiceItem> items,
     String? notes,
     int? quoteId,
     int? deliveryNoteId,
     String? chainId,
+    String currency = 'ILS',
+    VatCategory vatCategory = VatCategory.standard,
   }) async {
     final res = await _api.post('/invoices', {
       'clientName': clientName,
       if (clientEmail != null && clientEmail.isNotEmpty) 'clientEmail': clientEmail,
+      if (clientTaxId != null && clientTaxId.isNotEmpty) 'clientTaxId': clientTaxId,
       'items': items.map((i) => i.toJson()).toList(),
       if (notes != null && notes.isNotEmpty) 'notes': notes,
       if (quoteId != null) 'quoteId': quoteId,
       if (deliveryNoteId != null) 'deliveryNoteId': deliveryNoteId,
       if (chainId != null) 'chainId': chainId,
+      if (currency != 'ILS') 'currency': currency,
+      'vatCategory': vatCategoryValue(vatCategory),
     });
     return Invoice.fromJson(res);
   }

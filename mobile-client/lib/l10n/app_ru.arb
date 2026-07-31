@@ -598,5 +598,12 @@
       }
     }
   },
-  "navScan": "Сканирование"
+  "navScan": "Сканирование",
+  "quoteCurrency": "Валюта",
+  "quoteVatCategory": "НДС",
+  "vatCategoryStandard": "Стандартный (18%)",
+  "vatCategoryZero": "Нулевая ставка (экспорт)",
+  "vatCategoryExempt": "Освобождён",
+  "invoiceClientTaxId": "ИНН клиента (ח.פ./עוסק מורשה)",
+  "invoiceClientTaxIdHint": "Нужен для номера распределения от налоговой на крупных счетах"
 }

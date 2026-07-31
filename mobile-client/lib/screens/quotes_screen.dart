@@ -165,6 +165,8 @@ class _QuoteFormScreenState extends State<_QuoteFormScreen> {
   final _clientController = TextEditingController();
   final _emailController = TextEditingController();
   final List<(TextEditingController, TextEditingController, TextEditingController)> _items = [];
+  String _currency = 'ILS';
+  VatCategory _vatCategory = VatCategory.standard;
   bool _saving = false;
 
   @override
@@ -211,6 +213,8 @@ class _QuoteFormScreenState extends State<_QuoteFormScreen> {
                   unitPrice: double.tryParse(i.$3.text) ?? 0,
                 ))
             .toList(),
+        currency: _currency,
+        vatCategory: _vatCategory,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -233,6 +237,30 @@ class _QuoteFormScreenState extends State<_QuoteFormScreen> {
           TextField(controller: _clientController, decoration: InputDecoration(labelText: l10n.quoteClientName)),
           const SizedBox(height: 10),
           TextField(controller: _emailController, decoration: InputDecoration(labelText: l10n.quoteClientEmail)),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _currency,
+                decoration: InputDecoration(labelText: l10n.quoteCurrency),
+                items: kSupportedCurrencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                onChanged: (v) => setState(() => _currency = v ?? 'ILS'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: DropdownButtonFormField<VatCategory>(
+                value: _vatCategory,
+                decoration: InputDecoration(labelText: l10n.quoteVatCategory),
+                items: [
+                  DropdownMenuItem(value: VatCategory.standard, child: Text(l10n.vatCategoryStandard)),
+                  DropdownMenuItem(value: VatCategory.zero, child: Text(l10n.vatCategoryZero)),
+                  DropdownMenuItem(value: VatCategory.exempt, child: Text(l10n.vatCategoryExempt)),
+                ],
+                onChanged: (v) => setState(() => _vatCategory = v ?? VatCategory.standard),
+              ),
+            ),
+          ]),
           const SizedBox(height: 16),
           Text(l10n.quoteItems, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),

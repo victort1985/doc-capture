@@ -598,5 +598,12 @@
       }
     }
   },
-  "navScan": "סריקה"
+  "navScan": "סריקה",
+  "quoteCurrency": "מטבע",
+  "quoteVatCategory": "מע\"מ",
+  "vatCategoryStandard": "רגיל (18%)",
+  "vatCategoryZero": "אפס (יצוא)",
+  "vatCategoryExempt": "פטור",
+  "invoiceClientTaxId": "ח.פ./עוסק מורשה של הלקוח",
+  "invoiceClientTaxIdHint": "נדרש למספר הקצאה מרשות המסים בחשבוניות גדולות"
 }

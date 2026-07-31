@@ -598,5 +598,12 @@
       }
     }
   },
-  "navScan": "Scan"
+  "navScan": "Scan",
+  "quoteCurrency": "Currency",
+  "quoteVatCategory": "VAT",
+  "vatCategoryStandard": "Standard (18%)",
+  "vatCategoryZero": "Zero-rated (export)",
+  "vatCategoryExempt": "Exempt",
+  "invoiceClientTaxId": "Client's tax ID (ח.פ./עוסק מורשה)",
+  "invoiceClientTaxIdHint": "Needed for the Tax Authority allocation number on large invoices"
 }

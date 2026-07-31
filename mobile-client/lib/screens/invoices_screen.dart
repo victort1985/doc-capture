@@ -186,7 +186,10 @@ class InvoiceFormScreen extends StatefulWidget {
 class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   final _clientController = TextEditingController();
   final _emailController = TextEditingController();
+  final _taxIdController = TextEditingController();
   final List<(TextEditingController, TextEditingController, TextEditingController)> _items = [];
+  String _currency = 'ILS';
+  VatCategory _vatCategory = VatCategory.standard;
   bool _saving = false;
   List<Quote>? _quotesCache;
   int? _fromQuoteId;
@@ -375,6 +378,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       await svc.create(
         clientName: _clientController.text.trim(),
         clientEmail: _emailController.text.trim(),
+        clientTaxId: _taxIdController.text.trim(),
         items: _items
             .where((i) => i.$1.text.trim().isNotEmpty)
             .map((i) => InvoiceItem(
@@ -386,6 +390,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
         quoteId: _fromQuoteId,
         deliveryNoteId: _fromDeliveryNoteId,
         chainId: _chainId,
+        currency: _currency,
+        vatCategory: _vatCategory,
       );
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
@@ -428,6 +434,32 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
           TextField(controller: _clientController, decoration: InputDecoration(labelText: l10n.quoteClientName)),
           const SizedBox(height: 10),
           TextField(controller: _emailController, decoration: InputDecoration(labelText: l10n.quoteClientEmail)),
+          const SizedBox(height: 10),
+          TextField(controller: _taxIdController, decoration: InputDecoration(labelText: l10n.invoiceClientTaxId, helperText: l10n.invoiceClientTaxIdHint)),
+          const SizedBox(height: 10),
+          Row(children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _currency,
+                decoration: InputDecoration(labelText: l10n.quoteCurrency),
+                items: kSupportedCurrencies.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+                onChanged: (v) => setState(() => _currency = v ?? 'ILS'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: DropdownButtonFormField<VatCategory>(
+                value: _vatCategory,
+                decoration: InputDecoration(labelText: l10n.quoteVatCategory),
+                items: [
+                  DropdownMenuItem(value: VatCategory.standard, child: Text(l10n.vatCategoryStandard)),
+                  DropdownMenuItem(value: VatCategory.zero, child: Text(l10n.vatCategoryZero)),
+                  DropdownMenuItem(value: VatCategory.exempt, child: Text(l10n.vatCategoryExempt)),
+                ],
+                onChanged: (v) => setState(() => _vatCategory = v ?? VatCategory.standard),
+              ),
+            ),
+          ]),
           const SizedBox(height: 16),
           Text(l10n.quoteItems, style: const TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),

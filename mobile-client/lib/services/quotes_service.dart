@@ -1,6 +1,29 @@
 import 'dart:typed_data';
 import '../services/api_service.dart';
 
+/// Shared with invoices_service.dart's own copy of the same 3
+/// categories — kept as plain strings (matching exactly what the
+/// backend's vatCategory field expects) rather than importing across
+/// service files for such a small, self-contained concept.
+enum VatCategory { standard, zero, exempt }
+
+String vatCategoryValue(VatCategory c) => switch (c) {
+      VatCategory.standard => 'standard',
+      VatCategory.zero => 'zero',
+      VatCategory.exempt => 'exempt',
+    };
+
+VatCategory parseVatCategory(String? s) => switch (s) {
+      'zero' => VatCategory.zero,
+      'exempt' => VatCategory.exempt,
+      _ => VatCategory.standard,
+    };
+
+/// The 4 currencies the backend's own CurrencyModule supports (see
+/// server's ExchangeRateService.SUPPORTED_CURRENCIES) — not a
+/// general-purpose ISO 4217 list.
+const kSupportedCurrencies = ['ILS', 'USD', 'EUR', 'GBP'];
+
 class QuoteItem {
   final String description;
   final double quantity;
@@ -33,11 +56,14 @@ class Quote {
   final List<QuoteItem> items;
   final double total;
   final QuoteStatus status;
+  final String currency;
+  final VatCategory vatCategory;
   final DateTime createdAt;
 
   Quote({
     required this.id, this.quoteNumber, required this.clientName, this.clientEmail,
-    required this.items, required this.total, required this.status, required this.createdAt,
+    required this.items, required this.total, required this.status,
+    required this.currency, required this.vatCategory, required this.createdAt,
   });
 
   factory Quote.fromJson(Map<String, dynamic> j) => Quote(
@@ -48,6 +74,8 @@ class Quote {
         items: (j['items'] as List<dynamic>? ?? []).map((e) => QuoteItem.fromJson(e)).toList(),
         total: (j['total'] as num?)?.toDouble() ?? 0,
         status: _parseQuoteStatus(j['status']),
+        currency: j['currency'] ?? 'ILS',
+        vatCategory: parseVatCategory(j['vatCategory']),
         createdAt: DateTime.tryParse(j['createdAt'] ?? '') ?? DateTime.now(),
       );
 }
@@ -68,12 +96,16 @@ class QuotesService {
     String? clientEmail,
     required List<QuoteItem> items,
     String? notes,
+    String currency = 'ILS',
+    VatCategory vatCategory = VatCategory.standard,
   }) async {
     final res = await _api.post('/quotes', {
       'clientName': clientName,
       if (clientEmail != null && clientEmail.isNotEmpty) 'clientEmail': clientEmail,
       'items': items.map((i) => i.toJson()).toList(),
       if (notes != null && notes.isNotEmpty) 'notes': notes,
+      if (currency != 'ILS') 'currency': currency,
+      'vatCategory': vatCategoryValue(vatCategory),
     });
     return Quote.fromJson(res);
   }
