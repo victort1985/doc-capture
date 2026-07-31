@@ -2,6 +2,7 @@ import { Body, Controller, Get, Param, ParseIntPipe, Post, Res, UploadedFile, Us
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ExpensesService } from './expenses.service';
+import { ExpenseReceiptParserService } from './expense-receipt-parser.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { CreateSupplierInvoiceDto } from './dto/create-supplier-invoice.dto';
 import { MarkSupplierInvoicePaidDto } from './dto/mark-supplier-invoice-paid.dto';
@@ -17,7 +18,10 @@ type ReqUser = { id: number; organizationId: number | null };
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 export class ExpensesController {
-  constructor(private readonly service: ExpensesService) {}
+  constructor(
+    private readonly service: ExpensesService,
+    private readonly parserService: ExpenseReceiptParserService,
+  ) {}
 
   @Get()
   findAll(@CurrentUser() user: ReqUser) {
@@ -36,6 +40,20 @@ export class ExpensesController {
   @UseInterceptors(FileInterceptor('file'))
   async importCsv(@UploadedFile() file: { buffer: Buffer }, @CurrentUser() user: ReqUser) {
     return this.service.importExpensesCsv(user.organizationId, user.id, file.buffer.toString('utf-8'));
+  }
+
+  /** Extracts amount/date/vendor from a photographed/scanned receipt
+   * to pre-fill the create-expense form — called BEFORE the expense
+   * exists yet (unlike attachReceipt below, which needs an id),
+   * since the whole point is helping fill in the form in the first
+   * place. Every field can come back null if OCR couldn't confidently
+   * find it; none of this is ever treated as final — see
+   * ExpenseReceiptParserService's own doc comment on reliability. */
+  @Post('parse-receipt')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
+  async parseReceipt(@UploadedFile() file: { mimetype: string; buffer: Buffer } | undefined) {
+    if (!file) return { amount: null, date: null, vendor: null };
+    return this.parserService.parse(file.buffer, file.mimetype);
   }
 
   @Post(':id/receipt')
