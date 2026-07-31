@@ -660,5 +660,13 @@
   "rentalFormInvalid": "Pick equipment, enter a client name, and a due date.",
   "rentalSaveError": "Could not save the rental",
   "rentalSubmit": "Create rental",
-  "homeActiveRentals": "Active rentals"
+  "homeActiveRentals": "Active rentals",
+  "attentionRentalDue": "Rental due {date}",
+  "@attentionRentalDue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

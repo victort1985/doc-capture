@@ -7,6 +7,7 @@ import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import '../services/management_services.dart';
+import '../services/time_thresholds_service.dart';
 import '../store/app_state.dart';
 
 class FleetScreen extends StatefulWidget {
@@ -19,6 +20,7 @@ class _FleetScreenState extends State<FleetScreen> {
   late FleetService _svc;
   List<Vehicle> _vehicles = [];
   List<Map<String, dynamic>> _reminders = [];
+  TimeThresholds _thresholds = const TimeThresholds();
   bool _loading = true;
 
   @override
@@ -26,6 +28,9 @@ class _FleetScreenState extends State<FleetScreen> {
     super.initState();
     _svc = FleetService(context.read<ApiService>());
     _load();
+    TimeThresholdsService(context.read<ApiService>()).get().then((t) {
+      if (mounted) setState(() => _thresholds = t);
+    });
   }
 
   Future<void> _load() async {
@@ -83,7 +88,7 @@ class _FleetScreenState extends State<FleetScreen> {
         SliverList(
           delegate: SliverChildBuilderDelegate(
             (ctx, i) => _VehicleTile(
-              vehicle: _vehicles[i], svc: _svc,
+              vehicle: _vehicles[i], svc: _svc, thresholds: _thresholds,
               isPrivileged: isPrivileged, onRefresh: _load,
             ),
             childCount: _vehicles.length,
@@ -102,17 +107,45 @@ class _FleetScreenState extends State<FleetScreen> {
 // ── Vehicle tile ──────────────────────────────────────────────────────────────
 
 class _VehicleTile extends StatelessWidget {
-  const _VehicleTile({required this.vehicle, required this.svc, required this.isPrivileged, required this.onRefresh});
+  const _VehicleTile({required this.vehicle, required this.svc, required this.thresholds, required this.isPrivileged, required this.onRefresh});
   final Vehicle vehicle;
   final FleetService svc;
+  final TimeThresholds thresholds;
   final bool isPrivileged;
   final VoidCallback onRefresh;
+
+  /// Same app-wide "how urgent is this" color rule as calls/rentals —
+  /// the whole card, not a small dot. A vehicle's inspection/test is
+  /// annual (matches the backend's own addYear() logic in
+  /// fleet.service.ts) — this mirrors that assumption client-side
+  /// rather than duplicating a shared date-math endpoint, since the
+  /// backend's own /fleet/reminders already surfaces the same
+  /// due-soon set separately (shown in the banner above this list).
+  /// Whichever of inspection/test is closer to due wins the color.
+  Color? _urgencyColor() {
+    DateTime? nextDue(String? lastDateStr) {
+      if (lastDateStr == null) return null;
+      final last = DateTime.tryParse(lastDateStr);
+      if (last == null) return null;
+      return DateTime(last.year + 1, last.month, last.day);
+    }
+
+    final candidates = [nextDue(vehicle.lastInspectionDate), nextDue(vehicle.lastTestDate)].whereType<DateTime>();
+    if (candidates.isEmpty) return null;
+    final soonest = candidates.reduce((a, b) => a.isBefore(b) ? a : b);
+    final daysUntil = soonest.difference(DateTime.now()).inDays;
+
+    if (daysUntil <= thresholds.vehicleDangerDays) return const Color(0xFFFDEDEC);
+    if (daysUntil <= thresholds.vehicleWarningDays) return const Color(0xFFFEF9E7);
+    return null;
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+      color: _urgencyColor(),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: vehicle.isActive ? AppColors.primary.withOpacity(0.15) : Colors.grey.shade200,

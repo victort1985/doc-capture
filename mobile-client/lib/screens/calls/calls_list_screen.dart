@@ -6,6 +6,8 @@ import '../../l10n/app_localizations.dart';
 import '../../models/service_call.dart';
 import '../../services/calls_service.dart';
 import '../../widgets/elapsed_timer_text.dart';
+import '../../services/time_thresholds_service.dart';
+import '../../services/api_service.dart';
 import 'create_call_screen.dart';
 import 'call_detail_screen.dart';
 import '../calls_stats_screen.dart';
@@ -23,12 +25,16 @@ class CallsListScreenState extends State<CallsListScreen> {
   String? _error;
   Timer? _pollTimer;
   static const _pollInterval = Duration(seconds: 15);
+  TimeThresholds _thresholds = const TimeThresholds();
 
   @override
   void initState() {
     super.initState();
     _load(force: true);
     _pollTimer = Timer.periodic(_pollInterval, (_) => _load());
+    TimeThresholdsService(context.read<ApiService>()).get().then((t) {
+      if (mounted) setState(() => _thresholds = t);
+    });
   }
 
   @override
@@ -73,6 +79,19 @@ class CallsListScreenState extends State<CallsListScreen> {
       case CallStatus.closed:
         return AppColors.success;
     }
+  }
+
+  /// Same app-wide "how urgent is this" color rule as vehicles/
+  /// rentals — the whole card, not a small dot, a deliberate
+  /// readability choice from how this was specified. Only applies to
+  /// calls still actually open — a closed call isn't "waiting" on
+  /// anyone regardless of how long ago it happened to be created.
+  Color? _urgencyColor(ServiceCall call) {
+    if (call.status == CallStatus.closed) return null;
+    final hoursOpen = DateTime.now().difference(call.createdAt).inHours;
+    if (hoursOpen >= _thresholds.callsDangerHours) return const Color(0xFFFDEDEC);
+    if (hoursOpen >= _thresholds.callsWarningHours) return const Color(0xFFFEF9E7);
+    return null;
   }
 
   String _statusLabel(AppLocalizations l10n, CallStatus s) {
@@ -126,6 +145,7 @@ class CallsListScreenState extends State<CallsListScreen> {
                 itemBuilder: (context, i) {
                   final call = _calls[i];
                   return Card(
+                    color: _urgencyColor(call),
                     child: ListTile(
                       onTap: () async {
                         await Navigator.of(context).push(

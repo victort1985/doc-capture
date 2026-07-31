@@ -6,6 +6,8 @@ import '../services/api_service.dart';
 import '../services/calls_service.dart';
 import '../services/calendar_service.dart';
 import '../services/management_services.dart' show FleetService;
+import '../services/rentals_service.dart';
+import '../services/time_thresholds_service.dart';
 import '../models/service_call.dart';
 import '../models/calendar_event.dart';
 
@@ -82,6 +84,20 @@ Future<void> checkAttentionItems(BuildContext context) async {
         color: AppColors.primarySoft,
         title: '$make $model ($plate)',
         subtitle: l10n.attentionDueOn(typeLabel, r['dueDate'] as String? ?? ''),
+      ));
+    }
+  } catch (_) {}
+
+  try {
+    final thresholds = await TimeThresholdsService(api).get();
+    final rentals = await RentalsService(api).listActive();
+    final dueSoon = rentals.where((r) => r.daysUntilDue <= thresholds.rentalWarningDays);
+    for (final r in dueSoon) {
+      items.add(_AttentionItem(
+        icon: Icons.inventory_2_outlined,
+        color: r.daysUntilDue <= thresholds.rentalDangerDays ? AppColors.stamp : AppColors.primarySoft,
+        title: '${r.warehouseItem?.name ?? ''} — ${r.clientName}',
+        subtitle: l10n.attentionRentalDue(r.dueDate),
       ));
     }
   } catch (_) {}

@@ -660,5 +660,13 @@
   "rentalFormInvalid": "בחר ציוד, הזן שם לקוח ותאריך יעד.",
   "rentalSaveError": "לא ניתן לשמור את ההשכרה",
   "rentalSubmit": "יצירת השכרה",
-  "homeActiveRentals": "השכרות פעילות"
+  "homeActiveRentals": "השכרות פעילות",
+  "attentionRentalDue": "השכרה עד {date}",
+  "@attentionRentalDue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }

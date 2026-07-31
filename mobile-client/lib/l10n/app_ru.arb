@@ -660,5 +660,13 @@
   "rentalFormInvalid": "Выбери оборудование, укажи клиента и срок возврата.",
   "rentalSaveError": "Не удалось сохранить прокат",
   "rentalSubmit": "Создать прокат",
-  "homeActiveRentals": "Активный прокат"
+  "homeActiveRentals": "Активный прокат",
+  "attentionRentalDue": "Прокат до {date}",
+  "@attentionRentalDue": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  }
 }
