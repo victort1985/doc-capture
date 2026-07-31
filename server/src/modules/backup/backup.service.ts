@@ -13,14 +13,14 @@ export interface BackupFileInfo {
 }
 
 /**
- * On-demand database backup, triggered from the admin panel rather
- * than only via the existing backup-all-tenants.sh cron script. Each
- * running instance is already scoped to exactly one tenant database
- * (DB_DATABASE in its own .env — this is a database-per-tenant
- * architecture, not row-level multi-tenancy within one shared DB), so
- * "back up this org" simply means "pg_dump whatever database this
- * process is connected to" — no organizationId parameter needed in
- * the dump itself.
+ * On-demand + scheduled database backups, triggered from the admin
+ * panel rather than only via the existing backup-all-tenants.sh cron
+ * script. Each running instance is already scoped to exactly one
+ * tenant database (DB_DATABASE in its own .env — this is a
+ * database-per-tenant architecture, not row-level multi-tenancy
+ * within one shared DB), so "back up this org" simply means "pg_dump
+ * whatever database this process is connected to" — no
+ * organizationId parameter needed in the dump itself.
  *
  * Uses the app's own username/password DB credentials (the same ones
  * TypeORM connects with) via PGPASSWORD, rather than the cron
@@ -43,22 +43,67 @@ export class BackupService {
     return path.join(base, dbName);
   }
 
-  async createNow(): Promise<BackupFileInfo> {
-    await fsp.mkdir(this.backupDir, { recursive: true });
+  /** Every failure mode here is converted into a specific, actionable
+   * message rather than letting an unexpected error bubble up as a
+   * bare "Internal Server Error" with no indication of what actually
+   * went wrong (permissions, missing pg_dump binary, bad credentials,
+   * etc.) — the previous version of this method let exactly that
+   * happen for a real deployment failure. */
+  async createNow(source: 'manual' | 'scheduled' = 'manual'): Promise<BackupFileInfo> {
+    try {
+      await fsp.mkdir(this.backupDir, { recursive: true });
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code;
+      if (code === 'EACCES' || code === 'EPERM') {
+        throw new InternalServerErrorException(
+          `Cannot create/write to the backup directory (${this.backupDir}) — permission denied. ` +
+          `This usually means the directory (or its parent, e.g. /opt/doc-capture/backups) was created by ` +
+          `a different user (root, via the old backup-all-tenants.sh cron script running under sudo). Fix with: ` +
+          `sudo mkdir -p ${this.backupDir} && sudo chown -R $(whoami) ${path.dirname(this.backupDir)}` +
+          ` — run that as the same system user this app's systemd service runs as (commonly 'doccapture'), not your own login.`,
+        );
+      }
+      throw new InternalServerErrorException(`Could not prepare the backup directory: ${(err as Error).message}`);
+    }
 
     const dump = await this.runPgDump();
     const gzipped = zlib.gzipSync(dump);
     const encrypted = encryptBuffer(gzipped);
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const filename = `${process.env.DB_DATABASE || 'db'}_${timestamp}.sql.gz.enc`;
+    const filename = `${source}_${process.env.DB_DATABASE || 'db'}_${timestamp}.sql.gz.enc`;
     const filePath = path.join(this.backupDir, filename);
-    await fsp.writeFile(filePath, encrypted);
 
-    this.logger.log(`Created backup ${filename} (${(encrypted.length / 1024 / 1024).toFixed(1)} MB)`);
+    try {
+      await fsp.writeFile(filePath, encrypted);
+    } catch (err) {
+      throw new InternalServerErrorException(`Could not write the backup file to ${filePath}: ${(err as Error).message}`);
+    }
+
+    this.logger.log(`Created ${source} backup ${filename} (${(encrypted.length / 1024 / 1024).toFixed(1)} MB)`);
 
     const stat = await fsp.stat(filePath);
     return { filename, sizeBytes: stat.size, createdAt: stat.birthtime.toISOString() };
+  }
+
+  /** Deletes the oldest scheduled backups beyond `retentionCount` —
+   * never touches ones a person created manually via "Create now",
+   * since those were presumably kept on purpose (e.g. "before I
+   * changed X"), not just routine rotation. retentionCount=0 means
+   * keep everything. */
+  async pruneScheduled(retentionCount: number): Promise<void> {
+    if (retentionCount <= 0) return;
+    const all = await this.list();
+    const scheduled = all.filter((b) => b.filename.startsWith('scheduled_'));
+    const toDelete = scheduled.slice(retentionCount); // list() is already newest-first
+    for (const b of toDelete) {
+      try {
+        await this.delete(b.filename);
+        this.logger.log(`Pruned old scheduled backup ${b.filename} (retention: ${retentionCount})`);
+      } catch (err) {
+        this.logger.error(`Failed to prune ${b.filename}: ${(err as Error).message}`);
+      }
+    }
   }
 
   async list(): Promise<BackupFileInfo[]> {
@@ -106,6 +151,37 @@ export class BackupService {
     await fsp.unlink(filePath);
   }
 
+  /** Restores this database FROM a backup file — genuinely
+   * destructive: every table gets dropped and recreated from the
+   * dump's own contents, discarding anything written since that
+   * backup was taken. Requires the caller to have already gotten
+   * explicit confirmation from a human (the controller enforces a
+   * literal "RESTORE" confirmation string) since there's no
+   * "undo" once this runs — the strongest safeguard available
+   * without a maintenance-mode/downtime mechanic this app doesn't
+   * have yet. Runs against the SAME live database this process is
+   * connected to via TypeORM; existing app connections may see
+   * errors/inconsistent state for the duration of the restore, which
+   * is why this is meant for deliberate, supervised use — not
+   * something to run while people are actively using the system. */
+  async restore(filename: string): Promise<void> {
+    this.assertSafeFilename(filename);
+    const filePath = path.join(this.backupDir, filename);
+    if (!fs.existsSync(filePath)) throw new NotFoundException('Backup not found');
+
+    const encrypted = await fsp.readFile(filePath);
+    let sql: Buffer;
+    try {
+      const decrypted = decryptBuffer(encrypted);
+      sql = zlib.gunzipSync(decrypted);
+    } catch {
+      throw new InternalServerErrorException('Failed to decrypt/decompress this backup — cannot restore from it.');
+    }
+
+    await this.runPsqlRestore(sql);
+    this.logger.warn(`Database restored from backup ${filename}`);
+  }
+
   /** Filenames are only ever ones this service itself generated, but
    * validate anyway since the value arrives from a URL param — this
    * is the one thing standing between "read a file in the backup
@@ -133,15 +209,59 @@ export class BackupService {
       let stderr = '';
       child.stdout.on('data', (chunk) => chunks.push(chunk));
       child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
-      child.on('error', (err) => reject(new InternalServerErrorException(`pg_dump could not start — is it installed? (${err.message})`)));
+      child.on('error', (err) => {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          reject(new InternalServerErrorException(
+            `pg_dump is not installed or not on PATH for this process. Install the postgresql-client package ` +
+            `(e.g. 'sudo apt install postgresql-client') on the server running this service.`,
+          ));
+          return;
+        }
+        reject(new InternalServerErrorException(`pg_dump could not start: ${err.message}`));
+      });
       child.on('close', (code) => {
         if (code !== 0) {
           this.logger.error(`pg_dump exited with code ${code}: ${stderr}`);
-          reject(new InternalServerErrorException('pg_dump failed — see server logs for details'));
+          reject(new InternalServerErrorException(`pg_dump failed (exit code ${code}): ${stderr.slice(0, 500) || 'see server logs for details'}`));
           return;
         }
         resolve(Buffer.concat(chunks));
       });
+    });
+  }
+
+  private runPsqlRestore(sql: Buffer): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const args = [
+        '-h', process.env.DB_HOST || 'localhost',
+        '-p', process.env.DB_PORT || '5432',
+        '-U', process.env.DB_USERNAME || 'postgres',
+        '-v', 'ON_ERROR_STOP=0', // a restore hitting one pre-existing-object warning shouldn't abort the whole thing
+        process.env.DB_DATABASE || 'doc_capture',
+      ];
+      const child = spawn('psql', args, {
+        env: { ...process.env, PGPASSWORD: process.env.DB_PASSWORD || '' },
+      });
+
+      let stderr = '';
+      child.stderr.on('data', (chunk) => { stderr += chunk.toString(); });
+      child.on('error', (err) => {
+        if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+          reject(new InternalServerErrorException(`psql is not installed or not on PATH for this process.`));
+          return;
+        }
+        reject(new InternalServerErrorException(`psql could not start: ${err.message}`));
+      });
+      child.on('close', (code) => {
+        if (code !== 0) {
+          this.logger.error(`psql restore exited with code ${code}: ${stderr}`);
+          reject(new InternalServerErrorException(`Restore failed (exit code ${code}): ${stderr.slice(0, 500) || 'see server logs for details'}`));
+          return;
+        }
+        resolve();
+      });
+      child.stdin.write(sql);
+      child.stdin.end();
     });
   }
 }

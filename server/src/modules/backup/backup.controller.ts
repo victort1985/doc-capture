@@ -1,6 +1,7 @@
-import { Controller, Delete, Get, Param, Post, Res, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { BackupService } from './backup.service';
+import { BackupSchedulerService, UpdateBackupScheduleDto } from './backup-scheduler.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -10,7 +11,10 @@ import { UserRole } from '../users/entities/user.entity';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 export class BackupController {
-  constructor(private readonly service: BackupService) {}
+  constructor(
+    private readonly service: BackupService,
+    private readonly scheduler: BackupSchedulerService,
+  ) {}
 
   @Get()
   list() {
@@ -19,7 +23,7 @@ export class BackupController {
 
   @Post()
   createNow() {
-    return this.service.createNow();
+    return this.service.createNow('manual');
   }
 
   @Get(':filename/download')
@@ -37,5 +41,29 @@ export class BackupController {
   @Delete(':filename')
   delete(@Param('filename') filename: string) {
     return this.service.delete(filename);
+  }
+
+  /** Genuinely destructive — see BackupService.restore()'s own doc
+   * comment. Requires the literal string "RESTORE" in the request
+   * body as a deliberate extra step beyond just clicking a button,
+   * so this can't be triggered by a stray double-click or a client
+   * bug replaying the request. */
+  @Post(':filename/restore')
+  async restore(@Param('filename') filename: string, @Body() body: { confirm?: string }) {
+    if (body.confirm !== 'RESTORE') {
+      throw new BadRequestException('Restore not confirmed — send { "confirm": "RESTORE" } to proceed. This is destructive and cannot be undone.');
+    }
+    await this.service.restore(filename);
+    return { restored: true };
+  }
+
+  @Get('schedule')
+  getSchedule() {
+    return this.scheduler.getOrCreate();
+  }
+
+  @Post('schedule')
+  updateSchedule(@Body() dto: UpdateBackupScheduleDto) {
+    return this.scheduler.update(dto);
   }
 }
