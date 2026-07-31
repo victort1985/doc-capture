@@ -17,7 +17,7 @@ import '../widgets/attention_notifications_sheet.dart';
 
 class _StatCardData {
   final IconData icon;
-  final String label;
+  final String Function(AppLocalizations) label;
   final String value;
   final Color color;
   _StatCardData({required this.icon, required this.label, required this.value, required this.color});
@@ -61,7 +61,6 @@ class HomeScreenState extends State<HomeScreen> {
   Future<void> _load() async {
     if (!mounted) return;
     setState(() => _loading = true);
-    final l10n = AppLocalizations.of(context)!;
     final api = context.read<ApiService>();
     final user = context.read<AppState>().currentUser;
 
@@ -70,21 +69,21 @@ class HomeScreenState extends State<HomeScreen> {
     try {
       final calls = await CallsService(api).list();
       final openCalls = calls.where((c) => c.status != CallStatus.closed).length;
-      cards.add(_StatCardData(icon: Icons.support_agent_outlined, label: l10n.homeOpenCalls, value: '$openCalls', color: AppColors.primary));
+      cards.add(_StatCardData(icon: Icons.support_agent_outlined, label: (l) => l.homeOpenCalls, value: '$openCalls', color: AppColors.primary));
     } catch (_) {}
 
     if (user?.hasPermission('office.quotes') ?? false) {
       try {
         final quotes = await QuotesService(api).list();
         final draft = quotes.where((q) => q.status == QuoteStatus.draft).length;
-        cards.add(_StatCardData(icon: Icons.request_quote_outlined, label: l10n.homeDraftQuotes, value: '$draft', color: AppColors.stamp));
+        cards.add(_StatCardData(icon: Icons.request_quote_outlined, label: (l) => l.homeDraftQuotes, value: '$draft', color: AppColors.stamp));
       } catch (_) {}
     }
 
     if (user?.hasPermission('office.orders') ?? false) {
       try {
         final orders = await OrderService(api).list();
-        cards.add(_StatCardData(icon: Icons.inventory_2_outlined, label: l10n.homeOpenOrders, value: '${orders.length}', color: AppColors.primarySoft));
+        cards.add(_StatCardData(icon: Icons.inventory_2_outlined, label: (l) => l.homeOpenOrders, value: '${orders.length}', color: AppColors.primarySoft));
       } catch (_) {}
     }
 
@@ -93,34 +92,34 @@ class HomeScreenState extends State<HomeScreen> {
         final invoices = await InvoicesService(api).list();
         final unpaid = invoices.where((i) => i.status != InvoiceStatus.paid && i.status != InvoiceStatus.cancelled).toList();
         final unpaidTotal = unpaid.fold<double>(0, (sum, i) => sum + i.total);
-        cards.add(_StatCardData(icon: Icons.receipt_long_outlined, label: l10n.homeUnpaidInvoices, value: '${unpaid.length}', color: AppColors.stamp));
-        cards.add(_StatCardData(icon: Icons.payments_outlined, label: l10n.homeAmountDue, value: '₪${unpaidTotal.toStringAsFixed(0)}', color: AppColors.primary));
+        cards.add(_StatCardData(icon: Icons.receipt_long_outlined, label: (l) => l.homeUnpaidInvoices, value: '${unpaid.length}', color: AppColors.stamp));
+        cards.add(_StatCardData(icon: Icons.payments_outlined, label: (l) => l.homeAmountDue, value: '₪${unpaidTotal.toStringAsFixed(0)}', color: AppColors.primary));
       } catch (_) {}
     }
 
     if (user?.hasPermission('office.returns') ?? false) {
       try {
         final returns = await ReturnsService(api).list();
-        cards.add(_StatCardData(icon: Icons.assignment_return_outlined, label: l10n.homeReturns, value: '${returns.length}', color: AppColors.primarySoft));
+        cards.add(_StatCardData(icon: Icons.assignment_return_outlined, label: (l) => l.homeReturns, value: '${returns.length}', color: AppColors.primarySoft));
       } catch (_) {}
     }
     if (user?.hasPermission('office.credit_notes') ?? false) {
       try {
         final creditNotes = await CreditNotesService(api).list();
-        cards.add(_StatCardData(icon: Icons.receipt_long_outlined, label: l10n.homeCreditNotes, value: '${creditNotes.length}', color: AppColors.stamp));
+        cards.add(_StatCardData(icon: Icons.receipt_long_outlined, label: (l) => l.homeCreditNotes, value: '${creditNotes.length}', color: AppColors.stamp));
       } catch (_) {}
     }
     if (user?.hasPermission('office.debit_notes') ?? false) {
       try {
         final debitNotes = await DebitNotesService(api).list();
-        cards.add(_StatCardData(icon: Icons.receipt_outlined, label: l10n.homeDebitNotes, value: '${debitNotes.length}', color: AppColors.stamp));
+        cards.add(_StatCardData(icon: Icons.receipt_outlined, label: (l) => l.homeDebitNotes, value: '${debitNotes.length}', color: AppColors.stamp));
       } catch (_) {}
     }
     if (user?.hasPermission('office.expenses') ?? false) {
       try {
         final expenses = await ExpensesService(api).list();
         final total = expenses.fold<double>(0, (sum, e) => sum + e.amount);
-        cards.add(_StatCardData(icon: Icons.account_balance_wallet_outlined, label: l10n.homeExpensesTotal, value: '₪${total.toStringAsFixed(0)}', color: AppColors.primarySoft));
+        cards.add(_StatCardData(icon: Icons.account_balance_wallet_outlined, label: (l) => l.homeExpensesTotal, value: '₪${total.toStringAsFixed(0)}', color: AppColors.primarySoft));
       } catch (_) {}
     }
 
@@ -173,7 +172,7 @@ class HomeScreenState extends State<HomeScreen> {
                                   children: [
                                     Icon(c.icon, color: c.color, size: 22),
                                     Text(c.value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: c.color)),
-                                    Text(c.label, style: const TextStyle(fontSize: 11.5, color: AppColors.inkSoft), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    Text(c.label(l10n), style: const TextStyle(fontSize: 11.5, color: AppColors.inkSoft), maxLines: 2, overflow: TextOverflow.ellipsis),
                                   ],
                                 ),
                               ),
