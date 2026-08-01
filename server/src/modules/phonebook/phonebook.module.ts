@@ -21,5 +21,6 @@ import { TemplatesModule } from '../templates/templates.module';
   ],
   controllers: [PhoneBookController, GoogleContactsController],
   providers: [PhoneBookService, GoogleContactsService],
+  exports: [PhoneBookService],
 })
 export class PhoneBookModule {}
