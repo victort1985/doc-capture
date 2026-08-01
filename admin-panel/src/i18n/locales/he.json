@@ -157,7 +157,15 @@
     "statusDeclined": "נדחתה",
     "preview": "תצוגה מקדימה",
     "regeneratePdf": "יצירה מחדש של PDF",
-    "regenerated": "ה-PDF נוצר מחדש."
+    "regenerated": "ה-PDF נוצר מחדש.",
+    "templatesTitle": "תבניות הצעות מחיר",
+    "templateNumber": "# תבנית",
+    "templateName": "שם תבנית",
+    "saveAsTemplate": "שמירה כתבנית",
+    "unmarkTemplate": "הסרה מהתבניות",
+    "unmarkTemplateConfirm": "להסיר הצעת מחיר זו מהתבניות? היא תחזור לרשימת הצעות המחיר הרגילה.",
+    "saveAsTemplateHint": "שומר את הצעת המחיר של {{name}} כנקודת התחלה לשימוש חוזר — תן שם שתזהה בקלות בהמשך.",
+    "templatesEmpty": "אין עדיין תבניות — שמור הצעת מחיר קיימת כתבנית מרשימת הצעות המחיר."
   },
   "invoices": {
     "eyebrow": "משרד",

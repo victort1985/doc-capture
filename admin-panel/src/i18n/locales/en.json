@@ -157,7 +157,15 @@
     "statusDeclined": "declined",
     "preview": "Preview",
     "regeneratePdf": "Regenerate PDF",
-    "regenerated": "PDF regenerated."
+    "regenerated": "PDF regenerated.",
+    "templatesTitle": "Quote Templates",
+    "templateNumber": "Template #",
+    "templateName": "Template Name",
+    "saveAsTemplate": "Save as template",
+    "unmarkTemplate": "Remove from templates",
+    "unmarkTemplateConfirm": "Remove this quote from templates? It will move back to the regular quotes list.",
+    "saveAsTemplateHint": "Saves {{name}}'s quote as a reusable starting point — give it a name you'll recognize later.",
+    "templatesEmpty": "No templates yet — save an existing quote as one from the Quotes list."
   },
   "invoices": {
     "eyebrow": "OFFICE",

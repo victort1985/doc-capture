@@ -157,7 +157,15 @@
     "statusDeclined": "отклонена",
     "preview": "Превью",
     "regeneratePdf": "Перегенерировать PDF",
-    "regenerated": "PDF пересоздан."
+    "regenerated": "PDF пересоздан.",
+    "templatesTitle": "Шаблоны квот",
+    "templateNumber": "№ шаблона",
+    "templateName": "Название шаблона",
+    "saveAsTemplate": "Сохранить как шаблон",
+    "unmarkTemplate": "Убрать из шаблонов",
+    "unmarkTemplateConfirm": "Убрать эту квоту из шаблонов? Она вернётся в обычный список квот.",
+    "saveAsTemplateHint": "Сохраняет квоту клиента {{name}} как готовую заготовку — дай название, по которому её легко узнать позже.",
+    "templatesEmpty": "Пока нет шаблонов — сохрани существующую квоту как шаблон из списка квот."
   },
   "invoices": {
     "eyebrow": "ОФИС",
