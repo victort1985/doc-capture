@@ -13,8 +13,10 @@ class ManagementScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final canTransfer = context.watch<AppState>().currentUser?.hasPermission('warehouseTransfer') ?? false;
-    final tabCount = canTransfer ? 4 : 3;
+    final user = context.watch<AppState>().currentUser;
+    final canTransfer = user?.hasPermission('warehouseTransfer') ?? false;
+    final canRentals = user?.hasPermission('office.rentals') ?? false;
+    final tabCount = 2 + (canRentals ? 1 : 0) + (canTransfer ? 1 : 0);
     return DefaultTabController(
       length: tabCount,
       child: Scaffold(
@@ -24,14 +26,14 @@ class ManagementScreen extends StatelessWidget {
           bottom: TabBar(isScrollable: true, tabs: [
             Tab(icon: const Icon(Icons.directions_car_outlined), text: l10n.fleetTitle),
             Tab(icon: const Icon(Icons.warehouse_outlined), text: l10n.warehouseTitle),
-            Tab(icon: const Icon(Icons.inventory_2_outlined), text: l10n.rentalsTitle),
+            if (canRentals) Tab(icon: const Icon(Icons.inventory_2_outlined), text: l10n.rentalsTitle),
             if (canTransfer) Tab(icon: const Icon(Icons.swap_horiz), text: l10n.transferTitle),
           ]),
         ),
         body: TabBarView(children: [
           const FleetScreen(),
           const WarehouseScreen(),
-          const RentalsScreen(),
+          if (canRentals) const RentalsScreen(),
           if (canTransfer) const TransferScreen(),
         ]),
       ),
