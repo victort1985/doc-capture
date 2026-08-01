@@ -76,15 +76,28 @@ export default function UsersPage() {
       setCities(c);
       setRegions(r);
       setGroups(g);
-      // Org dropdown is only meaningful for the super-admin — an
-      // org-scoped admin's new users are auto-assigned their own
-      // organization server-side regardless of what's sent, so org-admins
-      // don't need this list at all (and would 403 fetching it anyway).
-      if (isSuperAdmin) {
-        setOrgs(await apiFetch<Org[]>('/organizations'));
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load users');
+      return;
+    }
+    // Org dropdown is only meaningful for the super-admin — an
+    // org-scoped admin's new users are auto-assigned their own
+    // organization server-side regardless of what's sent, so org-admins
+    // don't need this list at all (and would 403 fetching it anyway).
+    // Kept in its own try/catch, separate from the block above: if the
+    // frontend's isSuperAdmin flag and the backend's own JWT-derived
+    // check ever disagree (e.g. a stale /auth/me response right after
+    // login vs. what SuperAdminGuard checks on every subsequent
+    // request), this call failing should never overshadow data that
+    // already loaded successfully with a scary "Forbidden resource"
+    // banner — it just silently skips the org picker for someone who
+    // doesn't need it anyway.
+    if (isSuperAdmin) {
+      try {
+        setOrgs(await apiFetch<Org[]>('/organizations'));
+      } catch {
+        // silently skip — see comment above
+      }
     }
   }
 
