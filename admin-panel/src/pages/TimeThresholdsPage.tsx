@@ -15,13 +15,15 @@ interface TimeThresholds {
 export default function TimeThresholdsPage() {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<TimeThresholds | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiFetch<TimeThresholds>('/time-thresholds')
+    apiFetch<TimeThresholds | null>('/time-thresholds')
       .then(setSettings)
-      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'));
+      .catch((e) => setError(e instanceof Error ? e.message : 'Failed to load'))
+      .finally(() => setLoaded(true));
   }, []);
 
   async function save(patch: Partial<TimeThresholds>) {
@@ -35,7 +37,24 @@ export default function TimeThresholdsPage() {
     } finally { setSaving(false); }
   }
 
-  if (!settings) return <div className="page"><p>{error ?? t('common.loading')}</p></div>;
+  if (!loaded) return <div className="page"><p>{t('common.loading')}</p></div>;
+
+  // A super-admin account (organizationId === null) has no single
+  // organization's thresholds to configure — the backend correctly
+  // returns null rather than picking one arbitrarily. Show that
+  // plainly instead of the infinite spinner this used to be, since
+  // `settings` staying null was previously indistinguishable from
+  // "still loading".
+  if (!settings) {
+    return (
+      <div className="page">
+        <div className="topbar">
+          <div><div className="eyebrow">{t('timeThresholds.eyebrow')}</div><h1>{t('timeThresholds.title')}</h1></div>
+        </div>
+        <div className="card" style={{ padding: 16 }}>{error ?? t('timeThresholds.noOrgContext')}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="page">
