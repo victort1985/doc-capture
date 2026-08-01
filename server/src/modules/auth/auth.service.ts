@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { authenticator } from 'otplib';
@@ -32,7 +32,7 @@ export class AuthService {
     return user;
   }
 
-  async login(username: string, password: string, deviceId?: string, platform?: string, totpCode?: string) {
+  async login(username: string, password: string, deviceId?: string, platform?: string, totpCode?: string, isAdminPanel?: boolean) {
     const user = await this.validateUser(username, password);
 
     // 2FA (requirement #16) — a correct password alone isn't enough
@@ -48,6 +48,22 @@ export class AuthService {
       if (!valid) {
         throw new UnauthorizedException({ code: 'TOTP_INVALID', message: 'Invalid two-factor code' });
       }
+    }
+
+    // Fully resolved (role default -> group -> user override) — used
+    // both for the admin-panel gate right below and in the response
+    // payload, so there's exactly one place this ever gets computed.
+    const permissions = resolveEffectivePermissions(user.role, user.group?.permissions, user.permissions);
+
+    // Unlike every other permission key (which only ever hides/shows
+    // something inside an already-logged-in session), this one blocks
+    // the login itself — a person with zero business reason to open
+    // the web admin panel (a field technician, a driver) shouldn't be
+    // ABLE to, not just fail to see anything useful once they're in.
+    // Same "reject before any token is issued" principle as the 2FA
+    // and device-approval checks above.
+    if (isAdminPanel && !permissions['system.adminPanelAccess']) {
+      throw new ForbiddenException('This account is not permitted to access the admin panel.');
     }
 
     // Mobile logins only (deviceId is only ever passed for
@@ -71,10 +87,7 @@ export class AuthService {
         tosAccepted: user.tosAcceptedVersion === TOS_VERSION,
         totpEnabled: user.totpEnabled,
         allowedOrganizationIds: user.allowedOrganizationIds ?? [],
-        // Fully resolved (role default -> group -> user override), not
-        // the raw override map — the client shouldn't need to know
-        // about role defaults or groups to answer "can this user see X".
-        permissions: resolveEffectivePermissions(user.role, user.group?.permissions, user.permissions),
+        permissions,
         firstName: user.firstName ?? null,
         lastName: user.lastName ?? null,
       },

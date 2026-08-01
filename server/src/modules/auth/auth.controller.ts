@@ -19,7 +19,8 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   login(@Body() dto: LoginDto, @Headers('x-client-type') clientType?: string) {
     const isMobile = clientType === 'mobile';
-    return this.authService.login(dto.username, dto.password, isMobile ? dto.deviceId : undefined, dto.platform, dto.totpCode);
+    const isAdminPanel = clientType === 'admin-panel';
+    return this.authService.login(dto.username, dto.password, isMobile ? dto.deviceId : undefined, dto.platform, dto.totpCode, isAdminPanel);
   }
 
   @Get('me')
