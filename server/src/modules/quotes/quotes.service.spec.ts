@@ -94,3 +94,51 @@ describe('QuotesService number generation (private generateQuoteNumber, tested v
     expect(settingsRepo.findOne).not.toHaveBeenCalled();
   });
 });
+
+describe('QuotesService templates (findAll/findTemplates isTemplate filtering)', () => {
+  let service: QuotesService;
+  let quotesRepo: { find: jest.Mock };
+
+  beforeEach(async () => {
+    quotesRepo = { find: jest.fn().mockResolvedValue([]) };
+
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        QuotesService,
+        { provide: getRepositoryToken(Quote), useValue: quotesRepo },
+        { provide: getRepositoryToken(QuoteSettings), useValue: {} },
+        { provide: getRepositoryToken(DeliveryNoteSettings), useValue: {} },
+        { provide: StorageService, useValue: {} },
+        { provide: DocumentSendingService, useValue: {} },
+        { provide: ExchangeRateService, useValue: {} },
+        { provide: TemplateDesignService, useValue: {} },
+      ],
+    }).compile();
+
+    service = moduleRef.get(QuotesService);
+  });
+
+  it('findAll() only ever queries isTemplate: false, org-scoped', async () => {
+    await service.findAll(10);
+    expect(quotesRepo.find).toHaveBeenCalledWith({
+      where: { organization: { id: 10 }, isTemplate: false },
+      order: { createdAt: 'DESC' },
+    });
+  });
+
+  it('findAll() only ever queries isTemplate: false, unscoped for super-admin (org null)', async () => {
+    await service.findAll(null);
+    expect(quotesRepo.find).toHaveBeenCalledWith({
+      where: { isTemplate: false },
+      order: { createdAt: 'DESC' },
+    });
+  });
+
+  it('findTemplates() only ever queries isTemplate: true, org-scoped', async () => {
+    await service.findTemplates(10);
+    expect(quotesRepo.find).toHaveBeenCalledWith({
+      where: { organization: { id: 10 }, isTemplate: true },
+      order: { templateNumber: 'ASC' },
+    });
+  });
+});

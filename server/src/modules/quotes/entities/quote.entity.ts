@@ -63,6 +63,26 @@ export class Quote {
   @Column({ type: 'text', nullable: true })
   notes?: string;
 
+  /** Marks this row as a reusable starting point rather than a real
+   * client-facing quote — set via POST /quotes/:id/save-as-template,
+   * never at creation time (the request describes converting an
+   * already-created quote into a template, not a separate creation
+   * flow). Excluded from the normal quotes list once set; shown in
+   * its own /quotes/templates list instead. templateNumber follows
+   * the same "smallest free number" convention as a phonebook
+   * contact's clientIdentifier — see QuotesService.assignTemplateNumber.
+   * templateName is admin-given, for recognizing which template is
+   * which at a glance (a quoteNumber alone wouldn't be memorable). */
+  @Column({ type: 'boolean', default: false })
+  @Index()
+  isTemplate: boolean;
+
+  @Column({ type: 'integer', nullable: true })
+  templateNumber?: number | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  templateName?: string | null;
+
   @Column({ type: 'enum', enum: QuoteStatus, default: QuoteStatus.DRAFT })
   status: QuoteStatus;
 

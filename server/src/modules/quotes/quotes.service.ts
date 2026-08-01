@@ -60,8 +60,18 @@ export class QuotesService {
 
   async findAll(organizationId: number | null): Promise<Quote[]> {
     return this.repo.find({
-      where: organizationId != null ? { organization: { id: organizationId } } : {},
+      where: organizationId != null ? { organization: { id: organizationId }, isTemplate: false } : { isTemplate: false },
       order: { createdAt: 'DESC' },
+    });
+  }
+
+  /** The separate "reusable starting points" list — see the
+   * isTemplate doc comment on the entity for why these are excluded
+   * from findAll() above. */
+  async findTemplates(organizationId: number | null): Promise<Quote[]> {
+    return this.repo.find({
+      where: organizationId != null ? { organization: { id: organizationId }, isTemplate: true } : { isTemplate: true },
+      order: { templateNumber: 'ASC' },
     });
   }
 
@@ -80,6 +90,71 @@ export class QuotesService {
     const quote = await this.repo.findOne({ where: { approvalToken: token } });
     if (!quote) throw new NotFoundException('Quote not found');
     return quote;
+  }
+
+  /** Converts an already-created quote into a reusable template —
+   * see the isTemplate doc comment on the entity for the full
+   * rationale. Idempotent on the name (calling again just renames
+   * it); assigns a templateNumber only the first time. */
+  async saveAsTemplate(id: number, organizationId: number | null, templateName: string): Promise<Quote> {
+    const quote = await this.findOne(id, organizationId);
+    quote.isTemplate = true;
+    quote.templateName = templateName;
+    if (quote.templateNumber == null) {
+      quote.templateNumber = await this.assignTemplateNumber(organizationId);
+    }
+    return this.repo.save(quote);
+  }
+
+  async unmarkTemplate(id: number, organizationId: number | null): Promise<Quote> {
+    const quote = await this.findOne(id, organizationId);
+    quote.isTemplate = false;
+    return this.repo.save(quote);
+  }
+
+  /** Smallest positive integer not already used by another template
+   * in this organization — same "reuse a gap" convention as a
+   * phonebook contact's clientIdentifier, not just max+1. */
+  private async assignTemplateNumber(organizationId: number | null): Promise<number> {
+    const rows = await this.repo.find({
+      where: organizationId != null ? { organization: { id: organizationId }, isTemplate: true } : { isTemplate: true },
+      select: ['templateNumber'],
+    });
+    const used = new Set(rows.map((r) => r.templateNumber).filter((n): n is number => n != null));
+    let candidate = 1;
+    while (used.has(candidate)) candidate++;
+    return candidate;
+  }
+
+  /** Creates a genuine new draft quote by copying a template's
+   * client/items/notes/currency/vatCategory — everything a person
+   * would otherwise have to type from scratch — while getting its own
+   * fresh id, quoteNumber, approvalToken, and chainId (it's a real,
+   * independent document from this point on, not still linked to the
+   * template it came from). Any field in `overrides` replaces the
+   * template's own value, so "replace or add only part of the
+   * information" (the stated purpose of this whole feature) is just
+   * passing whatever the person actually changed. */
+  async createFromTemplate(
+    templateId: number,
+    organizationId: number | null,
+    userId: number,
+    overrides: Partial<CreateQuoteDto>,
+  ): Promise<Quote> {
+    const template = await this.findOne(templateId, organizationId);
+    if (!template.isTemplate) throw new BadRequestException('That quote is not a template');
+
+    return this.create(organizationId, userId, {
+      clientName: overrides.clientName ?? template.clientName,
+      clientEmail: overrides.clientEmail ?? template.clientEmail,
+      date: overrides.date,
+      items: overrides.items ?? template.items,
+      notes: overrides.notes ?? template.notes,
+      currency: overrides.currency ?? template.currency,
+      exchangeRateToIls: overrides.exchangeRateToIls,
+      vatCategory: overrides.vatCategory ?? template.vatCategory,
+      chainId: overrides.chainId,
+    });
   }
 
   async create(organizationId: number | null, userId: number, dto: CreateQuoteDto): Promise<Quote> {
