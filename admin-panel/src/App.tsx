@@ -55,6 +55,7 @@ import TemplateDesignerPage from './pages/TemplateDesignerPage';
 import BackupPage from './pages/BackupPage';
 import TimeThresholdsPage from './pages/TimeThresholdsPage';
 import RentalsPage from './pages/RentalsPage';
+import DataMigrationPage from './pages/DataMigrationPage';
 import PriceListPage from './pages/PriceListPage';
 import DevicesPage from './pages/DevicesPage';
 
@@ -130,6 +131,7 @@ export default function App() {
           <Route path="/backup" element={<BackupPage />} />
           <Route path="/time-thresholds" element={<TimeThresholdsPage />} />
           <Route path="/rentals" element={<RentalsPage />} />
+          <Route path="/data-migration" element={<DataMigrationPage />} />
           <Route path="/payment-settings" element={<PaymentSettingsPage />} />
           <Route path="/prices" element={<PriceListPage />} />
           <Route path="/devices" element={<DevicesPage />} />

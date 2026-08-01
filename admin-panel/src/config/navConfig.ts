@@ -2,7 +2,7 @@ import {
   PhoneCall, Contact, MapPin, Tag, FileSpreadsheet, ReceiptText, FileText, Undo2, Banknote,
   FileMinus, FilePlus2, CreditCard, TrendingUp, BookOpen, Receipt, Landmark, Package, Car,
   CalendarClock, BarChart2, Users, ShieldCheck, Users2, HardDrive, FileSliders, FileStack,
-  Smartphone, CalendarDays, ScrollText, Building2, Palette, HardDriveDownload, Timer, PackageSearch,
+  Smartphone, CalendarDays, ScrollText, Building2, Palette, HardDriveDownload, Timer, PackageSearch, ArrowLeftRight,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -108,6 +108,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/audit-log', labelKey: 'nav.auditLog', icon: ScrollText },
       { to: '/backup', labelKey: 'nav.backup', icon: HardDriveDownload },
       { to: '/time-thresholds', labelKey: 'nav.timeThresholds', icon: Timer },
+      { to: '/data-migration', labelKey: 'nav.dataMigration', icon: ArrowLeftRight },
     ],
   },
 ];

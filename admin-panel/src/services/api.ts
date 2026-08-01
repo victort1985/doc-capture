@@ -88,6 +88,30 @@ export async function apiFetch<T>(
 /** Authenticated binary fetch — plain <img src> can't send an Authorization
  * header, so logo/photo previews need to fetch bytes and turn them into a
  * blob: URL instead of pointing the <img> straight at the API. */
+/** Uploads a file (multipart/form-data) and returns the parsed JSON
+ * response — same error-handling shape as apiFetch, for endpoints
+ * like /data-migration/import/analyze that need to send a File but
+ * still get real JSON (not a blob) back. */
+export async function apiFetchMultipart<T>(path: string, formData: FormData): Promise<T> {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Client-Type': 'admin-panel' },
+    body: formData,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    const message =
+      typeof body.message === 'string'
+        ? body.message
+        : Array.isArray(body.message)
+          ? body.message.join(', ')
+          : body?.message?.message ?? `Request failed (${res.status})`;
+    throw new Error(message);
+  }
+  return res.json();
+}
+
 export async function apiFetchBlob(path: string): Promise<string> {
   const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
