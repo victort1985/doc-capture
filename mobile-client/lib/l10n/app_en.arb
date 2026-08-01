@@ -668,5 +668,12 @@
         "type": "String"
       }
     }
-  }
+  },
+  "quoteNewBlank": "New blank quote",
+  "quoteFromTemplate": "Start from a template",
+  "quoteNoTemplatesYet": "No templates yet — save an existing quote as one first.",
+  "quoteSaveAsTemplate": "Save as template",
+  "quoteTemplateName": "Template name",
+  "quoteSavedAsTemplate": "Saved as template.",
+  "quoteSaveTemplateError": "Could not save as template."
 }

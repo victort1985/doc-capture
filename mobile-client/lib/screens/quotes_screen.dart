@@ -79,9 +79,109 @@ class QuotesScreenState extends State<QuotesScreen> {
         QuoteStatus.draft => l10n.quoteStatusDraft,
       };
 
+  Future<void> _saveAsTemplate(Quote q) async {
+    final l10n = AppLocalizations.of(context)!;
+    final controller = TextEditingController(text: q.templateName ?? '');
+    final name = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l10n.quoteSaveAsTemplate),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          decoration: InputDecoration(labelText: l10n.quoteTemplateName),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(), child: Text(l10n.cancel)),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
+            child: Text(l10n.quoteSaveAsTemplate),
+          ),
+        ],
+      ),
+    );
+    if (name == null || name.isEmpty || !mounted) return;
+    try {
+      await QuotesService(context.read<ApiService>()).saveAsTemplate(q.id, name);
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.quoteSavedAsTemplate)));
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.quoteSaveTemplateError)));
+    }
+  }
+
   Future<void> _openCreate() async {
+    final l10n = AppLocalizations.of(context)!;
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.note_add_outlined),
+              title: Text(l10n.quoteNewBlank),
+              onTap: () => Navigator.of(ctx).pop('blank'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.bookmark_outline),
+              title: Text(l10n.quoteFromTemplate),
+              onTap: () => Navigator.of(ctx).pop('template'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (!mounted || choice == null) return;
+
+    if (choice == 'blank') {
+      final created = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(builder: (_) => const _QuoteFormScreen()),
+      );
+      if (created == true) _load();
+      return;
+    }
+
+    // choice == 'template'
+    List<Quote> templates;
+    try {
+      templates = await QuotesService(context.read<ApiService>()).listTemplates();
+    } catch (_) {
+      templates = [];
+    }
+    if (!mounted) return;
+    if (templates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.quoteNoTemplatesYet)));
+      return;
+    }
+    final picked = await showModalBottomSheet<Quote>(
+      context: context,
+      isScrollControlled: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.5,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (ctx, scrollController) => ListView.separated(
+          controller: scrollController,
+          padding: const EdgeInsets.all(16),
+          itemCount: templates.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
+          itemBuilder: (_, i) {
+            final t = templates[i];
+            return Card(
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.bookmark_outline, size: 18)),
+                title: Text(t.templateName ?? '#${t.templateNumber}'),
+                subtitle: Text('${t.clientName} · ₪${t.total.toStringAsFixed(2)}'),
+                onTap: () => Navigator.of(ctx).pop(t),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+    if (picked == null || !mounted) return;
     final created = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const _QuoteFormScreen()),
+      MaterialPageRoute(builder: (_) => _QuoteFormScreen(template: picked)),
     );
     if (created == true) _load();
   }
@@ -138,6 +238,11 @@ class QuotesScreenState extends State<QuotesScreen> {
                               ),
                               ChainStatusBadge(status: _chainStatus['quote:${q.id}']),
                               IconButton(
+                                icon: const Icon(Icons.bookmark_outline, size: 20),
+                                tooltip: l10n.quoteSaveAsTemplate,
+                                onPressed: () => _saveAsTemplate(q),
+                              ),
+                              IconButton(
                                 icon: const Icon(Icons.timeline_outlined, size: 20),
                                 tooltip: l10n.chainViewTitle,
                                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
@@ -156,7 +261,8 @@ class QuotesScreenState extends State<QuotesScreen> {
 }
 
 class _QuoteFormScreen extends StatefulWidget {
-  const _QuoteFormScreen();
+  const _QuoteFormScreen({this.template});
+  final Quote? template;
   @override
   State<_QuoteFormScreen> createState() => _QuoteFormScreenState();
 }
@@ -172,7 +278,30 @@ class _QuoteFormScreenState extends State<_QuoteFormScreen> {
   @override
   void initState() {
     super.initState();
-    _addItem();
+    final template = widget.template;
+    if (template != null) {
+      // Pre-fills from the template — every field here stays a plain
+      // editable text field, same as a blank form, so "replace or add
+      // only part of the information" is just typing over whatever
+      // isn't right for this particular client.
+      _clientController.text = template.clientName;
+      _emailController.text = template.clientEmail ?? '';
+      _currency = template.currency;
+      _vatCategory = template.vatCategory;
+      if (template.items.isEmpty) {
+        _addItem();
+      } else {
+        for (final it in template.items) {
+          _items.add((
+            TextEditingController(text: it.description),
+            TextEditingController(text: it.quantity.toString()),
+            TextEditingController(text: it.unitPrice.toString()),
+          ));
+        }
+      }
+    } else {
+      _addItem();
+    }
   }
 
   void _addItem() {
@@ -202,20 +331,32 @@ class _QuoteFormScreenState extends State<_QuoteFormScreen> {
     setState(() => _saving = true);
     try {
       final svc = QuotesService(context.read<ApiService>());
-      await svc.create(
-        clientName: _clientController.text.trim(),
-        clientEmail: _emailController.text.trim(),
-        items: _items
-            .where((i) => i.$1.text.trim().isNotEmpty)
-            .map((i) => QuoteItem(
-                  description: i.$1.text.trim(),
-                  quantity: double.tryParse(i.$2.text) ?? 1,
-                  unitPrice: double.tryParse(i.$3.text) ?? 0,
-                ))
-            .toList(),
-        currency: _currency,
-        vatCategory: _vatCategory,
-      );
+      final items = _items
+          .where((i) => i.$1.text.trim().isNotEmpty)
+          .map((i) => QuoteItem(
+                description: i.$1.text.trim(),
+                quantity: double.tryParse(i.$2.text) ?? 1,
+                unitPrice: double.tryParse(i.$3.text) ?? 0,
+              ))
+          .toList();
+      if (widget.template != null) {
+        await svc.createFromTemplate(
+          widget.template!.id,
+          clientName: _clientController.text.trim(),
+          clientEmail: _emailController.text.trim(),
+          items: items,
+          currency: _currency,
+          vatCategory: _vatCategory,
+        );
+      } else {
+        await svc.create(
+          clientName: _clientController.text.trim(),
+          clientEmail: _emailController.text.trim(),
+          items: items,
+          currency: _currency,
+          vatCategory: _vatCategory,
+        );
+      }
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {

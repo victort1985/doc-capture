@@ -668,5 +668,12 @@
         "type": "String"
       }
     }
-  }
+  },
+  "quoteNewBlank": "הצעת מחיר ריקה חדשה",
+  "quoteFromTemplate": "התחלה מתבנית",
+  "quoteNoTemplatesYet": "אין עדיין תבניות — שמור קודם הצעת מחיר קיימת כתבנית.",
+  "quoteSaveAsTemplate": "שמירה כתבנית",
+  "quoteTemplateName": "שם תבנית",
+  "quoteSavedAsTemplate": "נשמר כתבנית.",
+  "quoteSaveTemplateError": "לא ניתן לשמור כתבנית."
 }

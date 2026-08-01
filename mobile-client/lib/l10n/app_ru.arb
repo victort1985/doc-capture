@@ -668,5 +668,12 @@
         "type": "String"
       }
     }
-  }
+  },
+  "quoteNewBlank": "Новая пустая квота",
+  "quoteFromTemplate": "Начать с шаблона",
+  "quoteNoTemplatesYet": "Пока нет шаблонов — сначала сохрани существующую квоту как шаблон.",
+  "quoteSaveAsTemplate": "Сохранить как шаблон",
+  "quoteTemplateName": "Название шаблона",
+  "quoteSavedAsTemplate": "Сохранено как шаблон.",
+  "quoteSaveTemplateError": "Не удалось сохранить как шаблон."
 }
