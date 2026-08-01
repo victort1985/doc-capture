@@ -405,7 +405,8 @@
     "reports": "Reports",
     "phonebook": "Phone book",
     "organizations": "Organizations",
-    "office": "Office (mobile)"
+    "office": "Office (mobile)",
+    "system": "System"
   },
   "perm": {
     "calls.create": "Create calls",
@@ -435,7 +436,9 @@
     "office.returns": "Returns",
     "office.credit_notes": "Credit notes",
     "office.debit_notes": "Debit notes",
-    "office.expenses": "Expenses"
+    "office.expenses": "Expenses",
+    "office.rentals": "Rentals",
+    "system.adminPanelAccess": "Can log into the admin panel"
   },
   "groups": {
     "eyebrow": "Access control",

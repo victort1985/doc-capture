@@ -42,6 +42,8 @@ const FEATURE_KEYS: { key: string; group: string }[] = [
   { key: 'office.credit_notes', group: 'office' },
   { key: 'office.debit_notes', group: 'office' },
   { key: 'office.expenses', group: 'office' },
+  { key: 'office.rentals', group: 'office' },
+  { key: 'system.adminPanelAccess', group: 'system' },
 ];
 
 const GROUP_ORDER = Array.from(new Set(FEATURE_KEYS.map((f) => f.group)));

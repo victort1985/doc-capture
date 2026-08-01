@@ -405,7 +405,8 @@
     "reports": "Отчёты",
     "phonebook": "Телефонная книга",
     "organizations": "Организации",
-    "office": "Офис (моб.)"
+    "office": "Офис (моб.)",
+    "system": "Система"
   },
   "perm": {
     "calls.create": "Создание заявок",
@@ -435,7 +436,9 @@
     "office.returns": "Возвраты",
     "office.credit_notes": "Кредит-ноты",
     "office.debit_notes": "Дебет-ноты",
-    "office.expenses": "Расходы"
+    "office.expenses": "Расходы",
+    "office.rentals": "Прокат",
+    "system.adminPanelAccess": "Может входить в админ-панель"
   },
   "groups": {
     "eyebrow": "Управление доступом",

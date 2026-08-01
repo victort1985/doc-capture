@@ -405,7 +405,8 @@
     "reports": "דוחות",
     "phonebook": "פנקס טלפונים",
     "organizations": "ארגונים",
-    "office": "משרד (נייד)"
+    "office": "משרד (נייד)",
+    "system": "מערכת"
   },
   "perm": {
     "calls.create": "יצירת קריאות",
@@ -435,7 +436,9 @@
     "office.returns": "החזרות",
     "office.credit_notes": "הודעות זיכוי",
     "office.debit_notes": "הודעות חיוב",
-    "office.expenses": "הוצאות"
+    "office.expenses": "הוצאות",
+    "office.rentals": "השכרות",
+    "system.adminPanelAccess": "יכול להתחבר לפאנל הניהול"
   },
   "groups": {
     "eyebrow": "בקרת גישה",
