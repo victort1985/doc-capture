@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, X, CheckCircle2, Upload, Paperclip } from 'lucide-react';
 import { apiFetch, BASE_URL, getToken } from '../services/api';
+import BankBranchPicker, { BankNamePicker } from '../components/BankBranchPicker';
 
 interface ExpenseRow { id: number; date: string; description: string; category?: string; amount: number; method: string; receiptStoragePath?: string | null; }
 interface SupplierInvoiceRow { id: number; supplierName: string; invoiceNumber?: string; date: string; dueDate?: string; amount: number; paidAt?: string; storagePath?: string | null; }
@@ -306,15 +307,18 @@ function PaymentMethodFields({ method, setMethod, details, setDetails }: {
       {method === 'check' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
           <input placeholder={t('payments.checkNumber')} value={details.checkNumber ?? ''} onChange={(e) => set({ checkNumber: e.target.value })} />
-          <input placeholder={t('payments.bankName')} value={details.bankName ?? ''} onChange={(e) => set({ bankName: e.target.value })} />
-          <input placeholder={t('payments.branchNumber')} value={details.branchNumber ?? ''} onChange={(e) => set({ branchNumber: e.target.value })} />
+          <BankBranchPicker
+            bankName={details.bankName ?? ''}
+            branchNumber={details.branchNumber ?? ''}
+            onChange={({ bankName, branchNumber }) => set({ bankName, branchNumber })}
+          />
           <input placeholder={t('payments.accountNumber')} value={details.accountNumber ?? ''} onChange={(e) => set({ accountNumber: e.target.value })} />
           <input type="date" placeholder={t('payments.checkDate')} value={details.checkDate ?? ''} onChange={(e) => set({ checkDate: e.target.value })} />
         </div>
       )}
       {method === 'bank_transfer' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
-          <input placeholder={t('payments.bankName')} value={details.bankName ?? ''} onChange={(e) => set({ bankName: e.target.value })} />
+          <BankNamePicker bankName={details.bankName ?? ''} onChange={(bankName) => set({ bankName })} />
           <input placeholder={t('payments.referenceNumber')} value={details.referenceNumber ?? ''} onChange={(e) => set({ referenceNumber: e.target.value })} />
         </div>
       )}

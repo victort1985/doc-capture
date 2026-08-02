@@ -1036,7 +1036,8 @@
     "branchNumber": "Номер отделения",
     "accountNumber": "Номер счёта",
     "checkDate": "Дата чека",
-    "referenceNumber": "Номер подтверждения"
+    "referenceNumber": "Номер подтверждения",
+    "pickBankFirst": "Сначала выбери банк"
   },
   "financialReports": {
     "eyebrow": "Офис",
@@ -1474,5 +1475,10 @@
     "generate": "Сгенерировать и скачать",
     "generating": "Генерирую…",
     "downloadStarted": "Скачивание началось."
+  },
+  "banks": {
+    "status_active": "активен",
+    "status_historical": "исторический/объединён",
+    "status_special": "не коммерческий"
   }
 }

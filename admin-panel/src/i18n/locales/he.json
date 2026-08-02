@@ -1036,7 +1036,8 @@
     "branchNumber": "מספר סניף",
     "accountNumber": "מספר חשבון",
     "checkDate": "תאריך הצ'ק",
-    "referenceNumber": "מספר אסמכתא"
+    "referenceNumber": "מספר אסמכתא",
+    "pickBankFirst": "בחר בנק תחילה"
   },
   "financialReports": {
     "eyebrow": "משרד",
@@ -1474,5 +1475,10 @@
     "generate": "יצירה והורדה",
     "generating": "מייצר…",
     "downloadStarted": "ההורדה החלה."
+  },
+  "banks": {
+    "status_active": "פעיל",
+    "status_historical": "היסטורי/מוזג",
+    "status_special": "לא מסחרי"
   }
 }

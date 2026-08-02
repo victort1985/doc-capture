@@ -1036,7 +1036,8 @@
     "branchNumber": "Branch number",
     "accountNumber": "Account number",
     "checkDate": "Check date",
-    "referenceNumber": "Reference number"
+    "referenceNumber": "Reference number",
+    "pickBankFirst": "Pick a bank first"
   },
   "financialReports": {
     "eyebrow": "Office",
@@ -1474,5 +1475,10 @@
     "generate": "Generate and download",
     "generating": "Generating…",
     "downloadStarted": "Download started."
+  },
+  "banks": {
+    "status_active": "active",
+    "status_historical": "historical/merged",
+    "status_special": "non-commercial"
   }
 }
