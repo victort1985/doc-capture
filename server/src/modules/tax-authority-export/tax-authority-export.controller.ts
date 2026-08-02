@@ -17,18 +17,30 @@ export class TaxAuthorityExportController {
 
   /** Generates and streams the export as a single downloadable zip
    * (OPENFRMT/{vatid}.{yy}/{MMDDhhmm}/ containing TXT.INI + BKMVDATA)
-   * for the given date range. Super-admin accounts (organizationId
-   * === null) can't run this — there's no single organization's
-   * business data to export for one, same reasoning as every other
-   * org-scoped-only feature in this app. */
+   * for the given date range and organization.
+   *
+   * Org-scoped admins are always forced to their own organization —
+   * body.organizationId is ignored for them entirely, not just
+   * validated, so there's no way to pass a different org's id and
+   * export data that isn't theirs. Only a genuine super-admin
+   * (organizationId === null on their own session) can choose which
+   * organization to export via body.organizationId, since a
+   * super-admin manages more than one and there's no single
+   * "their own org" to default to. */
   @Post()
-  async generate(@Body() body: { from: string; to: string }, @CurrentUser() user: ReqUser, @Res() res: Response) {
-    if (user.organizationId == null) {
-      res.status(400).json({ message: 'Sign in as a user assigned to a specific organization to generate this export.' });
+  async generate(
+    @Body() body: { from: string; to: string; organizationId?: number },
+    @CurrentUser() user: ReqUser,
+    @Res() res: Response,
+  ) {
+    const isSuperAdmin = user.organizationId == null;
+    const targetOrgId = isSuperAdmin ? body.organizationId : user.organizationId;
+    if (targetOrgId == null) {
+      res.status(400).json({ message: 'Pick which organization to generate this export for.' });
       return;
     }
     const { outerZipBuffer, outputPath } = await this.service.generate({
-      organizationId: user.organizationId,
+      organizationId: targetOrgId,
       from: new Date(body.from),
       to: new Date(body.to),
     });

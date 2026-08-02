@@ -1483,7 +1483,10 @@
     "toDate": "To date",
     "generate": "Generate and download",
     "generating": "Generating…",
-    "downloadStarted": "Download started."
+    "downloadStarted": "Download started.",
+    "organization": "Organization",
+    "pickOrg": "Choose an organization…",
+    "pickOrgFirst": "Choose which organization to generate this export for."
   },
   "banks": {
     "status_active": "active",

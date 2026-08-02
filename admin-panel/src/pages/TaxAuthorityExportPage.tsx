@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileDown, AlertTriangle } from 'lucide-react';
-import { apiFetchBlobPost } from '../services/api';
+import { apiFetch, apiFetchBlobPost } from '../services/api';
+import { useAuth } from '../context/AuthContext';
+
+interface Org {
+  id: number;
+  name: string;
+}
 
 function startOfYear(): string {
   return `${new Date().getFullYear()}-01-01`;
@@ -12,16 +18,36 @@ function today(): string {
 
 export default function TaxAuthorityExportPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.organizationId == null;
+
+  const [orgs, setOrgs] = useState<Org[]>([]);
+  const [organizationId, setOrganizationId] = useState<number | ''>('');
   const [from, setFrom] = useState(startOfYear());
   const [to, setTo] = useState(today());
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  // Only a genuine super-admin manages more than one organization —
+  // an org-scoped admin's own org is applied automatically server-
+  // side (see the controller's own doc comment), so this list is
+  // only fetched/shown when it's actually needed.
+  useEffect(() => {
+    if (!isSuperAdmin) return;
+    apiFetch<Org[]>('/organizations').then(setOrgs).catch(() => setOrgs([]));
+  }, [isSuperAdmin]);
+
   async function generate() {
+    if (isSuperAdmin && organizationId === '') {
+      setError(t('taxAuthorityExport.pickOrgFirst'));
+      return;
+    }
     setGenerating(true); setError(null); setNotice(null);
     try {
-      const url = await apiFetchBlobPost('/tax-authority-export', { from, to });
+      const body: { from: string; to: string; organizationId?: number } = { from, to };
+      if (isSuperAdmin) body.organizationId = organizationId as number;
+      const url = await apiFetchBlobPost('/tax-authority-export', body);
       const a = document.createElement('a');
       a.href = url;
       a.download = `openformat-${from}-to-${to}.zip`;
@@ -52,6 +78,20 @@ export default function TaxAuthorityExportPage() {
       </div>
 
       <div className="card" style={{ padding: 20, maxWidth: 480 }}>
+        {isSuperAdmin && (
+          <>
+            <label>{t('taxAuthorityExport.organization')}</label>
+            <select
+              value={organizationId}
+              onChange={(e) => setOrganizationId(e.target.value ? Number(e.target.value) : '')}
+              style={{ width: '100%', marginBottom: 14 }}
+            >
+              <option value="">{t('taxAuthorityExport.pickOrg')}</option>
+              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+            </select>
+          </>
+        )}
+
         <label>{t('taxAuthorityExport.fromDate')}</label>
         <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: '100%', marginBottom: 14 }} />
 

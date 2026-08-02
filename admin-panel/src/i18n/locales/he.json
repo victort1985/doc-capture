@@ -1483,7 +1483,10 @@
     "toDate": "עד תאריך",
     "generate": "יצירה והורדה",
     "generating": "מייצר…",
-    "downloadStarted": "ההורדה החלה."
+    "downloadStarted": "ההורדה החלה.",
+    "organization": "ארגון",
+    "pickOrg": "בחר ארגון…",
+    "pickOrgFirst": "יש לבחור עבור איזה ארגון ליצור את הייצוא."
   },
   "banks": {
     "status_active": "פעיל",
