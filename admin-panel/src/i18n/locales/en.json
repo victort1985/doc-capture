@@ -1289,7 +1289,7 @@
     "connected": "Connected",
     "notConnected": "Not connected yet",
     "connectedSuccess": "Successfully connected to the Tax Authority.",
-    "noOrganization": "This account isn't assigned to a specific organization (super-admin) — switch to a tenant-scoped account to manage its Tax Authority settings."
+    "noOrganization": "This account is a super-admin, not assigned to one organization — pick an organization from the switcher in the header (top right) to manage its Tax Authority settings."
   },
   "navGroups": {
     "crm": "Clients",
@@ -1486,7 +1486,8 @@
     "downloadStarted": "Download started.",
     "organization": "Organization",
     "pickOrg": "Choose an organization…",
-    "pickOrgFirst": "Choose which organization to generate this export for."
+    "pickOrgFirst": "Choose which organization to generate this export for.",
+    "useOrgSwitcher": "Pick an organization from the switcher in the header (top right) before generating."
   },
   "banks": {
     "status_active": "active",
@@ -1511,5 +1512,10 @@
     "importSummary": "{{imported}} imported, {{failed}} failed.",
     "rowError": "Row {{row}}: {{error}}",
     "andMore": "and {{count}} more"
+  },
+  "orgSwitcher": {
+    "title": "Switch which organization to manage",
+    "superAdmin": "Super Admin (all orgs)",
+    "hint": "Acting as an organization applies across every page until you switch back or log in again."
   }
 }

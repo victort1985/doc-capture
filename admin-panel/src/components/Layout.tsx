@@ -12,6 +12,7 @@ import logo from '../assets/logo.png';
 import CopyrightFooter from './CopyrightFooter';
 import LicenseWarningBanner from './LicenseWarningBanner';
 import { visibleGroups, type NavGroup } from '../config/navConfig';
+import OrgSwitcher from './OrgSwitcher';
 
 const NAV_STYLE_KEY = 'vixor-admin-nav-style';
 
@@ -113,7 +114,7 @@ function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const { open: openWizard } = useSetupWizard();
-  const isSuperAdmin = user?.organizationId == null;
+  const isSuperAdmin = (user?.realOrganizationId ?? user?.organizationId) == null;
   const [showTos, setShowTos] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -209,7 +210,7 @@ export default function Layout() {
   const sidebarRef = React.useRef<HTMLElement>(null);
   const initial = user?.username?.[0]?.toUpperCase() ?? '?';
 
-  const isSuperAdmin = user?.organizationId == null;
+  const isSuperAdmin = (user?.realOrganizationId ?? user?.organizationId) == null;
   const isAdmin = user?.role === 'admin';
   const groups = visibleGroups(isSuperAdmin, isAdmin);
 
@@ -276,6 +277,7 @@ export default function Layout() {
         <button className="ghost" onClick={() => setSettingsOpen(true)} aria-label={t('settings.title')} title={t('settings.title')} style={{ marginInlineEnd: 4 }}>
           <Settings size={18} />
         </button>
+        {isSuperAdmin && <OrgSwitcher />}
         <div className="avatar" aria-label={`User: ${user?.username}`}>{initial}</div>
       </header>
 
@@ -355,6 +357,7 @@ export default function Layout() {
             <div className="avatar">{initial}</div>
             <span>{user?.username}</span>
           </div>
+          {isSuperAdmin && <OrgSwitcher />}
           <button className="ghost" onClick={() => setSettingsOpen(true)} aria-label={t('settings.title')} title={t('settings.title')}>
             <Settings size={16} />
           </button>

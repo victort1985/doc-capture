@@ -1,13 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileDown, AlertTriangle } from 'lucide-react';
-import { apiFetch, apiFetchBlobPost } from '../services/api';
+import { apiFetchBlobPost } from '../services/api';
 import { useAuth } from '../context/AuthContext';
-
-interface Org {
-  id: number;
-  name: string;
-}
 
 function startOfYear(): string {
   return `${new Date().getFullYear()}-01-01`;
@@ -19,35 +14,25 @@ function today(): string {
 export default function TaxAuthorityExportPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
-  const isSuperAdmin = user?.organizationId == null;
+  // A genuine super-admin picks which org to act as via the global
+  // switcher in the header (OrgSwitcher.tsx) — that choice applies
+  // here automatically via the X-Active-Org header every apiFetch*
+  // call already sends (see JwtStrategy.validate()'s own doc comment
+  // for the backend half), no separate picker needed on this page
+  // anymore.
+  const isSuperAdmin = (user?.realOrganizationId ?? user?.organizationId) == null;
+  const isActingAsOrg = user?.isActingAsOrg ?? false;
 
-  const [orgs, setOrgs] = useState<Org[]>([]);
-  const [organizationId, setOrganizationId] = useState<number | ''>('');
   const [from, setFrom] = useState(startOfYear());
   const [to, setTo] = useState(today());
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  // Only a genuine super-admin manages more than one organization —
-  // an org-scoped admin's own org is applied automatically server-
-  // side (see the controller's own doc comment), so this list is
-  // only fetched/shown when it's actually needed.
-  useEffect(() => {
-    if (!isSuperAdmin) return;
-    apiFetch<Org[]>('/organizations').then(setOrgs).catch(() => setOrgs([]));
-  }, [isSuperAdmin]);
-
   async function generate() {
-    if (isSuperAdmin && organizationId === '') {
-      setError(t('taxAuthorityExport.pickOrgFirst'));
-      return;
-    }
     setGenerating(true); setError(null); setNotice(null);
     try {
-      const body: { from: string; to: string; organizationId?: number } = { from, to };
-      if (isSuperAdmin) body.organizationId = organizationId as number;
-      const url = await apiFetchBlobPost('/tax-authority-export', body);
+      const url = await apiFetchBlobPost('/tax-authority-export', { from, to });
       const a = document.createElement('a');
       a.href = url;
       a.download = `openformat-${from}-to-${to}.zip`;
@@ -77,21 +62,13 @@ export default function TaxAuthorityExportPage() {
         <p style={{ margin: 0, fontSize: 13 }}>{t('taxAuthorityExport.simulatorNote')}</p>
       </div>
 
-      <div className="card" style={{ padding: 20, maxWidth: 480 }}>
-        {isSuperAdmin && (
-          <>
-            <label>{t('taxAuthorityExport.organization')}</label>
-            <select
-              value={organizationId}
-              onChange={(e) => setOrganizationId(e.target.value ? Number(e.target.value) : '')}
-              style={{ width: '100%', marginBottom: 14 }}
-            >
-              <option value="">{t('taxAuthorityExport.pickOrg')}</option>
-              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
-            </select>
-          </>
-        )}
+      {isSuperAdmin && !isActingAsOrg && (
+        <div className="card" style={{ padding: 16, marginBottom: 16, background: 'var(--surface-muted)' }}>
+          <p style={{ margin: 0, fontSize: 13 }}>{t('taxAuthorityExport.useOrgSwitcher')}</p>
+        </div>
+      )}
 
+      <div className="card" style={{ padding: 20, maxWidth: 480 }}>
         <label>{t('taxAuthorityExport.fromDate')}</label>
         <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: '100%', marginBottom: 14 }} />
 
@@ -101,7 +78,7 @@ export default function TaxAuthorityExportPage() {
         {error && <div className="error-banner" style={{ marginBottom: 14 }}>{error}</div>}
         {notice && <div style={{ background: '#e6f4ea', color: '#1a7f37', padding: '10px 14px', borderRadius: 8, marginBottom: 14, fontSize: 13 }}>{notice}</div>}
 
-        <button type="button" onClick={generate} disabled={generating} style={{ width: '100%' }}>
+        <button type="button" onClick={generate} disabled={generating || (isSuperAdmin && !isActingAsOrg)} style={{ width: '100%' }}>
           <FileDown size={15} /> {generating ? t('taxAuthorityExport.generating') : t('taxAuthorityExport.generate')}
         </button>
       </div>

@@ -19,28 +19,22 @@ export class TaxAuthorityExportController {
    * (OPENFRMT/{vatid}.{yy}/{MMDDhhmm}/ containing TXT.INI + BKMVDATA)
    * for the given date range and organization.
    *
-   * Org-scoped admins are always forced to their own organization —
-   * body.organizationId is ignored for them entirely, not just
-   * validated, so there's no way to pass a different org's id and
-   * export data that isn't theirs. Only a genuine super-admin
-   * (organizationId === null on their own session) can choose which
-   * organization to export via body.organizationId, since a
-   * super-admin manages more than one and there's no single
-   * "their own org" to default to. */
+   * organizationId is never read from the request body — it comes
+   * from user.organizationId, which JwtStrategy.validate() already
+   * resolves correctly for both an org-scoped admin (their own real
+   * org, always) and a super-admin (null, unless they're currently
+   * "acting as" an organization via the global org-switcher in the
+   * admin panel's header — see JwtStrategy's own doc comment for the
+   * X-Active-Org mechanism this relies on). This controller doesn't
+   * need to know that mechanism exists at all. */
   @Post()
-  async generate(
-    @Body() body: { from: string; to: string; organizationId?: number },
-    @CurrentUser() user: ReqUser,
-    @Res() res: Response,
-  ) {
-    const isSuperAdmin = user.organizationId == null;
-    const targetOrgId = isSuperAdmin ? body.organizationId : user.organizationId;
-    if (targetOrgId == null) {
-      res.status(400).json({ message: 'Pick which organization to generate this export for.' });
+  async generate(@Body() body: { from: string; to: string }, @CurrentUser() user: ReqUser, @Res() res: Response) {
+    if (user.organizationId == null) {
+      res.status(400).json({ message: 'Pick which organization to generate this export for (use the organization switcher in the header).' });
       return;
     }
     const { outerZipBuffer, outputPath } = await this.service.generate({
-      organizationId: targetOrgId,
+      organizationId: user.organizationId,
       from: new Date(body.from),
       to: new Date(body.to),
     });

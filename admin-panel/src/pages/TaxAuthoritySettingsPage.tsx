@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ExternalLink, CheckCircle2, AlertCircle } from 'lucide-react';
 import { apiFetch } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 interface TaxAuthoritySettings {
   enabled: boolean;
@@ -17,6 +18,7 @@ interface TaxAuthoritySettings {
 
 export default function TaxAuthoritySettingsPage() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [settings, setSettings] = useState<TaxAuthoritySettings | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [clientSecret, setClientSecret] = useState('');
@@ -25,6 +27,7 @@ export default function TaxAuthoritySettingsPage() {
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoaded(false);
     apiFetch<TaxAuthoritySettings | null>('/tax-authority/settings')
       .then((s) => setSettings(s))
       .catch((e) => setError(e.message))
@@ -32,7 +35,12 @@ export default function TaxAuthoritySettingsPage() {
     const params = new URLSearchParams(window.location.search);
     if (params.get('connected')) setNotice(t('taxAuthority.connectedSuccess'));
     if (params.get('error')) setError(decodeURIComponent(params.get('error') ?? ''));
-  }, []);
+    // Re-runs whenever which organization the super-admin is acting
+    // as changes (the global switcher in the header) — without this
+    // dependency, switching org while already on this page would show
+    // stale (or no) settings until a manual reload.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.organizationId]);
 
   async function save(patch: Partial<TaxAuthoritySettings> & { clientSecret?: string }) {
     if (!settings) return;

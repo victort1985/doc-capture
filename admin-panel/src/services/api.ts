@@ -22,6 +22,26 @@ export function setToken(token: string | null) {
   else sessionStorage.removeItem('token');
 }
 
+/** "Act as organization" for a genuine super-admin — see
+ * JwtStrategy.validate()'s own doc comment for the full backend
+ * mechanism this powers. Stored in sessionStorage (same lifetime as
+ * the auth token itself: cleared on logout, never persists across a
+ * fresh login) rather than the auth token/JWT payload, since it's a
+ * per-session UI choice, not part of the account's real identity. */
+export function getActiveOrgId(): string | null {
+  return sessionStorage.getItem('activeOrgId');
+}
+
+export function setActiveOrgId(orgId: number | null) {
+  if (orgId != null) sessionStorage.setItem('activeOrgId', String(orgId));
+  else sessionStorage.removeItem('activeOrgId');
+}
+
+function activeOrgHeader(): Record<string, string> {
+  const id = getActiveOrgId();
+  return id ? { 'X-Active-Org': id } : {};
+}
+
 let onUnauthorized: (() => void) | null = null;
 let onLicenseLocked: ((code: string, message: string) => void) | null = null;
 
@@ -53,6 +73,7 @@ export async function apiFetch<T>(
       ...(!isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       'X-Client-Type': 'admin-panel',
+      ...activeOrgHeader(),
       ...(options.headers || {}),
     },
   });
@@ -96,7 +117,7 @@ export async function apiFetchMultipart<T>(path: string, formData: FormData): Pr
   const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Client-Type': 'admin-panel' },
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Client-Type': 'admin-panel', ...activeOrgHeader() },
     body: formData,
   });
   if (!res.ok) {
@@ -115,7 +136,7 @@ export async function apiFetchMultipart<T>(path: string, formData: FormData): Pr
 export async function apiFetchBlob(path: string): Promise<string> {
   const token = getToken();
   const res = await fetch(`${BASE_URL}${path}`, {
-    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Client-Type': 'admin-panel' },
+    headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), 'X-Client-Type': 'admin-panel', ...activeOrgHeader() },
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -143,6 +164,7 @@ export async function apiFetchBlobPost(path: string, body: unknown): Promise<str
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       'X-Client-Type': 'admin-panel',
       'Content-Type': 'application/json',
+      ...activeOrgHeader(),
     },
     body: JSON.stringify(body),
   });
