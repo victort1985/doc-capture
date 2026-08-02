@@ -52,6 +52,7 @@ import { TimeThresholdsModule } from './modules/time-thresholds/time-thresholds.
 import { RentalsModule } from './modules/rentals/rentals.module';
 import { DataMigrationModule } from './modules/data-migration/data-migration.module';
 import { TaxAuthorityExportModule } from './modules/tax-authority-export/tax-authority-export.module';
+import { BanksModule } from './modules/banks/banks.module';
 
 const publicDir = join(__dirname, '..', 'public');
 const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
@@ -121,6 +122,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     RentalsModule,
     DataMigrationModule,
     TaxAuthorityExportModule,
+    BanksModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
