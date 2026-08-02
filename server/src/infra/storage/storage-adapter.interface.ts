@@ -1,3 +1,5 @@
+import * as path from 'path';
+
 export interface StorageAdapter {
   /** Write a buffer to the given relative path. Returns the final stored path. */
   write(relativePath: string, data: Buffer): Promise<string>;
@@ -28,4 +30,26 @@ export interface StorageConnectionConfig {
   password?: string;
   basePath: string;
   extraConfig?: Record<string, unknown>;
+}
+
+/** Joins basePath + relativePath the same way every remote adapter
+ * (FTP/SFTP/Synology) already did with a bare path.posix.join() call
+ * repeated at every use site — except this version also verifies the
+ * result actually stays inside basePath, which plain path.posix.join
+ * never guarantees on its own (path.posix.join('/data', '../../etc')
+ * happily resolves outside '/data'). A relativePath ultimately traces
+ * back to something touching user input somewhere upstream (an
+ * uploaded file's original filename, a document type, an id) in
+ * every one of these adapters' callers — this is the one place that
+ * closes that off for all of them, rather than trusting each call
+ * site across the whole app to have already sanitized it correctly.
+ * Mirrors LocalStorageAdapter's own resolve() (same reasoning, native
+ * path.join instead of posix since local paths use the OS separator). */
+export function safeRemoteJoin(basePath: string, relativePath: string): string {
+  const base = path.posix.resolve(basePath);
+  const target = path.posix.resolve(base, relativePath);
+  if (target !== base && !target.startsWith(base + '/')) {
+    throw new Error(`Refusing to access a path outside the storage root: ${relativePath}`);
+  }
+  return target;
 }

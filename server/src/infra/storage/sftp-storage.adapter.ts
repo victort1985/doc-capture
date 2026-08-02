@@ -1,6 +1,6 @@
 import SftpClient from 'ssh2-sftp-client';
 import * as path from 'path';
-import { StorageAdapter, StorageConnectionConfig } from './storage-adapter.interface';
+import { StorageAdapter, StorageConnectionConfig, safeRemoteJoin } from './storage-adapter.interface';
 import { withTimeout } from './with-timeout.util';
 
 const SFTP_TIMEOUT_MS = parseInt(process.env.STORAGE_OPERATION_TIMEOUT_MS || '15000', 10);
@@ -40,7 +40,7 @@ export class SftpStorageAdapter implements StorageAdapter {
   }
 
   async write(relativePath: string, data: Buffer): Promise<string> {
-    const remotePath = path.posix.join(this.config.basePath, relativePath);
+    const remotePath = safeRemoteJoin(this.config.basePath, relativePath);
     return withTimeout(
       this.withClient(async (client) => {
         const dir = path.posix.dirname(remotePath);
@@ -55,7 +55,7 @@ export class SftpStorageAdapter implements StorageAdapter {
   }
 
   async read(relativePath: string): Promise<Buffer> {
-    const remotePath = path.posix.join(this.config.basePath, relativePath);
+    const remotePath = safeRemoteJoin(this.config.basePath, relativePath);
     return withTimeout(
       this.withClient(async (client) => {
         const result = await client.get(remotePath);
@@ -66,8 +66,8 @@ export class SftpStorageAdapter implements StorageAdapter {
   }
 
   async rename(oldRelativePath: string, newRelativePath: string): Promise<void> {
-    const oldRemote = path.posix.join(this.config.basePath, oldRelativePath);
-    const newRemote = path.posix.join(this.config.basePath, newRelativePath);
+    const oldRemote = safeRemoteJoin(this.config.basePath, oldRelativePath);
+    const newRemote = safeRemoteJoin(this.config.basePath, newRelativePath);
     return withTimeout(
       this.withClient(async (client) => {
         await client.rename(oldRemote, newRemote);
@@ -77,7 +77,7 @@ export class SftpStorageAdapter implements StorageAdapter {
   }
 
   async exists(relativePath: string): Promise<boolean> {
-    const remotePath = path.posix.join(this.config.basePath, relativePath);
+    const remotePath = safeRemoteJoin(this.config.basePath, relativePath);
     return withTimeout(
       this.withClient(async (client) => Boolean(await client.exists(remotePath))),
       `SFTP exists-check on ${this.config.host}`,
@@ -85,7 +85,7 @@ export class SftpStorageAdapter implements StorageAdapter {
   }
 
   async remove(relativePath: string): Promise<void> {
-    const remotePath = path.posix.join(this.config.basePath, relativePath);
+    const remotePath = safeRemoteJoin(this.config.basePath, relativePath);
     await withTimeout(
       this.withClient(async (client) => {
         await client.delete(remotePath).catch(() => undefined);

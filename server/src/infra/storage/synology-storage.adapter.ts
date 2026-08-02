@@ -1,6 +1,6 @@
 import { createClient, WebDAVClient } from 'webdav';
 import * as path from 'path';
-import { StorageAdapter, StorageConnectionConfig } from './storage-adapter.interface';
+import { StorageAdapter, StorageConnectionConfig, safeRemoteJoin } from './storage-adapter.interface';
 import { withTimeout } from './with-timeout.util';
 
 /**
@@ -20,7 +20,7 @@ export class SynologyStorageAdapter implements StorageAdapter {
   }
 
   async write(relativePath: string, data: Buffer): Promise<string> {
-    const remotePath = path.posix.join(this.config.basePath, relativePath);
+    const remotePath = safeRemoteJoin(this.config.basePath, relativePath);
     return withTimeout(
       (async () => {
         await this.ensureDir(path.posix.dirname(remotePath));
@@ -32,13 +32,13 @@ export class SynologyStorageAdapter implements StorageAdapter {
   }
 
   async rename(oldRelativePath: string, newRelativePath: string): Promise<void> {
-    const oldRemote = path.posix.join(this.config.basePath, oldRelativePath);
-    const newRemote = path.posix.join(this.config.basePath, newRelativePath);
+    const oldRemote = safeRemoteJoin(this.config.basePath, oldRelativePath);
+    const newRemote = safeRemoteJoin(this.config.basePath, newRelativePath);
     await withTimeout(this.client.moveFile(oldRemote, newRemote), `WebDAV rename on ${this.config.host}`);
   }
 
   async read(relativePath: string): Promise<Buffer> {
-    const remotePath = path.posix.join(this.config.basePath, relativePath);
+    const remotePath = safeRemoteJoin(this.config.basePath, relativePath);
     const content = await withTimeout(
       this.client.getFileContents(remotePath) as Promise<Buffer>,
       `WebDAV read from ${this.config.host}`,
@@ -47,12 +47,12 @@ export class SynologyStorageAdapter implements StorageAdapter {
   }
 
   async exists(relativePath: string): Promise<boolean> {
-    const remotePath = path.posix.join(this.config.basePath, relativePath);
+    const remotePath = safeRemoteJoin(this.config.basePath, relativePath);
     return withTimeout(this.client.exists(remotePath), `WebDAV exists-check on ${this.config.host}`);
   }
 
   async remove(relativePath: string): Promise<void> {
-    const remotePath = path.posix.join(this.config.basePath, relativePath);
+    const remotePath = safeRemoteJoin(this.config.basePath, relativePath);
     await withTimeout(
       (async () => {
         if (await this.client.exists(remotePath)) {

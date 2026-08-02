@@ -242,7 +242,14 @@ export class ExpensesService {
     const connectionId = settings?.documentStorageConnection?.id;
     if (!connectionId) throw new BadRequestException('No document storage connection configured for this user — set one under Storage settings first.');
 
-    const ext = file.originalname.includes('.') ? file.originalname.slice(file.originalname.lastIndexOf('.')) : '.jpg';
+    // Same sanitization orders.service.ts's writeOrderPdf already
+    // applies to its own generated filenames — strips path-traversal
+    // and filesystem-unsafe characters from anything derived from a
+    // user-supplied name before it becomes part of a storage path.
+    // Length-capped too: a real extension is never more than a few
+    // characters.
+    const rawExt = file.originalname.includes('.') ? file.originalname.slice(file.originalname.lastIndexOf('.')) : '.jpg';
+    const ext = rawExt.replace(/[/\\:*?"<>|\x00-\x1f]/g, '_').slice(0, 10);
     const relativePath = `Expenses/${id}_${Date.now()}${ext}`;
     const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(connectionId);
     expense.receiptStoragePath = await writeMaybeEncrypted(adapter, relativePath, file.buffer, encryptAtRest);
@@ -270,7 +277,9 @@ export class ExpensesService {
     const connectionId = settings?.documentStorageConnection?.id;
     if (!connectionId) throw new BadRequestException('No document storage connection configured for this user — set one under Storage settings first.');
 
-    const ext = file.originalname.includes('.') ? file.originalname.slice(file.originalname.lastIndexOf('.')) : '.pdf';
+    // See attachExpenseReceipt's identical comment above.
+    const rawExt = file.originalname.includes('.') ? file.originalname.slice(file.originalname.lastIndexOf('.')) : '.pdf';
+    const ext = rawExt.replace(/[/\\:*?"<>|\x00-\x1f]/g, '_').slice(0, 10);
     const relativePath = `SupplierInvoices/${id}_${Date.now()}${ext}`;
     const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(connectionId);
     invoice.storagePath = await writeMaybeEncrypted(adapter, relativePath, file.buffer, encryptAtRest);

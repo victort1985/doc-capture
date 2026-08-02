@@ -37,7 +37,7 @@ export class ExpensesController {
    * category,amount,method (method optional, defaults to cash).
    * Header row required, order doesn't matter — matched by name. */
   @Post('import-csv')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
   async importCsv(@UploadedFile() file: { buffer: Buffer }, @CurrentUser() user: ReqUser) {
     return this.service.importExpensesCsv(user.organizationId, user.id, file.buffer.toString('utf-8'));
   }
@@ -98,7 +98,7 @@ export class SupplierInvoicesController {
   /** CSV columns: supplierName,invoiceNumber,date,dueDate,amount,
    * description. Header row required, order doesn't matter. */
   @Post('import-csv')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
   async importCsv(@UploadedFile() file: { buffer: Buffer }, @CurrentUser() user: ReqUser) {
     return this.service.importSupplierInvoicesCsv(user.organizationId, user.id, file.buffer.toString('utf-8'));
   }
