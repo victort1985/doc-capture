@@ -56,6 +56,7 @@ import BackupPage from './pages/BackupPage';
 import TimeThresholdsPage from './pages/TimeThresholdsPage';
 import RentalsPage from './pages/RentalsPage';
 import DataMigrationPage from './pages/DataMigrationPage';
+import TaxAuthorityExportPage from './pages/TaxAuthorityExportPage';
 import PriceListPage from './pages/PriceListPage';
 import DevicesPage from './pages/DevicesPage';
 
@@ -132,6 +133,7 @@ export default function App() {
           <Route path="/time-thresholds" element={<TimeThresholdsPage />} />
           <Route path="/rentals" element={<RentalsPage />} />
           <Route path="/data-migration" element={<DataMigrationPage />} />
+          <Route path="/tax-authority-export" element={<TaxAuthorityExportPage />} />
           <Route path="/payment-settings" element={<PaymentSettingsPage />} />
           <Route path="/prices" element={<PriceListPage />} />
           <Route path="/devices" element={<DevicesPage />} />

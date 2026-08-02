@@ -45,7 +45,8 @@
     "backup": "Backups",
     "timeThresholds": "Time Thresholds",
     "rentals": "Rentals",
-    "dataMigration": "Data Migration"
+    "dataMigration": "Data Migration",
+    "taxAuthorityExport": "Tax Authority Export"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1462,5 +1463,16 @@
     "fileFormat": "File format",
     "startExport": "Start export",
     "downloadFile": "Download file"
+  },
+  "taxAuthorityExport": {
+    "eyebrow": "System",
+    "title": "Tax Authority Export",
+    "disclaimer": "Generates the \"Uniform Structure\" file (קובץ במבנה אחיד) required for the Tax Authority's software registry — covers invoices, ledger transactions, chart of accounts, and inventory for the selected date range.",
+    "simulatorNote": "Registration status pending — this file hasn't been validated against the Tax Authority's own online simulator (סימולטור) yet. Run it there before relying on this for an actual registration submission or audit request.",
+    "fromDate": "From date",
+    "toDate": "To date",
+    "generate": "Generate and download",
+    "generating": "Generating…",
+    "downloadStarted": "Download started."
   }
 }
