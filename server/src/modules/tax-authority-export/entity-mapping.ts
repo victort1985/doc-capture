@@ -52,6 +52,52 @@ function deriveVatRatePercent(subtotal: number, vatAmount: number): number {
   return Math.round((vatAmount / subtotal) * 100 * 100) / 100; // 2 decimal places
 }
 
+/** Field 1225 (מפתח לקוח/ספק) — confirmed via the real Tax Authority
+ * simulator to be REQUIRED for sales/purchase document types, not
+ * optional as an earlier version of this module assumed after
+ * finding that the client's full NAME had been wrongly stuffed into
+ * this 15-char field (a real bug, fixed then by leaving it blank —
+ * which fixed the overflow but turned out to trade one bug for
+ * another, since the field can't be empty either). None of Vixor's
+ * document entities have a dedicated short client-ID field today, so
+ * this picks the best available short, stable identifier instead of
+ * reusing the full name a second time:
+ *   1. clientTaxId, when the document has one (Invoice only today) —
+ *      a business's own tax id is exactly the kind of stable
+ *      "customer key" this field is meant to hold, and always fits
+ *      (max 9 digits).
+ *   2. The client name, safely truncated to 15 chars this time
+ *      (never thrown on overflow, unlike the field this was
+ *      originally copying from).
+ *   3. A synthetic fallback ("REC-{id}") if even the name is empty —
+ *      guarantees the field is never blank, since that's now a
+ *      confirmed validation failure too. */
+function resolvePartyKey(clientName: string | undefined, entityId: number, clientTaxId?: string): string {
+  if (clientTaxId && clientTaxId.trim()) return clientTaxId.trim().slice(0, 15);
+  const trimmedName = clientName?.trim();
+  if (trimmedName) return trimmedName.slice(0, 15);
+  return `REC-${entityId}`.slice(0, 15);
+}
+
+/** Field 1267 (lineTotal) must stay internally consistent with what
+ * field 1265 (unitPriceExclVat) actually WRITES to the wire — that
+ * field is itself rounded to 2 decimal places (see
+ * signedAmountField's own 2dp call in document-records.ts). If
+ * lineTotal were computed from the full-precision unitPrice instead
+ * (e.g. quantity × 33.333333 rather than quantity × 33.33), a
+ * validator that independently recomputes "rounded unit price ×
+ * quantity" and compares it against the field this app actually sent
+ * would see a real discrepancy for any fractional-cent price — the
+ * likely explanation for the real Tax Authority simulator's own
+ * "קיימת סטייה משמעותית בין ערך השדה לערך מחושב" (significant
+ * deviation between the field's value and the computed value) error
+ * on this exact field. Rounding the price FIRST, then multiplying,
+ * keeps both fields describing the same number. */
+function roundedLineTotal(quantity: number, unitPrice: number): number {
+  const roundedPrice = Math.round(unitPrice * 100) / 100;
+  return Math.round(quantity * roundedPrice * 100) / 100;
+}
+
 export interface InvoiceRecords {
   header: string;
   lines: string[];
@@ -68,7 +114,7 @@ export function mapInvoiceToRecords(
   headerRecordNumber: number,
   lineRecordNumberStart: number,
 ): InvoiceRecords {
-  const subtotal = invoice.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+  const subtotal = invoice.items.reduce((sum, it) => sum + roundedLineTotal(it.quantity, it.unitPrice), 0);
   const vatAmount = Math.max(0, invoice.total - subtotal);
   const linkId = invoice.id;
   const issueDate = invoice.createdAt;
@@ -90,6 +136,7 @@ export function mapInvoiceToRecords(
     documentDate,
     cancelled: invoice.status === InvoiceStatus.CANCELLED,
     linkId,
+    partyKey: resolvePartyKey(invoice.clientName, invoice.id, invoice.clientTaxId),
   });
 
   const vatRatePercent = deriveVatRatePercent(subtotal, vatAmount);
@@ -104,7 +151,7 @@ export function mapInvoiceToRecords(
       unitDescription: 'יחידה',
       quantity: item.quantity,
       unitPriceExclVat: item.unitPrice,
-      lineTotal: item.quantity * item.unitPrice,
+      lineTotal: roundedLineTotal(item.quantity, item.unitPrice),
       vatRatePercent,
       documentDate,
       headerLinkId: linkId,
@@ -240,6 +287,7 @@ export function mapDeliveryNoteToRecords(
     documentDate,
     cancelled: note.status === DeliveryNoteStatus.CANCELLED,
     linkId,
+    partyKey: resolvePartyKey(note.clientName, note.id),
   });
 
   const lines = note.items.map((item, i) =>
@@ -272,7 +320,7 @@ export function mapCreditNoteToRecords(
   headerRecordNumber: number,
   lineRecordNumberStart: number,
 ): HeaderAndLines {
-  const subtotal = note.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+  const subtotal = note.items.reduce((sum, it) => sum + roundedLineTotal(it.quantity, it.unitPrice), 0);
   const vatAmount = Math.max(0, note.total - subtotal);
   const linkId = note.id;
   const issueDate = note.createdAt;
@@ -292,6 +340,7 @@ export function mapCreditNoteToRecords(
     totalAmountInclVat: note.total,
     documentDate,
     linkId,
+    partyKey: resolvePartyKey(note.clientName, note.id),
   });
 
   const vatRatePercent = deriveVatRatePercent(subtotal, vatAmount);
@@ -306,7 +355,7 @@ export function mapCreditNoteToRecords(
       unitDescription: 'יחידה',
       quantity: item.quantity,
       unitPriceExclVat: item.unitPrice,
-      lineTotal: item.quantity * item.unitPrice,
+      lineTotal: roundedLineTotal(item.quantity, item.unitPrice),
       vatRatePercent,
       documentDate,
       headerLinkId: linkId,
@@ -332,7 +381,7 @@ export function mapDebitNoteToRecords(
   headerRecordNumber: number,
   lineRecordNumberStart: number,
 ): HeaderAndLines {
-  const subtotal = note.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+  const subtotal = note.items.reduce((sum, it) => sum + roundedLineTotal(it.quantity, it.unitPrice), 0);
   const vatAmount = Math.max(0, note.total - subtotal);
   const linkId = note.id;
   const issueDate = note.createdAt;
@@ -352,6 +401,7 @@ export function mapDebitNoteToRecords(
     totalAmountInclVat: note.total,
     documentDate,
     linkId,
+    partyKey: resolvePartyKey(note.clientName, note.id),
   });
 
   const vatRatePercent = deriveVatRatePercent(subtotal, vatAmount);
@@ -366,7 +416,7 @@ export function mapDebitNoteToRecords(
       unitDescription: 'יחידה',
       quantity: item.quantity,
       unitPriceExclVat: item.unitPrice,
-      lineTotal: item.quantity * item.unitPrice,
+      lineTotal: roundedLineTotal(item.quantity, item.unitPrice),
       vatRatePercent,
       documentDate,
       headerLinkId: linkId,
@@ -408,6 +458,7 @@ export function mapPaymentToRecords(
     totalAmountInclVat: payment.amount,
     documentDate,
     linkId,
+    partyKey: resolvePartyKey(payment.clientName, payment.id),
   });
 
   const line = buildReceiptLineRecord({
@@ -478,6 +529,7 @@ export function mapSupplierInvoiceToRecords(
     totalAmountInclVat: invoice.amount,
     documentDate,
     linkId,
+    partyKey: resolvePartyKey(invoice.supplierName, invoice.id),
   });
 
   const line = buildDocumentLineRecord({
@@ -528,6 +580,7 @@ export function mapExpenseToRecords(
     totalAmountInclVat: expense.amount,
     documentDate,
     linkId,
+    partyKey: resolvePartyKey(undefined, expense.id),
   });
 
   const line = buildReceiptLineRecord({
@@ -579,6 +632,7 @@ export function mapReturnNoteToRecords(
     totalAmountInclVat: 0,
     documentDate,
     linkId,
+    partyKey: resolvePartyKey(note.clientName, note.id),
   });
 
   const lines = note.items.map((item, i) =>
