@@ -1,7 +1,9 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import type { Request } from 'express';
 import { UsersService } from '../../users/users.service';
+import { OrganizationsService } from '../../organizations/organizations.service';
 import { TOS_VERSION } from '../auth.service';
 import { resolveEffectivePermissions } from '../../users/permissions.constants';
 
@@ -14,15 +16,19 @@ export interface JwtPayload {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly usersService: UsersService) {
+  constructor(
+    private readonly usersService: UsersService,
+    private readonly organizationsService: OrganizationsService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_SECRET || 'change_me',
+      passReqToCallback: true,
     });
   }
 
-  async validate(payload: JwtPayload) {
+  async validate(req: Request, payload: JwtPayload) {
     // Re-checks the live user on every request (not just at login) so a
     // disabled or deleted account is locked out immediately instead of
     // staying valid on its existing token until natural expiry (up to
@@ -48,6 +54,42 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (payload.tokenVersion !== user.tokenVersion) {
       throw new UnauthorizedException('Session has been revoked — please log in again');
     }
+
+    const realOrganizationId = user.organization?.id ?? null;
+    let effectiveOrganizationId = realOrganizationId;
+    let isActingAsOrg = false;
+
+    // Super-admin "act as organization" — lets a super-admin manage
+    // one org's data (settings, exports, anything org-scoped) without
+    // every single org-scoped controller needing its own "or pick an
+    // org" branch. Deliberately restricted to GENUINE super-admins
+    // only (realOrganizationId === null) — an org-scoped admin's own
+    // X-Active-Org header (if a browser extension or old tab somehow
+    // sent one) is silently ignored rather than honored, since that
+    // admin already has their own real org and has no business
+    // becoming a different one via a header alone. Also deliberately
+    // separate from the mobile app's own X-Active-Org mechanism (see
+    // active-org.util.ts) — that one is for an org-scoped user
+    // switching between THEIR OWN allowedOrganizationIds, a different
+    // feature with different trust boundaries than a super-admin
+    // impersonating an arbitrary org.
+    const activeOrgHeader = req.headers['x-active-org'];
+    if (realOrganizationId == null && typeof activeOrgHeader === 'string' && activeOrgHeader.trim() !== '') {
+      const requestedOrgId = parseInt(activeOrgHeader, 10);
+      if (Number.isInteger(requestedOrgId)) {
+        try {
+          await this.organizationsService.findById(requestedOrgId); // throws if it doesn't exist
+          effectiveOrganizationId = requestedOrgId;
+          isActingAsOrg = true;
+        } catch {
+          // Invalid/deleted org id in the header — fall through and
+          // stay as the real super-admin (organizationId: null)
+          // rather than failing the whole request over a stale
+          // client-side selection.
+        }
+      }
+    }
+
     return {
       id: user.id,
       username: user.username,
@@ -55,8 +97,16 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       language: user.language,
       // null = super-admin (sees/manages everything); set = scoped to
       // that organization's data only. Always derived from the live DB
-      // row above, never trusted from the JWT payload itself.
-      organizationId: user.organization?.id ?? null,
+      // row above (or the validated X-Active-Org header for a genuine
+      // super-admin), never trusted from the JWT payload itself.
+      organizationId: effectiveOrganizationId,
+      // The account's own real org (always null for a genuine super-
+      // admin, regardless of which org they're currently acting as) —
+      // for anything that needs to know the difference between "who
+      // is actually logged in" and "which org's data this request is
+      // scoped to", e.g. an audit log entry or a UI banner.
+      realOrganizationId,
+      isActingAsOrg,
       isDemoMode: user.organization?.isDemoMode ?? false,
       setupWizardCompleted: user.setupWizardCompleted,
       tosAccepted: user.tosAcceptedVersion === TOS_VERSION,
