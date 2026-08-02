@@ -84,7 +84,7 @@ export function buildIniHeaderRecord(
     timeField(processStart), // 1027
     numField(0, 1), // 1028 — language: 0 = Hebrew
     numField(1, 1), // 1029 — charset: 1 = ISO-8859-8
-    alphaField('', 20), // 1030 — compression tool name, filled by the packaging step
+    alphaField('AdmZip', 20), // 1030 — compression tool name. CONFIRMED via the real simulator's own error ("שדה חובה, חייב להכיל ערך" — required field, must contain a value) that this can't be left blank as an earlier version of this module assumed
     alphaField('', 0), // 1031 — cancelled field, zero-width
     alphaField('ILS', 3), // 1032 — leading currency
     alphaField('', 0), // 1033 — cancelled field, zero-width
