@@ -14,6 +14,22 @@ import type { LedgerEntry } from '../accounting/entities/ledger-entry.entity';
 import type { Account } from '../accounting/entities/account.entity';
 import type { WarehouseItem } from '../warehouse/entities/warehouse-item.entity';
 
+/** None of the document mappers below set field 1225 (מפתח לקוח/ספק,
+ * "the customer/supplier's OWN internal key in the seller's/buyer's
+ * system") — an earlier version of this file populated it with the
+ * client's full NAME, which is wrong on two counts: partyKey is
+ * meant to be a short internal code, not a name (partyName, a
+ * separate 50-char field, already carries the name correctly), and
+ * a real client/company name can easily exceed partyKey's 15-char
+ * width — found via an actual end-to-end export against realistic
+ * test data (a company name with a comma and quoted branch name,
+ * 27 chars), which crashed with a hard field-overflow error rather
+ * than silently truncating (alphaField is deliberately strict — see
+ * its own doc comment). None of Vixor's document entities have a
+ * distinct client-ID field today, so this stays honestly blank
+ * rather than reusing the wrong data a second time.
+ */
+
 /** Quotes (הצעת מחיר) are deliberately never mapped anywhere in this
  * file — they're a proposal, not a completed transaction, and
  * correctly have no code at all in the spec's own Appendix 1
@@ -68,7 +84,6 @@ export function mapInvoiceToRecords(
     amountAfterDiscountExclVat: subtotal,
     vatAmount,
     totalAmountInclVat: invoice.total,
-    partyKey: invoice.clientName, // no separate client-id field on Invoice today — see mapping note below
     documentDate,
     cancelled: invoice.status === InvoiceStatus.CANCELLED,
     linkId,
@@ -219,7 +234,6 @@ export function mapDeliveryNoteToRecords(
     amountAfterDiscountExclVat: 0,
     vatAmount: 0,
     totalAmountInclVat: 0,
-    partyKey: note.clientName,
     documentDate,
     cancelled: note.status === DeliveryNoteStatus.CANCELLED,
     linkId,
@@ -273,7 +287,6 @@ export function mapCreditNoteToRecords(
     amountAfterDiscountExclVat: subtotal,
     vatAmount,
     totalAmountInclVat: note.total,
-    partyKey: note.clientName,
     documentDate,
     linkId,
   });
@@ -334,7 +347,6 @@ export function mapDebitNoteToRecords(
     amountAfterDiscountExclVat: subtotal,
     vatAmount,
     totalAmountInclVat: note.total,
-    partyKey: note.clientName,
     documentDate,
     linkId,
   });
@@ -391,7 +403,6 @@ export function mapPaymentToRecords(
     amountAfterDiscountExclVat: payment.amount,
     vatAmount: 0, // a receipt records money already collected on a previously-taxed invoice — no separate VAT event of its own
     totalAmountInclVat: payment.amount,
-    partyKey: payment.clientName,
     documentDate,
     linkId,
   });
