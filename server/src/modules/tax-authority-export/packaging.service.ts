@@ -39,7 +39,7 @@ export const BKMVDATA_MAX_BYTES = 4 * 1024 * 1024;
 
 export interface PackagedExport {
   /** One downloadable zip for convenience — OPENFRMT/{vatid}.{yy}/
-   * {MMDDhhmm}/ containing two PLAIN .txt files (TXT.INI and
+   * {MMDDhhmm}/ containing two PLAIN .txt files (INI.TXT and
    * BKMVDATA.TXT, both ISO-8859-8), ready to extract and upload
    * directly to the simulator's two file-picker fields. */
   outerZipBuffer: Buffer;
@@ -72,7 +72,7 @@ export function packageExport(iniContent: string, bkmvdataContent: string, vatId
   const outputPath = `OPENFRMT/${dirName}/${subfolderName}`;
 
   const outerZip = new AdmZip();
-  outerZip.addFile(`${outputPath}/TXT.INI`, iniBuffer);
+  outerZip.addFile(`${outputPath}/INI.TXT`, iniBuffer);
   outerZip.addFile(`${outputPath}/BKMVDATA.TXT`, bkmvdataBuffer);
 
   return {

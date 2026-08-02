@@ -40,7 +40,7 @@ export interface SoftwareInfo {
   vendorName: string;
 }
 
-/** TXT.INI's one leading record (section 3.1) — business + process
+/** INI.TXT's one leading record (section 3.1) — business + process
  * metadata. Field-by-field total: 4+5+15+9+15+8+8+20+20+9+20+1+50+1+1
  * +9+9+10+50+50+10+30+8+4+8+8+8+4+1+1+20+0+3+0+1+46 = 466, matching
  * the spec's own declared length for this record type.

@@ -16,7 +16,7 @@ export class TaxAuthorityExportController {
   constructor(private readonly service: OpenFormatExportService) {}
 
   /** Generates and streams the export as a single downloadable zip
-   * (OPENFRMT/{vatid}.{yy}/{MMDDhhmm}/ containing TXT.INI + BKMVDATA)
+   * (OPENFRMT/{vatid}.{yy}/{MMDDhhmm}/ containing INI.TXT + BKMVDATA)
    * for the given date range and organization.
    *
    * organizationId is never read from the request body — it comes
