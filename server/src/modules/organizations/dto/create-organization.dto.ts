@@ -13,4 +13,28 @@ export class CreateOrganizationDto {
   @IsString()
   @IsOptional()
   taxId?: string;
+
+  @IsString()
+  @IsOptional()
+  street?: string;
+
+  @IsString()
+  @IsOptional()
+  houseNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  city?: string;
+
+  @IsString()
+  @IsOptional()
+  zip?: string;
+
+  @IsString()
+  @IsOptional()
+  companyRegistrationNumber?: string;
+
+  @IsString()
+  @IsOptional()
+  deductionsFileNumber?: string;
 }

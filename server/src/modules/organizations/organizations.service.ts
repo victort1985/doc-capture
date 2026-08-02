@@ -75,7 +75,17 @@ export class OrganizationsService {
   async create(dto: CreateOrganizationDto): Promise<Organization> {
     const existing = await this.orgsRepo.findOne({ where: { name: dto.name } });
     if (existing) throw new ConflictException('An organization with this name already exists');
-    const org = await this.orgsRepo.save(this.orgsRepo.create({ name: dto.name, businessType: dto.businessType, taxId: dto.taxId }));
+    const org = await this.orgsRepo.save(this.orgsRepo.create({
+      name: dto.name,
+      businessType: dto.businessType,
+      taxId: dto.taxId,
+      street: dto.street,
+      houseNumber: dto.houseNumber,
+      city: dto.city,
+      zip: dto.zip,
+      companyRegistrationNumber: dto.companyRegistrationNumber,
+      deductionsFileNumber: dto.deductionsFileNumber,
+    }));
     await this.seedDefaultGroups(org.id);
     await this.accountingService.seedDefaultAccounts(org.id);
     return org;
@@ -101,6 +111,12 @@ export class OrganizationsService {
     if (dto.name) org.name = dto.name;
     if (dto.businessType !== undefined) org.businessType = dto.businessType;
     if (dto.taxId !== undefined) org.taxId = dto.taxId;
+    if (dto.street !== undefined) org.street = dto.street;
+    if (dto.houseNumber !== undefined) org.houseNumber = dto.houseNumber;
+    if (dto.city !== undefined) org.city = dto.city;
+    if (dto.zip !== undefined) org.zip = dto.zip;
+    if (dto.companyRegistrationNumber !== undefined) org.companyRegistrationNumber = dto.companyRegistrationNumber;
+    if (dto.deductionsFileNumber !== undefined) org.deductionsFileNumber = dto.deductionsFileNumber;
     return this.orgsRepo.save(org);
   }
 

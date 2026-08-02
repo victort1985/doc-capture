@@ -472,7 +472,15 @@
     "businessType_osek_murshe": "עוסק מורשה",
     "businessType_chevra": "חברה בע\"מ",
     "businessType_shutafut": "שותפות",
-    "businessType_amuta": "עמותה"
+    "businessType_amuta": "עמותה",
+    "taxDetails": "Tax/address details",
+    "taxDetailsHint": "Used on generated documents and as the business-info source for the Tax Authority export.",
+    "street": "Street",
+    "houseNumber": "House number",
+    "city": "City",
+    "zip": "Zip code",
+    "companyRegistrationNumber": "Company registration number (רשם החברות)",
+    "deductionsFileNumber": "Deductions file number (תיק ניכויים)"
   },
   "stats": {
     "eyebrow": "Analytics",

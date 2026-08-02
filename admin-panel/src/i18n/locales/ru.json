@@ -472,7 +472,15 @@
     "businessType_osek_murshe": "עוסק מורשה (осек мурше)",
     "businessType_chevra": "חברה בע\"מ (ООО)",
     "businessType_shutafut": "שותפות (партнёрство)",
-    "businessType_amuta": "עמותה (некоммерч.)"
+    "businessType_amuta": "עמותה (некоммерч.)",
+    "taxDetails": "Налоговые/адресные данные",
+    "taxDetailsHint": "Используется в создаваемых документах и как источник данных о бизнесе для экспорта в налоговую.",
+    "street": "Улица",
+    "houseNumber": "Номер дома",
+    "city": "Город",
+    "zip": "Индекс",
+    "companyRegistrationNumber": "Номер в реестре компаний (רשם החברות)",
+    "deductionsFileNumber": "Номер дела по вычетам (תיק ניכויים)"
   },
   "stats": {
     "eyebrow": "Аналитика",

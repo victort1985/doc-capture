@@ -208,7 +208,17 @@ export class OpenFormatExportService {
 
     const iniSummaries = Object.entries(typeCounts).map(([code, count]) => buildIniSummaryRecord(code, count));
     const iniHeader = buildIniHeaderRecord(
-      { vatId, businessName: org.name, hasBranches: false },
+      {
+        vatId,
+        businessName: org.name,
+        street: org.street ?? undefined,
+        houseNumber: org.houseNumber ?? undefined,
+        city: org.city ?? undefined,
+        zip: org.zip ?? undefined,
+        companyRegistrationNumber: org.companyRegistrationNumber ?? undefined,
+        deductionsFileNumber: org.deductionsFileNumber ?? undefined,
+        hasBranches: false,
+      },
       {
         registrationNumber: settings.softwareRegistrationNumber ?? '',
         name: 'Vixor ERP',

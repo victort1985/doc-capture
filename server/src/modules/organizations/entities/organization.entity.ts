@@ -91,4 +91,34 @@ export class Organization {
    * numbers as often as it'd catch typos. */
   @Column({ type: 'varchar', nullable: true })
   taxId?: string | null;
+
+  /** Business registered address — used on generated documents where
+   * relevant and as the business-info source for the Tax Authority
+   * "Uniform Structure" export's TXT.INI header (fields 1019-1022;
+   * see tax-authority-export/structural-records.ts). All optional:
+   * the export still works without them (those fields simply stay
+   * blank), but a real registration submission should have them
+   * filled in. */
+  @Column({ type: 'varchar', nullable: true })
+  street?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  houseNumber?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  city?: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  zip?: string | null;
+
+  /** מספר חברה ברשם החברות — only meaningful for businessType=CHEVRA,
+   * left blank otherwise. Feeds the same TXT.INI header (field 1015). */
+  @Column({ type: 'varchar', nullable: true })
+  companyRegistrationNumber?: string | null;
+
+  /** מספר תיק ניכויים — only relevant for businesses that withhold tax
+   * at source (e.g. employers). Feeds the same TXT.INI header
+   * (field 1016). */
+  @Column({ type: 'varchar', nullable: true })
+  deductionsFileNumber?: string | null;
 }

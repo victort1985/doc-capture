@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, Upload, Building2, Pencil } from 'lucide-react';
+import { Plus, Trash2, Upload, Building2, Pencil, MapPin, ChevronDown, ChevronUp } from 'lucide-react';
 import { apiFetch, apiFetchBlob, getToken, BASE_URL } from '../services/api';
 
 interface Org {
@@ -9,6 +9,12 @@ interface Org {
   createdAt: string;
   businessType?: string | null;
   taxId?: string | null;
+  street?: string | null;
+  houseNumber?: string | null;
+  city?: string | null;
+  zip?: string | null;
+  companyRegistrationNumber?: string | null;
+  deductionsFileNumber?: string | null;
 }
 
 const BUSINESS_TYPES = ['osek_patur', 'osek_murshe', 'chevra', 'shutafut', 'amuta'];
@@ -54,6 +60,7 @@ export default function OrganizationsPage() {
   const [showForm, setShowForm] = useState(false);
   const fileInputs = useRef<Record<number, HTMLInputElement | null>>({});
   const [logoVersion, setLogoVersion] = useState(0); // bump to refetch the thumb after a new upload
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   async function load() {
     try {
@@ -143,6 +150,7 @@ export default function OrganizationsPage() {
           </thead>
           <tbody>
             {orgs.map((o) => (
+              <React.Fragment key={o.id}>
               <tr key={o.id}>
                 <td><LogoThumb orgId={o.id} version={logoVersion} /></td>
                 <td>
@@ -210,12 +218,55 @@ export default function OrganizationsPage() {
                     <button className="ghost" onClick={() => fileInputs.current[o.id]?.click()} title={t('organizations.uploadLogo')}>
                       <Upload size={15} />
                     </button>
+                    <button
+                      className="ghost"
+                      onClick={() => setExpandedId(expandedId === o.id ? null : o.id)}
+                      title={t('organizations.taxDetails')}
+                    >
+                      <MapPin size={15} />
+                      {expandedId === o.id ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    </button>
                     <button className="ghost" onClick={() => removeOrg(o.id)} title={t('common.delete')} style={{ color: 'var(--danger)' }}>
                       <Trash2 size={15} />
                     </button>
                   </div>
                 </td>
               </tr>
+              {expandedId === o.id && (
+                <tr>
+                  <td colSpan={6} style={{ background: 'var(--surface-muted)', padding: 16 }}>
+                    <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 10 }}>
+                      {t('organizations.taxDetailsHint')}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+                      {([
+                        ['street', o.street, t('organizations.street')],
+                        ['houseNumber', o.houseNumber, t('organizations.houseNumber')],
+                        ['city', o.city, t('organizations.city')],
+                        ['zip', o.zip, t('organizations.zip')],
+                        ['companyRegistrationNumber', o.companyRegistrationNumber, t('organizations.companyRegistrationNumber')],
+                        ['deductionsFileNumber', o.deductionsFileNumber, t('organizations.deductionsFileNumber')],
+                      ] as const).map(([field, value, label]) => (
+                        <div key={field}>
+                          <label style={{ fontSize: 11.5 }}>{label}</label>
+                          <input
+                            defaultValue={value ?? ''}
+                            onBlur={async (e) => {
+                              const v = e.target.value.trim();
+                              if (v !== (value ?? '')) {
+                                await apiFetch(`/organizations/${o.id}`, { method: 'PATCH', body: JSON.stringify({ [field]: v || null }) });
+                                load();
+                              }
+                            }}
+                            style={{ width: '100%' }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
             {orgs.length === 0 && (
               <tr><td colSpan={4} style={{ textAlign: 'center', padding: 32, color: 'var(--ink-soft)' }}>
