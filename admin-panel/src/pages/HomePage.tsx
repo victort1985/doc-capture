@@ -11,7 +11,7 @@ export default function HomePage() {
   const { t } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const isSuperAdmin = user?.organizationId == null;
+  const isSuperAdmin = (user?.realOrganizationId ?? user?.organizationId) == null;
   const isAdmin = user?.role === 'admin';
   const groups = visibleGroups(isSuperAdmin, isAdmin);
   const [activeKey, setActiveKey] = useState(groups[isSuperAdmin ? 1 : 0]?.key ?? groups[0]?.key);

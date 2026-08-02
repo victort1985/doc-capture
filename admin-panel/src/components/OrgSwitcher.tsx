@@ -50,11 +50,13 @@ export default function OrgSwitcher() {
         className="ghost"
         onClick={() => setOpen((v) => !v)}
         disabled={switching}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5 }}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#fff' }}
         title={t('orgSwitcher.title')}
       >
         <Building2 size={14} />
-        {activeOrg ? activeOrg.name : t('orgSwitcher.superAdmin')}
+        <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {activeOrg ? activeOrg.name : t('orgSwitcher.superAdmin')}
+        </span>
         <ChevronDown size={12} />
       </button>
 
