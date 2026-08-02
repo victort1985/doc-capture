@@ -54,7 +54,7 @@ export function buildIniHeaderRecord(
   processStart: Date,
 ): string {
   const fields = [
-    alphaField('000A', 4), // 1000
+    alphaField('A000', 4), // 1000 — CONFIRMED via the real Tax Authority simulator's own error message ("קובץ INI.TXT אינו מכיל רשומה מרכזת... קוד רשומה מרכזת A000") after an initial reading of the RTL-rendered PDF table extracted this as "000A" (characters reversed) — this is directly-tested ground truth, not a guess
     alphaField('', 5), // 1001 — future use
     numField(totalBkmvdataRecords, 15), // 1002
     numField(parseInt(business.vatId, 10), 9), // 1003
