@@ -25,7 +25,7 @@ export interface InventoryItemInput {
  * with no sign). Total length 298. */
 export function buildInventoryItemRecord(input: InventoryItemInput): string {
   const fields = [
-    alphaField('100M', 4), // 1450
+    alphaField('M100', 4), // 1450
     numField(input.recordNumberInFile, 9), // 1451
     numField(parseInt(input.vatId, 10), 9), // 1452
     alphaField(input.universalSku ?? '', 20), // 1453

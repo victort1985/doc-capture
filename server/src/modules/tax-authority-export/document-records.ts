@@ -46,7 +46,7 @@ export interface DocumentHeaderInput {
  * a record and checking its length. */
 export function buildDocumentHeaderRecord(input: DocumentHeaderInput): string {
   const fields = [
-    alphaField('100C', 4), // 1200
+    alphaField('C100', 4), // 1200
     numField(input.recordNumberInFile, 9), // 1201
     numField(parseInt(input.vatId, 10), 9), // 1202
     numField(input.documentType, 3), // 1203
@@ -117,7 +117,7 @@ export interface DocumentLineInput {
  * 339, verified the same way as the header record above. */
 export function buildDocumentLineRecord(input: DocumentLineInput): string {
   const fields = [
-    alphaField('110D', 4), // 1250
+    alphaField('D110', 4), // 1250
     numField(input.recordNumberInFile, 9), // 1251
     numField(parseInt(input.vatId, 10), 9), // 1252
     numField(input.documentType, 3), // 1253

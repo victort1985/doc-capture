@@ -48,7 +48,7 @@ export function buildReceiptLineRecord(input: ReceiptLineInput): string {
   const isCheck = input.paymentMethod === 2;
   const isCard = input.paymentMethod === 3;
   const fields = [
-    alphaField('120D', 4), // 1300
+    alphaField('D120', 4), // 1300
     numField(input.recordNumberInFile, 9), // 1301
     numField(parseInt(input.vatId, 10), 9), // 1302
     numField(input.documentType, 3), // 1303

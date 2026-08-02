@@ -91,8 +91,8 @@ export class OpenFormatExportService {
       recordNumber += invoice.items.length;
       const { header, lines } = mapInvoiceToRecords(invoice, vatId, headerRecordNumber, lineStart);
       dataRecords.push(header);
-      bump('100C');
-      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+      bump('C100');
+      for (const line of lines) { dataRecords.push(line); bump('D110'); }
     }
 
     // Delivery notes, credit notes, debit notes, and payments all
@@ -112,8 +112,8 @@ export class OpenFormatExportService {
       recordNumber += note.items.length;
       const { header, lines } = mapDeliveryNoteToRecords(note, vatId, headerRecordNumber, lineStart);
       dataRecords.push(header);
-      bump('100C');
-      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+      bump('C100');
+      for (const line of lines) { dataRecords.push(line); bump('D110'); }
     }
 
     const creditNotes = await this.creditNotesRepo
@@ -129,8 +129,8 @@ export class OpenFormatExportService {
       recordNumber += note.items.length;
       const { header, lines } = mapCreditNoteToRecords(note, vatId, headerRecordNumber, lineStart);
       dataRecords.push(header);
-      bump('100C');
-      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+      bump('C100');
+      for (const line of lines) { dataRecords.push(line); bump('D110'); }
     }
 
     const debitNotes = await this.debitNotesRepo
@@ -146,8 +146,8 @@ export class OpenFormatExportService {
       recordNumber += note.items.length;
       const { header, lines } = mapDebitNoteToRecords(note, vatId, headerRecordNumber, lineStart);
       dataRecords.push(header);
-      bump('100C');
-      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+      bump('C100');
+      for (const line of lines) { dataRecords.push(line); bump('D110'); }
     }
 
     // Payments are always exactly 1 header + 1 line (120D, not 110D
@@ -165,8 +165,8 @@ export class OpenFormatExportService {
       const lineRecordNumber = recordNumber;
       const { header, lines } = mapPaymentToRecords(payment, vatId, headerRecordNumber, lineRecordNumber);
       dataRecords.push(header);
-      bump('100C');
-      for (const line of lines) { dataRecords.push(line); bump('120D'); }
+      bump('C100');
+      for (const line of lines) { dataRecords.push(line); bump('D120'); }
     }
 
     // Purchase-side documents: real money owed/spent, which a real
@@ -186,8 +186,8 @@ export class OpenFormatExportService {
       const lineRecordNumber = recordNumber;
       const { header, lines } = mapSupplierInvoiceToRecords(inv, vatId, headerRecordNumber, lineRecordNumber);
       dataRecords.push(header);
-      bump('100C');
-      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+      bump('C100');
+      for (const line of lines) { dataRecords.push(line); bump('D110'); }
     }
 
     const expenses = await this.expensesRepo
@@ -203,8 +203,8 @@ export class OpenFormatExportService {
       const lineRecordNumber = recordNumber;
       const { header, lines } = mapExpenseToRecords(exp, vatId, headerRecordNumber, lineRecordNumber);
       dataRecords.push(header);
-      bump('100C');
-      for (const line of lines) { dataRecords.push(line); bump('120D'); }
+      bump('C100');
+      for (const line of lines) { dataRecords.push(line); bump('D120'); }
     }
 
     const returnNotes = await this.returnNotesRepo
@@ -220,8 +220,8 @@ export class OpenFormatExportService {
       recordNumber += note.items.length;
       const { header, lines } = mapReturnNoteToRecords(note, vatId, headerRecordNumber, lineStart);
       dataRecords.push(header);
-      bump('100C');
-      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+      bump('C100');
+      for (const line of lines) { dataRecords.push(line); bump('D110'); }
     }
 
     const ledgerEntries = await this.ledgerRepo
@@ -235,7 +235,7 @@ export class OpenFormatExportService {
     for (const entry of ledgerEntries) {
       const legs = mapLedgerEntryToRecords(entry, vatId, recordNumber + 1);
       recordNumber += legs.length;
-      for (const leg of legs) { dataRecords.push(leg); bump('100B'); }
+      for (const leg of legs) { dataRecords.push(leg); bump('B100'); }
     }
 
     const accountIds = new Set<number>();
@@ -247,7 +247,7 @@ export class OpenFormatExportService {
         const totalCredit = ledgerEntries.filter((e) => e.creditAccount.id === account.id).reduce((s, e) => s + e.amount, 0);
         recordNumber++;
         dataRecords.push(mapAccountToRecord(account, vatId, recordNumber, 0, totalDebit, totalCredit));
-        bump('110B');
+        bump('B110');
       }
     }
 
@@ -260,7 +260,7 @@ export class OpenFormatExportService {
       const openingBalance = Math.max(0, item.quantity - entriesInRange + exitsInRange);
       recordNumber++;
       dataRecords.push(mapWarehouseItemToRecord(item, vatId, recordNumber, openingBalance, entriesInRange, exitsInRange));
-      bump('100M');
+      bump('M100');
     }
 
     const totalRecords = 2 + dataRecords.length; // +2 for the opening/closing records themselves

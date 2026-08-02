@@ -108,7 +108,7 @@ export function buildIniSummaryRecord(recordTypeCode: string, count: number): st
  * 4+9+9+15+8+50 = 95. */
 export function buildOpeningRecord(recordNumberInFile: number, vatId: string, primaryId: string): string {
   const fields = [
-    alphaField('100A', 4), // 1100
+    alphaField('A100', 4), // 1100
     numField(recordNumberInFile, 9), // 1101
     numField(parseInt(vatId, 10), 9), // 1102
     numField(parseInt(primaryId, 10), 15), // 1103
@@ -129,7 +129,7 @@ export function buildClosingRecord(
   totalRecordsInFile: number,
 ): string {
   const fields = [
-    alphaField('900Z', 4), // 1150
+    alphaField('Z900', 4), // 1150
     numField(recordNumberInFile, 9), // 1151
     numField(parseInt(vatId, 10), 9), // 1152
     numField(parseInt(primaryId, 10), 15), // 1153

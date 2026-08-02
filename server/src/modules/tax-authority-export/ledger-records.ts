@@ -46,7 +46,7 @@ export interface LedgerTransactionInput {
  * 1/2/3, all with the same transactionNumber. Total length 317. */
 export function buildLedgerTransactionRecord(input: LedgerTransactionInput): string {
   const fields = [
-    alphaField('100B', 4), // 1350
+    alphaField('B100', 4), // 1350
     numField(input.recordNumberInFile, 9), // 1351
     numField(parseInt(input.vatId, 10), 9), // 1352
     numField(input.transactionNumber, 10), // 1353
@@ -108,7 +108,7 @@ export interface ChartOfAccountInput {
  * length 376. */
 export function buildChartOfAccountRecord(input: ChartOfAccountInput): string {
   const fields = [
-    alphaField('110B', 4), // 1400
+    alphaField('B110', 4), // 1400
     numField(input.recordNumberInFile, 9), // 1401
     numField(parseInt(input.vatId, 10), 9), // 1402
     alphaField(input.accountKey, 15), // 1403
