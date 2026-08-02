@@ -1487,7 +1487,8 @@
     "organization": "Organization",
     "pickOrg": "Choose an organization…",
     "pickOrgFirst": "Choose which organization to generate this export for.",
-    "useOrgSwitcher": "Pick an organization from the switcher in the header (top right) before generating."
+    "useOrgSwitcher": "Pick an organization from the switcher in the header (top right) before generating.",
+    "exceedsSimulatorLimit": "The BKMVDATA.TXT file is {{size}} MB — the Tax Authority's own simulator caps it at 4 MB and will reject anything larger. Narrow the date range and generate again."
   },
   "banks": {
     "status_active": "active",

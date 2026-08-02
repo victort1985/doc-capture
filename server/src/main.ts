@@ -209,7 +209,7 @@ async function bootstrap() {
 
   const corsOrigin = process.env.CORS_ORIGIN;
   if (corsOrigin) {
-    app.enableCors({ origin: corsOrigin.split(',').map((o) => o.trim()) });
+    app.enableCors({ origin: corsOrigin.split(',').map((o) => o.trim()), exposedHeaders: ['X-Bkmvdata-Size-Bytes', 'X-Exceeds-Simulator-Limit'] });
   } else {
     // The packaged admin panel is always same-origin with the API (both
     // served from this same process/port), so CORS is never actually
@@ -218,6 +218,7 @@ async function bootstrap() {
     // not wide open to the entire internet for no reason.
     app.enableCors({
       origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:4173', 'http://127.0.0.1:4173'],
+      exposedHeaders: ['X-Bkmvdata-Size-Bytes', 'X-Exceeds-Simulator-Limit'],
     });
     // eslint-disable-next-line no-console
     console.warn(

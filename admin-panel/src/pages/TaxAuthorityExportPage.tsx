@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileDown, AlertTriangle } from 'lucide-react';
-import { apiFetchBlobPost } from '../services/api';
+import { apiFetchBlobPostWithHeaders } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 function startOfYear(): string {
@@ -32,14 +32,20 @@ export default function TaxAuthorityExportPage() {
   async function generate() {
     setGenerating(true); setError(null); setNotice(null);
     try {
-      const url = await apiFetchBlobPost('/tax-authority-export', { from, to });
+      const { url, headers } = await apiFetchBlobPostWithHeaders('/tax-authority-export', { from, to });
       const a = document.createElement('a');
       a.href = url;
       a.download = `openformat-${from}-to-${to}.zip`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      setNotice(t('taxAuthorityExport.downloadStarted'));
+      const exceedsLimit = headers.get('X-Exceeds-Simulator-Limit') === 'true';
+      const sizeBytes = Number(headers.get('X-Bkmvdata-Size-Bytes') ?? 0);
+      if (exceedsLimit) {
+        setError(t('taxAuthorityExport.exceedsSimulatorLimit', { size: (sizeBytes / 1024 / 1024).toFixed(1) }));
+      } else {
+        setNotice(t('taxAuthorityExport.downloadStarted'));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to generate export');
     } finally {

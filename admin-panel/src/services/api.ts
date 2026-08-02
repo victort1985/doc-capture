@@ -181,3 +181,37 @@ export async function apiFetchBlobPost(path: string, body: unknown): Promise<str
   const blob = await res.blob();
   return URL.createObjectURL(blob);
 }
+
+/** Same as apiFetchBlobPost, but also returns the response's own
+ * headers — for endpoints like /tax-authority-export that surface
+ * useful metadata (e.g. whether the generated file exceeds the real
+ * Tax Authority simulator's own size limit) as response headers
+ * rather than folding it into the binary body itself. Kept separate
+ * from apiFetchBlobPost rather than changing that function's return
+ * shape, since its other caller (TemplateDesignerPage) has no use
+ * for headers and shouldn't need to change to accommodate this. */
+export async function apiFetchBlobPostWithHeaders(path: string, body: unknown): Promise<{ url: string; headers: Headers }> {
+  const token = getToken();
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      'X-Client-Type': 'admin-panel',
+      'Content-Type': 'application/json',
+      ...activeOrgHeader(),
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errBody = await res.json().catch(() => ({}));
+    const message =
+      typeof errBody.message === 'string'
+        ? errBody.message
+        : Array.isArray(errBody.message)
+          ? errBody.message.join(', ')
+          : errBody?.message?.message ?? `Request failed (${res.status})`;
+    throw new Error(message);
+  }
+  const blob = await res.blob();
+  return { url: URL.createObjectURL(blob), headers: res.headers };
+}

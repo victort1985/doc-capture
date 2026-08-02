@@ -33,7 +33,7 @@ export class TaxAuthorityExportController {
       res.status(400).json({ message: 'Pick which organization to generate this export for (use the organization switcher in the header).' });
       return;
     }
-    const { outerZipBuffer, outputPath } = await this.service.generate({
+    const { outerZipBuffer, outputPath, bkmvdataSizeBytes, exceedsSimulatorLimit } = await this.service.generate({
       organizationId: user.organizationId,
       from: new Date(body.from),
       to: new Date(body.to),
@@ -42,6 +42,13 @@ export class TaxAuthorityExportController {
     res.set({
       'Content-Type': 'application/zip',
       'Content-Disposition': `attachment; filename="${fileName}"`,
+      // The Tax Authority's own simulator caps BKMVDATA.TXT at 4MB
+      // (see packaging.service.ts's own doc comment) — surfaced here
+      // so the admin panel can warn before the person even tries
+      // uploading a file that's guaranteed to be rejected, rather
+      // than them finding out only after visiting the simulator.
+      'X-Bkmvdata-Size-Bytes': String(bkmvdataSizeBytes),
+      'X-Exceeds-Simulator-Limit': String(exceedsSimulatorLimit),
     });
     res.send(outerZipBuffer);
   }

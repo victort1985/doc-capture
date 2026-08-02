@@ -25,35 +25,47 @@ export function buildOutputSubfolderName(productionDate: Date): string {
   return `${mm}${dd}${hh}${min}`;
 }
 
+/** The Tax Authority's own file-review simulator (misim.gov.il /
+ * secapp.taxes.gov.il — see gov.il/he/service/file-review-simulator)
+ * rejects anything but a bare BKMVDATA.TXT — its own upload page says
+ * so explicitly in red text ("יש לבחור קבצים עם סיומות txt בלבד") and
+ * caps it at 4MB. An earlier version of this module compressed
+ * BKMVDATA into a nested zip archive based on one reading of section
+ * 2.2.ד's "compress to an archive named BKMVDATA" wording — corrected
+ * after actually seeing the simulator's real upload form, which is
+ * more authoritative for what the file needs to look like in
+ * practice than a possibly-ambiguous instruction read in isolation. */
+export const BKMVDATA_MAX_BYTES = 4 * 1024 * 1024;
+
 export interface PackagedExport {
-  /** The complete downloadable zip — OPENFRMT/{vatid}.{yy}/{MMDDhhmm}/
-   * containing TXT.INI (plain) and BKMVDATA (itself a zip containing
-   * TXT.BKMVDATA, per section 2.2.ד's own "compress to an archive
-   * named BKMVDATA" instruction). */
+  /** One downloadable zip for convenience — OPENFRMT/{vatid}.{yy}/
+   * {MMDDhhmm}/ containing two PLAIN .txt files (TXT.INI and
+   * BKMVDATA.TXT, both ISO-8859-8), ready to extract and upload
+   * directly to the simulator's two file-picker fields. */
   outerZipBuffer: Buffer;
   outputPath: string; // for display/logging — the OPENFRMT/... path this export corresponds to
+  bkmvdataSizeBytes: number;
+  exceedsSimulatorLimit: boolean;
 }
 
 /**
  * Encodes both files as ISO-8859-8 (logical Hebrew, spec section
- * 2.4.ח for Windows-produced files — the encoding EVERY field-width
+ * 2.4.ח for Windows-produced files, and confirmed directly by the
+ * simulator's own upload page defaulting its charset picker to
+ * "Windows (ANSI) ISO-8859-8-I" — the encoding EVERY field-width
  * calculation in this whole module implicitly assumes, since
  * ISO-8859-8 is single-byte-per-character: encoding as UTF-8 instead
  * would silently double the byte-width of every Hebrew character and
  * break the fixed-width alignment the Tax Authority's own reader
- * depends on), compresses TXT.BKMVDATA into an archive literally
- * named BKMVDATA (no extension — matches the spec's own filename
- * instruction exactly), and wraps both files in the exact
+ * depends on), and wraps both plain-text files in the exact
  * OPENFRMT/{vatid}.{yy}/{MMDDhhmm}/ directory structure as one outer
- * downloadable zip.
+ * downloadable zip (a convenience for a single-file download from
+ * the browser — Victor extracts it once, then uploads the two plain
+ * .txt files inside directly to the simulator).
  */
 export function packageExport(iniContent: string, bkmvdataContent: string, vatId: string, productionDate: Date): PackagedExport {
   const iniBuffer = iconv.encode(iniContent, 'iso-8859-8');
   const bkmvdataBuffer = iconv.encode(bkmvdataContent, 'iso-8859-8');
-
-  const innerZip = new AdmZip();
-  innerZip.addFile('BKMVDATA.TXT', bkmvdataBuffer);
-  const compressedBkmvdata = innerZip.toBuffer();
 
   const dirName = buildOutputDirectoryName(vatId, productionDate);
   const subfolderName = buildOutputSubfolderName(productionDate);
@@ -61,7 +73,12 @@ export function packageExport(iniContent: string, bkmvdataContent: string, vatId
 
   const outerZip = new AdmZip();
   outerZip.addFile(`${outputPath}/TXT.INI`, iniBuffer);
-  outerZip.addFile(`${outputPath}/BKMVDATA`, compressedBkmvdata);
+  outerZip.addFile(`${outputPath}/BKMVDATA.TXT`, bkmvdataBuffer);
 
-  return { outerZipBuffer: outerZip.toBuffer(), outputPath };
+  return {
+    outerZipBuffer: outerZip.toBuffer(),
+    outputPath,
+    bkmvdataSizeBytes: bkmvdataBuffer.length,
+    exceedsSimulatorLimit: bkmvdataBuffer.length > BKMVDATA_MAX_BYTES,
+  };
 }
