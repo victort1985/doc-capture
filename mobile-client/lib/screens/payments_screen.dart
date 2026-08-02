@@ -6,6 +6,7 @@ import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/payments_service.dart';
 import '../services/invoices_service.dart';
+import '../services/banks_service.dart';
 import '../widgets/search_picker_field.dart';
 import 'chain_view_screen.dart';
 import '../widgets/chain_status_badge.dart';
@@ -210,6 +211,7 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
   final _bankNameController = TextEditingController();
   final _branchNumberController = TextEditingController();
   final _accountNumberController = TextEditingController();
+  String? _selectedBankCode;
   DateTime? _checkDate;
   final _referenceNumberController = TextEditingController();
 
@@ -375,11 +377,35 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
           Row(children: [
             Expanded(child: TextField(controller: _checkNumberController, decoration: InputDecoration(labelText: l10n.paymentCheckNumber))),
             const SizedBox(width: 10),
-            Expanded(child: TextField(controller: _bankNameController, decoration: InputDecoration(labelText: l10n.paymentBankName))),
+            Expanded(
+              child: SearchPickerField<BankReference>(
+                controller: _bankNameController,
+                hintText: l10n.paymentBankName,
+                search: (q) => context.read<BanksService>().search(q),
+                displayString: (b) => b.displayName,
+                listLabel: (b) => '${b.code} — ${b.name}',
+                onSelected: (b) => setState(() => _selectedBankCode = b.code),
+                onTextChanged: (_) => setState(() => _selectedBankCode = null),
+              ),
+            ),
           ]),
           const SizedBox(height: 12),
           Row(children: [
-            Expanded(child: TextField(controller: _branchNumberController, decoration: InputDecoration(labelText: l10n.paymentBranchNumber))),
+            Expanded(
+              child: SearchPickerField<BankBranch>(
+                controller: _branchNumberController,
+                hintText: l10n.paymentBranchNumber,
+                enabled: _selectedBankCode != null,
+                search: (q) => _selectedBankCode == null
+                    ? Future.value(<BankBranch>[])
+                    : context.read<BanksService>().searchBranches(_selectedBankCode!, q),
+                displayString: (b) => b.branchNumber,
+                listLabel: (b) => '${b.branchNumber}'
+                    '${b.branchName != null ? " — ${b.branchName}" : ""}'
+                    '${b.city != null ? " (${b.city})" : ""}',
+                onSelected: (_) {},
+              ),
+            ),
             const SizedBox(width: 10),
             Expanded(child: TextField(controller: _accountNumberController, decoration: InputDecoration(labelText: l10n.paymentAccountNumber))),
           ]),
@@ -402,7 +428,14 @@ class _PaymentFormScreenState extends State<PaymentFormScreen> {
       case PaymentMethod.bankTransfer:
         return [
           const SizedBox(height: 12),
-          TextField(controller: _bankNameController, decoration: InputDecoration(labelText: l10n.paymentBankName)),
+          SearchPickerField<BankReference>(
+            controller: _bankNameController,
+            hintText: l10n.paymentBankName,
+            search: (q) => context.read<BanksService>().search(q),
+            displayString: (b) => b.displayName,
+            listLabel: (b) => '${b.code} — ${b.name}',
+            onSelected: (_) {},
+          ),
           const SizedBox(height: 12),
           TextField(controller: _referenceNumberController, decoration: InputDecoration(labelText: l10n.paymentReferenceNumber)),
         ];

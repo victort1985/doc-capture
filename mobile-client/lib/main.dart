@@ -18,6 +18,7 @@ import 'services/push_notifications_service.dart';
 import 'services/biometric_service.dart';
 import 'services/calendar_service.dart';
 import 'services/management_services.dart';
+import 'services/banks_service.dart';
 import 'services/delivery_notes_service.dart';
 import 'services/order_service.dart';
 import 'services/scan_session_service.dart';
@@ -54,6 +55,7 @@ class DocCaptureApp extends StatelessWidget {
     final warehouseService = WarehouseService(apiService);
     final deliveryNotesService = DeliveryNotesService(apiService);
     final orderService = OrderService(apiService);
+    final banksService = BanksService(apiService);
 
     return MultiProvider(
       providers: [
@@ -70,6 +72,7 @@ class DocCaptureApp extends StatelessWidget {
         Provider<WarehouseService>.value(value: warehouseService),
         Provider<DeliveryNotesService>.value(value: deliveryNotesService),
         Provider<OrderService>.value(value: orderService),
+        Provider<BanksService>.value(value: banksService),
         Provider<ScanSessionService>.value(value: scanSessionService),
         ChangeNotifierProvider<AppState>(
           create: (_) => AppState(settingsService, authService, apiService, pushNotificationsService),
