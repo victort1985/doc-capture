@@ -33,7 +33,7 @@ export class TaxAuthorityExportController {
       res.status(400).json({ message: 'Pick which organization to generate this export for (use the organization switcher in the header).' });
       return;
     }
-    const { outerZipBuffer, outputPath, bkmvdataSizeBytes, exceedsSimulatorLimit } = await this.service.generate({
+    const { outerZipBuffer, outputPath, bkmvdataSizeBytes, exceedsSimulatorLimit, vatChecksumValid } = await this.service.generate({
       organizationId: user.organizationId,
       from: new Date(body.from),
       to: new Date(body.to),
@@ -49,6 +49,12 @@ export class TaxAuthorityExportController {
       // than them finding out only after visiting the simulator.
       'X-Bkmvdata-Size-Bytes': String(bkmvdataSizeBytes),
       'X-Exceeds-Simulator-Limit': String(exceedsSimulatorLimit),
+      // Same reasoning as the size-limit header — an invalid check
+      // digit on the configured VAT number fails EVERY record in the
+      // real simulator identically (found exactly this way testing
+      // against a placeholder number). Warn here instead of only
+      // after a round trip to the government's own tool.
+      'X-Vat-Checksum-Valid': String(vatChecksumValid),
     });
     res.send(outerZipBuffer);
   }

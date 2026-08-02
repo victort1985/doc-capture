@@ -1,5 +1,6 @@
 import * as iconv from 'iconv-lite';
 import AdmZip from 'adm-zip';
+import { isValidIsraeliChecksum } from '../../common/utils/israeli-checksum.util';
 
 /** Section 2.2 of horaot_131.pdf: the exact directory-naming
  * convention every registered software must follow when writing
@@ -46,6 +47,14 @@ export interface PackagedExport {
   outputPath: string; // for display/logging — the OPENFRMT/... path this export corresponds to
   bkmvdataSizeBytes: number;
   exceedsSimulatorLimit: boolean;
+  /** Set by the caller (open-format-export.service.ts), not computed
+   * here — packageExport itself doesn't know the VAT id's business
+   * meaning, just packages whatever bytes it's given. See
+   * israeli-checksum.util.ts's own doc comment for why this matters:
+   * an invalid check digit fails EVERY record in the real government
+   * simulator identically, which is exactly what happened testing
+   * this against a placeholder VAT number. */
+  vatChecksumValid: boolean;
 }
 
 /**
@@ -80,5 +89,6 @@ export function packageExport(iniContent: string, bkmvdataContent: string, vatId
     outputPath,
     bkmvdataSizeBytes: bkmvdataBuffer.length,
     exceedsSimulatorLimit: bkmvdataBuffer.length > BKMVDATA_MAX_BYTES,
+    vatChecksumValid: isValidIsraeliChecksum(vatId),
   };
 }

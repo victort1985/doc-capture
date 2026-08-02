@@ -41,8 +41,12 @@ export default function TaxAuthorityExportPage() {
       a.remove();
       const exceedsLimit = headers.get('X-Exceeds-Simulator-Limit') === 'true';
       const sizeBytes = Number(headers.get('X-Bkmvdata-Size-Bytes') ?? 0);
-      if (exceedsLimit) {
-        setError(t('taxAuthorityExport.exceedsSimulatorLimit', { size: (sizeBytes / 1024 / 1024).toFixed(1) }));
+      const vatChecksumValid = headers.get('X-Vat-Checksum-Valid') !== 'false';
+      const warnings: string[] = [];
+      if (exceedsLimit) warnings.push(t('taxAuthorityExport.exceedsSimulatorLimit', { size: (sizeBytes / 1024 / 1024).toFixed(1) }));
+      if (!vatChecksumValid) warnings.push(t('taxAuthorityExport.invalidVatChecksum'));
+      if (warnings.length > 0) {
+        setError(warnings.join(' '));
       } else {
         setNotice(t('taxAuthorityExport.downloadStarted'));
       }
