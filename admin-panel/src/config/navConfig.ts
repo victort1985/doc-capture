@@ -110,6 +110,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/time-thresholds', labelKey: 'nav.timeThresholds', icon: Timer },
       { to: '/data-migration', labelKey: 'nav.dataMigration', icon: ArrowLeftRight },
       { to: '/tax-authority-export', labelKey: 'nav.taxAuthorityExport', icon: FileDown },
+      { to: '/bank-data', labelKey: 'nav.bankData', icon: Landmark },
     ],
   },
 ];

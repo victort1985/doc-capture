@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as ExcelJS from 'exceljs';
 import { BankBranch } from './entities/bank-branch.entity';
 import { ISRAELI_BANKS, type BankReference } from './israeli-banks.data';
 import { parseCsv } from '../../common/utils/csv.util';
@@ -61,8 +62,39 @@ export class BanksService {
    * file is safe and idempotent, matching the same "keep going,
    * report failures individually" principle as every other CSV
    * import in this app (ExpensesService, DataMigrationService). */
-  async importCsv(csvText: string): Promise<{ imported: number; failed: { row: number; error: string }[] }> {
-    const { headers, rows } = parseCsv(csvText);
+  /** Accepts either CSV or XLSX — the actual downloadable branch-
+   * registry sources found during research are typically .xlsx, and
+   * requiring a manual "save as CSV" step first would be needless
+   * friction. Same ExcelJS-based parsing already established in
+   * DataMigrationService.analyzeImportFile, not a second
+   * implementation of the same logic. */
+  async importFile(buffer: Buffer, originalName: string): Promise<{ imported: number; failed: { row: number; error: string }[] }> {
+    let headers: string[];
+    let rows: Record<string, string>[];
+
+    if (/\.xlsx?$/i.test(originalName)) {
+      const wb = new ExcelJS.Workbook();
+      await wb.xlsx.load(buffer as any);
+      const sheet = wb.worksheets[0];
+      if (!sheet) throw new BadRequestException('The Excel file has no sheets');
+      const allRows: string[][] = [];
+      sheet.eachRow((row) => {
+        const values = (row.values as any[]).slice(1).map((v) => (v == null ? '' : String(v).trim()));
+        allRows.push(values);
+      });
+      if (allRows.length < 1) throw new BadRequestException('The Excel file is empty');
+      headers = allRows[0].map((h) => h.trim());
+      rows = allRows.slice(1).map((values) => {
+        const row: Record<string, string> = {};
+        headers.forEach((h, i) => { row[h] = values[i] ?? ''; });
+        return row;
+      });
+    } else {
+      const parsed = parseCsv(buffer.toString('utf-8'));
+      headers = parsed.headers;
+      rows = parsed.rows;
+    }
+
     const mapping: Record<string, string> = {};
     for (const [field, hints] of Object.entries(BRANCH_FIELD_HINTS)) {
       const match = headers.find((h) => hints.some((hint) => normalizeHeader(h).includes(normalizeHeader(hint))));

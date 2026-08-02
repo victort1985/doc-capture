@@ -46,7 +46,8 @@
     "timeThresholds": "Time Thresholds",
     "rentals": "Rentals",
     "dataMigration": "Data Migration",
-    "taxAuthorityExport": "Tax Authority Export"
+    "taxAuthorityExport": "Tax Authority Export",
+    "bankData": "Bank Data"
   },
   "app": {
     "adminConsole": "admin console",
@@ -1480,5 +1481,24 @@
     "status_active": "active",
     "status_historical": "historical/merged",
     "status_special": "non-commercial"
+  },
+  "bankData": {
+    "eyebrow": "System",
+    "title": "Bank Data",
+    "banksTitle": "Israeli banks",
+    "banksHint": "{{count}} banks — used everywhere a bank is picked (payments, expenses, settings). This list is built in and doesn't need updating.",
+    "branchesTitle": "Branch directory",
+    "loadingCount": "Loading…",
+    "currentCount": "{{count}} branches currently imported.",
+    "howToGetFile": "The full branch list (~1,400 rows) isn't built in — it's too large to keep accurate by hand. Import it from a downloadable spreadsheet instead:",
+    "step1": "Download a bank-branch registry file (CSV or Excel) — Bank of Israel and several accounting reference sites publish one.",
+    "step2": "Make sure it has columns for bank (name or code), branch number, branch name, and city — column order doesn't matter, they're matched automatically.",
+    "step3": "Upload it below. Re-uploading later (e.g. an updated file) is safe — existing branches get updated, not duplicated.",
+    "exampleSource": "Example source (Excel download)",
+    "chooseCsv": "Choose a CSV or Excel file",
+    "importing": "Importing…",
+    "importSummary": "{{imported}} imported, {{failed}} failed.",
+    "rowError": "Row {{row}}: {{error}}",
+    "andMore": "and {{count}} more"
   }
 }

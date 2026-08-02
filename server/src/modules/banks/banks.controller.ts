@@ -34,8 +34,8 @@ export class BanksController {
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
-  async importCsv(@UploadedFile() file: { buffer: Buffer } | undefined) {
+  async importCsv(@UploadedFile() file: { buffer: Buffer; originalname: string } | undefined) {
     if (!file) throw new BadRequestException('No file uploaded');
-    return this.service.importCsv(file.buffer.toString('utf-8'));
+    return this.service.importFile(file.buffer, file.originalname);
   }
 }
