@@ -39,6 +39,21 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  /** Embedded in every JWT issued at login, checked against this live
+   * value on every subsequent request (JwtStrategy.validate — the
+   * same per-request DB lookup that already checks isActive, so this
+   * adds no new query). Incrementing it — via "log out everywhere"
+   * (self-service, POST /auth/logout-everywhere) or an admin revoking
+   * a specific user's sessions (POST /users/:id/revoke-sessions) —
+   * instantly invalidates every token issued before that moment,
+   * without needing a token blocklist that grows forever or any new
+   * infrastructure (Redis, etc). This is what makes a token that
+   * leaked outside its owner's control (pasted into a chat, exposed
+   * in a screenshot) something that can actually be shut off before
+   * its natural 7-day expiry, not just something to feel bad about. */
+  @Column({ type: 'integer', default: 0 })
+  tokenVersion: number;
+
   /** Per-user permission overrides. Keys are feature names, values are
    * true (granted), false (denied), or absent (inherit from group,
    * then role). See resolveEffectivePermissions(). */

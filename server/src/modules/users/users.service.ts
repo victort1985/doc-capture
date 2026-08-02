@@ -66,6 +66,24 @@ export class UsersService {
     if (!ok) throw new BadRequestException('Current password is incorrect.');
     if (!newPassword || newPassword.length < 8) throw new BadRequestException('New password must be at least 8 characters.');
     await this.usersRepo.update(userId, { passwordHash: await bcrypt.hash(newPassword, 10) });
+    // A stolen token shouldn't keep working just because its owner
+    // reacted the right way (changing their password) — see
+    // User.tokenVersion's own doc comment.
+    await this.revokeAllSessions(userId);
+  }
+
+  /** Invalidates every token already issued to this user, instantly,
+   * regardless of its natural expiry — see User.tokenVersion's doc
+   * comment for the full mechanism. Used both for self-service "log
+   * out everywhere" (no requester scope — always your own account)
+   * and an admin revoking a specific account's sessions (requester
+   * scope enforced via findById, same org-boundary check every other
+   * admin action on another user already goes through — an org-scoped
+   * admin can't revoke sessions for a user outside their own
+   * organization). */
+  async revokeAllSessions(userId: number, requester?: Requester): Promise<void> {
+    if (requester) await this.findById(userId, requester); // throws NotFoundException if out of scope
+    await this.usersRepo.increment({ id: userId }, 'tokenVersion', 1);
   }
 
   async markSetupWizardCompleted(userId: number): Promise<void> {
@@ -111,6 +129,9 @@ export class UsersService {
         permissions: true,
         totpSecret: true,
         totpEnabled: true,
+        tokenVersion: true,
+        setupWizardCompleted: true,
+        tosAcceptedVersion: true,
       },
     });
   }

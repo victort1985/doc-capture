@@ -39,6 +39,19 @@ export class AuthController {
     return { ok: true };
   }
 
+  /** Instantly invalidates every token issued to this account,
+   * including the one making this very request — the caller will
+   * need to log in again right after. Exactly the tool for "I think
+   * my session/token may have been exposed" (a screenshot, a token
+   * pasted somewhere it shouldn't have been) without waiting for its
+   * natural 7-day expiry. See User.tokenVersion's doc comment. */
+  @Post('logout-everywhere')
+  @UseGuards(JwtAuthGuard)
+  async logoutEverywhere(@CurrentUser() user: { id: number }) {
+    await this.usersService.revokeAllSessions(user.id);
+    return { ok: true };
+  }
+
   @Post('complete-setup-wizard')
   @UseGuards(JwtAuthGuard)
   async completeSetupWizard(@CurrentUser() user: { id: number }) {

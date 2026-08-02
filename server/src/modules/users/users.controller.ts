@@ -46,6 +46,17 @@ export class UsersController {
     return this.usersService.remove(id, { organizationId: user.organizationId });
   }
 
+  /** Instantly invalidates every token already issued to this user —
+   * see User.tokenVersion's own doc comment. The tool for exactly the
+   * scenario that motivated this whole mechanism: a token exposed
+   * outside its owner's control (a screenshot, pasted into a chat)
+   * that an admin needs to shut off right away, not just wait out. */
+  @Post(':id/revoke-sessions')
+  async revokeSessions(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    await this.usersService.revokeAllSessions(id, { organizationId: user.organizationId });
+    return { ok: true };
+  }
+
   // Push-token registration is for the logged-in user's own device, not
   // an admin-management action — overrides the class-level
   // @Roles(ADMIN) so any authenticated user (technician or admin) can

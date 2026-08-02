@@ -9,6 +9,7 @@ export interface JwtPayload {
   sub: number;
   username: string;
   role: string;
+  tokenVersion?: number;
 }
 
 @Injectable()
@@ -35,6 +36,17 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
     if (!user.isActive) {
       throw new UnauthorizedException('Account disabled');
+    }
+    // Strict !== (not a truthy/falsy check) — a token issued before
+    // this field existed has payload.tokenVersion === undefined,
+    // which correctly never matches a real numeric tokenVersion (0 or
+    // higher) and gets rejected too. Deliberate: this makes deploying
+    // this change itself a clean, one-time cutover that invalidates
+    // every previously-issued token, not just ones explicitly revoked
+    // afterward — every user logs in once more, then this mechanism
+    // is live for real going forward.
+    if (payload.tokenVersion !== user.tokenVersion) {
+      throw new UnauthorizedException('Session has been revoked — please log in again');
     }
     return {
       id: user.id,

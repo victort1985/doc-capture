@@ -1,4 +1,16 @@
-import sharp from 'sharp';
+// sharp 0.35's package.json restructured to conditional "exports" (dual
+// ESM/CJS with separate .d.mts/.d.cts type files) — this project's
+// tsconfig moduleResolution predates that convention and resolves the
+// wrong branch, reporting "not callable" for a function that works fine
+// at runtime (Node's own require() resolution is unaffected; this is
+// purely a TypeScript static-analysis mismatch). Rather than changing
+// moduleResolution project-wide for one dependency — real risk of
+// affecting how every other import resolves across this whole codebase —
+// side-stepping it locally here with a plain require() + a type alias
+// derived from the value itself.
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const sharp: any = require('sharp');
+type SharpPipeline = ReturnType<typeof sharp>;
 import { PDFDocument } from 'pdf-lib';
 import { detectDocumentCorners, warpDocument, applyFilters, A4_RATIO } from './document-scanner';
 
@@ -65,7 +77,7 @@ const A4_TARGET_WIDTH = 1700; // ~205 DPI at A4 width — plenty for a document 
  * — if the source isn't quite A4-shaped, it's letterboxed with white
  * bars rather than warped to fill the frame.
  */
-async function fitToA4(pipeline: sharp.Sharp): Promise<sharp.Sharp> {
+async function fitToA4(pipeline: SharpPipeline): Promise<SharpPipeline> {
   const targetHeight = Math.round(A4_TARGET_WIDTH * A4_RATIO);
   const buffer = await pipeline
     .resize(A4_TARGET_WIDTH, targetHeight, { fit: 'contain', background: { r: 255, g: 255, b: 255 } })

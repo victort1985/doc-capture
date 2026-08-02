@@ -73,7 +73,7 @@ export class AuthService {
       await this.devicesService.registerOrTouch(deviceId, user.id, platform);
     }
 
-    const payload = { sub: user.id, username: user.username, role: user.role };
+    const payload = { sub: user.id, username: user.username, role: user.role, tokenVersion: user.tokenVersion };
     return {
       token: this.jwtService.sign(payload),
       user: {
