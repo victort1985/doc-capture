@@ -131,7 +131,7 @@ export function buildDocumentLineRecord(input: DocumentLineInput): string {
     alphaField('', 50), // 1261 — manufacturer name, only required for the specific regulated-goods category in Appendix ג of Directive 36; not applicable to Vixor's own customers today
     alphaField('', 30), // 1262 — manufacturer serial number, same scope as 1261
     alphaField(input.unitDescription, 20), // 1263
-    signedAmountField(input.quantity, 17, 3), // 1264
+    signedAmountField(input.quantity, 17, 2), // 1264 — CONFIRMED via the real simulator: two independent lines in the same test document both showed an exact 10x lineTotal discrepancy when this was written assuming 3 decimal places (an earlier misreading of the RTL-extracted spec table) instead of 2 — matches the same convention every other amount field in this format uses, just with 2 extra integer digits of capacity (17 = 1 sign + 14 integer + 2 decimal)
     signedAmountField(input.unitPriceExclVat ?? 0, 15, 2), // 1265
     signedAmountField(input.lineDiscount ?? 0, 15, 2), // 1266
     signedAmountField(input.lineTotal ?? 0, 15, 2), // 1267
