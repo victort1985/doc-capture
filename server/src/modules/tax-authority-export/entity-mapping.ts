@@ -10,6 +10,9 @@ import { DeliveryNoteStatus } from '../delivery-notes/delivery-note.entity';
 import type { CreditNote } from '../credit-notes/entities/credit-note.entity';
 import type { DebitNote } from '../debit-notes/entities/debit-note.entity';
 import type { Payment } from '../payments/entities/payment.entity';
+import type { SupplierInvoice } from '../expenses/entities/supplier-invoice.entity';
+import type { Expense } from '../expenses/entities/expense.entity';
+import type { ReturnNote } from '../returns/entities/return-note.entity';
 import type { LedgerEntry } from '../accounting/entities/ledger-entry.entity';
 import type { Account } from '../accounting/entities/account.entity';
 import type { WarehouseItem } from '../warehouse/entities/warehouse-item.entity';
@@ -432,4 +435,167 @@ export function mapPaymentToRecords(
   });
 
   return { header, lines: [line] };
+}
+
+/** Maps a SupplierInvoice to 100C+110D under PURCHASE_TAX_INVOICE
+ * (700) — the purchase-side counterpart of mapInvoiceToRecords,
+ * representing real money owed/spent that a real audit trail needs
+ * to include (this was the single biggest gap found reviewing this
+ * module's coverage: purchase-side documents weren't mapped to
+ * anything at all before this).
+ *
+ * Genuine data-model limitation, not a bug to silently paper over:
+ * SupplierInvoice.amount is a single figure with no pre/post-VAT
+ * breakdown (unlike Invoice, which has separate line items priced
+ * excl. VAT) — treated here as the VAT-INCLUSIVE total with the VAT
+ * portion left at 0 rather than guessed at a rate that might not
+ * match what the supplier actually charged. A business that needs
+ * accurate input-VAT-credit tracking from this export specifically
+ * would need SupplierInvoice to record a real VAT breakdown, which
+ * it doesn't today — worth flagging, not something this mapping
+ * function alone can fix. */
+export function mapSupplierInvoiceToRecords(
+  invoice: SupplierInvoice,
+  vatId: string,
+  headerRecordNumber: number,
+  lineRecordNumber: number,
+): HeaderAndLines {
+  const linkId = invoice.id;
+  const issueDate = invoice.createdAt;
+  const documentDate = new Date(invoice.date);
+
+  const header = buildDocumentHeaderRecord({
+    recordNumberInFile: headerRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.PURCHASE_TAX_INVOICE,
+    documentNumber: invoice.invoiceNumber ?? String(invoice.id),
+    issueDate,
+    partyName: invoice.supplierName,
+    amountBeforeDiscount: invoice.amount,
+    documentDiscount: 0,
+    amountAfterDiscountExclVat: invoice.amount,
+    vatAmount: 0, // see this function's own doc comment
+    totalAmountInclVat: invoice.amount,
+    documentDate,
+    linkId,
+  });
+
+  const line = buildDocumentLineRecord({
+    recordNumberInFile: lineRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.PURCHASE_TAX_INVOICE,
+    documentNumber: invoice.invoiceNumber ?? String(invoice.id),
+    lineNumber: 1,
+    itemDescription: invoice.description || invoice.supplierName,
+    unitDescription: 'יחידה',
+    quantity: 1,
+    unitPriceExclVat: invoice.amount,
+    lineTotal: invoice.amount,
+    vatRatePercent: 0, // matches the header's own vatAmount: 0 — see this function's doc comment
+    documentDate,
+    headerLinkId: linkId,
+  });
+
+  return { header, lines: [line] };
+}
+
+/** Maps an Expense (cash/bank paid immediately, no supplier tracked —
+ * see the entity's own doc comment) to 100C+120D under CASH_OUT
+ * (410, "יציאה מקופה") — the closest real match in the spec's
+ * document-type table for money leaving the business with no
+ * associated party name, as opposed to SupplierInvoice's proper
+ * vendor-billing shape (mapped above to 700 instead). */
+export function mapExpenseToRecords(
+  expense: Expense,
+  vatId: string,
+  headerRecordNumber: number,
+  lineRecordNumber: number,
+): HeaderAndLines {
+  const linkId = expense.id;
+  const issueDate = expense.createdAt;
+  const documentDate = new Date(expense.date);
+
+  const header = buildDocumentHeaderRecord({
+    recordNumberInFile: headerRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.CASH_OUT,
+    documentNumber: String(expense.id),
+    issueDate,
+    amountBeforeDiscount: expense.amount,
+    documentDiscount: 0,
+    amountAfterDiscountExclVat: expense.amount,
+    vatAmount: 0,
+    totalAmountInclVat: expense.amount,
+    documentDate,
+    linkId,
+  });
+
+  const line = buildReceiptLineRecord({
+    recordNumberInFile: lineRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.CASH_OUT,
+    documentNumber: String(expense.id),
+    lineNumber: 1,
+    paymentMethod: mapVixorPaymentMethod(expense.method),
+    branchNumber: expense.branchNumber ?? undefined,
+    accountNumber: expense.accountNumber ?? undefined,
+    checkNumber: expense.checkNumber ?? undefined,
+    dueDate: expense.checkDate ? new Date(expense.checkDate) : undefined,
+    lineAmount: expense.amount,
+    cardName: expense.cardType ?? undefined,
+    documentDate,
+    headerLinkId: linkId,
+  });
+
+  return { header, lines: [line] };
+}
+
+/** Maps a ReturnNote to 100C+110D under RETURN_NOTE (210) — same
+ * all-zero-amount shape as mapDeliveryNoteToRecords, for the same
+ * reason: ReturnNote.items has only name/quantity, no pricing (it's
+ * about physical goods movement, not money — see the entity's own
+ * doc comment distinguishing it from a credit note). */
+export function mapReturnNoteToRecords(
+  note: ReturnNote,
+  vatId: string,
+  headerRecordNumber: number,
+  lineRecordNumberStart: number,
+): HeaderAndLines {
+  const linkId = note.id;
+  const issueDate = note.createdAt;
+  const documentDate = note.date ? new Date(note.date) : note.createdAt;
+
+  const header = buildDocumentHeaderRecord({
+    recordNumberInFile: headerRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.RETURN_NOTE,
+    documentNumber: note.returnNumber ?? String(note.id),
+    issueDate,
+    partyName: note.clientName,
+    amountBeforeDiscount: 0,
+    documentDiscount: 0,
+    amountAfterDiscountExclVat: 0,
+    vatAmount: 0,
+    totalAmountInclVat: 0,
+    documentDate,
+    linkId,
+  });
+
+  const lines = note.items.map((item, i) =>
+    buildDocumentLineRecord({
+      recordNumberInFile: lineRecordNumberStart + i,
+      vatId,
+      documentType: DOCUMENT_TYPE_CODES.RETURN_NOTE,
+      documentNumber: note.returnNumber ?? String(note.id),
+      lineNumber: i + 1,
+      itemDescription: item.name,
+      unitDescription: 'יחידה',
+      quantity: item.quantity,
+      vatRatePercent: 0,
+      documentDate,
+      headerLinkId: linkId,
+    }),
+  );
+
+  return { header, lines };
 }

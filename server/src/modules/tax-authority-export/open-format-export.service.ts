@@ -7,6 +7,9 @@ import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
 import { CreditNote } from '../credit-notes/entities/credit-note.entity';
 import { DebitNote } from '../debit-notes/entities/debit-note.entity';
 import { Payment } from '../payments/entities/payment.entity';
+import { SupplierInvoice } from '../expenses/entities/supplier-invoice.entity';
+import { Expense } from '../expenses/entities/expense.entity';
+import { ReturnNote } from '../returns/entities/return-note.entity';
 import { LedgerEntry } from '../accounting/entities/ledger-entry.entity';
 import { Account } from '../accounting/entities/account.entity';
 import { WarehouseItem } from '../warehouse/entities/warehouse-item.entity';
@@ -18,7 +21,8 @@ import {
 } from './structural-records';
 import {
   mapInvoiceToRecords, mapDeliveryNoteToRecords, mapCreditNoteToRecords, mapDebitNoteToRecords,
-  mapPaymentToRecords, mapLedgerEntryToRecords, mapAccountToRecord, mapWarehouseItemToRecord,
+  mapPaymentToRecords, mapSupplierInvoiceToRecords, mapExpenseToRecords, mapReturnNoteToRecords,
+  mapLedgerEntryToRecords, mapAccountToRecord, mapWarehouseItemToRecord,
 } from './entity-mapping';
 import { packageExport, type PackagedExport } from './packaging.service';
 
@@ -44,6 +48,9 @@ export class OpenFormatExportService {
     @InjectRepository(CreditNote) private readonly creditNotesRepo: Repository<CreditNote>,
     @InjectRepository(DebitNote) private readonly debitNotesRepo: Repository<DebitNote>,
     @InjectRepository(Payment) private readonly paymentsRepo: Repository<Payment>,
+    @InjectRepository(SupplierInvoice) private readonly supplierInvoicesRepo: Repository<SupplierInvoice>,
+    @InjectRepository(Expense) private readonly expensesRepo: Repository<Expense>,
+    @InjectRepository(ReturnNote) private readonly returnNotesRepo: Repository<ReturnNote>,
     @InjectRepository(LedgerEntry) private readonly ledgerRepo: Repository<LedgerEntry>,
     @InjectRepository(Account) private readonly accountsRepo: Repository<Account>,
     @InjectRepository(WarehouseItem) private readonly itemsRepo: Repository<WarehouseItem>,
@@ -160,6 +167,61 @@ export class OpenFormatExportService {
       dataRecords.push(header);
       bump('100C');
       for (const line of lines) { dataRecords.push(line); bump('120D'); }
+    }
+
+    // Purchase-side documents: real money owed/spent, which a real
+    // audit trail needs to include — see mapSupplierInvoiceToRecords'
+    // own doc comment for why this was the single biggest coverage
+    // gap found reviewing this module before now.
+    const supplierInvoices = await this.supplierInvoicesRepo
+      .createQueryBuilder('inv')
+      .leftJoinAndSelect('inv.organization', 'organization')
+      .where('organization.id = :orgId', { orgId: options.organizationId })
+      .andWhere('inv.createdAt >= :from AND inv.createdAt <= :to', { from: options.from, to: options.to })
+      .getMany();
+    for (const inv of supplierInvoices) {
+      recordNumber++;
+      const headerRecordNumber = recordNumber;
+      recordNumber++;
+      const lineRecordNumber = recordNumber;
+      const { header, lines } = mapSupplierInvoiceToRecords(inv, vatId, headerRecordNumber, lineRecordNumber);
+      dataRecords.push(header);
+      bump('100C');
+      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+    }
+
+    const expenses = await this.expensesRepo
+      .createQueryBuilder('exp')
+      .leftJoinAndSelect('exp.organization', 'organization')
+      .where('organization.id = :orgId', { orgId: options.organizationId })
+      .andWhere('exp.createdAt >= :from AND exp.createdAt <= :to', { from: options.from, to: options.to })
+      .getMany();
+    for (const exp of expenses) {
+      recordNumber++;
+      const headerRecordNumber = recordNumber;
+      recordNumber++;
+      const lineRecordNumber = recordNumber;
+      const { header, lines } = mapExpenseToRecords(exp, vatId, headerRecordNumber, lineRecordNumber);
+      dataRecords.push(header);
+      bump('100C');
+      for (const line of lines) { dataRecords.push(line); bump('120D'); }
+    }
+
+    const returnNotes = await this.returnNotesRepo
+      .createQueryBuilder('note')
+      .leftJoinAndSelect('note.organization', 'organization')
+      .where('organization.id = :orgId', { orgId: options.organizationId })
+      .andWhere('note.createdAt >= :from AND note.createdAt <= :to', { from: options.from, to: options.to })
+      .getMany();
+    for (const note of returnNotes) {
+      recordNumber++;
+      const headerRecordNumber = recordNumber;
+      const lineStart = recordNumber + 1;
+      recordNumber += note.items.length;
+      const { header, lines } = mapReturnNoteToRecords(note, vatId, headerRecordNumber, lineStart);
+      dataRecords.push(header);
+      bump('100C');
+      for (const line of lines) { dataRecords.push(line); bump('110D'); }
     }
 
     const ledgerEntries = await this.ledgerRepo

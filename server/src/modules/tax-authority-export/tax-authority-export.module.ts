@@ -5,6 +5,9 @@ import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
 import { CreditNote } from '../credit-notes/entities/credit-note.entity';
 import { DebitNote } from '../debit-notes/entities/debit-note.entity';
 import { Payment } from '../payments/entities/payment.entity';
+import { SupplierInvoice } from '../expenses/entities/supplier-invoice.entity';
+import { Expense } from '../expenses/entities/expense.entity';
+import { ReturnNote } from '../returns/entities/return-note.entity';
 import { LedgerEntry } from '../accounting/entities/ledger-entry.entity';
 import { Account } from '../accounting/entities/account.entity';
 import { WarehouseItem } from '../warehouse/entities/warehouse-item.entity';
@@ -17,7 +20,7 @@ import { TaxAuthorityExportController } from './tax-authority-export.controller'
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      Invoice, DeliveryNote, CreditNote, DebitNote, Payment,
+      Invoice, DeliveryNote, CreditNote, DebitNote, Payment, SupplierInvoice, Expense, ReturnNote,
       LedgerEntry, Account, WarehouseItem, WarehouseTransaction, TaxAuthoritySettings, Organization,
     ]),
   ],
