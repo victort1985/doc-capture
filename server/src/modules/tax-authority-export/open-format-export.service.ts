@@ -3,6 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import { Invoice } from '../invoices/entities/invoice.entity';
+import { DeliveryNote } from '../delivery-notes/delivery-note.entity';
+import { CreditNote } from '../credit-notes/entities/credit-note.entity';
+import { DebitNote } from '../debit-notes/entities/debit-note.entity';
+import { Payment } from '../payments/entities/payment.entity';
 import { LedgerEntry } from '../accounting/entities/ledger-entry.entity';
 import { Account } from '../accounting/entities/account.entity';
 import { WarehouseItem } from '../warehouse/entities/warehouse-item.entity';
@@ -12,7 +16,10 @@ import { Organization } from '../organizations/entities/organization.entity';
 import {
   buildIniHeaderRecord, buildIniSummaryRecord, buildOpeningRecord, buildClosingRecord,
 } from './structural-records';
-import { mapInvoiceToRecords, mapLedgerEntryToRecords, mapAccountToRecord, mapWarehouseItemToRecord } from './entity-mapping';
+import {
+  mapInvoiceToRecords, mapDeliveryNoteToRecords, mapCreditNoteToRecords, mapDebitNoteToRecords,
+  mapPaymentToRecords, mapLedgerEntryToRecords, mapAccountToRecord, mapWarehouseItemToRecord,
+} from './entity-mapping';
 import { packageExport, type PackagedExport } from './packaging.service';
 
 export interface GenerateExportOptions {
@@ -33,6 +40,10 @@ function generatePrimaryId(): string {
 export class OpenFormatExportService {
   constructor(
     @InjectRepository(Invoice) private readonly invoicesRepo: Repository<Invoice>,
+    @InjectRepository(DeliveryNote) private readonly deliveryNotesRepo: Repository<DeliveryNote>,
+    @InjectRepository(CreditNote) private readonly creditNotesRepo: Repository<CreditNote>,
+    @InjectRepository(DebitNote) private readonly debitNotesRepo: Repository<DebitNote>,
+    @InjectRepository(Payment) private readonly paymentsRepo: Repository<Payment>,
     @InjectRepository(LedgerEntry) private readonly ledgerRepo: Repository<LedgerEntry>,
     @InjectRepository(Account) private readonly accountsRepo: Repository<Account>,
     @InjectRepository(WarehouseItem) private readonly itemsRepo: Repository<WarehouseItem>,
@@ -75,6 +86,80 @@ export class OpenFormatExportService {
       dataRecords.push(header);
       bump('100C');
       for (const line of lines) { dataRecords.push(line); bump('110D'); }
+    }
+
+    // Delivery notes, credit notes, debit notes, and payments all
+    // follow the exact same header+lines shape as invoices above —
+    // fetched the same way (org+date-range scoped), advancing the
+    // same shared recordNumber counter.
+    const deliveryNotes = await this.deliveryNotesRepo
+      .createQueryBuilder('note')
+      .leftJoinAndSelect('note.organization', 'organization')
+      .where('organization.id = :orgId', { orgId: options.organizationId })
+      .andWhere('note.createdAt >= :from AND note.createdAt <= :to', { from: options.from, to: options.to })
+      .getMany();
+    for (const note of deliveryNotes) {
+      recordNumber++;
+      const headerRecordNumber = recordNumber;
+      const lineStart = recordNumber + 1;
+      recordNumber += note.items.length;
+      const { header, lines } = mapDeliveryNoteToRecords(note, vatId, headerRecordNumber, lineStart);
+      dataRecords.push(header);
+      bump('100C');
+      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+    }
+
+    const creditNotes = await this.creditNotesRepo
+      .createQueryBuilder('note')
+      .leftJoinAndSelect('note.organization', 'organization')
+      .where('organization.id = :orgId', { orgId: options.organizationId })
+      .andWhere('note.createdAt >= :from AND note.createdAt <= :to', { from: options.from, to: options.to })
+      .getMany();
+    for (const note of creditNotes) {
+      recordNumber++;
+      const headerRecordNumber = recordNumber;
+      const lineStart = recordNumber + 1;
+      recordNumber += note.items.length;
+      const { header, lines } = mapCreditNoteToRecords(note, vatId, headerRecordNumber, lineStart);
+      dataRecords.push(header);
+      bump('100C');
+      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+    }
+
+    const debitNotes = await this.debitNotesRepo
+      .createQueryBuilder('note')
+      .leftJoinAndSelect('note.organization', 'organization')
+      .where('organization.id = :orgId', { orgId: options.organizationId })
+      .andWhere('note.createdAt >= :from AND note.createdAt <= :to', { from: options.from, to: options.to })
+      .getMany();
+    for (const note of debitNotes) {
+      recordNumber++;
+      const headerRecordNumber = recordNumber;
+      const lineStart = recordNumber + 1;
+      recordNumber += note.items.length;
+      const { header, lines } = mapDebitNoteToRecords(note, vatId, headerRecordNumber, lineStart);
+      dataRecords.push(header);
+      bump('100C');
+      for (const line of lines) { dataRecords.push(line); bump('110D'); }
+    }
+
+    // Payments are always exactly 1 header + 1 line (120D, not 110D
+    // — see mapPaymentToRecords's own doc comment).
+    const payments = await this.paymentsRepo
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.organization', 'organization')
+      .where('organization.id = :orgId', { orgId: options.organizationId })
+      .andWhere('payment.createdAt >= :from AND payment.createdAt <= :to', { from: options.from, to: options.to })
+      .getMany();
+    for (const payment of payments) {
+      recordNumber++;
+      const headerRecordNumber = recordNumber;
+      recordNumber++;
+      const lineRecordNumber = recordNumber;
+      const { header, lines } = mapPaymentToRecords(payment, vatId, headerRecordNumber, lineRecordNumber);
+      dataRecords.push(header);
+      bump('100C');
+      for (const line of lines) { dataRecords.push(line); bump('120D'); }
     }
 
     const ledgerEntries = await this.ledgerRepo

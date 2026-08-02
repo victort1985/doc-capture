@@ -1,9 +1,15 @@
 import { DOCUMENT_TYPE_CODES } from './document-type-codes';
 import { buildDocumentHeaderRecord, buildDocumentLineRecord } from './document-records';
+import { buildReceiptLineRecord, mapVixorPaymentMethod } from './receipt-records';
 import { buildLedgerTransactionRecord, buildChartOfAccountRecord } from './ledger-records';
 import { buildInventoryItemRecord } from './inventory-records';
 import type { Invoice } from '../invoices/entities/invoice.entity';
 import { InvoiceStatus } from '../invoices/entities/invoice.entity';
+import type { DeliveryNote } from '../delivery-notes/delivery-note.entity';
+import { DeliveryNoteStatus } from '../delivery-notes/delivery-note.entity';
+import type { CreditNote } from '../credit-notes/entities/credit-note.entity';
+import type { DebitNote } from '../debit-notes/entities/debit-note.entity';
+import type { Payment } from '../payments/entities/payment.entity';
 import type { LedgerEntry } from '../accounting/entities/ledger-entry.entity';
 import type { Account } from '../accounting/entities/account.entity';
 import type { WarehouseItem } from '../warehouse/entities/warehouse-item.entity';
@@ -175,4 +181,244 @@ export function mapWarehouseItemToRecord(
     totalExits: exitsInRange,
     costPriceOutsideBondedWarehouse: item.price ?? 0,
   });
+}
+
+export interface HeaderAndLines {
+  header: string;
+  lines: string[];
+}
+
+/** Maps a DeliveryNote to 100C+110D. Deliberately all-zero amounts —
+ * this app's delivery notes (an MC Music rental/equipment agreement,
+ * per the entity's own doc comment) carry no pricing at all
+ * (NoteItem has only quantity/name, no unitPrice), which is
+ * explicitly normal and expected per the spec's own Appendix-1-
+ * adjacent example table showing a real delivery-note row with
+ * "כמותי 45, כספי 0" (45 delivery notes, ₪0 total) — pricing belongs
+ * on the invoice raised from a note, not the note itself. */
+export function mapDeliveryNoteToRecords(
+  note: DeliveryNote,
+  vatId: string,
+  headerRecordNumber: number,
+  lineRecordNumberStart: number,
+): HeaderAndLines {
+  const linkId = note.id;
+  const issueDate = note.createdAt;
+  const documentDate = note.date ? new Date(note.date) : note.createdAt;
+
+  const header = buildDocumentHeaderRecord({
+    recordNumberInFile: headerRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.DELIVERY_NOTE,
+    documentNumber: note.noteNumber ?? String(note.id),
+    issueDate,
+    partyName: note.clientName,
+    partyStreet: note.clientAddress,
+    amountBeforeDiscount: 0,
+    documentDiscount: 0,
+    amountAfterDiscountExclVat: 0,
+    vatAmount: 0,
+    totalAmountInclVat: 0,
+    partyKey: note.clientName,
+    documentDate,
+    cancelled: note.status === DeliveryNoteStatus.CANCELLED,
+    linkId,
+  });
+
+  const lines = note.items.map((item, i) =>
+    buildDocumentLineRecord({
+      recordNumberInFile: lineRecordNumberStart + i,
+      vatId,
+      documentType: DOCUMENT_TYPE_CODES.DELIVERY_NOTE,
+      documentNumber: note.noteNumber ?? String(note.id),
+      lineNumber: i + 1,
+      itemDescription: item.name,
+      unitDescription: 'יחידה',
+      quantity: item.quantity,
+      vatRatePercent: 0,
+      documentDate,
+      headerLinkId: linkId,
+    }),
+  );
+
+  return { header, lines };
+}
+
+/** Maps a CreditNote to 100C+110D under CREDIT_INVOICE (330) — same
+ * shape as mapInvoiceToRecords since CreditNote's own data model
+ * (items/total/currency/vatCategory) is deliberately identical to
+ * Invoice's, per the entity's own doc comment ("inherited from the
+ * invoice being corrected"). */
+export function mapCreditNoteToRecords(
+  note: CreditNote,
+  vatId: string,
+  headerRecordNumber: number,
+  lineRecordNumberStart: number,
+): HeaderAndLines {
+  const subtotal = note.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+  const vatAmount = Math.max(0, note.total - subtotal);
+  const linkId = note.id;
+  const issueDate = note.createdAt;
+  const documentDate = note.date ? new Date(note.date) : note.createdAt;
+
+  const header = buildDocumentHeaderRecord({
+    recordNumberInFile: headerRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.CREDIT_INVOICE,
+    documentNumber: note.creditNoteNumber ?? String(note.id),
+    issueDate,
+    partyName: note.clientName,
+    amountBeforeDiscount: subtotal,
+    documentDiscount: 0,
+    amountAfterDiscountExclVat: subtotal,
+    vatAmount,
+    totalAmountInclVat: note.total,
+    partyKey: note.clientName,
+    documentDate,
+    linkId,
+  });
+
+  const vatRatePercent = deriveVatRatePercent(subtotal, vatAmount);
+  const lines = note.items.map((item, i) =>
+    buildDocumentLineRecord({
+      recordNumberInFile: lineRecordNumberStart + i,
+      vatId,
+      documentType: DOCUMENT_TYPE_CODES.CREDIT_INVOICE,
+      documentNumber: note.creditNoteNumber ?? String(note.id),
+      lineNumber: i + 1,
+      itemDescription: item.description,
+      unitDescription: 'יחידה',
+      quantity: item.quantity,
+      unitPriceExclVat: item.unitPrice,
+      lineTotal: item.quantity * item.unitPrice,
+      vatRatePercent,
+      documentDate,
+      headerLinkId: linkId,
+    }),
+  );
+
+  return { header, lines };
+}
+
+/** Maps a DebitNote to 100C+110D under TAX_INVOICE (305) — NOT a
+ * dedicated "debit note" type, because the spec's own Appendix 1
+ * document-type table has no such code at all (only a credit-note
+ * equivalent, 330, exists). This matches real Israeli tax practice:
+ * an undercharge correction is normally issued as an ordinary
+ * additional tax invoice for the difference, not a special document
+ * type. This is a genuine interpretive judgment call, not a fact
+ * looked up from the spec — worth confirming with an accountant
+ * before relying on it, same as everything else in this module that
+ * hasn't been run through the Tax Authority's own simulator yet. */
+export function mapDebitNoteToRecords(
+  note: DebitNote,
+  vatId: string,
+  headerRecordNumber: number,
+  lineRecordNumberStart: number,
+): HeaderAndLines {
+  const subtotal = note.items.reduce((sum, it) => sum + it.quantity * it.unitPrice, 0);
+  const vatAmount = Math.max(0, note.total - subtotal);
+  const linkId = note.id;
+  const issueDate = note.createdAt;
+  const documentDate = note.date ? new Date(note.date) : note.createdAt;
+
+  const header = buildDocumentHeaderRecord({
+    recordNumberInFile: headerRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.TAX_INVOICE,
+    documentNumber: note.debitNoteNumber ?? String(note.id),
+    issueDate,
+    partyName: note.clientName,
+    amountBeforeDiscount: subtotal,
+    documentDiscount: 0,
+    amountAfterDiscountExclVat: subtotal,
+    vatAmount,
+    totalAmountInclVat: note.total,
+    partyKey: note.clientName,
+    documentDate,
+    linkId,
+  });
+
+  const vatRatePercent = deriveVatRatePercent(subtotal, vatAmount);
+  const lines = note.items.map((item, i) =>
+    buildDocumentLineRecord({
+      recordNumberInFile: lineRecordNumberStart + i,
+      vatId,
+      documentType: DOCUMENT_TYPE_CODES.TAX_INVOICE,
+      documentNumber: note.debitNoteNumber ?? String(note.id),
+      lineNumber: i + 1,
+      itemDescription: item.description,
+      unitDescription: 'יחידה',
+      quantity: item.quantity,
+      unitPriceExclVat: item.unitPrice,
+      lineTotal: item.quantity * item.unitPrice,
+      vatRatePercent,
+      documentDate,
+      headerLinkId: linkId,
+    }),
+  );
+
+  return { header, lines };
+}
+
+/** Maps a Payment to 100C (RECEIPT, 400) + exactly one 120D payment-
+ * method-detail line — a payment is a single amount, not itemized
+ * goods, so it uses 120D (the spec's own "receipt/deposit details"
+ * record) rather than 110D. Check-specific and card-specific fields
+ * only carry through when the payment's own method actually matches
+ * (mapVixorPaymentMethod + the isCheck/isCard branches inside
+ * buildReceiptLineRecord already handle this correctly — see that
+ * function's own logic). */
+export function mapPaymentToRecords(
+  payment: Payment,
+  vatId: string,
+  headerRecordNumber: number,
+  lineRecordNumber: number,
+): HeaderAndLines {
+  const linkId = payment.id;
+  const issueDate = payment.createdAt;
+  const documentDate = payment.date ? new Date(payment.date) : payment.createdAt;
+
+  const header = buildDocumentHeaderRecord({
+    recordNumberInFile: headerRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.RECEIPT,
+    documentNumber: payment.paymentNumber ?? String(payment.id),
+    issueDate,
+    partyName: payment.clientName,
+    amountBeforeDiscount: payment.amount,
+    documentDiscount: 0,
+    amountAfterDiscountExclVat: payment.amount,
+    vatAmount: 0, // a receipt records money already collected on a previously-taxed invoice — no separate VAT event of its own
+    totalAmountInclVat: payment.amount,
+    partyKey: payment.clientName,
+    documentDate,
+    linkId,
+  });
+
+  const line = buildReceiptLineRecord({
+    recordNumberInFile: lineRecordNumber,
+    vatId,
+    documentType: DOCUMENT_TYPE_CODES.RECEIPT,
+    documentNumber: payment.paymentNumber ?? String(payment.id),
+    lineNumber: 1,
+    paymentMethod: mapVixorPaymentMethod(payment.method),
+    // bankNumber is a numeric bank-routing code in the spec; Vixor's
+    // Payment only stores bankName as a plain string (a bank's NAME,
+    // e.g. "Bank Hapoalim"), which has no corresponding numeric field
+    // to safely go into here — left unset rather than parseInt'ing a
+    // name into garbage digits. branchNumber/accountNumber below ARE
+    // genuinely numeric-content strings on Payment (unlike bankName),
+    // so those pass through correctly.
+    branchNumber: payment.branchNumber ?? undefined,
+    accountNumber: payment.accountNumber ?? undefined,
+    checkNumber: payment.checkNumber ?? undefined,
+    dueDate: payment.checkDate ? new Date(payment.checkDate) : undefined,
+    lineAmount: payment.amount,
+    cardName: payment.cardType ?? undefined,
+    documentDate,
+    headerLinkId: linkId,
+  });
+
+  return { header, lines: [line] };
 }
