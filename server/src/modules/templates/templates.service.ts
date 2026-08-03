@@ -93,10 +93,13 @@ export class TemplatesService {
 
   // ---- File log (admin view, with basic filters) ----
 
-  findFileRecords(filters: { userId?: number; type?: string; from?: string; to?: string }) {
-    const qb = this.recordsRepo.createQueryBuilder('record').leftJoinAndSelect('record.user', 'user');
+  findFileRecords(filters: { userId?: number; organizationId?: number | null; type?: string; from?: string; to?: string }) {
+    const qb = this.recordsRepo.createQueryBuilder('record')
+      .leftJoinAndSelect('record.user', 'user')
+      .leftJoin('user.organization', 'organization');
 
     if (filters.userId) qb.andWhere('user.id = :userId', { userId: filters.userId });
+    if (filters.organizationId != null) qb.andWhere('organization.id = :organizationId', { organizationId: filters.organizationId });
     if (filters.type) qb.andWhere('record.type = :type', { type: filters.type });
     if (filters.from) qb.andWhere('record.createdAt >= :from', { from: filters.from });
     if (filters.to) qb.andWhere('record.createdAt <= :to', { to: filters.to });
@@ -107,7 +110,7 @@ export class TemplatesService {
   async findRecordById(id: number): Promise<FileRecord> {
     const record = await this.recordsRepo.findOne({
       where: { id },
-      relations: ['user', 'storageConnection'],
+      relations: ['user', 'user.organization', 'storageConnection'],
     });
     if (!record) throw new NotFoundException('File record not found');
     return record;

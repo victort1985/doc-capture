@@ -5,11 +5,17 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Injectable, Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { JwtService } from '@nestjs/jwt';
+import { Repository } from 'typeorm';
 import { Server, Socket } from 'socket.io';
 import { ServiceCall, CallStatus } from '../calls/entities/service-call.entity';
 import { CallNote } from '../calls/entities/call-note.entity';
 import { CallAttachment } from '../calls/entities/call-attachment.entity';
+import { User } from '../users/entities/user.entity';
+
+const SUPER_ADMIN_ROOM = 'super-admins';
+const orgRoom = (organizationId: number) => `org:${organizationId}`;
 
 /**
  * Real-time in-app notifications for the Calls feature ("Вызов" tab —
@@ -31,9 +37,12 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
 
   private readonly logger = new Logger(NotificationsGateway.name);
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    @InjectRepository(User) private readonly usersRepo: Repository<User>,
+  ) {}
 
-  handleConnection(client: Socket) {
+  async handleConnection(client: Socket) {
     const token =
       (client.handshake.auth?.token as string) ||
       (client.handshake.query?.token as string) ||
@@ -50,6 +59,24 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
       // Per-user room so call-created notifications can be targeted to
       // specific technicians (by region) instead of broadcast to everyone.
       client.join(`user:${payload.sub}`);
+
+      // The JWT itself never carries organizationId (see
+      // AuthService.login's own payload) — look up the user's CURRENT
+      // organization fresh, same reasoning as JwtStrategy re-fetching
+      // state for HTTP requests rather than trusting a token claim
+      // that could go stale if org membership changes. Join an
+      // org-scoped room so status/note/attachment broadcasts (see
+      // below) reach only this organization's own connected users —
+      // a genuine super-admin additionally joins a dedicated room so
+      // they keep seeing every organization's activity, matching the
+      // same "sees everything" visibility they have everywhere else
+      // in the app.
+      const user = await this.usersRepo.findOne({ where: { id: payload.sub }, relations: ['organization'] });
+      if (user?.organization?.id != null) {
+        client.join(orgRoom(user.organization.id));
+      } else {
+        client.join(SUPER_ADMIN_ROOM);
+      }
     } catch {
       client.disconnect(true);
     }
@@ -64,9 +91,12 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
    * Only technicians covering the call's region, plus anyone marked
    * "Глобальный", are notified of a brand-new call — everyone else only
    * finds out once they open the Calls list. Status changes, notes, and
-   * attachments on a call already in progress stay broadcast to everyone,
-   * since by that point someone outside the call's region may well have
-   * picked it up or be watching it (e.g. an admin).
+   * attachments on a call already in progress stay broadcast to
+   * everyone WITHIN THE SAME ORGANIZATION (not literally everyone —
+   * see this class's own handleConnection comment for why that was a
+   * real cross-org leak in a multi-organization tenant), since by
+   * that point someone outside the call's region may well have picked
+   * it up or be watching it (e.g. an admin).
    */
   broadcastCallCreated(call: ServiceCall, targetUserIds: number[]): void {
     const payload = {
@@ -86,7 +116,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   }
 
   broadcastStatusChanged(call: ServiceCall, previousStatus: CallStatus): void {
-    this.emit('call:status_changed', {
+    this.emitToCallOrg(call, 'call:status_changed', {
       id: call.id,
       place: call.place,
       previousStatus,
@@ -96,7 +126,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   }
 
   broadcastNoteAdded(call: ServiceCall, note: CallNote): void {
-    this.emit('call:note_added', {
+    this.emitToCallOrg(call, 'call:note_added', {
       callId: call.id,
       place: call.place,
       author: note.author?.username,
@@ -105,7 +135,7 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
   }
 
   broadcastAttachmentAdded(call: ServiceCall, attachment: CallAttachment): void {
-    this.emit('call:attachment_added', {
+    this.emitToCallOrg(call, 'call:attachment_added', {
       callId: call.id,
       place: call.place,
       uploadedBy: attachment.uploadedBy?.username,
@@ -113,11 +143,22 @@ export class NotificationsGateway implements OnGatewayConnection, OnGatewayDisco
     });
   }
 
-  private emit(event: string, payload: unknown): void {
+  /** Reaches only the call's own organization's connected users, plus
+   * genuine super-admins — never every connected socket regardless of
+   * tenant, which server.emit() used to do. */
+  private emitToCallOrg(call: ServiceCall, event: string, payload: unknown): void {
     if (!this.server) {
       this.logger.warn(`Tried to emit "${event}" before the WS server was ready`);
       return;
     }
-    this.server.emit(event, payload);
+    const orgId = call.organization?.id;
+    if (orgId != null) {
+      this.server.to(orgRoom(orgId)).to(SUPER_ADMIN_ROOM).emit(event, payload);
+    } else {
+      // A call with no organization at all (legacy/unassigned) — fall
+      // back to super-admins only rather than guessing who else
+      // should see it.
+      this.server.to(SUPER_ADMIN_ROOM).emit(event, payload);
+    }
   }
 }

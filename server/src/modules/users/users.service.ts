@@ -167,11 +167,18 @@ export class UsersService {
     return { city, regions };
   }
 
-  private async resolveGroup(groupId: number | null | undefined): Promise<UserGroup | null | undefined> {
+  private async resolveGroup(groupId: number | null | undefined, requester?: Requester): Promise<UserGroup | null | undefined> {
     if (groupId === undefined) return undefined; // not touched
     if (groupId === null) return null; // explicitly cleared
-    const group = await this.groupsRepo.findOne({ where: { id: groupId } });
+    const group = await this.groupsRepo.findOne({ where: { id: groupId }, relations: ['organization'] });
     if (!group) throw new NotFoundException('Group not found');
+    // Groups carry their own permission set (see UserGroup.permissions)
+    // — never let an org-scoped admin assign a user into another
+    // organization's group, which would silently apply that other
+    // org's permissions to this user.
+    if (requester?.organizationId != null && group.organization?.id !== requester.organizationId) {
+      throw new NotFoundException('Group not found');
+    }
     return group;
   }
 
@@ -197,7 +204,7 @@ export class UsersService {
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const { city, regions } = await this.resolveCityAndRegions(dto);
     const organization = await this.resolveOrganization(requester, dto);
-    let group = await this.resolveGroup(dto.groupId);
+    let group = await this.resolveGroup(dto.groupId, requester);
     // Demo/sandbox organizations: anyone signing up afterwards (not
     // set up directly by the super-admin) lands in the "Users" group
     // rather than getting full default role permissions — the
@@ -239,7 +246,7 @@ export class UsersService {
       dto.organizationId !== undefined || requester.organizationId != null
         ? await this.resolveOrganization(requester, dto)
         : user.organization;
-    const group = await this.resolveGroup(dto.groupId);
+    const group = await this.resolveGroup(dto.groupId, requester);
     Object.assign(user, {
       username: dto.username ?? user.username,
       email: dto.email ?? user.email,

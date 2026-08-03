@@ -221,7 +221,7 @@ export class FilesService {
    * storage is left in place (reported as failed) instead of silently
    * orphaning the file. Accepts the same filters as the list view so
    * clearing can be scoped to what's currently shown. */
-  async clearAll(filters: { userId?: number; type?: string; from?: string; to?: string }): Promise<{ deleted: number; failed: number }> {
+  async clearAll(filters: { userId?: number; organizationId?: number | null; type?: string; from?: string; to?: string }): Promise<{ deleted: number; failed: number }> {
     const records = await this.templatesService.findFileRecords(filters);
     let deleted = 0;
     let failed = 0;

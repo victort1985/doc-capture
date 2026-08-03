@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { StorageConnection } from './entities/storage-connection.entity';
 import { ClientStorageSettings } from './entities/client-storage-settings.entity';
+import { User } from '../users/entities/user.entity';
 import { CreateStorageConnectionDto } from './dto/create-storage-connection.dto';
 import { UpdateStorageConnectionDto } from './dto/update-storage-connection.dto';
 import { UpdateClientStorageSettingsDto } from './dto/update-client-storage-settings.dto';
@@ -18,6 +19,8 @@ export class StorageService {
     private readonly connectionsRepo: Repository<StorageConnection>,
     @InjectRepository(ClientStorageSettings)
     private readonly settingsRepo: Repository<ClientStorageSettings>,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
   ) {}
 
   // ---- Connections (admin) ----
@@ -138,7 +141,16 @@ export class StorageService {
 
   // ---- Client settings (admin) ----
 
-  async getClientSettings(userId: number): Promise<ClientStorageSettings | null> {
+  private async verifyUserInCallerOrg(userId: number, callerOrganizationId?: number | null): Promise<void> {
+    if (callerOrganizationId == null) return; // genuine super-admin
+    const targetUser = await this.usersRepo.findOne({ where: { id: userId }, relations: ['organization'] });
+    if (!targetUser || targetUser.organization?.id !== callerOrganizationId) {
+      throw new NotFoundException('User not found');
+    }
+  }
+
+  async getClientSettings(userId: number, callerOrganizationId?: number | null): Promise<ClientStorageSettings | null> {
+    await this.verifyUserInCallerOrg(userId, callerOrganizationId);
     return this.settingsRepo.findOne({
       where: { user: { id: userId } },
       relations: ['user', 'documentStorageConnection', 'photoStorageConnection'],
@@ -148,7 +160,10 @@ export class StorageService {
   async updateClientSettings(
     userId: number,
     dto: UpdateClientStorageSettingsDto,
+    callerOrganizationId?: number | null,
   ): Promise<ClientStorageSettings> {
+    await this.verifyUserInCallerOrg(userId, callerOrganizationId);
+
     let settings = await this.settingsRepo.findOne({
       where: { user: { id: userId } },
       relations: ['user'],
