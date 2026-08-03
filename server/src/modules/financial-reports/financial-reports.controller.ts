@@ -6,6 +6,7 @@ import { Invoice } from '../invoices/entities/invoice.entity';
 import { InvoiceSettings } from '../invoices/entities/invoice-settings.entity';
 import { Quote } from '../quotes/entities/quote.entity';
 import { Payment } from '../payments/entities/payment.entity';
+import { CreditNote } from '../credit-notes/entities/credit-note.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -34,7 +35,58 @@ export class FinancialReportsController {
     @InjectRepository(InvoiceSettings) private readonly invoiceSettingsRepo: Repository<InvoiceSettings>,
     @InjectRepository(Quote) private readonly quotesRepo: Repository<Quote>,
     @InjectRepository(Payment) private readonly paymentsRepo: Repository<Payment>,
+    @InjectRepository(CreditNote) private readonly creditNotesRepo: Repository<CreditNote>,
   ) {}
+
+  /** Shared by summary() and aging() rather than duplicated, matching
+   * this controller's own stated philosophy ("exactly one aggregation
+   * path to keep correct"). An invoice counts as settled — excluded
+   * from "outstanding" — if EITHER a payment shares its chainId (the
+   * existing check) OR credit notes issued against it (by invoiceId,
+   * a separate correlation mechanism from chainId — see
+   * CreditNote.invoiceId) cover its full total. A real gap found
+   * while investigating a report that showed the full original total
+   * as still owed on invoices that had ALSO been fully credited —
+   * credit notes were never checked here at all before this, only
+   * payments were. A PARTIAL credit note (less than the invoice's
+   * full total) does NOT excuse the invoice from "outstanding" —
+   * there's still a genuine remaining balance in that case, so this
+   * only excludes invoices whose credited total actually covers what
+   * was billed. */
+  private async getOutstandingInvoices(invoices: Invoice[]): Promise<Invoice[]> {
+    const chainIds = invoices.map((i) => i.chainId).filter((id): id is string => !!id);
+    const paidChainIdSet = chainIds.length
+      ? new Set(
+          (
+            await this.paymentsRepo
+              .createQueryBuilder('p')
+              .select('DISTINCT p.chainId', 'chainId')
+              .where('p.chainId IN (:...ids)', { ids: chainIds })
+              .getRawMany<{ chainId: string }>()
+          ).map((r) => r.chainId),
+        )
+      : new Set<string>();
+
+    const invoiceIds = invoices.map((i) => i.id);
+    const creditedTotalByInvoiceId = new Map<number, number>();
+    if (invoiceIds.length) {
+      const creditRows = await this.creditNotesRepo
+        .createQueryBuilder('cn')
+        .select('cn.invoiceId', 'invoiceId')
+        .addSelect('SUM(cn.total)', 'total')
+        .where('cn.invoiceId IN (:...ids)', { ids: invoiceIds })
+        .groupBy('cn.invoiceId')
+        .getRawMany<{ invoiceId: number; total: string }>();
+      for (const row of creditRows) creditedTotalByInvoiceId.set(row.invoiceId, Number(row.total));
+    }
+
+    return invoices.filter((i) => {
+      const paidViaChain = !!i.chainId && paidChainIdSet.has(i.chainId);
+      const creditedTotal = creditedTotalByInvoiceId.get(i.id) ?? 0;
+      const fullyCredited = creditedTotal >= Number(i.total) - 0.01; // tolerance for floating-point cents
+      return !paidViaChain && !fullyCredited;
+    });
+  }
 
   @Get()
   async summary(
@@ -68,23 +120,12 @@ export class FinancialReportsController {
       paymentsByMethod[p.method].total += Number(p.amount);
     }
 
-    // Outstanding = invoiced in this window but no payment shares its
-    // chain yet (regardless of when that payment itself was recorded —
-    // an invoice from the end of the period may only get paid weeks
-    // later, which is exactly what "outstanding" is supposed to catch).
-    const chainIds = invoices.map((i) => i.chainId).filter((id): id is string => !!id);
-    const paidChainIdSet = chainIds.length
-      ? new Set(
-          (
-            await this.paymentsRepo
-              .createQueryBuilder('p')
-              .select('DISTINCT p.chainId', 'chainId')
-              .where('p.chainId IN (:...ids)', { ids: chainIds })
-              .getRawMany<{ chainId: string }>()
-          ).map((r) => r.chainId),
-        )
-      : new Set<string>();
-    const outstanding = invoices.filter((i) => !i.chainId || !paidChainIdSet.has(i.chainId));
+    // Outstanding = invoiced in this window but not yet settled by
+    // either a payment or a covering credit note (regardless of when
+    // that settlement itself was recorded — an invoice from the end
+    // of the period may only get paid/credited weeks later, which is
+    // exactly what "outstanding" is supposed to catch).
+    const outstanding = await this.getOutstandingInvoices(invoices);
 
     return {
       period: { from, to },
@@ -122,19 +163,7 @@ export class FinancialReportsController {
     const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
 
     const invoices = await this.invoicesRepo.find({ where: orgFilter as any });
-    const chainIds = invoices.map((i) => i.chainId).filter((id): id is string => !!id);
-    const paidChainIdSet = chainIds.length
-      ? new Set(
-          (
-            await this.paymentsRepo
-              .createQueryBuilder('p')
-              .select('DISTINCT p.chainId', 'chainId')
-              .where('p.chainId IN (:...ids)', { ids: chainIds })
-              .getRawMany<{ chainId: string }>()
-          ).map((r) => r.chainId),
-        )
-      : new Set<string>();
-    const outstanding = invoices.filter((i) => !i.chainId || !paidChainIdSet.has(i.chainId));
+    const outstanding = await this.getOutstandingInvoices(invoices);
 
     const today = new Date();
     const buckets = { current: [] as typeof outstanding, days30: [] as typeof outstanding, days60: [] as typeof outstanding, days90: [] as typeof outstanding, over90: [] as typeof outstanding };
