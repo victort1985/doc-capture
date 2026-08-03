@@ -117,25 +117,34 @@ export class LocationsService {
   }
 
   /** Toggles whether a location is one of the company's main warehouses. */
-  async setMainWarehouse(id: number, isMainWarehouse: boolean): Promise<Location> {
-    const location = await this.locationsRepo.findOne({ where: { id } });
+  async setMainWarehouse(id: number, organizationId: number | null, isMainWarehouse: boolean): Promise<Location> {
+    const location = await this.locationsRepo.findOne({ where: { id }, relations: ['organization'] });
     if (!location) throw new NotFoundException('Location not found');
+    if (organizationId != null && location.organization != null && location.organization.id !== organizationId) {
+      throw new NotFoundException('Location not found');
+    }
     location.isMainWarehouse = isMainWarehouse;
     return this.locationsRepo.save(location);
   }
 
   /** Enables the public client portal for this location by generating
    * an unguessable token — see PortalService for the read side. */
-  async generatePortalToken(id: number): Promise<Location> {
-    const location = await this.locationsRepo.findOne({ where: { id } });
+  async generatePortalToken(id: number, organizationId: number | null): Promise<Location> {
+    const location = await this.locationsRepo.findOne({ where: { id }, relations: ['organization'] });
     if (!location) throw new NotFoundException('Location not found');
+    if (organizationId != null && location.organization != null && location.organization.id !== organizationId) {
+      throw new NotFoundException('Location not found');
+    }
     location.portalToken = randomBytes(20).toString('hex');
     return this.locationsRepo.save(location);
   }
 
-  async revokePortalToken(id: number): Promise<Location> {
-    const location = await this.locationsRepo.findOne({ where: { id } });
+  async revokePortalToken(id: number, organizationId: number | null): Promise<Location> {
+    const location = await this.locationsRepo.findOne({ where: { id }, relations: ['organization'] });
     if (!location) throw new NotFoundException('Location not found');
+    if (organizationId != null && location.organization != null && location.organization.id !== organizationId) {
+      throw new NotFoundException('Location not found');
+    }
     location.portalToken = null;
     return this.locationsRepo.save(location);
   }

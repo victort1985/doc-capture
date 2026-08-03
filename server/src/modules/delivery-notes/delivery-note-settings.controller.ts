@@ -10,12 +10,13 @@ import { Request } from 'express';
 import { DeliveryNoteSettings } from './delivery-note-settings.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { OrgIdParamGuard } from '../../common/guards/org-id-param.guard';
 import { getActiveOrgId } from '../../common/utils/active-org.util';
 
 type ReqUser = { id: number; organizationId: number | null; allowedOrganizationIds?: number[] };
 
 @Controller('delivery-note-settings')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, OrgIdParamGuard)
 export class DeliveryNoteSettingsController {
   constructor(
     @InjectRepository(DeliveryNoteSettings)

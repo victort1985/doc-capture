@@ -7,6 +7,7 @@ import { Repository } from 'typeorm';
 import { DebitNoteSettings } from './entities/debit-note-settings.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
+import { OrgIdParamGuard } from '../../common/guards/org-id-param.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
@@ -15,7 +16,7 @@ import { UsersService } from '../users/users.service';
 type ReqUser = { id: number; organizationId: number | null };
 
 @Controller('debit-note-settings')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, OrgIdParamGuard)
 @Roles(UserRole.ADMIN)
 export class DebitNoteSettingsController {
   constructor(

@@ -83,23 +83,23 @@ export class LocationsController {
   @Patch(':id/main-warehouse')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  setMainWarehouse(@Param('id', ParseIntPipe) id: number, @Body() body: { isMainWarehouse: boolean }) {
-    return this.locationsService.setMainWarehouse(id, !!body.isMainWarehouse);
+  setMainWarehouse(@Param('id', ParseIntPipe) id: number, @Body() body: { isMainWarehouse: boolean }, @CurrentUser() user: RequestUser) {
+    return this.locationsService.setMainWarehouse(id, user.organizationId, !!body.isMainWarehouse);
   }
 
   /** Enables the client portal for this location, (re)generating its token. */
   @Post(':id/portal-token')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  generatePortalToken(@Param('id', ParseIntPipe) id: number) {
-    return this.locationsService.generatePortalToken(id);
+  generatePortalToken(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    return this.locationsService.generatePortalToken(id, user.organizationId);
   }
 
   @Delete(':id/portal-token')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  revokePortalToken(@Param('id', ParseIntPipe) id: number) {
-    return this.locationsService.revokePortalToken(id);
+  revokePortalToken(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    return this.locationsService.revokePortalToken(id, user.organizationId);
   }
 
   @Delete(':id')
