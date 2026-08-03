@@ -145,7 +145,9 @@ class HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
-    final user = context.watch<AppState>().currentUser;
+    final appState = context.watch<AppState>();
+    final user = appState.currentUser;
+    final activeOrgName = appState.activeOrganizationName;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -165,6 +167,22 @@ class HomeScreenState extends State<HomeScreen> {
                       l10n.homeGreeting(user?.username ?? ''),
                       style: const TextStyle(fontSize: 13, color: AppColors.inkSoft),
                     ),
+                    if (activeOrgName != null) ...[
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          const Icon(Icons.business, size: 15, color: AppColors.primary),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              activeOrgName,
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                     const SizedBox(height: 14),
                     if (_cards.isEmpty)
                       Padding(

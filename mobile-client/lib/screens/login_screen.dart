@@ -11,6 +11,7 @@ import '../demo_consent_dialog.dart';
 import 'connection_settings_screen.dart';
 import 'root_screen.dart';
 import 'terms_of_service_gate_screen.dart';
+import 'organization_picker_gate_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -108,6 +109,12 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
       }
       if (appState.currentUser?.isDemoMode ?? false) {
         await showDemoConsentDialog(context);
+        if (!mounted) return;
+      }
+      if (appState.switchableOrgs.length > 1) {
+        await Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const OrganizationPickerGateScreen()),
+        );
         if (!mounted) return;
       }
       Navigator.of(context).pushReplacement(
