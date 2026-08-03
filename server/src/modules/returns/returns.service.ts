@@ -61,9 +61,9 @@ export class ReturnsService {
   }
 
   async create(organizationId: number | null, userId: number, dto: CreateReturnDto): Promise<ReturnNote> {
-    const deliveryNote = await this.deliveryNotesRepo.findOne({ where: { id: dto.deliveryNoteId } });
+    const deliveryNote = await this.deliveryNotesRepo.findOne({ where: { id: dto.deliveryNoteId }, relations: ['organization'] });
     if (!deliveryNote) throw new NotFoundException('The delivery note these items were sent out on was not found.');
-    if (organizationId != null && (deliveryNote as any).organization?.id !== organizationId) {
+    if (organizationId != null && deliveryNote.organization?.id !== organizationId) {
       throw new NotFoundException('The delivery note these items were sent out on was not found.');
     }
 
@@ -97,6 +97,7 @@ export class ReturnsService {
           `Return ${result.returnNumber ?? `#${result.id}`} — ${result.clientName}`,
           undefined,
           userId,
+          organizationId,
         );
       } catch {
         // best-effort — see comment above

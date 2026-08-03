@@ -62,7 +62,7 @@ export class CreditNotesService {
   }
 
   async create(organizationId: number | null, userId: number, dto: CreateCreditNoteDto): Promise<CreditNote> {
-    const invoice = await this.invoicesRepo.findOne({ where: { id: dto.invoiceId } });
+    const invoice = await this.invoicesRepo.findOne({ where: { id: dto.invoiceId }, relations: ['organization'] });
     if (!invoice) throw new NotFoundException('The invoice this credit note corrects was not found.');
     if (organizationId != null && invoice.organization?.id !== organizationId) {
       throw new NotFoundException('The invoice this credit note corrects was not found.');

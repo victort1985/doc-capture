@@ -38,8 +38,8 @@ export class WarehouseController {
   @Delete('categories/:id')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  removeCategory(@Param('id', ParseIntPipe) id: number) {
-    return this.warehouseService.removeCategory(id);
+  removeCategory(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    return this.warehouseService.removeCategory(id, user.organizationId);
   }
 
   // ── Items ──────────────────────────────────────────────────────────
@@ -67,8 +67,8 @@ export class WarehouseController {
   @Delete('items/:id')
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  removeItem(@Param('id', ParseIntPipe) id: number) {
-    return this.warehouseService.removeItem(id);
+  removeItem(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    return this.warehouseService.removeItem(id, user.organizationId);
   }
 
   // ── Transactions ───────────────────────────────────────────────────
@@ -84,7 +84,7 @@ export class WarehouseController {
     @Body() dto: { type: TransactionType; quantity: number; reason?: string; referenceCallId?: number },
     @CurrentUser() user: RequestUser,
   ) {
-    return this.warehouseService.addTransaction(id, dto.type, dto.quantity, dto.reason, dto.referenceCallId, user.id);
+    return this.warehouseService.addTransaction(id, dto.type, dto.quantity, dto.reason, dto.referenceCallId, user.id, user.organizationId);
   }
 
   // ── Repairs ────────────────────────────────────────────────────────

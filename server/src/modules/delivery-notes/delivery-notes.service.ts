@@ -145,9 +145,12 @@ export class DeliveryNotesService {
 
   // ── Remote signing ────────────────────────────────────────────────────────
 
-  async createSigningLink(id: number, _organizationId: number | null, req: Request): Promise<{ token: string; url: string }> {
-    const note = await this.repo.findOne({ where: { id } });
+  async createSigningLink(id: number, organizationId: number | null, req: Request): Promise<{ token: string; url: string }> {
+    const note = await this.repo.findOne({ where: { id }, relations: ['organization'] });
     if (!note) throw new NotFoundException('Note not found');
+    if (organizationId != null && note.organization?.id !== organizationId) {
+      throw new NotFoundException('Note not found');
+    }
     if (!note.signingToken) {
       note.signingToken = crypto.randomBytes(24).toString('hex');
       await this.repo.save(note);

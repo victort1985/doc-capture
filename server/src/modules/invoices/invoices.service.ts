@@ -154,10 +154,13 @@ export class InvoicesService {
    * priority if somehow both are set), back-filling that document with
    * a fresh chainId first if it never had one. Falls back to an
    * explicit dto.chainId, then to a brand new chain. */
-  private async resolveChainIdForCreate(quoteId: number | undefined, deliveryNoteId: number | undefined, explicitChainId: string | undefined, _organizationId: number | null): Promise<string> {
+  private async resolveChainIdForCreate(quoteId: number | undefined, deliveryNoteId: number | undefined, explicitChainId: string | undefined, organizationId: number | null): Promise<string> {
     if (quoteId) {
-      const quote = await this.quotesRepo.findOne({ where: { id: quoteId } });
-      if (quote) {
+      const quote = await this.quotesRepo.findOne({ where: { id: quoteId }, relations: ['organization'] });
+      // A quote id belonging to a DIFFERENT organization is treated
+      // exactly as if it didn't exist — never trust its chainId
+      // (or even confirm its existence) across an org boundary.
+      if (quote && (organizationId == null || quote.organization?.id === organizationId)) {
         if (!quote.chainId) {
           quote.chainId = crypto.randomUUID();
           await this.quotesRepo.save(quote);
@@ -166,8 +169,8 @@ export class InvoicesService {
       }
     }
     if (deliveryNoteId) {
-      const note = await this.deliveryNotesRepo.findOne({ where: { id: deliveryNoteId } });
-      if (note) {
+      const note = await this.deliveryNotesRepo.findOne({ where: { id: deliveryNoteId }, relations: ['organization'] });
+      if (note && (organizationId == null || note.organization?.id === organizationId)) {
         if (!note.chainId) {
           note.chainId = crypto.randomUUID();
           await this.deliveryNotesRepo.save(note);

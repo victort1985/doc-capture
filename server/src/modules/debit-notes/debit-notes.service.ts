@@ -62,7 +62,7 @@ export class DebitNotesService {
   }
 
   async create(organizationId: number | null, userId: number, dto: CreateDebitNoteDto): Promise<DebitNote> {
-    const invoice = await this.invoicesRepo.findOne({ where: { id: dto.invoiceId } });
+    const invoice = await this.invoicesRepo.findOne({ where: { id: dto.invoiceId }, relations: ['organization'] });
     if (!invoice) throw new NotFoundException('The invoice this debit note relates to was not found.');
     if (organizationId != null && invoice.organization?.id !== organizationId) {
       throw new NotFoundException('The invoice this debit note relates to was not found.');

@@ -58,9 +58,10 @@ export class WarehouseService {
     }));
   }
 
-  async removeCategory(id: number): Promise<void> {
-    const c = await this.catsRepo.findOne({ where: { id } });
+  async removeCategory(id: number, organizationId: number | null): Promise<void> {
+    const c = await this.catsRepo.findOne({ where: { id }, relations: ['organization'] });
     if (!c) throw new NotFoundException('Category not found');
+    if (organizationId != null && c.organization?.id !== organizationId) throw new NotFoundException('Category not found');
     await this.catsRepo.remove(c);
   }
 
@@ -90,8 +91,11 @@ export class WarehouseService {
     });
   }
 
-  async getItemById(id: number): Promise<WarehouseItem | null> {
-    return this.itemsRepo.findOne({ where: { id } });
+  async getItemById(id: number, organizationId: number | null): Promise<WarehouseItem | null> {
+    const item = await this.itemsRepo.findOne({ where: { id }, relations: ['organization'] });
+    if (!item) return null;
+    if (organizationId != null && item.organization?.id !== organizationId) return null;
+    return item;
   }
 
   async createItem(dto: Partial<WarehouseItem> & { categoryId?: number; locationId?: number }, organizationId: number | null): Promise<WarehouseItem> {
@@ -119,9 +123,10 @@ export class WarehouseService {
     return this.itemsRepo.save(item);
   }
 
-  async removeItem(id: number): Promise<void> {
-    const item = await this.itemsRepo.findOne({ where: { id } });
+  async removeItem(id: number, organizationId: number | null): Promise<void> {
+    const item = await this.itemsRepo.findOne({ where: { id }, relations: ['organization'] });
     if (!item) throw new NotFoundException('Item not found');
+    if (organizationId != null && item.organization?.id !== organizationId) throw new NotFoundException('Item not found');
     await this.itemsRepo.remove(item);
   }
 
@@ -142,9 +147,11 @@ export class WarehouseService {
     reason: string | undefined,
     referenceCallId: number | undefined,
     userId: number,
+    organizationId: number | null,
   ): Promise<WarehouseTransaction> {
-    const item = await this.itemsRepo.findOne({ where: { id: itemId } });
+    const item = await this.itemsRepo.findOne({ where: { id: itemId }, relations: ['organization'] });
     if (!item) throw new NotFoundException('Item not found');
+    if (organizationId != null && item.organization?.id !== organizationId) throw new NotFoundException('Item not found');
     const delta = type === TransactionType.IN ? quantity : -quantity;
     item.quantity = Math.max(0, item.quantity + delta);
     await this.itemsRepo.save(item);

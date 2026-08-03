@@ -72,8 +72,16 @@ export class PaymentsService {
    * למקור-stamped copy from here on, per the legal requirement that
    * an original may only be issued once. */
   async create(organizationId: number | null, userId: number, dto: CreatePaymentDto): Promise<{ payment: Payment; originalPdfBase64: string | null }> {
-    const chainId = await this.resolveChainIdForCreate(dto.invoiceId, dto.chainId);
-    const linkedInvoice = dto.invoiceId ? await this.invoicesRepo.findOne({ where: { id: dto.invoiceId } }) : null;
+    const chainId = await this.resolveChainIdForCreate(dto.invoiceId, dto.chainId, organizationId);
+    const linkedInvoice = dto.invoiceId
+      ? await this.invoicesRepo.findOne({ where: { id: dto.invoiceId }, relations: ['organization'] })
+      : null;
+    // A cross-org invoiceId is treated as if it doesn't exist here —
+    // never copy another organization's currency/exchangeRate/
+    // vatCategory into this payment. dto.invoiceId itself still gets
+    // stored as given (matching existing behavior for a not-found
+    // id), but nothing about this org-mismatched invoice gets USED.
+    const safeLinkedInvoice = linkedInvoice && (organizationId == null || linkedInvoice.organization?.id === organizationId) ? linkedInvoice : null;
     const payment = this.repo.create({
       paymentNumber: await this.generatePaymentNumber(organizationId),
       clientName: dto.clientName,
@@ -94,9 +102,9 @@ export class PaymentsService {
       referenceNumber: dto.referenceNumber,
       invoiceId: dto.invoiceId,
       chainId,
-      currency: linkedInvoice?.currency ?? 'ILS',
-      exchangeRateToIls: linkedInvoice?.exchangeRateToIls ?? null,
-      vatCategory: linkedInvoice?.vatCategory ?? 'standard',
+      currency: safeLinkedInvoice?.currency ?? 'ILS',
+      exchangeRateToIls: safeLinkedInvoice?.exchangeRateToIls ?? null,
+      vatCategory: safeLinkedInvoice?.vatCategory ?? 'standard',
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
@@ -137,10 +145,13 @@ export class PaymentsService {
    * InvoicesService.resolveChainIdForCreate. Payment is the last link:
    * a chain with a Payment in it is what order-chain considers
    * "complete". */
-  private async resolveChainIdForCreate(invoiceId: number | undefined, explicitChainId: string | undefined): Promise<string> {
+  private async resolveChainIdForCreate(invoiceId: number | undefined, explicitChainId: string | undefined, organizationId: number | null): Promise<string> {
     if (invoiceId) {
-      const invoice = await this.invoicesRepo.findOne({ where: { id: invoiceId } });
-      if (invoice) {
+      const invoice = await this.invoicesRepo.findOne({ where: { id: invoiceId }, relations: ['organization'] });
+      // Same cross-org guard as InvoicesService's own
+      // resolveChainIdForCreate — never adopt another organization's
+      // chainId just because its id was guessable/known.
+      if (invoice && (organizationId == null || invoice.organization?.id === organizationId)) {
         if (!invoice.chainId) {
           invoice.chainId = crypto.randomUUID();
           await this.invoicesRepo.save(invoice);

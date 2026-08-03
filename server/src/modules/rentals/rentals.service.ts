@@ -33,7 +33,7 @@ export class RentalsService {
   async create(organizationId: number | null, userId: number, dto: CreateRentalDto): Promise<Rental> {
     const quantity = dto.quantity ?? 1;
 
-    const item = await this.warehouseService.getItemById(dto.warehouseItemId);
+    const item = await this.warehouseService.getItemById(dto.warehouseItemId, organizationId);
     if (!item) throw new NotFoundException('Warehouse item not found');
     if (item.quantity < quantity) {
       throw new BadRequestException(`Only ${item.quantity} of "${item.name}" in stock — cannot rent out ${quantity}.`);
@@ -61,7 +61,7 @@ export class RentalsService {
     // Same mechanism a delivery note already uses to reduce stock —
     // the rented quantity becomes unavailable for the duration.
     await this.warehouseService.addTransaction(
-      dto.warehouseItemId, TransactionType.OUT, quantity, `Rental ${rentalNumber}`, undefined, userId,
+      dto.warehouseItemId, TransactionType.OUT, quantity, `Rental ${rentalNumber}`, undefined, userId, organizationId,
     );
 
     return saved;
@@ -78,7 +78,7 @@ export class RentalsService {
     const saved = await this.repo.save(rental);
 
     await this.warehouseService.addTransaction(
-      rental.warehouseItem.id, TransactionType.IN, rental.quantity, `Returned from rental ${rental.rentalNumber}`, undefined, userId,
+      rental.warehouseItem.id, TransactionType.IN, rental.quantity, `Returned from rental ${rental.rentalNumber}`, undefined, userId, organizationId,
     );
 
     return saved;
