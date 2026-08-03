@@ -277,7 +277,7 @@ export default function Layout() {
         <button className="ghost" onClick={() => setSettingsOpen(true)} aria-label={t('settings.title')} title={t('settings.title')} style={{ marginInlineEnd: 4 }}>
           <Settings size={18} />
         </button>
-        {isSuperAdmin && <OrgSwitcher />}
+        <OrgSwitcher />
         <div className="avatar" aria-label={`User: ${user?.username}`}>{initial}</div>
       </header>
 
@@ -357,7 +357,7 @@ export default function Layout() {
             <div className="avatar">{initial}</div>
             <span>{user?.username}</span>
           </div>
-          {isSuperAdmin && <OrgSwitcher />}
+          <OrgSwitcher />
           <button className="ghost" onClick={() => setSettingsOpen(true)} aria-label={t('settings.title')} title={t('settings.title')}>
             <Settings size={16} />
           </button>

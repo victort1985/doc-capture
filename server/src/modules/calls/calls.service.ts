@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, Repository } from 'typeorm';
+import { In, IsNull, Repository } from 'typeorm';
 import { ServiceCall, CallStatus, CallUrgency } from './entities/service-call.entity';
 import { CallNote } from './entities/call-note.entity';
 import { CallAttachment } from './entities/call-attachment.entity';
@@ -98,18 +98,28 @@ export class CallsService {
 
   /**
    * Super-admin (organizationId null) sees every call. An org-scoped
-   * user sees their own organization's calls PLUS any call with no
-   * organization at all — those predate multi-tenancy and are treated
-   * as shared/global rather than invisible to everyone but the
-   * super-admin (same reasoning as Location — see
-   * LocationsService.findLocations).
+   * user sees calls from their own organization AND every other
+   * organization they've been explicitly granted access to (see
+   * User.allowedOrganizationIds) — merged together, not filtered down
+   * to just whichever single org is currently "active" for creating
+   * new documents. A user linked to multiple organizations is meant
+   * to work across all of them for calls specifically, not switch
+   * between them one at a time the way document creation does. PLUS
+   * any call with no organization at all — those predate
+   * multi-tenancy and are treated as shared/global rather than
+   * invisible to everyone but the super-admin (same reasoning as
+   * Location — see LocationsService.findLocations).
    */
-  findAll(requester?: { organizationId: number | null }): Promise<ServiceCall[]> {
+  findAll(requester?: { organizationId: number | null; allowedOrganizationIds?: number[] }): Promise<ServiceCall[]> {
+    const orgIds =
+      requester?.organizationId != null
+        ? [requester.organizationId, ...(requester.allowedOrganizationIds ?? [])]
+        : null;
     return this.callsRepo.find({
       relations: ['createdBy', 'statusChangedBy', 'closedBy', 'location', 'location.city', 'location.city.region', 'workingSessions', 'workingSessions.user', 'organization'],
       where:
-        requester?.organizationId != null
-          ? [{ organization: { id: requester.organizationId } }, { organization: IsNull() }]
+        orgIds != null
+          ? [{ organization: { id: In(orgIds) } }, { organization: IsNull() }]
           : {},
       order: { createdAt: 'DESC' },
     });

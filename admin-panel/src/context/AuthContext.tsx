@@ -15,6 +15,7 @@ interface AuthUser {
    * currently being managed. */
   realOrganizationId?: number | null;
   isActingAsOrg?: boolean;
+  allowedOrganizationIds?: number[];
   isDemoMode?: boolean;
   setupWizardCompleted?: boolean;
   tosAccepted?: boolean;

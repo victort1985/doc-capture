@@ -42,11 +42,11 @@ export class CallsController {
 
   @Get()
   async findAll(
-    @CurrentUser() user: { organizationId: number | null },
+    @CurrentUser() user: { organizationId: number | null; allowedOrganizationIds?: number[] },
     @Headers('if-none-match') ifNoneMatch: string | undefined,
     @Res() res: Response,
   ) {
-    const calls = await this.callsService.findAll({ organizationId: user.organizationId });
+    const calls = await this.callsService.findAll({ organizationId: user.organizationId, allowedOrganizationIds: user.allowedOrganizationIds });
     // ETag is a hash of the serialized data — when the client sends
     // If-None-Match with a previously seen ETag and the data hasn't
     // changed, we return 304 with no body (saves bandwidth and parse

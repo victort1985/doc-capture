@@ -30,7 +30,7 @@ import { UserRole } from '../users/entities/user.entity';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 
-type RequestUser = { id: number; organizationId: number | null };
+type RequestUser = { id: number; organizationId: number | null; allowedOrganizationIds?: number[] };
 
 @Controller('phonebook')
 @UseGuards(JwtAuthGuard)
@@ -53,7 +53,7 @@ export class PhoneBookController {
     const category = type === 'supplier' ? ContactCategory.SUPPLIER
       : type === 'client' ? ContactCategory.CLIENT
       : undefined;
-    return this.phoneBookService.findAll({ q, category, tenantId: user.organizationId });
+    return this.phoneBookService.findAll({ q, category, tenantId: user.organizationId, allowedTenantIds: user.allowedOrganizationIds });
   }
 
   @Get()
@@ -68,6 +68,7 @@ export class PhoneBookController {
       q,
       organizationId: organizationId ? parseInt(organizationId, 10) : undefined,
       tenantId: user.organizationId,
+      allowedTenantIds: user.allowedOrganizationIds,
     });
   }
 

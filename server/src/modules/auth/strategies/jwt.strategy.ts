@@ -59,33 +59,55 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     let effectiveOrganizationId = realOrganizationId;
     let isActingAsOrg = false;
 
-    // Super-admin "act as organization" — lets a super-admin manage
-    // one org's data (settings, exports, anything org-scoped) without
-    // every single org-scoped controller needing its own "or pick an
-    // org" branch. Deliberately restricted to GENUINE super-admins
-    // only (realOrganizationId === null) — an org-scoped admin's own
-    // X-Active-Org header (if a browser extension or old tab somehow
-    // sent one) is silently ignored rather than honored, since that
-    // admin already has their own real org and has no business
-    // becoming a different one via a header alone. Also deliberately
-    // separate from the mobile app's own X-Active-Org mechanism (see
-    // active-org.util.ts) — that one is for an org-scoped user
-    // switching between THEIR OWN allowedOrganizationIds, a different
-    // feature with different trust boundaries than a super-admin
-    // impersonating an arbitrary org.
+    // "Active org" switching — lets an admin who can see more than one
+    // organization pick which one to act as for a request, without
+    // every controller needing its own "which org" branch. Two
+    // different people can trigger this via the same X-Active-Org
+    // header, with different allowed targets:
+    //
+    // 1. A genuine super-admin (realOrganizationId === null) can act
+    //    as ANY organization that exists — this is the original,
+    //    narrower mechanism this replaces.
+    //
+    // 2. An ordinary admin with allowedOrganizationIds set (granted
+    //    access to more than one organization — see
+    //    UsersService.resolveOrganization / the multi-org picker in
+    //    the admin panel's user form) can switch among their own real
+    //    organization plus specifically that granted set — never an
+    //    arbitrary organization id, unlike a super-admin. This used to
+    //    live only in active-org.util.ts's getActiveOrgId() helper,
+    //    which just 2 controllers actually called — meaning switching
+    //    only ever worked on those 2 pages for a regular multi-org
+    //    admin, everywhere else silently stayed on their fixed home
+    //    org. Folding the same validation in here instead means EVERY
+    //    controller that reads user.organizationId (the vast
+    //    majority of them) now respects the switch immediately.
     const activeOrgHeader = req.headers['x-active-org'];
-    if (realOrganizationId == null && typeof activeOrgHeader === 'string' && activeOrgHeader.trim() !== '') {
+    if (typeof activeOrgHeader === 'string' && activeOrgHeader.trim() !== '') {
       const requestedOrgId = parseInt(activeOrgHeader, 10);
       if (Number.isInteger(requestedOrgId)) {
-        try {
-          await this.organizationsService.findById(requestedOrgId); // throws if it doesn't exist
-          effectiveOrganizationId = requestedOrgId;
-          isActingAsOrg = true;
-        } catch {
-          // Invalid/deleted org id in the header — fall through and
-          // stay as the real super-admin (organizationId: null)
-          // rather than failing the whole request over a stale
-          // client-side selection.
+        if (realOrganizationId == null) {
+          // Super-admin: any organization that actually exists.
+          try {
+            await this.organizationsService.findById(requestedOrgId);
+            effectiveOrganizationId = requestedOrgId;
+            isActingAsOrg = true;
+          } catch {
+            // Invalid/deleted org id in the header — fall through and
+            // stay as the real super-admin (organizationId: null)
+            // rather than failing the whole request over a stale
+            // client-side selection.
+          }
+        } else {
+          // Ordinary admin: only their own org or a specifically
+          // granted one, exactly as active-org.util.ts's
+          // getActiveOrgId() already validated — never trust the
+          // header beyond that allowed set.
+          const allowed = [realOrganizationId, ...(user.allowedOrganizationIds ?? [])];
+          if (allowed.includes(requestedOrgId)) {
+            effectiveOrganizationId = requestedOrgId;
+            isActingAsOrg = requestedOrgId !== realOrganizationId;
+          }
         }
       }
     }

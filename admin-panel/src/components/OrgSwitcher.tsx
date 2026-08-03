@@ -9,17 +9,28 @@ interface Org {
   name: string;
 }
 
-/** Lets a genuine super-admin pick one organization to "act as" for
- * the rest of the session — every org-scoped page (Tax Authority
- * settings, Tax Authority export, and any future one) then behaves
- * as if that org's own admin were logged in, without each page
- * needing its own picker. Persists across every tab/page for the
- * session (see AuthContext.switchOrg / api.ts's activeOrgId), and is
- * always cleared on a fresh login (never carries over between
- * sessions) — see AuthContext.login's own comment. Only rendered at
- * all for a genuine super-admin (user.realOrganizationId == null);
- * an org-scoped admin never sees this, they only ever have their own
- * one real org. */
+/** Lets any admin who has access to more than one organization pick
+ * which one to act as for the rest of the session — every org-scoped
+ * page and every document created from then on (invoices, quotes,
+ * etc., wherever the backend controller checks the active org rather
+ * than the account's own fixed organizationId) behaves as if that
+ * org's own admin were logged in. Persists across every tab/page for
+ * the session (see AuthContext.switchOrg / api.ts's activeOrgId), and
+ * is always cleared on a fresh login.
+ *
+ * Two different people can see this:
+ * - A genuine super-admin (user.realOrganizationId == null): can act
+ *   as any organization, or "no organization" (their own default
+ *   super-admin view of everything).
+ * - An ordinary admin who's been granted access to more than one
+ *   organization (user.allowedOrganizationIds.length > 0): can switch
+ *   among their own organization and the specific others they were
+ *   granted — never every organization in the system, only their own
+ *   allowed set (see GET /organizations/allowed, which already
+ *   enforces this server-side).
+ *
+ * An admin with access to only their own single organization sees
+ * nothing here at all — there's nothing to switch to. */
 export default function OrgSwitcher() {
   const { t } = useTranslation();
   const { user, switchOrg } = useAuth();
@@ -27,11 +38,25 @@ export default function OrgSwitcher() {
   const [open, setOpen] = useState(false);
   const [switching, setSwitching] = useState(false);
 
-  useEffect(() => {
-    apiFetch<Org[]>('/organizations').then(setOrgs).catch(() => setOrgs([]));
-  }, []);
+  const isSuperAdmin = (user?.realOrganizationId ?? user?.organizationId) == null;
+  const hasMultiOrgAccess = isSuperAdmin || (user?.allowedOrganizationIds?.length ?? 0) > 0;
 
-  const activeOrg = user?.isActingAsOrg ? orgs.find((o) => o.id === user.organizationId) : null;
+  useEffect(() => {
+    if (!hasMultiOrgAccess) return;
+    apiFetch<Org[]>('/organizations/allowed').then(setOrgs).catch(() => setOrgs([]));
+  }, [hasMultiOrgAccess]);
+
+  if (!hasMultiOrgAccess) return null;
+
+  // For a super-admin, "acting as" a specific org is tracked via
+  // isActingAsOrg (organizationId only means something once they've
+  // picked one). For an ordinary multi-org admin, organizationId is
+  // always their real, currently-active org — there's no separate
+  // "acting as" state, they're just always scoped to whichever org
+  // they last picked (defaulting to their own primary org).
+  const activeOrg = isSuperAdmin
+    ? (user?.isActingAsOrg ? orgs.find((o) => o.id === user.organizationId) : null)
+    : orgs.find((o) => o.id === user?.organizationId);
 
   async function pick(orgId: number | null) {
     setSwitching(true);
@@ -42,6 +67,8 @@ export default function OrgSwitcher() {
       setOpen(false);
     }
   }
+
+  const label = activeOrg ? activeOrg.name : t('orgSwitcher.superAdmin');
 
   return (
     <div style={{ position: 'relative' }}>
@@ -54,8 +81,8 @@ export default function OrgSwitcher() {
         title={t('orgSwitcher.title')}
       >
         <Building2 size={14} />
-        <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {activeOrg ? activeOrg.name : t('orgSwitcher.superAdmin')}
+        <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: activeOrg ? 700 : 400 }}>
+          {label}
         </span>
         <ChevronDown size={12} />
       </button>
@@ -74,22 +101,28 @@ export default function OrgSwitcher() {
             <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--ink-soft)', borderBottom: '1px solid var(--border-soft, #f0f0f0)' }}>
               {t('orgSwitcher.hint')}
             </div>
-            <div
-              onClick={() => pick(null)}
-              style={{
-                padding: '8px 12px', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6,
-                fontWeight: activeOrg ? 400 : 600,
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-muted, #f7f7f7)')}
-              onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-            >
-              {!activeOrg && <X size={13} />} {t('orgSwitcher.superAdmin')}
-            </div>
+            {/* "No organization" (see everything) — only a genuine
+                super-admin ever has this option; an ordinary multi-org
+                admin always has to be scoped to exactly one of their
+                allowed orgs, never "none". */}
+            {isSuperAdmin && (
+              <div
+                onClick={() => pick(null)}
+                style={{
+                  padding: '8px 12px', cursor: 'pointer', fontSize: 13, display: 'flex', alignItems: 'center', gap: 6,
+                  fontWeight: activeOrg ? 400 : 700,
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-muted, #f7f7f7)')}
+                onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+              >
+                {!activeOrg && <X size={13} />} {t('orgSwitcher.superAdmin')}
+              </div>
+            )}
             {orgs.map((o) => (
               <div
                 key={o.id}
                 onClick={() => pick(o.id)}
-                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, fontWeight: activeOrg?.id === o.id ? 600 : 400 }}
+                style={{ padding: '8px 12px', cursor: 'pointer', fontSize: 13, fontWeight: activeOrg?.id === o.id ? 700 : 400 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-muted, #f7f7f7)')}
                 onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
               >

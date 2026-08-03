@@ -38,13 +38,19 @@ export class PhoneBookService {
    * this place", the business field, NOT the multi-tenant boundary).
    * `tenantId` is the multi-tenant scope: null only for the super-admin
    * (sees every organization's contacts); otherwise restricted to that
-   * tenant's own contacts regardless of what else is searched for.
+   * tenant's own contacts PLUS any other tenant explicitly granted via
+   * `allowedTenantIds` (User.allowedOrganizationIds) — a user linked
+   * to multiple organizations sees their combined contacts merged
+   * together, the same "work across all of them" behavior as calls
+   * (see CallsService.findAll's own comment), not just whichever one
+   * tenant happens to be currently active for document creation.
    */
   findAll(filters: {
     category?: ContactCategory;
     q?: string;
     organizationId?: number;
     tenantId?: number | null;
+    allowedTenantIds?: number[];
   }): Promise<PhoneBookContact[]> {
     const qb = this.contactsRepo
       .createQueryBuilder('contact')
@@ -61,7 +67,8 @@ export class PhoneBookService {
       qb.andWhere('organization.id = :organizationId', { organizationId: filters.organizationId });
     }
     if (filters.tenantId != null) {
-      qb.andWhere('(contact.tenantId = :tenantId OR contact.tenantId IS NULL)', { tenantId: filters.tenantId });
+      const tenantIds = [filters.tenantId, ...(filters.allowedTenantIds ?? [])];
+      qb.andWhere('(contact."tenantId" IN (:...tenantIds) OR contact."tenantId" IS NULL)', { tenantIds });
     }
     if (filters.q?.trim()) {
       qb.andWhere('(contact.firstName ILIKE :q OR contact.lastName ILIKE :q)', {
