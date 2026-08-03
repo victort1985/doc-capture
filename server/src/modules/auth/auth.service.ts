@@ -89,6 +89,7 @@ export class AuthService {
         // own shape exactly rather than diverging from it.
         realOrganizationId: user.organization?.id ?? null,
         isActingAsOrg: false,
+        isGlobal: user.isGlobal ?? false,
         isDemoMode: user.organization?.isDemoMode ?? false,
         setupWizardCompleted: user.setupWizardCompleted,
         tosAccepted: user.tosAcceptedVersion === TOS_VERSION,

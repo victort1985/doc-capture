@@ -107,6 +107,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       // scoped to", e.g. an audit log entry or a UI banner.
       realOrganizationId,
       isActingAsOrg,
+      // Was missing entirely before — every isGlobal check elsewhere
+      // in the app (reports.controller.ts, fleet.controller.ts,
+      // calendar.controller.ts) always saw undefined here regardless
+      // of what's actually stored on the account, silently defeating
+      // the whole point of the flag for anyone legitimately granted
+      // cross-org visibility.
+      isGlobal: user.isGlobal ?? false,
       isDemoMode: user.organization?.isDemoMode ?? false,
       setupWizardCompleted: user.setupWizardCompleted,
       tosAccepted: user.tosAcceptedVersion === TOS_VERSION,

@@ -16,7 +16,7 @@ export class FleetController {
   constructor(private readonly fleetService: FleetService) {}
 
   private privileged(u: RequestUser) {
-    return u.organizationId == null || u.isGlobal || u.role === 'admin';
+    return u.organizationId == null || u.isGlobal;
   }
 
   @Get('vehicles')

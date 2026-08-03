@@ -47,7 +47,16 @@ export class ReportsController {
     @Query('userId') userId?: string,
   ) {
     const { from, to } = this.range(period);
-    const privileged = user.organizationId == null || user.isGlobal || user.role === 'admin';
+    // "privileged" (sees every organization's data, not just their
+    // own) means a genuine super-admin (organizationId === null) or
+    // someone explicitly marked isGlobal — NOT merely having the
+    // 'admin' role, which org-scoped customer admins also have. An
+    // earlier version of this check incorrectly included `|| role
+    // === 'admin'`, which meant any ordinary organization's own admin
+    // account could see every OTHER organization's report data too,
+    // not just their own. Fixed here and in fleet.controller.ts /
+    // calendar.controller.ts, which had the identical copy-pasted bug.
+    const privileged = user.organizationId == null || user.isGlobal;
     const orgCond = privileged ? '' : 'AND (c."organizationId" = $3 OR c."organizationId" IS NULL)';
     const params: any[] = [from, to];
     if (!privileged) params.push(user.organizationId);
@@ -189,7 +198,7 @@ export class ReportsController {
     @Query('id') id?: string,
   ) {
     const { from, to } = this.range(period);
-    const privileged = user.organizationId == null || user.isGlobal || user.role === 'admin';
+    const privileged = user.organizationId == null || user.isGlobal;
     const orgScope = privileged ? null : user.organizationId;
     const dimId = id ? parseInt(id, 10) : undefined;
 

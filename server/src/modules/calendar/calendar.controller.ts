@@ -22,7 +22,7 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
-type RequestUser = { id: number; organizationId: number | null; role: string; isGlobal: boolean };
+type RequestUser = { id: number; organizationId: number | null; role: string; isGlobal: boolean; permissions?: Record<string, boolean> };
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
 @Controller('calendar')
@@ -31,8 +31,18 @@ export class CalendarController {
   constructor(private readonly calendarService: CalendarService) {}
 
   @Get('organizations')
+  // "privileged" = sees every organization's calendar, not just
+  // their own. There's a dedicated, per-user-configurable permission
+  // for exactly this (calendar.all_orgs, defaults true for the
+  // 'admin' role but independently toggleable) — an earlier version
+  // of this check used `|| role === 'admin'` directly instead of
+  // this permission, which had the same practical effect for
+  // default-configured admins but ignored the permission entirely if
+  // someone had deliberately turned it off for a specific admin
+  // account. Checking the permission itself (rather than a hardcoded
+  // role) respects that per-user override correctly.
   listOrgsWithCalendars(@CurrentUser() user: RequestUser) {
-    const privileged = user.organizationId == null || user.isGlobal || user.role === 'admin';
+    const privileged = user.organizationId == null || user.isGlobal || !!user.permissions?.['calendar.all_orgs'];
     if (!privileged) return [];
     return this.calendarService.listOrgsWithCalendars();
   }
@@ -45,7 +55,7 @@ export class CalendarController {
     @Query('to') to: string,
     @Query('organizationId') orgIdParam?: string,
   ) {
-    const privileged = user.organizationId == null || user.isGlobal || user.role === 'admin';
+    const privileged = user.organizationId == null || user.isGlobal || !!user.permissions?.['calendar.all_orgs'];
     const targetOrgId = (privileged && orgIdParam) ? parseInt(orgIdParam) : user.organizationId;
     if (targetOrgId == null) return [];
     return this.calendarService.listEvents(targetOrgId, new Date(from), new Date(to));

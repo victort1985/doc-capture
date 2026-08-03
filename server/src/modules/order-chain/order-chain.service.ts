@@ -92,9 +92,15 @@ export class OrderChainService {
 
   async getChain(chainId: string, organizationId: number | null): Promise<ChainResult> {
     const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
+    // Order's own tenant-scoping relation is named "tenant", not
+    // "organization" like every other document entity here — a
+    // separate filter object using the correct property name, rather
+    // than reusing orgFilter (which would silently type-check as {}
+    // via `as any` and filter nothing at all, the bug this replaces).
+    const orderOrgFilter = organizationId != null ? { tenant: { id: organizationId } } : {};
     const [quotes, orders, deliveryNotes, invoices, payments, creditNotes, debitNotes, returns] = await Promise.all([
       this.quotesRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
-      this.ordersRepo.find({ where: { chainId } as any, order: { createdAt: 'ASC' } }),
+      this.ordersRepo.find({ where: { chainId, ...orderOrgFilter } as any, order: { createdAt: 'ASC' } }),
       this.deliveryNotesRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
       this.invoicesRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
       this.paymentsRepo.find({ where: { chainId, ...orgFilter }, order: { createdAt: 'ASC' } }),
