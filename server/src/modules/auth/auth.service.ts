@@ -82,6 +82,13 @@ export class AuthService {
         language: user.language,
         role: user.role,
         organizationId: user.organization?.id ?? null,
+        // A fresh login never carries over an "acting as org" choice
+        // from a previous session (see AuthContext.login's own
+        // comment on the frontend) — so at login time these two
+        // always equal each other, matching JwtStrategy.validate()'s
+        // own shape exactly rather than diverging from it.
+        realOrganizationId: user.organization?.id ?? null,
+        isActingAsOrg: false,
         isDemoMode: user.organization?.isDemoMode ?? false,
         setupWizardCompleted: user.setupWizardCompleted,
         tosAccepted: user.tosAcceptedVersion === TOS_VERSION,
