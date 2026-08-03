@@ -15,6 +15,7 @@ import { WarehouseTransaction } from '../warehouse/entities/warehouse-transactio
 import { TaxAuthoritySettings } from '../invoice-israel/entities/tax-authority-settings.entity';
 import { Organization } from '../organizations/entities/organization.entity';
 import { OpenFormatExportService } from './open-format-export.service';
+import { ComplianceReportsService } from './compliance-reports.service';
 import { TaxAuthorityExportController } from './tax-authority-export.controller';
 
 @Module({
@@ -24,7 +25,7 @@ import { TaxAuthorityExportController } from './tax-authority-export.controller'
       LedgerEntry, Account, WarehouseItem, WarehouseTransaction, TaxAuthoritySettings, Organization,
     ]),
   ],
-  providers: [OpenFormatExportService],
+  providers: [OpenFormatExportService, ComplianceReportsService],
   controllers: [TaxAuthorityExportController],
 })
 export class TaxAuthorityExportModule {}

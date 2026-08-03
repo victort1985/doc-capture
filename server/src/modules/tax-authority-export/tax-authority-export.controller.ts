@@ -1,6 +1,8 @@
 import { Body, Controller, Post, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { OpenFormatExportService } from './open-format-export.service';
+import { ComplianceReportsService } from './compliance-reports.service';
+import { generateSection26Pdf, generateSection54Pdf } from './compliance-reports.pdf';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -13,7 +15,43 @@ type ReqUser = { organizationId: number | null };
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.ADMIN)
 export class TaxAuthorityExportController {
-  constructor(private readonly service: OpenFormatExportService) {}
+  constructor(
+    private readonly service: OpenFormatExportService,
+    private readonly complianceService: ComplianceReportsService,
+  ) {}
+
+  /** Section 2.6's required printed output (document-type count+sum
+   * table, plus a trial balance) — one of the three attachments the
+   * registration form itself requires alongside the simulator's own
+   * report. See ComplianceReportsService's doc comment. */
+  @Post('section-2-6')
+  async section26(@Body() body: { from: string; to: string }, @CurrentUser() user: ReqUser, @Res() res: Response) {
+    if (user.organizationId == null) {
+      res.status(400).json({ message: 'Pick which organization to generate this report for (use the organization switcher in the header).' });
+      return;
+    }
+    const report = await this.complianceService.getSection26Report({
+      organizationId: user.organizationId, from: new Date(body.from), to: new Date(body.to),
+    });
+    const buffer = await generateSection26Pdf(report);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="section-2.6.pdf"' });
+    res.send(buffer);
+  }
+
+  /** Appendix 4 / section 5.4's required printed confirmation screen. */
+  @Post('section-5-4')
+  async section54(@Body() body: { from: string; to: string }, @CurrentUser() user: ReqUser, @Res() res: Response) {
+    if (user.organizationId == null) {
+      res.status(400).json({ message: 'Pick which organization to generate this report for (use the organization switcher in the header).' });
+      return;
+    }
+    const report = await this.complianceService.getSection54Report({
+      organizationId: user.organizationId, from: new Date(body.from), to: new Date(body.to),
+    });
+    const buffer = await generateSection54Pdf(report);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': 'attachment; filename="section-5.4.pdf"' });
+    res.send(buffer);
+  }
 
   /** Generates and streams the export as a single downloadable zip
    * (OPENFRMT/{vatid}.{yy}/{MMDDhhmm}/ containing INI.TXT + BKMVDATA)

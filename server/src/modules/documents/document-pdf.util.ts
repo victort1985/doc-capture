@@ -265,7 +265,21 @@ function toVisualRuns(text: string): Run[] {
   return hasHebrew ? runs.reverse() : runs;
 }
 
-interface Fonts { he: PDFFont; heBold: PDFFont; latin: PDFFont; latinBold: PDFFont; }
+export interface Fonts { he: PDFFont; heBold: PDFFont; latin: PDFFont; latinBold: PDFFont; }
+
+export async function loadFonts(pdf: PDFDocument): Promise<Fonts> {
+  pdf.registerFontkit(fontkit as any);
+  const [heRegularBytes, heBoldBytes] = await Promise.all([
+    fs.promises.readFile(HEBREW_REGULAR_PATH),
+    fs.promises.readFile(HEBREW_BOLD_PATH),
+  ]);
+  return {
+    he: await pdf.embedFont(heRegularBytes, { subset: true }),
+    heBold: await pdf.embedFont(heBoldBytes, { subset: true }),
+    latin: await pdf.embedFont(StandardFonts.Helvetica),
+    latinBold: await pdf.embedFont(StandardFonts.HelveticaBold),
+  };
+}
 
 function runWidth(run: Run, fonts: Fonts, size: number, bold: boolean): number {
   const font = run.hebrew ? (bold ? fonts.heBold : fonts.he) : (bold ? fonts.latinBold : fonts.latin);
@@ -275,7 +289,7 @@ function runWidth(run: Run, fonts: Fonts, size: number, bold: boolean): number {
 /** Draws `text` (auto-detecting per-run script) at the given anchor.
  * align='right' anchors x as the right edge (typical for Hebrew UI);
  * align='left' anchors x as the left edge. */
-function drawBidiText(
+export function drawBidiText(
   page: PDFPage,
   text: string,
   opts: { x: number; y: number; size: number; fonts: Fonts; bold?: boolean; align?: 'left' | 'right'; color?: ReturnType<typeof rgb> },

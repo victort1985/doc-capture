@@ -1489,7 +1489,11 @@
     "pickOrgFirst": "Choose which organization to generate this export for.",
     "useOrgSwitcher": "Pick an organization from the switcher in the header (top right) before generating.",
     "exceedsSimulatorLimit": "The BKMVDATA.TXT file is {{size}} MB — the Tax Authority's own simulator caps it at 4 MB and will reject anything larger. Narrow the date range and generate again.",
-    "invalidVatChecksum": "The configured VAT number fails Israel's standard check-digit validation — the real Tax Authority simulator will reject every record because of this. Double-check the number under Invoice Israel settings (a placeholder like 123456789 won't pass; use the business's real registered number)."
+    "invalidVatChecksum": "The configured VAT number fails Israel's standard check-digit validation — the real Tax Authority simulator will reject every record because of this. Double-check the number under Invoice Israel settings (a placeholder like 123456789 won't pass; use the business's real registered number).",
+    "complianceReportsTitle": "Registration application attachments",
+    "complianceReportsHint": "Two printed reports the registration application itself requires (alongside the simulator's own report): a per-document-type summary (section 2.6) and a file-generation confirmation (appendix 4, section 5.4). Both use the same date range as above.",
+    "section26Button": "Download section 2.6 report",
+    "section54Button": "Download appendix 4 (section 5.4) report"
   },
   "banks": {
     "status_active": "active",

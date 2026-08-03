@@ -29,6 +29,8 @@ export default function TaxAuthorityExportPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
+  const [generatingReport, setGeneratingReport] = useState<'2.6' | '5.4' | null>(null);
+
   async function generate() {
     setGenerating(true); setError(null); setNotice(null);
     try {
@@ -54,6 +56,27 @@ export default function TaxAuthorityExportPage() {
       setError(e instanceof Error ? e.message : 'Failed to generate export');
     } finally {
       setGenerating(false);
+    }
+  }
+
+  /** Downloads one of the two printed reports the registration form
+   * itself requires as attachments alongside the simulator's own
+   * report — see ComplianceReportsService for what each represents. */
+  async function generateComplianceReport(kind: '2.6' | '5.4') {
+    setGeneratingReport(kind); setError(null); setNotice(null);
+    try {
+      const { url } = await apiFetchBlobPostWithHeaders(`/tax-authority-export/section-${kind.replace('.', '-')}`, { from, to });
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `section-${kind}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setNotice(t('taxAuthorityExport.downloadStarted'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate report');
+    } finally {
+      setGeneratingReport(null);
     }
   }
 
@@ -90,6 +113,29 @@ export default function TaxAuthorityExportPage() {
 
         <button type="button" onClick={generate} disabled={generating || (isSuperAdmin && !isActingAsOrg)} style={{ width: '100%' }}>
           <FileDown size={15} /> {generating ? t('taxAuthorityExport.generating') : t('taxAuthorityExport.generate')}
+        </button>
+      </div>
+
+      <div className="card" style={{ padding: 20, maxWidth: 480, marginTop: 16 }}>
+        <div className="eyebrow" style={{ marginBottom: 10 }}>{t('taxAuthorityExport.complianceReportsTitle')}</div>
+        <p style={{ margin: '0 0 14px', fontSize: 13, color: 'var(--ink-soft)' }}>{t('taxAuthorityExport.complianceReportsHint')}</p>
+
+        <button
+          type="button"
+          onClick={() => generateComplianceReport('2.6')}
+          disabled={generatingReport !== null || (isSuperAdmin && !isActingAsOrg)}
+          style={{ width: '100%', marginBottom: 10 }}
+        >
+          <FileDown size={15} /> {generatingReport === '2.6' ? t('taxAuthorityExport.generating') : t('taxAuthorityExport.section26Button')}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => generateComplianceReport('5.4')}
+          disabled={generatingReport !== null || (isSuperAdmin && !isActingAsOrg)}
+          style={{ width: '100%' }}
+        >
+          <FileDown size={15} /> {generatingReport === '5.4' ? t('taxAuthorityExport.generating') : t('taxAuthorityExport.section54Button')}
         </button>
       </div>
     </div>
