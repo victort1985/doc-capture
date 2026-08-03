@@ -63,7 +63,7 @@ export class DeliveryNotesController {
     @CurrentUser() user: ReqUser,
     @Req() req: Request,
   ) {
-    return this.svc.createSigningLink(id, getActiveOrgId(user, req));
+    return this.svc.createSigningLink(id, getActiveOrgId(user, req), req);
   }
 
   @UseGuards(JwtAuthGuard)

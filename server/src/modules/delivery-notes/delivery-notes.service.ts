@@ -6,6 +6,7 @@ import { DeliveryNote, DeliveryNoteStatus } from './delivery-note.entity';
 import { DeliveryNoteSettings } from './delivery-note-settings.entity';
 import { StorageService } from '../storage/storage.service';
 import { writeMaybeEncrypted, readMaybeEncrypted } from '../../common/crypto/encrypted-storage.util';
+import type { Request } from 'express';
 
 @Injectable()
 export class DeliveryNotesService {
@@ -144,15 +145,46 @@ export class DeliveryNotesService {
 
   // ── Remote signing ────────────────────────────────────────────────────────
 
-  async createSigningLink(id: number, _organizationId: number | null): Promise<{ token: string; url: string }> {
+  async createSigningLink(id: number, _organizationId: number | null, req: Request): Promise<{ token: string; url: string }> {
     const note = await this.repo.findOne({ where: { id } });
     if (!note) throw new NotFoundException('Note not found');
     if (!note.signingToken) {
       note.signingToken = crypto.randomBytes(24).toString('hex');
       await this.repo.save(note);
     }
-    const url = `${process.env.SIGN_BASE_URL || "https://sign.doc-capture.app"}/${note.signingToken}`;
+    const url = `${this.resolveSignBaseUrl(req)}/sign/${note.signingToken}`;
     return { token: note.signingToken!, url };
+  }
+
+  /** Each tenant runs its own server process on its own subdomain
+   * (test.vixor.app, mceilatmusic.vixor.app, etc — see this app's
+   * own multi-tenant architecture notes), so a single SIGN_BASE_URL
+   * hardcoded per-deployment can't be right for more than one tenant
+   * at a time. An earlier version of this method fell back to a
+   * literal "https://sign.doc-capture.app" when the env var wasn't
+   * set — a domain that was never actually provisioned (no DNS
+   * record, no Cloudflare Access bypass rule), so every tenant
+   * whose deployment didn't happen to have SIGN_BASE_URL manually
+   * configured got signing links that led nowhere.
+   *
+   * Fixed by deriving the domain from the incoming request itself:
+   * whatever hostname a request arrived on IS this tenant's own
+   * public domain (cloudflared preserves the original public Host
+   * header when tunneling to the local service, so this is
+   * accurate without needing `app.set('trust proxy', ...)` the way
+   * a header rewritten by a conventional reverse proxy would). Works
+   * correctly for every current and future subdomain automatically,
+   * no per-tenant configuration needed. SIGN_BASE_URL remains
+   * available as an explicit override for anyone who genuinely needs
+   * to force a specific domain (e.g. testing locally against a
+   * public tunnel while developing). */
+  private resolveSignBaseUrl(req: Request): string {
+    if (process.env.SIGN_BASE_URL) return process.env.SIGN_BASE_URL;
+    const host = req.get('x-forwarded-host') || req.get('host');
+    if (!host) {
+      throw new Error('Could not determine this server\'s public hostname for the signing link — set SIGN_BASE_URL in .env to override explicitly.');
+    }
+    return `https://${host}`;
   }
 
   async getNoteForSigning(token: string) {
