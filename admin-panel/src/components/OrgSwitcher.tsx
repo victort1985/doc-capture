@@ -68,6 +68,7 @@ export default function OrgSwitcher() {
               position: 'absolute', zIndex: 31, top: '100%', insetInlineEnd: 0, marginTop: 4,
               background: 'var(--surface, #fff)', border: '1px solid var(--border, #ddd)', borderRadius: 8,
               minWidth: 220, maxHeight: 320, overflowY: 'auto', boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
+              color: 'var(--ink, #1a1a1a)',
             }}
           >
             <div style={{ padding: '8px 12px', fontSize: 11, color: 'var(--ink-soft)', borderBottom: '1px solid var(--border-soft, #f0f0f0)' }}>
