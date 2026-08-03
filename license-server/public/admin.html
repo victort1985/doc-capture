@@ -139,9 +139,36 @@ function api(path, opts = {}) {
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(opts.headers || {}) },
   }).then(async r => {
     const body = await r.json().catch(() => ({}));
+    if (r.status === 401) {
+      // The 12h token expired (or was invalidated) since this page
+      // was last loaded — this used to fail silently here with an
+      // uncaught rejection, most visibly in loadLicenses() (no
+      // try/catch there at all), which left the licenses table
+      // permanently empty on page reload with no error shown at
+      // all: token presence alone made showLoggedIn() render the
+      // logged-in view optimistically, loadLicenses() then threw
+      // and never populated the table, and nothing told the person
+      // why — indistinguishable from every tenant having vanished,
+      // even though nothing in the database had actually changed.
+      // Now: clear the stale token and force back to a real login
+      // screen with a clear reason, for every single request this
+      // function makes, not just the ones whose own caller happens
+      // to catch and display errors.
+      localStorage.removeItem('vixor-license-admin-token');
+      token = null;
+      showLoggedOut('Your session expired — please sign in again.');
+      throw Object.assign(new Error('Session expired'), { isSessionExpiry: true });
+    }
     if (!r.ok) throw Object.assign(new Error(body.error || `Request failed (${r.status})`), { output: body.output });
     return body;
   });
+}
+
+function showLoggedOut(message) {
+  document.getElementById('mainArea').classList.add('hidden');
+  document.getElementById('logoutBtn').classList.add('hidden');
+  document.getElementById('loginCard').classList.remove('hidden');
+  document.getElementById('loginError').textContent = message || '';
 }
 
 function showLoggedIn() {
@@ -315,7 +342,15 @@ function timeAgo(iso) {
 let lastLicenses = [];
 
 async function loadLicenses() {
-  const rows = await api('/admin/licenses');
+  let rows;
+  try {
+    rows = await api('/admin/licenses');
+  } catch (e) {
+    if (e.isSessionExpiry) return; // api() already handled this — showLoggedOut() is up, nothing more to do here
+    document.getElementById('licenseRows').innerHTML =
+      `<tr><td colspan="8" style="color:#b91c1c;padding:16px;">Couldn't load licenses: ${e.message}. <a href="#" onclick="loadLicenses();return false;">Retry</a></td></tr>`;
+    return;
+  }
   lastLicenses = rows;
   document.getElementById('licenseRows').innerHTML = rows.map(l => `
     <tr>
