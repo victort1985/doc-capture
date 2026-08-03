@@ -24,6 +24,7 @@ import 'credit_notes_screen.dart';
 import 'debit_notes_screen.dart';
 import 'expenses_screen.dart';
 import 'rentals_screen.dart';
+import '../widgets/organization_logo_background.dart';
 
 class _StatCardData {
   final IconData icon;
@@ -200,7 +201,7 @@ class HomeScreenState extends State<HomeScreen> {
                         children: _cards.map((c) => Card(
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(12),
-                                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => c.destination())),
+                                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => OrganizationLogoBackground(child: c.destination()))),
                                 child: Padding(
                                   padding: const EdgeInsets.all(14),
                                   child: Column(
