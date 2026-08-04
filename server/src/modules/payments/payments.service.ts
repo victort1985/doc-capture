@@ -325,8 +325,15 @@ export class PaymentsService {
     return readMaybeEncrypted(adapter, payment.chainSummaryPath);
   }
 
-  async remove(id: number, organizationId: number | null): Promise<void> {
-    const payment = await this.findOne(id, organizationId);
-    await this.repo.remove(payment);
+  /** Payments cannot be deleted once recorded — Israeli bookkeeping
+   * law (הוראות ניהול פנקסי חשבונות) requires a receipt (קבלה, what
+   * this represents) to stay in the permanent record once issued,
+   * same reasoning as InvoicesService.remove(). If a payment was
+   * genuinely recorded in error, correct it by recording an offsetting
+   * entry rather than erasing the original — never delete it outright. */
+  async remove(_id: number, _organizationId: number | null): Promise<void> {
+    throw new BadRequestException(
+      'Payments cannot be deleted once recorded — Israeli bookkeeping law requires the record to stay in place. Record a correcting entry instead of erasing this one.',
+    );
   }
 }

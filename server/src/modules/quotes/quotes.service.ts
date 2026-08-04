@@ -279,9 +279,15 @@ export class QuotesService {
     return this.repo.save(quote);
   }
 
-  async remove(id: number, organizationId: number | null): Promise<void> {
-    const quote = await this.findOne(id, organizationId);
-    await this.repo.remove(quote);
+  /** Quotes cannot be deleted once created — kept in the permanent
+   * record for the same reasoning as every other document type here
+   * (see InvoicesService.remove()). If a quote was rejected or is no
+   * longer relevant, mark it declined (QuoteStatus.DECLINED) instead
+   * of erasing it — that keeps the full sales history intact. */
+  async remove(_id: number, _organizationId: number | null): Promise<void> {
+    throw new BadRequestException(
+      'Quotes cannot be deleted once created — this record needs to stay in the permanent history. Mark it declined instead of erasing it.',
+    );
   }
 
   async getPdfBuffer(id: number, organizationId: number | null): Promise<Buffer> {

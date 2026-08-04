@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, Send, CheckCircle2, FileText, Building2, Settings } from 'lucide-react';
+import { RefreshCw, Send, CheckCircle2, FileText, Building2, Settings } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
@@ -110,11 +110,11 @@ export default function InvoicesPage() {
     await apiFetch(`/invoices/${id}/mark-paid`, { method: 'POST' });
     load();
   }
-  async function remove(id: number, name: string) {
-    if (!confirm(t('invoices.deleteConfirm', { name }))) return;
-    await apiFetch(`/invoices/${id}`, { method: 'DELETE' });
-    setInvoices((prev) => prev.filter((i) => i.id !== id));
-  }
+  // Invoices cannot be deleted once issued — Israeli bookkeeping law
+  // requires the record to stay in place (see InvoicesService.remove()
+  // on the backend, which now hard-blocks this regardless). The
+  // delete button itself was removed here to match — no point
+  // showing a control that only ever produces an error.
 
   return (
     <div className="page">
@@ -200,7 +200,6 @@ export default function InvoicesPage() {
                   {(inv.status === 'draft' || inv.status === 'sent') && (
                     <button type="button" onClick={() => markPaid(inv.id)} title={t('invoices.markPaid')} style={{ marginRight: 8, color: 'green' }}><CheckCircle2 size={15} /></button>
                   )}
-                  <button type="button" onClick={() => remove(inv.id, inv.clientName)} title={t('invoices.delete')} style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                 </td>
               </tr>
             ))}

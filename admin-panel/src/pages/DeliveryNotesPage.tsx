@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pencil, Trash2, Plus, AlertTriangle, X, FileText, Building2, Settings } from 'lucide-react';
+import { Pencil, Plus, AlertTriangle, X, FileText, Building2, Settings } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import SettingsModal from '../components/SettingsModal';
@@ -27,38 +27,6 @@ function fmtDate(iso?: string) {
   if (!iso) return '';
   const [y, m, day] = iso.slice(0, 10).split('-');
   return `${day}/${m}/${y}`;
-}
-
-function DeleteModal({ note, onConfirm, onCancel }: { note: DeliveryNote; onConfirm: () => Promise<void>; onCancel: () => void }) {
-  const { t } = useTranslation();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  async function handleClick() {
-    setLoading(true); setError('');
-    try { await onConfirm(); } catch (e: any) { setError(e?.message || 'Delete failed'); setLoading(false); }
-  }
-  return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-      <div className="card" style={{ width: 360, padding: 28 }}>
-        <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <AlertTriangle size={48} color="var(--danger, #e53e3e)" style={{ marginBottom: 12 }} />
-          <h2 style={{ margin: 0, fontSize: 18 }}>{t('deliveryNotes.deleteTitle')}</h2>
-          <p style={{ color: 'var(--ink-soft)', marginTop: 8, fontSize: 14 }}>
-            {t('deliveryNotes.noteHash')}{note.noteNumber} — {note.clientName}<br />
-            <strong style={{ color: 'var(--danger, #e53e3e)' }}>{t('deliveryNotes.cannotUndo')}</strong>
-          </p>
-          {error && <p style={{ color: 'red', fontSize: 13, marginTop: 8 }}>{error}</p>}
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={onCancel} disabled={loading} style={{ flex: 1 }}>{t('common.cancel')}</button>
-          <button onClick={handleClick} disabled={loading}
-            style={{ flex: 1, background: 'var(--danger, #e53e3e)', color: 'white', border: 'none', borderRadius: 8, padding: '10px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: 700, opacity: loading ? 0.7 : 1 }}>
-            {loading ? t('deliveryNotes.deleting') : t('common.delete')}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function NoteModal({ note, onSave, onClose }: { note: Partial<DeliveryNote> | null; onSave: (data: any) => void; onClose: () => void }) {
@@ -135,7 +103,6 @@ export default function DeliveryNotesPage() {
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [search, setSearch] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<DeliveryNote | null>(null);
   const [editTarget, setEditTarget] = useState<Partial<DeliveryNote> | null | undefined>(undefined);
 
   const isAdmin = auth?.user?.role === 'admin' || isSuperAdmin;
@@ -161,12 +128,9 @@ export default function DeliveryNotesPage() {
     load(orgId);
   }
 
-  async function handleDelete() {
-    if (!deleteTarget) return;
-    await apiFetch(`/delivery-notes/${deleteTarget.id}`, { method: 'DELETE' });
-    setNotes(prev => prev.filter(n => n.id !== deleteTarget.id));
-    setDeleteTarget(null);
-  }
+  // Delivery notes cannot be deleted once issued (see
+  // DeliveryNotesService.remove() on the backend, which now
+  // hard-blocks deletion regardless).
 
   async function handleSave(form: any) {
     if (editTarget?.id) {
@@ -311,7 +275,6 @@ export default function DeliveryNotesPage() {
                   <td style={{ padding: '10px 12px' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="ghost" title={t('common.edit')} onClick={() => setEditTarget(n)}><Pencil size={14} /></button>
-                      <button className="ghost" title={t('common.delete')} style={{ color: 'var(--danger, #e53e3e)' }} onClick={() => setDeleteTarget(n)}><Trash2 size={14} /></button>
                     </div>
                   </td>
                 </tr>
@@ -321,9 +284,6 @@ export default function DeliveryNotesPage() {
         </div>
       )}
 
-      {deleteTarget && (
-        <DeleteModal note={deleteTarget} onConfirm={handleDelete} onCancel={() => setDeleteTarget(null)} />
-      )}
       {editTarget !== undefined && (
         <NoteModal note={editTarget} onSave={handleSave} onClose={() => setEditTarget(undefined)} />
       )}

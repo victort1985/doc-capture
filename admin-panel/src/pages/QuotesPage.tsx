@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, Send, FileText, Building2, Settings, Bookmark, BookmarkX, X } from 'lucide-react';
+import { RefreshCw, Send, FileText, Building2, Settings, Bookmark, BookmarkX, X } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
@@ -100,11 +100,9 @@ export default function QuotesPage() {
       alert(e instanceof Error ? e.message : 'Failed to regenerate PDF');
     }
   }
-  async function remove(id: number, name: string) {
-    if (!confirm(t('quotes.deleteConfirm', { name }))) return;
-    await apiFetch(`/quotes/${id}`, { method: 'DELETE' });
-    setQuotes((prev) => prev.filter((q) => q.id !== id));
-  }
+  // Quotes cannot be deleted once created — mark declined instead
+  // (see QuotesService.remove() on the backend, which now
+  // hard-blocks deletion regardless).
   async function submitSaveAsTemplate(name: string) {
     if (!saveTemplateFor) return;
     try {
@@ -192,7 +190,6 @@ export default function QuotesPage() {
                   {view === 'templates' && (
                     <button type="button" onClick={() => unmarkTemplate(q.id)} title={t('quotes.unmarkTemplate')} style={{ marginRight: 8 }}><BookmarkX size={15} /></button>
                   )}
-                  <button type="button" onClick={() => remove(q.id, q.clientName)} title={t('quotes.delete')} style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                 </td>
               </tr>
             ))}

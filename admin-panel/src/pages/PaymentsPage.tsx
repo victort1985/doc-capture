@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, RefreshCw, FileText, Building2, CreditCard, Banknote, ArrowLeftRight, Receipt, Smartphone, Repeat, ShieldCheck, PackageOpen, Settings } from 'lucide-react';
+import { RefreshCw, FileText, Building2, CreditCard, Banknote, ArrowLeftRight, Receipt, Smartphone, Repeat, ShieldCheck, PackageOpen, Settings } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import SettingsModal from '../components/SettingsModal';
@@ -92,11 +92,9 @@ export default function PaymentsPage() {
       alert(e instanceof Error ? e.message : 'Failed to regenerate PDF');
     }
   }
-  async function remove(id: number, name: string) {
-    if (!confirm(t('payments.deleteConfirm', { name }))) return;
-    await apiFetch(`/payments/${id}`, { method: 'DELETE' });
-    setPayments((prev) => prev.filter((p) => p.id !== id));
-  }
+  // Payments cannot be deleted once recorded (see
+  // PaymentsService.remove() on the backend, which now hard-blocks
+  // deletion regardless).
 
   return (
     <div className="page">
@@ -151,7 +149,6 @@ export default function PaymentsPage() {
                     <button type="button" onClick={() => viewSummaryPdf(p.id)} title={t('payments.viewSummary')} style={{ marginRight: 8 }}><PackageOpen size={15} /></button>
                   )}
                   <button type="button" onClick={() => regeneratePdf(p.id)} title={t('payments.regeneratePdf')} style={{ marginRight: 8 }}><RefreshCw size={15} /></button>
-                  <button type="button" onClick={() => remove(p.id, p.clientName)} title={t('payments.delete')} style={{ color: 'var(--danger)' }}><Trash2 size={15} /></button>
                 </td>
               </tr>
             ))}

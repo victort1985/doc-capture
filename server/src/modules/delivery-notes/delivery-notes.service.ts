@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import * as crypto from 'crypto';
@@ -82,9 +82,16 @@ export class DeliveryNotesService {
     return this.repo.save(note);
   }
 
-  async remove(id: number, organizationId: number | null): Promise<void> {
-    const note = await this.findOne(id, organizationId);
-    await this.repo.remove(note);
+  /** Delivery notes cannot be deleted once issued — Israeli
+   * bookkeeping law requires numbered documents to stay in the
+   * permanent record. If goods genuinely need reversing, use a
+   * return note (see ReturnsModule) or mark this one CANCELLED
+   * (status stays visible, just flagged as void) instead of erasing
+   * it — same reasoning as InvoicesService.remove(). */
+  async remove(_id: number, _organizationId: number | null): Promise<void> {
+    throw new BadRequestException(
+      'Delivery notes cannot be deleted once issued — Israeli bookkeeping law requires the record to stay in place. Use a return note to reverse the goods movement, or mark this one cancelled instead.',
+    );
   }
 
   // ── Smart autocomplete ────────────────────────────────────────────────────

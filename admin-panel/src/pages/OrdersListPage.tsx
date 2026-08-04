@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Trash2, FileText, RefreshCw, Settings } from 'lucide-react';
+import { FileText, RefreshCw, Settings } from 'lucide-react';
 import SettingsModal from '../components/SettingsModal';
 import OrdersEmailSettingsPage from './OrdersEmailSettingsPage';
 import { apiFetch, apiFetchBlob } from '../services/api';
@@ -22,7 +22,8 @@ export default function OrdersListPage() {
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  // Orders cannot be deleted once created (see OrdersService.remove()
+  // on the backend, which now hard-blocks deletion regardless).
 
   async function load() {
     setLoading(true);
@@ -50,18 +51,6 @@ export default function OrdersListPage() {
     }
   }
 
-  async function removeOrder(id: number, name: string) {
-    if (!confirm(t('orders.deleteConfirm', { name }))) return;
-    setDeletingId(id);
-    try {
-      await apiFetch(`/orders/${id}`, { method: 'DELETE' });
-      setOrders((prev) => prev.filter((o) => o.id !== id));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Delete failed');
-    } finally {
-      setDeletingId(null);
-    }
-  }
 
   return (
     <div className="page">
@@ -114,15 +103,6 @@ export default function OrdersListPage() {
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                   <button type="button" onClick={() => viewPdf(o.id)} title={t('orders.viewPdf')} style={{ marginRight: 8 }}>
                     <FileText size={15} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeOrder(o.id, o.generatedName)}
-                    disabled={deletingId === o.id}
-                    title={t('common.delete')}
-                    style={{ color: 'var(--danger)' }}
-                  >
-                    <Trash2 size={15} />
                   </button>
                 </td>
               </tr>

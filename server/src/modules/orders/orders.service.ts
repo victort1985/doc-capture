@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PDFDocument } from 'pdf-lib';
@@ -149,10 +149,16 @@ export class OrdersService {
     return saved;
   }
 
-  async remove(id: number, tenantId: number | null): Promise<void> {
-    const order = await this.findOne(id, tenantId);
-    await this.deleteStoredFile(order.storagePath).catch(() => {});
-    await this.ordersRepo.remove(order);
+  /** Orders cannot be deleted once created — kept in the permanent
+   * record for the same audit-trail reasoning as every other document
+   * type in this app (see InvoicesService.remove()'s own comment).
+   * If an order was created in error, there's currently no
+   * cancel/void status on this entity — contact support if one
+   * genuinely needs to be corrected. */
+  async remove(_id: number, _tenantId: number | null): Promise<void> {
+    throw new BadRequestException(
+      'Orders cannot be deleted once created — this record needs to stay in the permanent audit trail. Contact support if this one genuinely needs correcting.',
+    );
   }
 
   private async writeOrderPdf(
