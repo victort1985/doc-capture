@@ -4,13 +4,10 @@ import type { Response } from 'express';
 import { BackupService } from './backup.service';
 import { BackupSchedulerService, UpdateBackupScheduleDto } from './backup-scheduler.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
-import { RolesGuard } from '../../common/guards/roles.guard';
-import { Roles } from '../../common/decorators/roles.decorator';
-import { UserRole } from '../users/entities/user.entity';
+import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
 
 @Controller('backup')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@UseGuards(JwtAuthGuard, SuperAdminGuard)
 export class BackupController {
   constructor(
     private readonly service: BackupService,

@@ -19,6 +19,13 @@ export interface JobState {
   fileName?: string;
   fileMimeType?: string;
   createdAt: number;
+  /** Who this job belongs to — null only for a genuine super-admin's
+   * own job. Checked by the controller before returning status or a
+   * file, since job ids (though a random UUID, not a guessable
+   * sequential number) still shouldn't be usable across organizations
+   * if one were ever leaked via a shared link, browser history, or
+   * server log. */
+  organizationId: number | null;
 }
 
 /** Backs the live log + percentage progress bar the wizard shows
@@ -41,7 +48,7 @@ export class MigrationJobsService {
   private readonly jobs = new Map<string, JobState>();
   private readonly JOB_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
-  create(): JobState {
+  create(organizationId: number | null): JobState {
     this.sweepOld();
     const job: JobState = {
       id: randomUUID(),
@@ -50,6 +57,7 @@ export class MigrationJobsService {
       processedRows: 0,
       log: [],
       createdAt: Date.now(),
+      organizationId,
     };
     this.jobs.set(job.id, job);
     return job;

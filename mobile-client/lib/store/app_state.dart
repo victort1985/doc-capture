@@ -56,17 +56,21 @@ class AppState extends ChangeNotifier {
     navStyle = await _settingsService.getNavStyle();
 
     // Apply the saved server address *before* doing anything else that
-    // talks to the network — otherwise restoreToken()/fetchCurrentUser()
-    // below would hit whatever default baseUrl ApiService was built with.
+    // talks to the network.
     connectionConfig = await _settingsService.getConnectionConfig();
     await _applyConnectionConfig();
 
-    await _authService.restoreToken();
-    currentUser = await _authService.fetchCurrentUser();
-    if (currentUser != null) {
-      await _pushNotificationsService.initAndRegister();
-      await _loadSwitchableOrgs();
-    }
+    // Deliberately no token-restore/silent-resume here — see
+    // AuthService.login()'s own doc comment for why: every fresh app
+    // start (the process actually being relaunched, not just resumed
+    // from the background) goes through the real login screen, which
+    // is the only place the multi-org picker
+    // (OrganizationPickerGateScreen) gets shown. currentUser stays
+    // null here, so main.dart's `loggedIn ? RootScreen() :
+    // LoginScreen()` check correctly sends every cold start to the
+    // login screen — login_screen.dart's own saved-credentials
+    // prefill (a separate, still-persisted convenience — see
+    // AuthService.saveCredentials) keeps this fast in practice.
 
     initialized = true;
     notifyListeners();

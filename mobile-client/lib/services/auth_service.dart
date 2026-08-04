@@ -79,18 +79,36 @@ class AuthService {
       if (totpCode != null) 'totpCode': totpCode,
     });
     final token = response['token'] as String;
-    await _storage.write(key: _tokenKey, value: token);
+    // Deliberately NOT persisted to secure storage — kept only in
+    // ApiService's in-memory field for the lifetime of this app
+    // process. Closing the app (the OS actually killing the process,
+    // not just backgrounding it — a brief app-switch keeps this same
+    // AppState instance alive in memory, so the session survives
+    // that just fine) means there's nothing left to silently resume
+    // from, so every fresh app start goes through this login screen
+    // again rather than jumping straight to RootScreen. That's what
+    // actually makes the multi-org picker (OrganizationPickerGateScreen)
+    // reliable: it only lives in this login flow, and a silently
+    // resumed session used to skip it entirely (see main.dart's own
+    // `loggedIn ? RootScreen() : LoginScreen()` check, which used to
+    // go straight to RootScreen whenever a persisted token restored
+    // successfully — "works once every N times" was every time a
+    // session silently resumed instead of going through a real login).
+    // saveCredentials below still keeps username/password prefilled
+    // for a fast tap-to-log-in, so this doesn't mean retyping a
+    // password every time — just one real login flow per app launch.
     _api.setToken(token);
     return AuthUser.fromJson(response['user'] as Map<String, dynamic>);
   }
 
-  /// "Remember me" — same secure storage as the JWT token itself (not
-  /// SharedPreferences, which isn't encrypted at rest). This is a
-  /// convenience separate from the token-based auto-login that already
-  /// exists (restoreToken + fetchCurrentUser): that one silently resumes
-  /// a still-valid session, while this one is for when there's no valid
-  /// session to resume — the fields are just pre-filled instead of
-  /// re-typing a password from scratch.
+  /// "Remember me" — same secure storage as the JWT token used to be
+  /// kept in (the token itself no longer persists across app
+  /// restarts — see login()'s own doc comment). This is what makes
+  /// re-entering the login screen after closing the app still fast:
+  /// username/password are prefilled (and biometric unlock, if
+  /// enabled, submits them automatically) rather than the person
+  /// retyping a password every time — just without silently skipping
+  /// the login screen itself the way the old token-resume did.
   Future<void> saveCredentials(String username, String password) async {
     await _storage.write(key: _savedUsernameKey, value: username);
     await _storage.write(key: _savedPasswordKey, value: password);
@@ -108,18 +126,12 @@ class AuthService {
     await _storage.delete(key: _savedPasswordKey);
   }
 
-  Future<String?> restoreToken() async {
-    final token = await _storage.read(key: _tokenKey);
-    if (token != null) _api.setToken(token);
-    return token;
-  }
-
-  /// Asks the server who the currently-set token belongs to. Used right
-  /// after [restoreToken] to actually resume a session — restoring the
-  /// token alone only sets the Authorization header, it doesn't tell the
-  /// app who's logged in, which is why auto-login wasn't working before.
-  /// Returns null (and clears the stored token) if it's missing, expired,
-  /// or the server is unreachable, so the user just sees the login screen.
+  /// Asks the server who the currently-set token belongs to. Used to
+  /// resume a session started earlier THIS SAME app process — never
+  /// across a real app restart, since login() above deliberately
+  /// doesn't persist the token to survive one (see that method's own
+  /// doc comment for why). Returns null if there's no token set, or
+  /// if the server says it's invalid/expired.
   Future<AuthUser?> fetchCurrentUser() async {
     if (_api.token == null) return null;
     try {

@@ -138,7 +138,7 @@ export class DataMigrationService {
     const cached = dto.fileToken ? this.fileCache.get(dto.fileToken) : undefined;
     if (!cached) throw new BadRequestException('This file has expired or was never analyzed — please upload it again.');
 
-    const job = this.jobs.create();
+    const job = this.jobs.create(organizationId);
     this.jobs.setTotal(job.id, cached.rows.length);
     this.jobs.appendLog(job.id, `Starting import of ${cached.rows.length} rows as ${dto.category}…`);
 
@@ -198,7 +198,7 @@ export class DataMigrationService {
   }
 
   async startExport(entity: 'contacts' | 'warehouse', format: 'csv' | 'xlsx' | 'json', organizationId: number | null): Promise<string> {
-    const job = this.jobs.create();
+    const job = this.jobs.create(organizationId);
     this.runExportJob(job.id, entity, format, organizationId).catch((err) => {
       this.logger.error(`Export job ${job.id} crashed: ${err?.message}`);
       this.jobs.fail(job.id, err?.message ?? 'Unknown error');

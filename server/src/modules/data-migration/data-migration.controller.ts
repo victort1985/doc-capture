@@ -44,9 +44,12 @@ export class DataMigrationController {
   }
 
   @Get('jobs/:id')
-  getJobStatus(@Param('id') id: string) {
+  getJobStatus(@Param('id') id: string, @CurrentUser() user: ReqUser) {
     const job = this.jobs.get(id);
     if (!job) throw new NotFoundException('Job not found or expired');
+    if (user.organizationId != null && job.organizationId !== user.organizationId) {
+      throw new NotFoundException('Job not found or expired');
+    }
     // Never send the file buffer itself over the status-polling
     // endpoint — that's what /jobs/:id/download is for; keeping it
     // out here is what makes the frequent poll cheap.
@@ -56,9 +59,12 @@ export class DataMigrationController {
   }
 
   @Get('jobs/:id/download')
-  download(@Param('id') id: string, @Res() res: Response) {
+  download(@Param('id') id: string, @CurrentUser() user: ReqUser, @Res() res: Response) {
     const job = this.jobs.get(id);
     if (!job || !job.fileBuffer) throw new NotFoundException('File not found or expired');
+    if (user.organizationId != null && job.organizationId !== user.organizationId) {
+      throw new NotFoundException('File not found or expired');
+    }
     res.set({
       'Content-Type': job.fileMimeType || 'application/octet-stream',
       'Content-Disposition': `attachment; filename="${job.fileName}"`,
