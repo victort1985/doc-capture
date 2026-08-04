@@ -48,12 +48,40 @@ export class OrdersController {
 
   /** Manual capture — the person already produced a single-page PDF
    * via the same scan flow used elsewhere in the app (camera/gallery/
-   * file -> crop & filter -> PDF bytes) and just uploads it here. */
+   * file -> crop & filter -> PDF bytes) and just uploads it here.
+   * Kept for any existing caller — the admin panel's own "Create"
+   * flow now uses parseUpload + confirmCreate below instead, so the
+   * person gets a chance to review/correct the OCR-extracted fields
+   * before anything is actually saved. */
   @Post()
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
   async create(@UploadedFile() file: { buffer: Buffer } | undefined, @CurrentUser() user: RequestUser) {
     if (!file) throw new BadRequestException('No file provided');
     const order = await this.ordersService.createManual(user.id, user.organizationId, file.buffer);
+    return this.ordersService.toListItem(order);
+  }
+
+  /** Step 1 of the review flow: runs OCR, returns extracted fields
+   * plus a short-lived token — nothing is saved yet. */
+  @Post('parse')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
+  async parse(@UploadedFile() file: { buffer: Buffer } | undefined, @CurrentUser() user: RequestUser) {
+    if (!file) throw new BadRequestException('No file provided');
+    return this.ordersService.parseUpload(user.id, file.buffer);
+  }
+
+  /** Step 2: creates the order from the token issued by /parse plus
+   * whatever fields the person confirmed (possibly hand-corrected). */
+  @Post('confirm')
+  async confirm(
+    @Body() body: { token: string; orderDate: string; organization: string; poNumberLast4: string },
+    @CurrentUser() user: RequestUser,
+  ) {
+    const order = await this.ordersService.confirmCreate(user.id, user.organizationId, body.token, {
+      orderDate: body.orderDate,
+      organization: body.organization,
+      poNumberLast4: body.poNumberLast4,
+    });
     return this.ordersService.toListItem(order);
   }
 

@@ -331,6 +331,7 @@ function PaymentMethodFields({ method, setMethod, details, setDetails }: {
 
 function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { t } = useTranslation();
+  const [date, setDate] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
@@ -338,14 +339,47 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
   const [details, setDetails] = useState<PayMethodDetails>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [parsing, setParsing] = useState(false);
+
+  /** Uploads the receipt to OCR extraction (POST /expenses/parse-receipt
+   * — see that endpoint's own doc comment) and pre-fills whatever it
+   * confidently found. Nothing here is treated as final — every field
+   * stays editable, and OCR can come back with nulls for anything it
+   * couldn't read. The same File is kept in state and attached to the
+   * expense for real once it's actually created below, rather than
+   * uploading it a second time. */
+  async function handleFileSelect(file: File) {
+    setReceiptFile(file);
+    setParsing(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${BASE_URL}/expenses/parse-receipt`, {
+        method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: formData,
+      });
+      if (!res.ok) throw new Error('Parse failed');
+      const parsed: { amount: number | null; date: string | null; vendor: string | null } = await res.json();
+      if (parsed.amount != null) setAmount(String(parsed.amount));
+      if (parsed.date) setDate(parsed.date);
+      if (parsed.vendor && !description.trim()) setDescription(parsed.vendor);
+    } catch (e) {
+      // OCR is a convenience, not a requirement — if it fails, the
+      // person just fills the form by hand, same as before this
+      // feature existed. Not worth blocking or alarming over.
+      console.warn('Receipt OCR failed:', e);
+    } finally {
+      setParsing(false);
+    }
+  }
 
   async function submit() {
     setSaving(true); setError(null);
     try {
-      await apiFetch('/expenses', {
+      const res = await apiFetch<{ id: number }>('/expenses', {
         method: 'POST',
         body: JSON.stringify({
-          description, category: category || undefined, amount: Number(amount), method,
+          date: date || undefined, description, category: category || undefined, amount: Number(amount), method,
           cardLast4: details.cardLast4 || undefined,
           cardType: details.cardType || undefined,
           approvalNumber: details.approvalNumber || undefined,
@@ -358,6 +392,13 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
           referenceNumber: details.referenceNumber || undefined,
         }),
       });
+      if (receiptFile) {
+        const formData = new FormData();
+        formData.append('file', receiptFile);
+        await fetch(`${BASE_URL}/expenses/${res.id}/receipt`, {
+          method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: formData,
+        }).catch(() => {}); // the expense itself is already saved — a failed receipt attach shouldn't block that
+      }
       onCreated();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create expense');
@@ -371,6 +412,20 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
           <h2 style={{ margin: 0 }}>{t('expenses.newExpense')}</h2>
           <button className="ghost" onClick={onClose}><X size={16} /></button>
         </div>
+
+        <label className="ghost" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14, padding: '10px 0', border: '1px dashed var(--border)', borderRadius: 8 }}>
+          <Upload size={15} />
+          {parsing ? t('expenses.scanningReceipt') : receiptFile ? receiptFile.name : t('expenses.uploadReceiptToAutofill')}
+          <input
+            type="file"
+            accept="image/*,.pdf"
+            style={{ display: 'none' }}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
+          />
+        </label>
+
+        <label>{t('expenses.date')}</label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
         <label>{t('expenses.description')}</label>
         <input value={description} onChange={e => setDescription(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
         <label>{t('expenses.category')}</label>

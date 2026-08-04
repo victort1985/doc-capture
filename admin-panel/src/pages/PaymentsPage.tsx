@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, FileText, Building2, CreditCard, Banknote, ArrowLeftRight, Receipt, Smartphone, Repeat, ShieldCheck, PackageOpen, Settings } from 'lucide-react';
+import { RefreshCw, FileText, Building2, CreditCard, Banknote, ArrowLeftRight, Receipt, Smartphone, Repeat, ShieldCheck, PackageOpen, Settings, Plus, X } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import SettingsModal from '../components/SettingsModal';
 import PaymentSettingsPage from './PaymentSettingsPage';
+import BankBranchPicker, { BankNamePicker } from '../components/BankBranchPicker';
 
 interface PaymentRow {
   id: number;
@@ -18,11 +19,129 @@ interface PaymentRow {
   createdAt: string;
 }
 interface Org { id: number; name: string; }
+type PayMethod = PaymentRow['method'];
+interface PayMethodDetails {
+  cardLast4?: string; cardType?: string; approvalNumber?: string; installments?: string;
+  checkNumber?: string; bankName?: string; branchNumber?: string; accountNumber?: string; checkDate?: string; referenceNumber?: string;
+}
 
 const methodIcon: Record<string, JSX.Element> = {
   credit_card: <CreditCard size={15} />, cash: <Banknote size={15} />, bank_transfer: <ArrowLeftRight size={15} />,
   check: <Receipt size={15} />, bit: <Smartphone size={15} />, standing_order: <Repeat size={15} />,
 };
+
+function PaymentMethodFields({ method, setMethod, details, setDetails }: {
+  method: PayMethod; setMethod: (m: PayMethod) => void;
+  details: PayMethodDetails; setDetails: (d: PayMethodDetails) => void;
+}) {
+  const { t } = useTranslation();
+  const set = (patch: Partial<PayMethodDetails>) => setDetails({ ...details, ...patch });
+
+  return (
+    <>
+      <label>{t('payments.method')}</label>
+      <select value={method} onChange={(e) => setMethod(e.target.value as PayMethod)} style={{ width: '100%', marginBottom: 10 }}>
+        <option value="cash">{t('payments.methodCash')}</option>
+        <option value="credit_card">{t('payments.methodCreditCard')}</option>
+        <option value="bank_transfer">{t('payments.methodBankTransfer')}</option>
+        <option value="check">{t('payments.methodCheck')}</option>
+        <option value="bit">{t('payments.methodBit')}</option>
+        <option value="standing_order">{t('payments.methodStandingOrder')}</option>
+      </select>
+
+      {method === 'credit_card' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+          <input placeholder={t('payments.cardLast4')} value={details.cardLast4 ?? ''} onChange={(e) => set({ cardLast4: e.target.value })} maxLength={4} />
+          <input placeholder={t('payments.cardType')} value={details.cardType ?? ''} onChange={(e) => set({ cardType: e.target.value })} />
+          <input placeholder={t('payments.approvalNumber')} value={details.approvalNumber ?? ''} onChange={(e) => set({ approvalNumber: e.target.value })} />
+          <input type="number" placeholder={t('payments.installments')} value={details.installments ?? ''} onChange={(e) => set({ installments: e.target.value })} />
+        </div>
+      )}
+      {method === 'check' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+          <input placeholder={t('payments.checkNumber')} value={details.checkNumber ?? ''} onChange={(e) => set({ checkNumber: e.target.value })} />
+          <BankBranchPicker
+            bankName={details.bankName ?? ''}
+            branchNumber={details.branchNumber ?? ''}
+            onChange={({ bankName, branchNumber }) => set({ bankName, branchNumber })}
+          />
+          <input placeholder={t('payments.accountNumber')} value={details.accountNumber ?? ''} onChange={(e) => set({ accountNumber: e.target.value })} />
+          <input type="date" placeholder={t('payments.checkDate')} value={details.checkDate ?? ''} onChange={(e) => set({ checkDate: e.target.value })} />
+        </div>
+      )}
+      {method === 'bank_transfer' && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+          <BankNamePicker bankName={details.bankName ?? ''} onChange={(bankName) => set({ bankName })} />
+          <input placeholder={t('payments.referenceNumber')} value={details.referenceNumber ?? ''} onChange={(e) => set({ referenceNumber: e.target.value })} />
+        </div>
+      )}
+      {(method === 'bit' || method === 'standing_order') && (
+        <input placeholder={t('payments.referenceNumber')} value={details.referenceNumber ?? ''} onChange={(e) => set({ referenceNumber: e.target.value })} style={{ width: '100%', marginBottom: 10 }} />
+      )}
+    </>
+  );
+}
+
+function CreatePaymentModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { t } = useTranslation();
+  const [clientName, setClientName] = useState('');
+  const [date, setDate] = useState('');
+  const [amount, setAmount] = useState('');
+  const [method, setMethod] = useState<PayMethod>('cash');
+  const [details, setDetails] = useState<PayMethodDetails>({});
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    setSaving(true); setError(null);
+    try {
+      await apiFetch('/payments', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientName, date: date || undefined, amount: Number(amount), method, notes: notes || undefined,
+          cardLast4: details.cardLast4 || undefined,
+          cardType: details.cardType || undefined,
+          approvalNumber: details.approvalNumber || undefined,
+          installments: details.installments ? Number(details.installments) : undefined,
+          checkNumber: details.checkNumber || undefined,
+          bankName: details.bankName || undefined,
+          branchNumber: details.branchNumber || undefined,
+          accountNumber: details.accountNumber || undefined,
+          checkDate: details.checkDate || undefined,
+          referenceNumber: details.referenceNumber || undefined,
+        }),
+      });
+      onCreated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create payment');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={onClose}>
+      <div className="card" style={{ width: 440 }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>{t('payments.newPayment')}</h2>
+          <button className="ghost" onClick={onClose}><X size={16} /></button>
+        </div>
+        <label>{t('payments.client')}</label>
+        <input value={clientName} onChange={e => setClientName(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('payments.date')}</label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('payments.amount')}</label>
+        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <PaymentMethodFields method={method} setMethod={setMethod} details={details} setDetails={setDetails} />
+        <label>{t('payments.notes')}</label>
+        <input value={notes} onChange={e => setNotes(e.target.value)} style={{ width: '100%', marginBottom: 14 }} />
+        {error && <div className="error-banner" style={{ marginBottom: 10 }}>{error}</div>}
+        <button type="button" disabled={saving || !clientName.trim() || !amount} onClick={submit} style={{ width: '100%' }}>
+          {saving ? t('common.saving') : t('payments.submit')}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function PaymentsPage() {
   const { t } = useTranslation();
@@ -33,6 +152,7 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState<PaymentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const methodLabel: Record<string, string> = {
@@ -109,10 +229,14 @@ export default function PaymentsPage() {
               </select>
             </div>
           )}
+          <button type="button" onClick={() => setShowCreate(true)}><Plus size={15} /> {t('payments.newPayment')}</button>
           <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('payments.loading') : t('payments.refresh')}</button>
           <button type="button" className="ghost" onClick={() => setShowSettings(true)} title={t('documentSeries.numbering')}><Settings size={15} /></button>
         </div>
       </div>
+      {showCreate && (
+        <CreatePaymentModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />
+      )}
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)}>
           <PaymentSettingsPage />

@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PDFDocument } from 'pdf-lib';
@@ -21,8 +22,28 @@ export interface OrderListItem {
   createdAt: Date;
 }
 
+interface PendingUpload { buffer: Buffer; userId: number; expiresAt: number; }
+
 @Injectable()
 export class OrdersService {
+  // Short-lived cache for the upload -> preview -> confirm flow (see
+  // parseUpload/confirmCreate below): the file is only uploaded ONCE,
+  // held here just long enough for the person to review/correct the
+  // OCR-extracted fields, then discarded either way (confirmed into a
+  // real Order, or left to expire if abandoned). Same "in-memory,
+  // TTL-swept" pattern as MigrationJobsService — a real disk/DB-backed
+  // job store would be overkill for something this short-lived and
+  // low-volume (one person, one file, a few minutes at most).
+  private readonly pendingUploads = new Map<string, PendingUpload>();
+  private readonly PENDING_TTL_MS = 15 * 60 * 1000; // 15 minutes — plenty to review one small form
+
+  private sweepExpiredUploads(): void {
+    const now = Date.now();
+    for (const [token, entry] of this.pendingUploads) {
+      if (entry.expiresAt < now) this.pendingUploads.delete(token);
+    }
+  }
+
   constructor(
     @InjectRepository(Order)
     private readonly ordersRepo: Repository<Order>,
@@ -77,6 +98,48 @@ export class OrdersService {
    * the PO as a PDF; this parses it the same way an emailed one would
    * be, but lets the fields be corrected immediately since there's no
    * automatic retry loop the way there is for the inbox poller. */
+  /** Step 1 of the upload -> preview -> confirm flow: runs OCR on the
+   * uploaded file and returns what it extracted WITHOUT creating
+   * anything yet, so the admin panel can show an editable form
+   * pre-filled with the parsed values rather than silently committing
+   * whatever OCR guessed. The file itself is cached server-side (see
+   * pendingUploads) so it doesn't need to be uploaded a second time
+   * at step 2. */
+  async parseUpload(userId: number, pdfBuffer: Buffer): Promise<{ token: string; fields: ParsedOrderFields }> {
+    this.sweepExpiredUploads();
+    const parsed = await this.parserService.parse(pdfBuffer);
+    const fields: ParsedOrderFields = {
+      orderDate: parsed?.orderDate || new Date().toISOString().slice(0, 10),
+      organization: parsed?.organization || '',
+      poNumberLast4: parsed?.poNumberLast4 || '',
+    };
+    const token = randomBytes(16).toString('hex');
+    this.pendingUploads.set(token, { buffer: pdfBuffer, userId, expiresAt: Date.now() + this.PENDING_TTL_MS });
+    return { token, fields };
+  }
+
+  /** Step 2: creates the order using the (possibly hand-corrected)
+   * fields the person confirmed, reusing the file cached at step 1 —
+   * never re-parses, since the whole point of the review step was to
+   * let a human have the final say over what OCR guessed. */
+  async confirmCreate(userId: number, tenantId: number | null, token: string, fields: ParsedOrderFields): Promise<Order> {
+    this.sweepExpiredUploads();
+    const pending = this.pendingUploads.get(token);
+    if (!pending) throw new BadRequestException('This upload has expired or was already used — upload the file again.');
+    if (pending.userId !== userId) throw new BadRequestException('This upload does not belong to you.');
+    this.pendingUploads.delete(token);
+
+    const storagePath = await this.writeOrderPdf(fields, pending.buffer);
+    const order = this.ordersRepo.create({
+      ...fields,
+      source: OrderSource.MANUAL,
+      storagePath,
+      tenant: tenantId != null ? ({ id: tenantId } as any) : undefined,
+      createdBy: { id: userId } as any,
+    });
+    return this.ordersRepo.save(order);
+  }
+
   async createManual(
     userId: number,
     tenantId: number | null,
