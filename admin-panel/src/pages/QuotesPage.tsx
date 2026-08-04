@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Send, FileText, Building2, Settings, Bookmark, BookmarkX, X } from 'lucide-react';
+import { RefreshCw, Send, FileText, Building2, Settings, Bookmark, BookmarkX, X, Plus } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
@@ -40,6 +40,7 @@ export default function QuotesPage() {
   const [template, setTemplate] = useState('classic');
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const statusLabel: Record<string, string> = {
@@ -134,10 +135,14 @@ export default function QuotesPage() {
               </select>
             </div>
           )}
+          <button type="button" onClick={() => setShowCreate(true)}><Plus size={15} /> {t('quotes.newQuote')}</button>
           <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('quotes.loading') : t('quotes.refresh')}</button>
           <button type="button" className="ghost" onClick={() => setShowSettings(true)} title={t('documentSeries.numbering')}><Settings size={15} /></button>
         </div>
       </div>
+      {showCreate && (
+        <CreateQuoteModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />
+      )}
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)}>
           <QuoteSettingsPage />
@@ -225,6 +230,92 @@ function SaveAsTemplateModal({ quote, onClose, onSubmit }: { quote: QuoteRow; on
         <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: '100%', marginBottom: 14 }} autoFocus />
         <button type="button" disabled={!name.trim()} onClick={() => onSubmit(name.trim())} style={{ width: '100%' }}>
           {t('quotes.saveAsTemplate')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Line-item editor shared shape (description/quantity/unitPrice) —
+ * matches QuoteItem/InvoiceItem exactly, since both documents use the
+ * identical line shape server-side (see CreateQuoteDto/CreateInvoiceDto). */
+function ItemsEditor({ items, setItems, t }: {
+  items: QuoteItem[]; setItems: (items: QuoteItem[]) => void; t: (key: string) => string;
+}) {
+  function setItem(i: number, patch: Partial<QuoteItem>) {
+    setItems(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  }
+  const total = items.reduce((sum, it) => sum + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0);
+
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <label>{t('quotes.items')}</label>
+      {items.map((item, i) => (
+        <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
+          <input value={item.description} onChange={e => setItem(i, { description: e.target.value })} placeholder={t('quotes.itemDescription')} style={{ flex: 2 }} />
+          <input type="number" min={0} value={item.quantity} onChange={e => setItem(i, { quantity: Number(e.target.value) })} style={{ width: 60 }} />
+          <input type="number" min={0} value={item.unitPrice} onChange={e => setItem(i, { unitPrice: Number(e.target.value) })} style={{ width: 80 }} />
+          <button type="button" onClick={() => setItems(items.filter((_, j) => j !== i))} disabled={items.length <= 1}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}><X size={14} /></button>
+        </div>
+      ))}
+      <button type="button" onClick={() => setItems([...items, { description: '', quantity: 1, unitPrice: 0 }])} style={{ fontSize: 12, marginTop: 4 }}>
+        + {t('quotes.addItem')}
+      </button>
+      <div style={{ textAlign: 'right', fontWeight: 700, marginTop: 8, fontSize: 14 }}>
+        {t('quotes.total')}: ₪{total.toFixed(2)}
+      </div>
+    </div>
+  );
+}
+
+function CreateQuoteModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { t } = useTranslation();
+  const [clientName, setClientName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [date, setDate] = useState('');
+  const [items, setItems] = useState<QuoteItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validItems = items.filter(it => it.description.trim());
+
+  async function submit() {
+    setSaving(true); setError(null);
+    try {
+      await apiFetch('/quotes', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientName, clientEmail: clientEmail || undefined, date: date || undefined,
+          items: validItems, notes: notes || undefined,
+        }),
+      });
+      onCreated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create quote');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={onClose}>
+      <div className="card" style={{ width: 480, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>{t('quotes.newQuote')}</h2>
+          <button className="ghost" onClick={onClose}><X size={16} /></button>
+        </div>
+        <label>{t('quotes.client')}</label>
+        <input value={clientName} onChange={e => setClientName(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('quotes.clientEmail')}</label>
+        <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('quotes.date')}</label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <ItemsEditor items={items} setItems={setItems} t={t} />
+        <label>{t('quotes.notes')}</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} style={{ width: '100%', minHeight: 50, marginBottom: 14 }} />
+        {error && <div className="error-banner" style={{ marginBottom: 10 }}>{error}</div>}
+        <button type="button" disabled={saving || !clientName.trim() || validItems.length === 0} onClick={submit} style={{ width: '100%' }}>
+          {saving ? t('common.saving') : t('quotes.submit')}
         </button>
       </div>
     </div>

@@ -71,20 +71,20 @@ export default function OrgSwitcher() {
   const label = activeOrg ? activeOrg.name : t('orgSwitcher.superAdmin');
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', minWidth: 0 }}>
       <button
         type="button"
         className="ghost"
         onClick={() => setOpen((v) => !v)}
         disabled={switching}
-        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#fff' }}
+        style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: '#fff', minWidth: 0 }}
         title={t('orgSwitcher.title')}
       >
-        <Building2 size={14} />
-        <span style={{ maxWidth: 140, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: activeOrg ? 700 : 400 }}>
+        <Building2 size={14} style={{ flexShrink: 0 }} />
+        <span style={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: activeOrg ? 700 : 400 }}>
           {label}
         </span>
-        <ChevronDown size={12} />
+        <ChevronDown size={12} style={{ flexShrink: 0 }} />
       </button>
 
       {open && (

@@ -274,10 +274,13 @@ export default function Layout() {
           <span className="mobile-brand-name">VIXOR <span style={{ color: '#F2701C', fontWeight: 300 }}>ERP</span></span>
         </div>
 
-        <button className="ghost" onClick={() => setSettingsOpen(true)} aria-label={t('settings.title')} title={t('settings.title')} style={{ marginInlineEnd: 4 }}>
+        <div style={{ flex: '1 1 auto', minWidth: 0, display: 'flex', justifyContent: 'flex-end' }}>
+          <OrgSwitcher />
+        </div>
+
+        <button className="ghost" onClick={() => setSettingsOpen(true)} aria-label={t('settings.title')} title={t('settings.title')} style={{ marginInlineEnd: 4, flexShrink: 0 }}>
           <Settings size={18} />
         </button>
-        <OrgSwitcher />
         <div className="avatar" aria-label={`User: ${user?.username}`}>{initial}</div>
       </header>
 

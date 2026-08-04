@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Send, CheckCircle2, FileText, Building2, Settings } from 'lucide-react';
+import { RefreshCw, Send, CheckCircle2, FileText, Building2, Settings, Plus, X } from 'lucide-react';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
@@ -39,6 +39,7 @@ export default function InvoicesPage() {
   const [template, setTemplate] = useState('classic');
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCreate, setShowCreate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [decisionInvoiceId, setDecisionInvoiceId] = useState<number | null>(null);
   const [submittingDecision, setSubmittingDecision] = useState(false);
@@ -129,10 +130,14 @@ export default function InvoicesPage() {
               </select>
             </div>
           )}
+          <button type="button" onClick={() => setShowCreate(true)}><Plus size={15} /> {t('invoices.newInvoice')}</button>
           <button type="button" onClick={load} disabled={loading}><RefreshCw size={15} /> {loading ? t('invoices.loading') : t('invoices.refresh')}</button>
           <button type="button" className="ghost" onClick={() => setShowSettings(true)} title={t('documentSeries.numbering')}><Settings size={15} /></button>
         </div>
       </div>
+      {showCreate && (
+        <CreateInvoiceModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />
+      )}
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)}>
           <InvoiceSettingsPage />
@@ -227,6 +232,99 @@ export default function InvoicesPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InvoiceItemsEditor({ items, setItems, t }: {
+  items: InvoiceItem[]; setItems: (items: InvoiceItem[]) => void; t: (key: string) => string;
+}) {
+  function setItem(i: number, patch: Partial<InvoiceItem>) {
+    setItems(items.map((it, j) => (j === i ? { ...it, ...patch } : it)));
+  }
+  const total = items.reduce((sum, it) => sum + (Number(it.quantity) || 0) * (Number(it.unitPrice) || 0), 0);
+
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <label>{t('invoices.items')}</label>
+      {items.map((item, i) => (
+        <div key={i} style={{ display: 'flex', gap: 6, marginBottom: 4, alignItems: 'center' }}>
+          <input value={item.description} onChange={e => setItem(i, { description: e.target.value })} placeholder={t('invoices.itemDescription')} style={{ flex: 2 }} />
+          <input type="number" min={0} value={item.quantity} onChange={e => setItem(i, { quantity: Number(e.target.value) })} style={{ width: 60 }} />
+          <input type="number" min={0} value={item.unitPrice} onChange={e => setItem(i, { unitPrice: Number(e.target.value) })} style={{ width: 80 }} />
+          <button type="button" onClick={() => setItems(items.filter((_, j) => j !== i))} disabled={items.length <= 1}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}><X size={14} /></button>
+        </div>
+      ))}
+      <button type="button" onClick={() => setItems([...items, { description: '', quantity: 1, unitPrice: 0 }])} style={{ fontSize: 12, marginTop: 4 }}>
+        + {t('invoices.addItem')}
+      </button>
+      <div style={{ textAlign: 'right', fontWeight: 700, marginTop: 8, fontSize: 14 }}>
+        {t('invoices.total')}: ₪{total.toFixed(2)}
+      </div>
+    </div>
+  );
+}
+
+function CreateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const { t } = useTranslation();
+  const [clientName, setClientName] = useState('');
+  const [clientEmail, setClientEmail] = useState('');
+  const [clientTaxId, setClientTaxId] = useState('');
+  const [date, setDate] = useState('');
+  const [vatCategory, setVatCategory] = useState<'standard' | 'zero' | 'exempt'>('standard');
+  const [items, setItems] = useState<InvoiceItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validItems = items.filter(it => it.description.trim());
+
+  async function submit() {
+    setSaving(true); setError(null);
+    try {
+      await apiFetch('/invoices', {
+        method: 'POST',
+        body: JSON.stringify({
+          clientName, clientEmail: clientEmail || undefined, clientTaxId: clientTaxId || undefined,
+          date: date || undefined, vatCategory, items: validItems, notes: notes || undefined,
+        }),
+      });
+      onCreated();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create invoice');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={onClose}>
+      <div className="card" style={{ width: 480, maxHeight: '90vh', overflowY: 'auto' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <h2 style={{ margin: 0 }}>{t('invoices.newInvoice')}</h2>
+          <button className="ghost" onClick={onClose}><X size={16} /></button>
+        </div>
+        <label>{t('invoices.client')}</label>
+        <input value={clientName} onChange={e => setClientName(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('invoices.clientEmail')}</label>
+        <input type="email" value={clientEmail} onChange={e => setClientEmail(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('invoices.clientTaxId')}</label>
+        <input value={clientTaxId} onChange={e => setClientTaxId(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('invoices.date')}</label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('invoices.vatCategory')}</label>
+        <select value={vatCategory} onChange={e => setVatCategory(e.target.value as any)} style={{ width: '100%', marginBottom: 10 }}>
+          <option value="standard">{t('invoices.vatStandard')}</option>
+          <option value="zero">{t('invoices.vatZero')}</option>
+          <option value="exempt">{t('invoices.vatExempt')}</option>
+        </select>
+        <InvoiceItemsEditor items={items} setItems={setItems} t={t} />
+        <label>{t('invoices.notes')}</label>
+        <textarea value={notes} onChange={e => setNotes(e.target.value)} style={{ width: '100%', minHeight: 50, marginBottom: 14 }} />
+        {error && <div className="error-banner" style={{ marginBottom: 10 }}>{error}</div>}
+        <button type="button" disabled={saving || !clientName.trim() || validItems.length === 0} onClick={submit} style={{ width: '100%' }}>
+          {saving ? t('common.saving') : t('invoices.submit')}
+        </button>
+      </div>
     </div>
   );
 }

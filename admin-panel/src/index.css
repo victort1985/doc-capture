@@ -598,6 +598,7 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
     border: none;
     cursor: pointer;
     padding: 0;
+    flex-shrink: 0;
   }
   .hamburger:hover { background: rgba(255,255,255,0.12); }
 
@@ -605,6 +606,7 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
   }
   .mobile-brand-name {
     font-weight: 800;
