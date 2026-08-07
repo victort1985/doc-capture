@@ -9,9 +9,7 @@ import '../widgets/copyright_notice.dart';
 import '../widgets/stamp_mark.dart';
 import '../demo_consent_dialog.dart';
 import 'connection_settings_screen.dart';
-import 'root_screen.dart';
 import 'terms_of_service_gate_screen.dart';
-import 'organization_picker_gate_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -111,15 +109,15 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         await showDemoConsentDialog(context);
         if (!mounted) return;
       }
-      if (appState.switchableOrgs.length > 1) {
-        await Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => const OrganizationPickerGateScreen()),
-        );
-        if (!mounted) return;
-      }
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const RootScreen()),
-      );
+      // Nothing else to do here — main.dart's own top-level routing
+      // (which reactively watches AppState) takes it from here: it'll
+      // show OrganizationPickerGateScreen if there's more than one
+      // organization to choose from, or RootScreen directly if there's
+      // nothing to pick. See main.dart's own routing logic and
+      // AppState.orgConfirmed's doc comment for why this moved out of
+      // here — a manual push from this one call site was exactly the
+      // kind of single-point-of-failure that made the picker skippable
+      // before.
     } on DioException catch (e) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;

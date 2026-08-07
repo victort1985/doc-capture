@@ -33,6 +33,25 @@ class AppState extends ChangeNotifier {
   /// List of orgs this user may switch into (fetched after login).
   List<Map<String, dynamic>> switchableOrgs = [];
 
+  /// True once the person has EITHER confirmed an organization via
+  /// OrganizationPickerGateScreen, OR there was nothing to confirm
+  /// (0 or 1 switchable orgs). main.dart's own top-level routing
+  /// checks this — not just `currentUser != null` — before ever
+  /// showing RootScreen, which is what makes the picker genuinely
+  /// mandatory rather than a one-shot check that only ran from a
+  /// single call site (login_screen.dart's own submit handler) and
+  /// could silently be skipped by anything that set currentUser a
+  /// different way. Reset to false on every fresh login/logout so a
+  /// brand new session always re-evaluates this from scratch.
+  bool orgConfirmed = false;
+
+  /// Called once the person has picked an organization (or there was
+  /// only one option to begin with, so nothing to actually pick).
+  void confirmOrganization() {
+    orgConfirmed = true;
+    notifyListeners();
+  }
+
   ConnectionConfig connectionConfig =
       const ConnectionConfig(mode: ConnectionMode.direct, address: '');
 
@@ -129,10 +148,14 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> login(String username, String password, {String? totpCode}) async {
+    orgConfirmed = false; // fresh session — re-evaluate from scratch (see the field's own doc comment)
     currentUser = await _authService.login(username, password, totpCode: totpCode);
     await setLanguage(currentUser!.language);
     await _pushNotificationsService.initAndRegister();
     await _loadSwitchableOrgs();
+    // Nothing to actually pick — auto-confirmed so routing doesn't
+    // wait on a screen the person would have no real choice on.
+    if (switchableOrgs.length <= 1) orgConfirmed = true;
   }
 
   Future<void> _loadSwitchableOrgs() async {
@@ -171,6 +194,7 @@ class AppState extends ChangeNotifier {
     activeOrganizationId = null;
     activeOrganizationName = null;
     switchableOrgs = [];
+    orgConfirmed = false;
     notifyListeners();
   }
 }

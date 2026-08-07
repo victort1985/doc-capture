@@ -26,6 +26,7 @@ import 'store/app_state.dart';
 import 'screens/login_screen.dart';
 import 'screens/root_screen.dart';
 import 'screens/eula_screen.dart';
+import 'screens/organization_picker_gate_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
@@ -127,11 +128,28 @@ class _AppRootState extends State<_AppRoot> {
             return const Scaffold(body: Center(child: CircularProgressIndicator()));
           }
           final loggedIn = appState.currentUser != null;
+          // The organization picker is enforced HERE, at the top-level
+          // routing decision — not just as a one-shot check inside
+          // login_screen.dart's own submit handler (the earlier,
+          // fragile approach: it only ran from that single call site,
+          // and anything else that set currentUser a different way —
+          // like the token-persistence auto-resume this app used to
+          // have — silently skipped it). Now: logged in but
+          // orgConfirmed is still false means RootScreen is
+          // structurally unreachable, no matter how currentUser got
+          // set, until AppState.confirmOrganization() has actually
+          // been called (see that field's own doc comment in
+          // app_state.dart).
+          final needsOrgPick = loggedIn && !appState.orgConfirmed;
           // Show EULA before login — once accepted it's stored in SharedPreferences
           return LicenseGate(
             child: _EulaGate(
               languageCode: appState.languageCode,
-              child: loggedIn ? const RootScreen() : const LoginScreen(),
+              child: !loggedIn
+                  ? const LoginScreen()
+                  : needsOrgPick
+                      ? const OrganizationPickerGateScreen()
+                      : const RootScreen(),
             ),
           );
         },

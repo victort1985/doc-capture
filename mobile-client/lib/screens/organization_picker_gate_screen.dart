@@ -4,16 +4,20 @@ import '../app/theme.dart';
 import '../l10n/app_localizations.dart';
 import '../store/app_state.dart';
 
-/// Pushed right after a successful login (same pattern as
-/// TermsOfServiceGateScreen — see that file) whenever the account has
-/// access to more than one organization
-/// (AppState.switchableOrgs.length > 1). Blocks proceeding into the
-/// app until one organization is picked, so every document created
-/// this session (calls, quotes, invoices, everything) has a clear
-/// home from the very start rather than silently defaulting to
-/// whichever org happened to be active last time or the account's own
-/// primary org without the person realizing it. Not shown at all for
-/// an account with just one organization — nothing to pick.
+/// main.dart's own top-level route whenever the account is logged in
+/// but hasn't confirmed an organization yet (AppState.orgConfirmed is
+/// false) — see main.dart's routing logic and AppState.orgConfirmed's
+/// own doc comment for why this lives at that level rather than being
+/// pushed from login_screen.dart (an earlier version did exactly
+/// that, and it turned out to be skippable by anything that set
+/// currentUser a different way — this is what actually makes the
+/// picker mandatory). Blocks proceeding into the app until one
+/// organization is picked, so every document created this session
+/// (calls, quotes, invoices, everything) has a clear home from the
+/// very start rather than silently defaulting to whichever org
+/// happened to be active last time or the account's own primary org
+/// without the person realizing it. Auto-confirmed (never actually
+/// shown) for an account with 0 or 1 organizations — nothing to pick.
 class OrganizationPickerGateScreen extends StatefulWidget {
   const OrganizationPickerGateScreen({super.key});
 
@@ -46,7 +50,12 @@ class _OrganizationPickerGateScreenState extends State<OrganizationPickerGateScr
     if (id != null && name != null) {
       appState.switchOrganization(id, name);
     }
-    Navigator.of(context).pop();
+    // This screen is main.dart's own top-level route now (see that
+    // file's routing logic), not something pushed onto a navigator
+    // stack — "dismissing" it means flipping AppState.orgConfirmed,
+    // which makes main.dart's own reactive rebuild swap this out for
+    // RootScreen on its own. Nothing to pop here anymore.
+    appState.confirmOrganization();
   }
 
   @override
