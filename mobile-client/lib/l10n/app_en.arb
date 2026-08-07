@@ -74,6 +74,7 @@
   "historyEmpty": "No files uploaded yet",
   "settingsTitle": "Settings",
   "signOut": "Sign out",
+  "switchOrganization": "Switch organization",
   "connectionSettingsTitle": "Connection settings",
   "connectionModeLabel": "How to reach the server",
   "connectionModeDirect": "Direct address",

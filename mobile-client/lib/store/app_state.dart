@@ -52,6 +52,18 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Settings screen's "Switch organization" action — sends the person
+  /// back to OrganizationPickerGateScreen without logging them out.
+  /// Flipping orgConfirmed back to false is enough on its own: it's
+  /// main.dart's own top-level routing that reacts to this (see that
+  /// file), the same mechanism that makes the picker mandatory right
+  /// after login in the first place — no separate navigation call
+  /// needed here.
+  void returnToOrganizationPicker() {
+    orgConfirmed = false;
+    notifyListeners();
+  }
+
   ConnectionConfig connectionConfig =
       const ConnectionConfig(mode: ConnectionMode.direct, address: '');
 
@@ -132,6 +144,10 @@ class AppState extends ChangeNotifier {
     await _applyConnectionConfig();
     await _authService.logout();
     currentUser = null;
+    activeOrganizationId = null;
+    activeOrganizationName = null;
+    switchableOrgs = [];
+    orgConfirmed = false;
     notifyListeners();
   }
 

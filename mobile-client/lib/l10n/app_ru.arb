@@ -74,6 +74,7 @@
   "historyEmpty": "Пока нет загруженных файлов",
   "settingsTitle": "Настройки",
   "signOut": "Выйти",
+  "switchOrganization": "Сменить организацию",
   "connectionSettingsTitle": "Настройки подключения",
   "connectionModeLabel": "Способ подключения к серверу",
   "connectionModeDirect": "Прямой адрес",

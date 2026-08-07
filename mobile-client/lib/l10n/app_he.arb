@@ -74,6 +74,7 @@
   "historyEmpty": "אין עדיין קבצים שהועלו",
   "settingsTitle": "הגדרות",
   "signOut": "התנתק",
+  "switchOrganization": "החלף ארגון",
   "connectionSettingsTitle": "הגדרות חיבור",
   "connectionModeLabel": "אופן החיבור לשרת",
   "connectionModeDirect": "כתובת ישירה",

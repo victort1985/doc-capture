@@ -4,6 +4,7 @@ import '../l10n/app_localizations.dart';
 import '../store/app_state.dart';
 import 'connection_settings_screen.dart';
 import 'login_screen.dart';
+import 'organization_picker_gate_screen.dart';
 import 'terms_of_service_viewer_screen.dart';
 import 'two_factor_settings_screen.dart';
 
@@ -134,6 +135,29 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
+        if (appState.switchableOrgs.length > 1) ...[
+          OutlinedButton.icon(
+            icon: const Icon(Icons.apartment_outlined, size: 18, color: AppColors.primary),
+            label: Text(l10n.switchOrganization, style: const TextStyle(color: AppColors.primary)),
+            style: OutlinedButton.styleFrom(side: const BorderSide(color: AppColors.primary)),
+            onPressed: () {
+              // Same defensive pattern as the sign-out button right
+              // below: flip the state main.dart's own top-level
+              // routing reacts to, AND explicitly clear whatever
+              // nested navigator stack got this settings screen open
+              // in the first place — this screen is typically several
+              // pushes deep from RootScreen, and just relying on the
+              // reactive root swap alone could leave that old stack
+              // sitting underneath in a confusing state.
+              appState.returnToOrganizationPicker();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const OrganizationPickerGateScreen()),
+                (route) => false,
+              );
+            },
+          ),
+          const SizedBox(height: 10),
+        ],
         OutlinedButton.icon(
           icon: const Icon(Icons.logout, size: 18, color: AppColors.stamp),
           label: Text(l10n.signOut, style: const TextStyle(color: AppColors.stamp)),
