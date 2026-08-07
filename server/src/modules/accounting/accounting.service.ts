@@ -14,6 +14,7 @@ const DEFAULT_ACCOUNTS: { code: string; name: string; type: AccountType }[] = [
   { code: '1000', name: 'קופה (Cash)', type: AccountType.ASSET },
   { code: '1010', name: 'בנק (Bank)', type: AccountType.ASSET },
   { code: '1100', name: 'לקוחות (Accounts Receivable)', type: AccountType.ASSET },
+  { code: '1200', name: 'מע"מ תשומות (Input VAT Receivable)', type: AccountType.ASSET },
   { code: '2100', name: 'מע"מ עסקאות (VAT Payable)', type: AccountType.LIABILITY },
   { code: '2000', name: 'ספקים (Accounts Payable)', type: AccountType.LIABILITY },
   { code: '3000', name: 'הון עצמי (Owner\'s Equity)', type: AccountType.EQUITY },
@@ -205,7 +206,31 @@ export class AccountingService {
       };
     });
   }
-  /** Requirement #14 ("Excel") — everything AccountingService already
+  /** VAT summary (דוח תקופתי מע"מ) — output VAT collected on sales
+   * (net credit to account 2100) minus input VAT paid on deductible
+   * purchases (net debit to account 1200, the new account this same
+   * VAT-tracking feature added — see Expense.vatAmount's own doc
+   * comment). Positive netVat is owed to the Tax Authority for the
+   * period; negative means a refund is due. This is a simple summary
+   * for an accountant to sanity-check before filing the real bimonthly
+   * return — NOT a replacement for the actual Tax Authority "Open
+   * Format" export (see the tax-authority-export module), which is
+   * the file that gets submitted. */
+  async vatSummary(organizationId: number | null, from: string, to: string) {
+    const balances = await this.trialBalance(organizationId, from, to);
+    const outputRow = balances.find((b) => b.code === '2100');
+    const inputRow = balances.find((b) => b.code === '1200');
+    const outputVat = round2((outputRow?.credit ?? 0) - (outputRow?.debit ?? 0));
+    const inputVat = round2((inputRow?.debit ?? 0) - (inputRow?.credit ?? 0));
+    return {
+      period: { from, to },
+      outputVat,
+      inputVat,
+      netVat: round2(outputVat - inputVat),
+    };
+  }
+
+  /** Requirement #14 (\"Excel\") — everything AccountingService already
    * knows how to compute, as one workbook. Reuses trialBalance/
    * profitAndLoss/balanceSheet rather than re-deriving anything, so
    * the numbers in the spreadsheet always match what the admin panel

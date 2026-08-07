@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshCw, Send, FileText, Building2, Settings, Bookmark, BookmarkX, X, Plus } from 'lucide-react';
+import { RefreshCw, Send, FileText, Building2, Settings, Bookmark, BookmarkX, X, Plus, FileCheck2 } from 'lucide-react';
+import { CreateInvoiceModal } from './InvoicesPage';
+import type { InvoiceInitialData } from './InvoicesPage';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import DocumentPreviewThumbnail from '../components/DocumentPreviewThumbnail';
@@ -41,6 +43,7 @@ export default function QuotesPage() {
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [convertTarget, setConvertTarget] = useState<QuoteRow | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const statusLabel: Record<string, string> = {
@@ -143,6 +146,18 @@ export default function QuotesPage() {
       {showCreate && (
         <CreateQuoteModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />
       )}
+      {convertTarget && (
+        <CreateInvoiceModal
+          onClose={() => setConvertTarget(null)}
+          onCreated={() => { setConvertTarget(null); load(); }}
+          initialData={{
+            clientName: convertTarget.clientName,
+            clientEmail: convertTarget.clientEmail,
+            items: convertTarget.items,
+            quoteId: convertTarget.id,
+          } as InvoiceInitialData}
+        />
+      )}
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)}>
           <QuoteSettingsPage />
@@ -188,6 +203,9 @@ export default function QuotesPage() {
                   <button type="button" onClick={() => regeneratePdf(q.id)} title={t('quotes.regeneratePdf')} style={{ marginRight: 8 }}><RefreshCw size={15} /></button>
                   {view === 'quotes' && q.status === 'draft' && (
                     <button type="button" onClick={() => send(q.id)} title={t('quotes.markSent')} style={{ marginRight: 8 }}><Send size={15} /></button>
+                  )}
+                  {view === 'quotes' && (q.status === 'sent' || q.status === 'approved') && (
+                    <button type="button" onClick={() => setConvertTarget(q)} title={t('quotes.convertToInvoice')} style={{ marginRight: 8, color: 'var(--primary)' }}><FileCheck2 size={15} /></button>
                   )}
                   {view === 'quotes' && (
                     <button type="button" onClick={() => setSaveTemplateFor(q)} title={t('quotes.saveAsTemplate')} style={{ marginRight: 8 }}><Bookmark size={15} /></button>

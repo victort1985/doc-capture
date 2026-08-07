@@ -44,6 +44,12 @@ export class SupplierInvoice {
   @Column({ type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
   amount: number;
 
+  /** Same reasoning as Expense.vatAmount — how much of `amount` is
+   * VAT, nullable for suppliers who don't charge it (exempt dealers).
+   * See that field's own doc comment. */
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: numericTransformer })
+  vatAmount?: number | null;
+
   @Column({ type: 'timestamp', nullable: true })
   @Index()
   paidAt?: Date | null;

@@ -18,6 +18,12 @@ export class CreateExpenseDto {
   @IsPositive()
   amount: number;
 
+  /** See Expense.vatAmount's own doc comment — optional, how much of
+   * `amount` is VAT. */
+  @IsNumber()
+  @IsOptional()
+  vatAmount?: number;
+
   @IsEnum(PaymentMethod)
   @IsOptional()
   method?: PaymentMethod;

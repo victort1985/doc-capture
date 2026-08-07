@@ -34,6 +34,7 @@ export class ExpensesService {
       description: dto.description,
       category: dto.category,
       amount: dto.amount,
+      vatAmount: dto.vatAmount,
       method: dto.method ?? PaymentMethod.CASH,
       cardLast4: dto.cardLast4,
       cardType: dto.cardType,
@@ -52,7 +53,7 @@ export class ExpensesService {
 
     if (organizationId != null) {
       try {
-        await this.ledgerPostingService.postExpense(organizationId, saved.id, saved.date, saved.amount, saved.method, saved.description);
+        await this.ledgerPostingService.postExpense(organizationId, saved.id, saved.date, saved.amount, saved.method, saved.description, saved.vatAmount);
       } catch {
         // best-effort — a bookkeeping hiccup must never block recording the expense itself
       }
@@ -77,6 +78,7 @@ export class ExpensesService {
       dueDate: dto.dueDate,
       description: dto.description,
       amount: dto.amount,
+      vatAmount: dto.vatAmount,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
@@ -84,7 +86,7 @@ export class ExpensesService {
 
     if (organizationId != null) {
       try {
-        await this.ledgerPostingService.postSupplierInvoice(organizationId, saved.id, saved.date, saved.amount, saved.supplierName);
+        await this.ledgerPostingService.postSupplierInvoice(organizationId, saved.id, saved.date, saved.amount, saved.supplierName, saved.vatAmount);
       } catch {
         // best-effort
       }

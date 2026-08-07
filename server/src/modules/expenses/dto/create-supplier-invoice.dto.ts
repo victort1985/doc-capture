@@ -28,4 +28,10 @@ export class CreateSupplierInvoiceDto {
   @IsNumber()
   @IsPositive()
   amount: number;
+
+  /** See SupplierInvoice.vatAmount's own doc comment — optional, how
+   * much of `amount` is VAT. */
+  @IsNumber()
+  @IsOptional()
+  vatAmount?: number;
 }

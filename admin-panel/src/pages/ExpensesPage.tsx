@@ -335,12 +335,30 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
+  const [vatAmount, setVatAmount] = useState('');
+  const [vatTouched, setVatTouched] = useState(false);
   const [method, setMethod] = useState<PayMethod>('cash');
   const [details, setDetails] = useState<PayMethodDetails>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
+
+  // amount is always VAT-inclusive (matches a real receipt's printed
+  // total — see Expense.vatAmount's own backend doc comment). Until
+  // the person edits the VAT field themselves, keep it in sync with
+  // amount assuming the standard 18% rate baked in — this is a
+  // starting guess to save typing on the common case, never silently
+  // final: vatTouched stops the auto-sync the moment they type
+  // something different (including clearing it, for a VAT-exempt
+  // purchase with no formal tax invoice to reclaim against).
+  function handleAmountChange(v: string) {
+    setAmount(v);
+    if (!vatTouched) {
+      const n = Number(v);
+      setVatAmount(n > 0 ? (Math.round((n * 18 / 118) * 100) / 100).toString() : '');
+    }
+  }
 
   /** Uploads the receipt to OCR extraction (POST /expenses/parse-receipt
    * — see that endpoint's own doc comment) and pre-fills whatever it
@@ -360,7 +378,7 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
       });
       if (!res.ok) throw new Error('Parse failed');
       const parsed: { amount: number | null; date: string | null; vendor: string | null } = await res.json();
-      if (parsed.amount != null) setAmount(String(parsed.amount));
+      if (parsed.amount != null) handleAmountChange(String(parsed.amount));
       if (parsed.date) setDate(parsed.date);
       if (parsed.vendor && !description.trim()) setDescription(parsed.vendor);
     } catch (e) {
@@ -380,6 +398,7 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
         method: 'POST',
         body: JSON.stringify({
           date: date || undefined, description, category: category || undefined, amount: Number(amount), method,
+          vatAmount: vatAmount ? Number(vatAmount) : undefined,
           cardLast4: details.cardLast4 || undefined,
           cardType: details.cardType || undefined,
           approvalNumber: details.approvalNumber || undefined,
@@ -431,7 +450,15 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
         <label>{t('expenses.category')}</label>
         <input value={category} onChange={e => setCategory(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
         <label>{t('expenses.amount')}</label>
-        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <input type="number" value={amount} onChange={e => handleAmountChange(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('expenses.vatAmount')}</label>
+        <input
+          type="number"
+          value={vatAmount}
+          onChange={e => { setVatTouched(true); setVatAmount(e.target.value); }}
+          placeholder={t('expenses.vatAmountHint')}
+          style={{ width: '100%', marginBottom: 10 }}
+        />
         <PaymentMethodFields method={method} setMethod={setMethod} details={details} setDetails={setDetails} />
         {error && <div className="error-banner" style={{ marginBottom: 10 }}>{error}</div>}
         <button type="button" disabled={saving || !description.trim() || !amount} onClick={submit} style={{ width: '100%' }}>
@@ -448,7 +475,17 @@ function CreateSupplierInvoiceModal({ onClose, onCreated }: { onClose: () => voi
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [amount, setAmount] = useState('');
+  const [vatAmount, setVatAmount] = useState('');
+  const [vatTouched, setVatTouched] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  function handleAmountChange(v: string) {
+    setAmount(v);
+    if (!vatTouched) {
+      const n = Number(v);
+      setVatAmount(n > 0 ? (Math.round((n * 18 / 118) * 100) / 100).toString() : '');
+    }
+  }
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
@@ -456,7 +493,7 @@ function CreateSupplierInvoiceModal({ onClose, onCreated }: { onClose: () => voi
     try {
       await apiFetch('/supplier-invoices', {
         method: 'POST',
-        body: JSON.stringify({ supplierName, invoiceNumber: invoiceNumber || undefined, dueDate: dueDate || undefined, amount: Number(amount) }),
+        body: JSON.stringify({ supplierName, invoiceNumber: invoiceNumber || undefined, dueDate: dueDate || undefined, amount: Number(amount), vatAmount: vatAmount ? Number(vatAmount) : undefined }),
       });
       onCreated();
     } catch (e) {
@@ -478,7 +515,15 @@ function CreateSupplierInvoiceModal({ onClose, onCreated }: { onClose: () => voi
         <label>{t('expenses.dueDate')}</label>
         <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
         <label>{t('expenses.amount')}</label>
-        <input type="number" value={amount} onChange={e => setAmount(e.target.value)} style={{ width: '100%', marginBottom: 12 }} />
+        <input type="number" value={amount} onChange={e => handleAmountChange(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+        <label>{t('expenses.vatAmount')}</label>
+        <input
+          type="number"
+          value={vatAmount}
+          onChange={e => { setVatTouched(true); setVatAmount(e.target.value); }}
+          placeholder={t('expenses.vatAmountHint')}
+          style={{ width: '100%', marginBottom: 12 }}
+        />
         {error && <div className="error-banner" style={{ marginBottom: 10 }}>{error}</div>}
         <button type="button" disabled={saving || !supplierName.trim() || !amount} onClick={submit} style={{ width: '100%' }}>
           {saving ? t('common.saving') : t('expenses.submit')}

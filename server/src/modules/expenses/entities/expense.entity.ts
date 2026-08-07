@@ -30,6 +30,22 @@ export class Expense {
   @Column({ type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
   amount: number;
 
+  /** How much of `amount` (which is always VAT-inclusive, matching a
+   * real receipt's printed total) is actually VAT — nullable because
+   * not every expense has a formal tax invoice to reclaim VAT against
+   * (a cash purchase from an exempt dealer, for instance). When set,
+   * LedgerPostingService.postExpense splits the posting so the P&L's
+   * own Expenses total reflects the real, VAT-exclusive cost (VAT
+   * paid on a deductible purchase isn't a business expense — it's
+   * reclaimable from the Tax Authority, an asset until then, not a
+   * cost) and the amount becomes available for the VAT summary report
+   * (input VAT, offsetting output VAT collected on sales). Left null,
+   * the full amount posts as expense exactly as it always did before
+   * this field existed — no behavior change for anyone who doesn't
+   * fill it in. */
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: numericTransformer })
+  vatAmount?: number | null;
+
   /** Reuses Payment's own PaymentMethod enum + method-specific column
    * set below rather than a separate, narrower cash/bank-only type —
    * money leaving the business has the same real payment methods as

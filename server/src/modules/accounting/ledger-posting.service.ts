@@ -81,23 +81,37 @@ export class LedgerPostingService {
     }
   }
 
-  /** Direct expense: paid immediately, debit General Expenses, credit
-   * whichever of Cash/Bank it came from. */
-  async postExpense(organizationId: number, expenseId: number, date: string, amount: number, method: PaymentMethod, description: string): Promise<void> {
+  /** Direct expense: paid immediately, debit General Expenses (net of
+   * any reclaimable VAT — see Expense.vatAmount's own doc comment for
+   * why VAT is split out rather than folded into the expense total),
+   * credit whichever of Cash/Bank it came from. */
+  async postExpense(organizationId: number, expenseId: number, date: string, amount: number, method: PaymentMethod, description: string, vatAmount?: number | null): Promise<void> {
     const expenses = await this.accounting.getSystemAccount(organizationId, '5000');
     const cashLike = method === PaymentMethod.CASH
       ? await this.accounting.getSystemAccount(organizationId, '1000')
       : await this.accounting.getSystemAccount(organizationId, '1010');
-    await this.accounting.postEntry(organizationId, date, `הוצאה — ${description}`, expenses.id, cashLike.id, amount, 'expense', expenseId);
+    const netExpense = vatAmount ? Math.round((amount - vatAmount) * 100) / 100 : amount;
+    await this.accounting.postEntry(organizationId, date, `הוצאה — ${description}`, expenses.id, cashLike.id, netExpense, 'expense', expenseId);
+    if (vatAmount) {
+      const inputVat = await this.accounting.getSystemAccount(organizationId, '1200');
+      await this.accounting.postEntry(organizationId, date, `מע"מ תשומות — הוצאה ${expenseId}`, inputVat.id, cashLike.id, vatAmount, 'expense-vat', expenseId);
+    }
   }
 
-  /** Supplier invoice: owed the moment it's recorded (debit Purchases,
-   * credit Accounts Payable) — independent of when it's actually
-   * paid, which posts separately via postSupplierPayment. */
-  async postSupplierInvoice(organizationId: number, supplierInvoiceId: number, date: string, amount: number, supplierName: string): Promise<void> {
+  /** Supplier invoice: owed the moment it's recorded (debit Purchases
+   * net of reclaimable VAT — same reasoning as postExpense above,
+   * credit Accounts Payable for the full amount actually owed) —
+   * independent of when it's actually paid, which posts separately
+   * via postSupplierPayment. */
+  async postSupplierInvoice(organizationId: number, supplierInvoiceId: number, date: string, amount: number, supplierName: string, vatAmount?: number | null): Promise<void> {
     const purchases = await this.accounting.getSystemAccount(organizationId, '5100');
     const ap = await this.accounting.getSystemAccount(organizationId, '2000');
-    await this.accounting.postEntry(organizationId, date, `חשבונית ספק — ${supplierName}`, purchases.id, ap.id, amount, 'supplier-invoice', supplierInvoiceId);
+    const netPurchase = vatAmount ? Math.round((amount - vatAmount) * 100) / 100 : amount;
+    await this.accounting.postEntry(organizationId, date, `חשבונית ספק — ${supplierName}`, purchases.id, ap.id, netPurchase, 'supplier-invoice', supplierInvoiceId);
+    if (vatAmount) {
+      const inputVat = await this.accounting.getSystemAccount(organizationId, '1200');
+      await this.accounting.postEntry(organizationId, date, `מע"מ תשומות — חשבונית ספק ${supplierInvoiceId}`, inputVat.id, ap.id, vatAmount, 'supplier-invoice-vat', supplierInvoiceId);
+    }
   }
 
   /** Marking a supplier invoice paid: debit Accounts Payable (what's

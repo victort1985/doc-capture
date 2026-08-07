@@ -266,14 +266,21 @@ function InvoiceItemsEditor({ items, setItems, t }: {
   );
 }
 
-function CreateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+export interface InvoiceInitialData {
+  clientName: string;
+  clientEmail?: string;
+  items: InvoiceItem[];
+  quoteId?: number;
+}
+
+export function CreateInvoiceModal({ onClose, onCreated, initialData }: { onClose: () => void; onCreated: () => void; initialData?: InvoiceInitialData }) {
   const { t } = useTranslation();
-  const [clientName, setClientName] = useState('');
-  const [clientEmail, setClientEmail] = useState('');
+  const [clientName, setClientName] = useState(initialData?.clientName ?? '');
+  const [clientEmail, setClientEmail] = useState(initialData?.clientEmail ?? '');
   const [clientTaxId, setClientTaxId] = useState('');
   const [date, setDate] = useState('');
   const [vatCategory, setVatCategory] = useState<'standard' | 'zero' | 'exempt'>('standard');
-  const [items, setItems] = useState<InvoiceItem[]>([{ description: '', quantity: 1, unitPrice: 0 }]);
+  const [items, setItems] = useState<InvoiceItem[]>(initialData?.items?.length ? initialData.items.map(it => ({ ...it })) : [{ description: '', quantity: 1, unitPrice: 0 }]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -288,6 +295,7 @@ function CreateInvoiceModal({ onClose, onCreated }: { onClose: () => void; onCre
         body: JSON.stringify({
           clientName, clientEmail: clientEmail || undefined, clientTaxId: clientTaxId || undefined,
           date: date || undefined, vatCategory, items: validItems, notes: notes || undefined,
+          quoteId: initialData?.quoteId,
         }),
       });
       onCreated();
