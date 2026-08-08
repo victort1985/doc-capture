@@ -30,6 +30,7 @@ export default function AccountingPage() {
   const [to, setTo] = useState(toDateStr(new Date()));
   const [rows, setRows] = useState<TrialBalanceRow[]>([]);
   const [pnl, setPnl] = useState<PnlData | null>(null);
+  const [prevPnl, setPrevPnl] = useState<PnlData | null>(null);
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetData | null>(null);
   const [mutualSettlements, setMutualSettlements] = useState<MutualSettlementRow[]>([]);
   const [vatSummary, setVatSummary] = useState<VatSummaryData | null>(null);
@@ -51,6 +52,23 @@ export default function AccountingPage() {
     setLoading(true); setError(null);
     try {
       setPnl(await apiFetch<PnlData>(`/accounting/profit-and-loss?${new URLSearchParams({ from, to }).toString()}`));
+      // Compare against the immediately-preceding period of the SAME
+      // length (e.g. viewing August 1-31 compares to July 1-31, not a
+      // fixed "last calendar month") — this matches what an
+      // accountant actually wants when they've picked a custom range,
+      // not just whole-month presets. A failed comparison fetch
+      // (e.g. no data exists yet for the prior period) shouldn't
+      // block the main P&L from showing, so it's caught separately.
+      const fromDate = new Date(from);
+      const toDate = new Date(to);
+      const spanMs = toDate.getTime() - fromDate.getTime();
+      const prevTo = new Date(fromDate.getTime() - 24 * 60 * 60 * 1000);
+      const prevFrom = new Date(prevTo.getTime() - spanMs);
+      try {
+        setPrevPnl(await apiFetch<PnlData>(`/accounting/profit-and-loss?${new URLSearchParams({ from: toDateStr(prevFrom), to: toDateStr(prevTo) }).toString()}`));
+      } catch {
+        setPrevPnl(null);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load profit & loss');
     } finally { setLoading(false); }
@@ -262,25 +280,62 @@ export default function AccountingPage() {
       {tab === 'pnl' && pnl && (
         <div className="card" style={{ padding: 16 }}>
           <h3 style={{ marginTop: 0 }}>{t('accounting.tab_pnl')}</h3>
+          {prevPnl && (
+            <div style={{ display: 'flex', gap: 16, marginBottom: 14, flexWrap: 'wrap' }}>
+              {([
+                ['totalRevenue', pnl.totalRevenue, prevPnl.totalRevenue, true],
+                ['totalExpenses', pnl.totalExpenses, prevPnl.totalExpenses, false],
+                ['netProfit', pnl.netProfit, prevPnl.netProfit, true],
+              ] as [string, number, number, boolean][]).map(([key, cur, prev, higherIsGood]) => {
+                const delta = prev !== 0 ? ((cur - prev) / Math.abs(prev)) * 100 : (cur !== 0 ? 100 : 0);
+                const isGood = higherIsGood ? delta >= 0 : delta <= 0;
+                return (
+                  <div key={key} style={{ fontSize: 12.5, color: 'var(--ink-soft)' }}>
+                    {t(`accounting.${key}`)}{' '}
+                    <span style={{ fontWeight: 700, color: delta === 0 ? 'var(--ink-soft)' : isGood ? 'var(--success, #2E7D32)' : 'var(--danger, #C62828)' }}>
+                      {delta >= 0 ? '▲' : '▼'} {Math.abs(delta).toFixed(1)}%
+                    </span>
+                    {' '}{t('accounting.vsPreviousPeriod')}
+                  </div>
+                );
+              })}
+            </div>
+          )}
           <div style={{ width: '100%', height: 260, marginBottom: 20 }}>
             <ResponsiveContainer>
               <BarChart
-                data={[
-                  { name: t('accounting.totalRevenue'), value: pnl.totalRevenue, fill: '#2E7D32' },
-                  { name: t('accounting.totalExpenses'), value: pnl.totalExpenses, fill: '#C62828' },
-                  { name: t('accounting.netProfit'), value: pnl.netProfit, fill: pnl.netProfit >= 0 ? '#1D3557' : '#C62828' },
-                ]}
+                data={
+                  prevPnl
+                    ? [
+                        { name: t('accounting.totalRevenue'), current: pnl.totalRevenue, previous: prevPnl.totalRevenue },
+                        { name: t('accounting.totalExpenses'), current: pnl.totalExpenses, previous: prevPnl.totalExpenses },
+                        { name: t('accounting.netProfit'), current: pnl.netProfit, previous: prevPnl.netProfit },
+                      ]
+                    : [
+                        { name: t('accounting.totalRevenue'), current: pnl.totalRevenue, fill: '#2E7D32' },
+                        { name: t('accounting.totalExpenses'), current: pnl.totalExpenses, fill: '#C62828' },
+                        { name: t('accounting.netProfit'), current: pnl.netProfit, fill: pnl.netProfit >= 0 ? '#1D3557' : '#C62828' },
+                      ]
+                }
                 margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #eee)" />
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(v: any) => `₪${Number(v).toFixed(2)}`} />
-                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
-                  {[pnl.totalRevenue, pnl.totalExpenses, pnl.netProfit].map((_, i) => (
-                    <Cell key={i} />
-                  ))}
-                </Bar>
+                {prevPnl && <Legend wrapperStyle={{ fontSize: 12 }} />}
+                {prevPnl ? (
+                  <>
+                    <Bar dataKey="previous" name={t('accounting.previousPeriod')} fill="#B0BEC5" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="current" name={t('accounting.currentPeriod')} fill="#1D3557" radius={[6, 6, 0, 0]} />
+                  </>
+                ) : (
+                  <Bar dataKey="current" radius={[6, 6, 0, 0]}>
+                    {[pnl.totalRevenue, pnl.totalExpenses, pnl.netProfit].map((_, i) => (
+                      <Cell key={i} />
+                    ))}
+                  </Bar>
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>

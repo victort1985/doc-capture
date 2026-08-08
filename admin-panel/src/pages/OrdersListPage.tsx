@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, RefreshCw, Settings, Plus, X, Upload } from 'lucide-react';
+import { FileText, RefreshCw, Settings, Plus, X, Upload, FileCheck2 } from 'lucide-react';
 import SettingsModal from '../components/SettingsModal';
 import OrdersEmailSettingsPage from './OrdersEmailSettingsPage';
+import { CreateSupplierInvoiceModal } from './ExpensesPage';
+import type { SupplierInvoiceInitialData } from './ExpensesPage';
 import { apiFetch, apiFetchBlob, BASE_URL, getToken } from '../services/api';
 
 interface OrderListItem {
@@ -119,6 +121,7 @@ export default function OrdersListPage() {
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [convertTarget, setConvertTarget] = useState<OrderListItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Orders cannot be deleted once created (see OrdersService.remove()
   // on the backend, which now hard-blocks deletion regardless).
@@ -170,6 +173,13 @@ export default function OrdersListPage() {
       {showCreate && (
         <CreateOrderModal onClose={() => setShowCreate(false)} onCreated={() => { setShowCreate(false); load(); }} />
       )}
+      {convertTarget && (
+        <CreateSupplierInvoiceModal
+          onClose={() => setConvertTarget(null)}
+          onCreated={() => setConvertTarget(null)}
+          initialData={{ supplierName: convertTarget.organization, invoiceNumber: convertTarget.invoiceNumber ?? undefined } as SupplierInvoiceInitialData}
+        />
+      )}
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)}>
           <OrdersEmailSettingsPage />
@@ -207,6 +217,9 @@ export default function OrdersListPage() {
                 <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
                   <button type="button" onClick={() => viewPdf(o.id)} title={t('orders.viewPdf')} style={{ marginRight: 8 }}>
                     <FileText size={15} />
+                  </button>
+                  <button type="button" onClick={() => setConvertTarget(o)} title={t('orders.convertToSupplierInvoice')} style={{ color: 'var(--primary)' }}>
+                    <FileCheck2 size={15} />
                   </button>
                 </td>
               </tr>

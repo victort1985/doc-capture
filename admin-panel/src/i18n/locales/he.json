@@ -339,6 +339,7 @@
     "eyebrow": "הזמנות",
     "title": "כל ההזמנות",
     "newOrder": "הזמנה חדשה",
+    "convertToSupplierInvoice": "צור חשבונית ספק",
     "uploadToAutofill": "העלה מסמך — ימלא את השדות אוטומטית",
     "scanningDocument": "סורק מסמך…",
     "reviewHint": "בדוק את הנתונים שזוהו ותקן במידת הצורך לפני השמירה.",
@@ -638,6 +639,7 @@
     }
   },
   "deliveryNotes": {
+    "convertToInvoice": "המר לחשבונית",
     "eyebrow": "מסמכים",
     "deleteTitle": "למחוק תעודת משלוח?",
     "noteHash": "תעודה מס' ",
@@ -1228,6 +1230,9 @@
     "tab_pnl": "רווח והפסד",
     "tab_balance_sheet": "מאזן",
     "tab_vat": "מע\"מ",
+    "vsPreviousPeriod": "לעומת התקופה הקודמת",
+    "previousPeriod": "תקופה קודמת",
+    "currentPeriod": "תקופה נוכחית",
     "vatDisclaimer": "סיכום מע\"מ לתקופה על בסיס רשומות הנהלת החשבונות — דוח עזר לבדיקה לפני הגשה, לא תחליף לקובץ המבנה האחיד הרשמי לרשות המסים.",
     "vatOutput": "מע\"מ עסקאות (מכירות)",
     "vatInput": "מע\"מ תשומות (רכישות)",

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pencil, Plus, AlertTriangle, X, FileText, Building2, Settings } from 'lucide-react';
+import { Pencil, Plus, AlertTriangle, X, FileText, Building2, Settings, FileCheck2 } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import SettingsModal from '../components/SettingsModal';
 import DeliveryNoteSettingsPage from './DeliveryNoteSettingsPage';
+import { CreateInvoiceModal } from './InvoicesPage';
+import type { InvoiceInitialData } from './InvoicesPage';
 
 interface NoteItem { quantity: number; name: string; notes?: string; }
 interface DeliveryNote {
@@ -104,6 +106,7 @@ export default function DeliveryNotesPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [search, setSearch] = useState('');
   const [editTarget, setEditTarget] = useState<Partial<DeliveryNote> | null | undefined>(undefined);
+  const [convertTarget, setConvertTarget] = useState<DeliveryNote | null>(null);
 
   const isAdmin = auth?.user?.role === 'admin' || isSuperAdmin;
 
@@ -275,6 +278,9 @@ export default function DeliveryNotesPage() {
                   <td style={{ padding: '10px 12px' }}>
                     <div style={{ display: 'flex', gap: 6 }}>
                       <button className="ghost" title={t('common.edit')} onClick={() => setEditTarget(n)}><Pencil size={14} /></button>
+                      {n.status === 'signed' && (
+                        <button className="ghost" title={t('deliveryNotes.convertToInvoice')} style={{ color: 'var(--primary)' }} onClick={() => setConvertTarget(n)}><FileCheck2 size={14} /></button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -286,6 +292,17 @@ export default function DeliveryNotesPage() {
 
       {editTarget !== undefined && (
         <NoteModal note={editTarget} onSave={handleSave} onClose={() => setEditTarget(undefined)} />
+      )}
+      {convertTarget && (
+        <CreateInvoiceModal
+          onClose={() => setConvertTarget(null)}
+          onCreated={() => { setConvertTarget(null); load(selectedOrgId); }}
+          initialData={{
+            clientName: convertTarget.clientName ?? convertTarget.deliveredTo ?? '',
+            items: (convertTarget.items ?? []).map((it) => ({ description: it.name, quantity: it.quantity, unitPrice: 0 })),
+            deliveryNoteId: convertTarget.id,
+          } as InvoiceInitialData}
+        />
       )}
     </div>
   );

@@ -469,10 +469,12 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
   );
 }
 
-function CreateSupplierInvoiceModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+export interface SupplierInvoiceInitialData { supplierName?: string; invoiceNumber?: string; }
+
+export function CreateSupplierInvoiceModal({ onClose, onCreated, initialData }: { onClose: () => void; onCreated: () => void; initialData?: SupplierInvoiceInitialData }) {
   const { t } = useTranslation();
-  const [supplierName, setSupplierName] = useState('');
-  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [supplierName, setSupplierName] = useState(initialData?.supplierName ?? '');
+  const [invoiceNumber, setInvoiceNumber] = useState(initialData?.invoiceNumber ?? '');
   const [dueDate, setDueDate] = useState('');
   const [amount, setAmount] = useState('');
   const [vatAmount, setVatAmount] = useState('');

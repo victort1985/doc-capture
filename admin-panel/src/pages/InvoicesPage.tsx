@@ -271,6 +271,7 @@ export interface InvoiceInitialData {
   clientEmail?: string;
   items: InvoiceItem[];
   quoteId?: number;
+  deliveryNoteId?: number;
 }
 
 export function CreateInvoiceModal({ onClose, onCreated, initialData }: { onClose: () => void; onCreated: () => void; initialData?: InvoiceInitialData }) {
@@ -296,6 +297,7 @@ export function CreateInvoiceModal({ onClose, onCreated, initialData }: { onClos
           clientName, clientEmail: clientEmail || undefined, clientTaxId: clientTaxId || undefined,
           date: date || undefined, vatCategory, items: validItems, notes: notes || undefined,
           quoteId: initialData?.quoteId,
+          deliveryNoteId: initialData?.deliveryNoteId,
         }),
       });
       onCreated();

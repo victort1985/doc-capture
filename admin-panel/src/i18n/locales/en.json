@@ -339,6 +339,7 @@
     "eyebrow": "ORDERS",
     "title": "All orders",
     "newOrder": "New order",
+    "convertToSupplierInvoice": "Create supplier invoice",
     "uploadToAutofill": "Upload document — auto-fills the fields below",
     "scanningDocument": "Scanning document…",
     "reviewHint": "Review the extracted data and correct anything before saving.",
@@ -638,6 +639,7 @@
     }
   },
   "deliveryNotes": {
+    "convertToInvoice": "Convert to invoice",
     "eyebrow": "Documents",
     "deleteTitle": "Delete delivery note?",
     "noteHash": "Note #",
@@ -1228,6 +1230,9 @@
     "tab_pnl": "Profit & Loss",
     "tab_balance_sheet": "Balance Sheet",
     "tab_vat": "VAT",
+    "vsPreviousPeriod": "vs previous period",
+    "previousPeriod": "Previous period",
+    "currentPeriod": "Current period",
     "vatDisclaimer": "Period VAT summary based on bookkeeping entries — a sanity-check report before filing, not a replacement for the official Open Format Tax Authority file.",
     "vatOutput": "Output VAT (sales)",
     "vatInput": "Input VAT (purchases)",
