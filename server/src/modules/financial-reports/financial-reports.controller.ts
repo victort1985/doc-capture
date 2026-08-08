@@ -7,6 +7,8 @@ import { InvoiceSettings } from '../invoices/entities/invoice-settings.entity';
 import { Quote } from '../quotes/entities/quote.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { CreditNote } from '../credit-notes/entities/credit-note.entity';
+import { DebitNote } from '../debit-notes/entities/debit-note.entity';
+import { SupplierInvoice } from '../expenses/entities/supplier-invoice.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -36,6 +38,8 @@ export class FinancialReportsController {
     @InjectRepository(Quote) private readonly quotesRepo: Repository<Quote>,
     @InjectRepository(Payment) private readonly paymentsRepo: Repository<Payment>,
     @InjectRepository(CreditNote) private readonly creditNotesRepo: Repository<CreditNote>,
+    @InjectRepository(DebitNote) private readonly debitNotesRepo: Repository<DebitNote>,
+    @InjectRepository(SupplierInvoice) private readonly supplierInvoicesRepo: Repository<SupplierInvoice>,
   ) {}
 
   /** Shared by summary() and aging() rather than duplicated, matching
@@ -327,6 +331,105 @@ ${invoicesXml}
         balance: round2(v.invoiced - v.paid),
       }))
       .sort((a, b) => b.balance - a.balance);
+  }
+
+  /** Distinct client/supplier names for the ledger-card picker below
+   * — same string-matching approach mutual-settlements already uses
+   * (clientName/supplierName aren't linked by a contact id across
+   * every document type, only SupplierInvoice has one), so this stays
+   * consistent with how the rest of the app already treats "who is
+   * this contact" rather than introducing a second, different
+   * grouping rule. */
+  @Get('contacts')
+  async contacts(@CurrentUser() user: ReqUser, @Query('type') type: 'client' | 'supplier', @Query('orgId') orgIdParam?: string) {
+    const organizationId = user.organizationId ?? (orgIdParam ? Number(orgIdParam) : null);
+    const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
+    if (type === 'supplier') {
+      const rows = await this.supplierInvoicesRepo.find({ where: orgFilter as any, select: ['supplierName'] });
+      return Array.from(new Set(rows.map((r) => r.supplierName))).sort();
+    }
+    const rows = await this.invoicesRepo.find({ where: orgFilter as any, select: ['clientName'] });
+    return Array.from(new Set(rows.map((r) => r.clientName))).sort();
+  }
+
+  /** Client ledger card (כרטסת לקוח) — every document that ever moved
+   * this client's balance, in chronological order with a running
+   * total, going beyond mutual-settlements' own invoice-and-payment-
+   * only summary (that report's own bug: it never accounted for
+   * credit/debit notes at all, so a fully-credited invoice still
+   * showed as fully owed there — this card gets it right by including
+   * every document type that actually affects the balance). Invoices
+   * and debit notes increase what the client owes; credit notes and
+   * payments decrease it — matches AR's own debit/credit convention
+   * in the double-entry ledger (see LedgerPostingService), just
+   * presented per-contact instead of per-account. */
+  @Get('client-ledger')
+  async clientLedger(@CurrentUser() user: ReqUser, @Query('clientName') clientName: string, @Query('orgId') orgIdParam?: string) {
+    const organizationId = user.organizationId ?? (orgIdParam ? Number(orgIdParam) : null);
+    const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
+
+    const [invoices, creditNotes, debitNotes, payments] = await Promise.all([
+      this.invoicesRepo.find({ where: { ...orgFilter, clientName } as any }),
+      this.creditNotesRepo.find({ where: { ...orgFilter, clientName } as any }),
+      this.debitNotesRepo.find({ where: { ...orgFilter, clientName } as any }),
+      this.paymentsRepo.find({ where: { ...orgFilter, clientName } as any }),
+    ]);
+
+    type Entry = { date: string; type: string; documentNumber: string; debit: number; credit: number };
+    const entries: Entry[] = [
+      ...invoices.map((d) => ({ date: d.date ?? d.createdAt.toISOString().slice(0, 10), type: 'invoice', documentNumber: d.invoiceNumber ?? `#${d.id}`, debit: Number(d.total), credit: 0 })),
+      ...debitNotes.map((d) => ({ date: d.date ?? d.createdAt.toISOString().slice(0, 10), type: 'debit-note', documentNumber: (d as any).debitNoteNumber ?? `#${d.id}`, debit: Number(d.total), credit: 0 })),
+      ...creditNotes.map((d) => ({ date: d.date ?? d.createdAt.toISOString().slice(0, 10), type: 'credit-note', documentNumber: (d as any).creditNoteNumber ?? `#${d.id}`, debit: 0, credit: Number(d.total) })),
+      ...payments.map((d) => ({ date: d.date ?? d.createdAt.toISOString().slice(0, 10), type: 'payment', documentNumber: (d as any).paymentNumber ?? `#${d.id}`, debit: 0, credit: Number(d.amount) })),
+    ].sort((a, b) => a.date.localeCompare(b.date));
+
+    let running = 0;
+    const rows = entries.map((e) => {
+      running = round2(running + e.debit - e.credit);
+      return { ...e, debit: round2(e.debit), credit: round2(e.credit), balance: running };
+    });
+
+    return { clientName, rows, closingBalance: running };
+  }
+
+  /** Supplier ledger card (כרטסת ספק) — same idea as client-ledger,
+   * but suppliers only ever have one document type (SupplierInvoice)
+   * rather than a separate Payment entity: each invoice is its own
+   * debit when issued, and — since there's no separate "supplier
+   * payment" record, just a paidAt timestamp on the invoice itself
+   * (see SupplierInvoice's own doc comment) — a paid invoice shows a
+   * second, credit line on its paidAt date rather than a whole other
+   * document type to join against. */
+  @Get('supplier-ledger')
+  async supplierLedger(@CurrentUser() user: ReqUser, @Query('supplierName') supplierName: string, @Query('orgId') orgIdParam?: string) {
+    const organizationId = user.organizationId ?? (orgIdParam ? Number(orgIdParam) : null);
+    const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
+
+    const invoices = await this.supplierInvoicesRepo.find({ where: { ...orgFilter, supplierName } as any });
+
+    type Entry = { date: string; type: string; documentNumber: string; debit: number; credit: number };
+    const entries: Entry[] = [];
+    for (const inv of invoices) {
+      entries.push({
+        date: inv.date ? new Date(inv.date).toISOString().slice(0, 10) : inv.createdAt.toISOString().slice(0, 10),
+        type: 'supplier-invoice', documentNumber: inv.invoiceNumber ?? `#${inv.id}`, debit: Number(inv.amount), credit: 0,
+      });
+      if (inv.paidAt) {
+        entries.push({
+          date: inv.paidAt.toISOString().slice(0, 10),
+          type: 'supplier-payment', documentNumber: inv.invoiceNumber ?? `#${inv.id}`, debit: 0, credit: Number(inv.amount),
+        });
+      }
+    }
+    entries.sort((a, b) => a.date.localeCompare(b.date));
+
+    let running = 0;
+    const rows = entries.map((e) => {
+      running = round2(running + e.debit - e.credit);
+      return { ...e, debit: round2(e.debit), credit: round2(e.credit), balance: running };
+    });
+
+    return { supplierName, rows, closingBalance: running };
   }
 }
 

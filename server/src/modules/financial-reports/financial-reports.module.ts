@@ -5,10 +5,12 @@ import { InvoiceSettings } from '../invoices/entities/invoice-settings.entity';
 import { Quote } from '../quotes/entities/quote.entity';
 import { Payment } from '../payments/entities/payment.entity';
 import { CreditNote } from '../credit-notes/entities/credit-note.entity';
+import { DebitNote } from '../debit-notes/entities/debit-note.entity';
+import { SupplierInvoice } from '../expenses/entities/supplier-invoice.entity';
 import { FinancialReportsController } from './financial-reports.controller';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Invoice, InvoiceSettings, Quote, Payment, CreditNote])],
+  imports: [TypeOrmModule.forFeature([Invoice, InvoiceSettings, Quote, Payment, CreditNote, DebitNote, SupplierInvoice])],
   controllers: [FinancialReportsController],
 })
 export class FinancialReportsModule {}

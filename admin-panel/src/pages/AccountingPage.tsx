@@ -16,6 +16,8 @@ interface BalanceSheetData {
   balances: boolean;
 }
 interface MutualSettlementRow { clientName: string; invoiced: number; paid: number; balance: number; }
+interface LedgerCardRow { date: string; type: string; documentNumber: string; debit: number; credit: number; balance: number; }
+interface LedgerCardData { clientName?: string; supplierName?: string; rows: LedgerCardRow[]; closingBalance: number; }
 interface VatSummaryData { period: { from: string; to: string }; outputVat: number; inputVat: number; netVat: number; }
 interface CashFlowRow { name: string; amount: number; }
 interface CashFlowData {
@@ -31,7 +33,7 @@ interface BankLine {
 interface BankSummary { unmatchedCount: number; unmatchedAmount: number; matchedCount: number; }
 interface MatchSuggestion { ledgerEntryId: number; date: string; description: string; amount: number; daysApart: number; }
 
-type Tab = 'trial-balance' | 'pnl' | 'cash-flow' | 'balance-sheet' | 'vat' | 'bank-recon' | 'mutual-settlements';
+type Tab = 'trial-balance' | 'pnl' | 'cash-flow' | 'balance-sheet' | 'vat' | 'bank-recon' | 'ledger-card' | 'mutual-settlements';
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
 function toDateStr(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -46,6 +48,10 @@ export default function AccountingPage() {
   const [prevPnl, setPrevPnl] = useState<PnlData | null>(null);
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetData | null>(null);
   const [mutualSettlements, setMutualSettlements] = useState<MutualSettlementRow[]>([]);
+  const [ledgerCardType, setLedgerCardType] = useState<'client' | 'supplier'>('client');
+  const [ledgerCardContacts, setLedgerCardContacts] = useState<string[]>([]);
+  const [ledgerCardSelected, setLedgerCardSelected] = useState('');
+  const [ledgerCard, setLedgerCard] = useState<LedgerCardData | null>(null);
   const [vatSummary, setVatSummary] = useState<VatSummaryData | null>(null);
   const [cashFlow, setCashFlow] = useState<CashFlowData | null>(null);
   const [bankLines, setBankLines] = useState<BankLine[]>([]);
@@ -109,6 +115,26 @@ export default function AccountingPage() {
       setMutualSettlements(await apiFetch<MutualSettlementRow[]>('/financial-reports/mutual-settlements'));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load mutual settlements');
+    } finally { setLoading(false); }
+  }
+
+  async function loadLedgerCardContacts(type: 'client' | 'supplier') {
+    setLedgerCardSelected(''); setLedgerCard(null);
+    try {
+      setLedgerCardContacts(await apiFetch<string[]>(`/financial-reports/contacts?type=${type}`));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load contacts');
+    }
+  }
+
+  async function loadLedgerCard(type: 'client' | 'supplier', name: string) {
+    if (!name) { setLedgerCard(null); return; }
+    setLoading(true); setError(null);
+    try {
+      const param = type === 'client' ? 'clientName' : 'supplierName';
+      setLedgerCard(await apiFetch<LedgerCardData>(`/financial-reports/${type}-ledger?${param}=${encodeURIComponent(name)}`));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load ledger card');
     } finally { setLoading(false); }
   }
 
@@ -205,6 +231,7 @@ export default function AccountingPage() {
     else if (tab === 'vat') loadVatSummary();
     else if (tab === 'cash-flow') loadCashFlow();
     else if (tab === 'bank-recon') loadBankLines();
+    else if (tab === 'ledger-card') loadLedgerCardContacts(ledgerCardType);
     else loadMutualSettlements();
   }, [tab, from, to]);
 
@@ -302,7 +329,7 @@ export default function AccountingPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['trial-balance', 'pnl', 'cash-flow', 'balance-sheet', 'vat', 'bank-recon', 'mutual-settlements'] as Tab[]).map((tKey) => (
+        {(['trial-balance', 'pnl', 'cash-flow', 'balance-sheet', 'vat', 'bank-recon', 'ledger-card', 'mutual-settlements'] as Tab[]).map((tKey) => (
           <button
             key={tKey}
             type="button"
@@ -318,7 +345,7 @@ export default function AccountingPage() {
         ))}
       </div>
 
-      {tab !== 'mutual-settlements' && tab !== 'bank-recon' && (
+      {tab !== 'mutual-settlements' && tab !== 'bank-recon' && tab !== 'ledger-card' && (
         <div className="card" style={{ marginBottom: 16, padding: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
           <Calendar size={15} style={{ color: 'var(--ink-soft)' }} />
           {tab !== 'balance-sheet' && (
@@ -727,6 +754,66 @@ export default function AccountingPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {tab === 'ledger-card' && (
+        <div>
+          <div className="card" style={{ padding: 16, marginBottom: 16, display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              value={ledgerCardType}
+              onChange={(e) => { const t2 = e.target.value as 'client' | 'supplier'; setLedgerCardType(t2); loadLedgerCardContacts(t2); }}
+            >
+              <option value="client">{t('accounting.ledgerClient')}</option>
+              <option value="supplier">{t('accounting.ledgerSupplier')}</option>
+            </select>
+            <select
+              value={ledgerCardSelected}
+              onChange={(e) => { setLedgerCardSelected(e.target.value); loadLedgerCard(ledgerCardType, e.target.value); }}
+              style={{ minWidth: 220 }}
+            >
+              <option value="">{t('accounting.ledgerPickContact')}</option>
+              {ledgerCardContacts.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          {ledgerCard && (
+            <div className="card" style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
+                    <th style={{ padding: '8px 12px' }}>{t('accounting.date')}</th>
+                    <th style={{ padding: '8px 12px' }}>{t('accounting.ledgerDocType')}</th>
+                    <th style={{ padding: '8px 12px' }}>{t('accounting.ledgerDocNumber')}</th>
+                    <th style={{ padding: '8px 12px' }}>{t('accounting.ledgerDebit')}</th>
+                    <th style={{ padding: '8px 12px' }}>{t('accounting.ledgerCredit')}</th>
+                    <th style={{ padding: '8px 12px' }}>{t('accounting.balance')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ledgerCard.rows.map((r, i) => (
+                    <tr key={i} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                      <td style={{ padding: '6px 12px', whiteSpace: 'nowrap' }}>{r.date}</td>
+                      <td style={{ padding: '6px 12px' }}>{t(`accounting.ledgerType_${r.type.replace(/-/g, '_')}`)}</td>
+                      <td style={{ padding: '6px 12px' }}>{r.documentNumber}</td>
+                      <td style={{ padding: '6px 12px' }}>{r.debit > 0 ? `₪${r.debit.toLocaleString()}` : ''}</td>
+                      <td style={{ padding: '6px 12px' }}>{r.credit > 0 ? `₪${r.credit.toLocaleString()}` : ''}</td>
+                      <td style={{ padding: '6px 12px', fontWeight: 600 }}>₪{r.balance.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                  {ledgerCard.rows.length === 0 && (
+                    <tr><td colSpan={6} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('accounting.noEntries')}</td></tr>
+                  )}
+                  <tr style={{ fontWeight: 800, fontSize: 15, borderTop: '2px solid var(--border, #999)' }}>
+                    <td colSpan={5} style={{ padding: '8px 12px' }}>{t('accounting.ledgerClosingBalance')}</td>
+                    <td style={{ padding: '8px 12px', color: ledgerCard.closingBalance >= 0 ? 'var(--danger, crimson)' : 'var(--success, green)' }}>
+                      ₪{ledgerCard.closingBalance.toLocaleString()}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 
