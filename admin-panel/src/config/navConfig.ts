@@ -1,6 +1,6 @@
 import {
   PhoneCall, Contact, MapPin, Tag, FileSpreadsheet, ReceiptText, FileText, Undo2, Banknote,
-  FileMinus, FilePlus2, CreditCard, TrendingUp, BookOpen, Receipt, Landmark, Package, Car,
+  FileMinus, FilePlus2, CreditCard, TrendingUp, BookOpen, Receipt, Landmark, Package, Car, Repeat,
   CalendarClock, BarChart2, Users, ShieldCheck, Users2, HardDrive, FileSliders, FileStack,
   Smartphone, CalendarDays, ScrollText, Building2, Palette, HardDriveDownload, Timer, PackageSearch, ArrowLeftRight, FileDown,
 } from 'lucide-react';
@@ -65,6 +65,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { to: '/financial-reports', labelKey: 'nav.financialReports', icon: TrendingUp },
       { to: '/accounting', labelKey: 'nav.accounting', icon: BookOpen },
+      { to: '/recurring-documents', labelKey: 'nav.recurringDocuments', icon: Repeat },
       { to: '/expenses', labelKey: 'nav.expenses', icon: Receipt },
       { to: '/tax-authority-settings', labelKey: 'nav.taxAuthority', icon: Landmark },
       { to: '/currency-rates', labelKey: 'nav.currencyRates', icon: TrendingUp },

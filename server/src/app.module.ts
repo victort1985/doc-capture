@@ -44,6 +44,7 @@ import { DebitNotesModule } from './modules/debit-notes/debit-notes.module';
 import { ReturnsModule } from './modules/returns/returns.module';
 import { AccountingModule } from './modules/accounting/accounting.module';
 import { ExpensesModule } from './modules/expenses/expenses.module';
+import { RecurringDocumentsModule } from './modules/recurring-documents/recurring-documents.module';
 import { InvoiceIsraelModule } from './modules/invoice-israel/invoice-israel.module';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { TemplateDesignModule } from './modules/template-design/template-design.module';
@@ -114,6 +115,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     ReturnsModule,
     AccountingModule,
     ExpensesModule,
+    RecurringDocumentsModule,
     InvoiceIsraelModule,
     CurrencyModule,
     TemplateDesignModule,

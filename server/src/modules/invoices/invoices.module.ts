@@ -20,5 +20,6 @@ import { TemplateDesignModule } from '../template-design/template-design.module'
   imports: [TypeOrmModule.forFeature([Invoice, InvoiceSettings, DeliveryNoteSettings, Quote, DeliveryNote]), UsersModule, StorageModule, DocumentEmailModule, AccountingModule, InvoiceIsraelModule, CurrencyModule, TemplateDesignModule],
   controllers: [InvoicesController, InvoiceSettingsController],
   providers: [InvoicesService],
+  exports: [InvoicesService],
 })
 export class InvoicesModule {}

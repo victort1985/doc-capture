@@ -47,6 +47,7 @@ import DebitNoteSettingsPage from './pages/DebitNoteSettingsPage';
 import ReturnsPage from './pages/ReturnsPage';
 import ReturnSettingsPage from './pages/ReturnSettingsPage';
 import AccountingPage from './pages/AccountingPage';
+import RecurringDocumentsPage from './pages/RecurringDocumentsPage';
 import AuditLogPage from './pages/AuditLogPage';
 import ExpensesPage from './pages/ExpensesPage';
 import TaxAuthoritySettingsPage from './pages/TaxAuthoritySettingsPage';
@@ -125,6 +126,7 @@ export default function App() {
           <Route path="/returns" element={<ReturnsPage />} />
           <Route path="/return-settings" element={<ReturnSettingsPage />} />
           <Route path="/accounting" element={<AccountingPage />} />
+          <Route path="/recurring-documents" element={<RecurringDocumentsPage />} />
           <Route path="/audit-log" element={<AuditLogPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/tax-authority-settings" element={<TaxAuthoritySettingsPage />} />

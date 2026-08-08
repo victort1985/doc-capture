@@ -12,5 +12,6 @@ import { StorageModule } from '../storage/storage.module';
   imports: [TypeOrmModule.forFeature([Expense, SupplierInvoice]), AccountingModule, StorageModule],
   controllers: [ExpensesController, SupplierInvoicesController],
   providers: [ExpensesService, ExpenseReceiptParserService],
+  exports: [ExpensesService],
 })
 export class ExpensesModule {}
