@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar, ArrowLeft, Download, TrendingUp } from 'lucide-react';
+import { Calendar, ArrowLeft, Download, TrendingUp, Upload, Check, X, Ban } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
-import { apiFetch, apiFetchBlob } from '../services/api';
+import { apiFetch, apiFetchBlob, BASE_URL, getToken } from '../services/api';
 
 interface TrialBalanceRow { accountId: number; code: string; name: string; type: string; debit: number; credit: number; }
 interface LedgerRow { id: number; date: string; description: string; debit: number; credit: number; balance: number; sourceType?: string; sourceId?: number; }
@@ -17,8 +17,15 @@ interface BalanceSheetData {
 }
 interface MutualSettlementRow { clientName: string; invoiced: number; paid: number; balance: number; }
 interface VatSummaryData { period: { from: string; to: string }; outputVat: number; inputVat: number; netVat: number; }
+interface BankLine {
+  id: number; date: string; description: string; amount: number; reference?: string;
+  status: 'unmatched' | 'matched' | 'ignored'; importBatchId: string;
+  matchedLedgerEntry?: { id: number; date: string; description: string; amount: number } | null;
+}
+interface BankSummary { unmatchedCount: number; unmatchedAmount: number; matchedCount: number; }
+interface MatchSuggestion { ledgerEntryId: number; date: string; description: string; amount: number; daysApart: number; }
 
-type Tab = 'trial-balance' | 'pnl' | 'balance-sheet' | 'vat' | 'mutual-settlements';
+type Tab = 'trial-balance' | 'pnl' | 'balance-sheet' | 'vat' | 'bank-recon' | 'mutual-settlements';
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
 function toDateStr(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -34,6 +41,12 @@ export default function AccountingPage() {
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetData | null>(null);
   const [mutualSettlements, setMutualSettlements] = useState<MutualSettlementRow[]>([]);
   const [vatSummary, setVatSummary] = useState<VatSummaryData | null>(null);
+  const [bankLines, setBankLines] = useState<BankLine[]>([]);
+  const [bankSummary, setBankSummary] = useState<BankSummary | null>(null);
+  const [uploadingStatement, setUploadingStatement] = useState(false);
+  const [expandedLineId, setExpandedLineId] = useState<number | null>(null);
+  const [suggestions, setSuggestions] = useState<MatchSuggestion[]>([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<TrialBalanceRow | null>(null);
@@ -101,12 +114,80 @@ export default function AccountingPage() {
     } finally { setLoading(false); }
   }
 
+  async function loadBankLines() {
+    setLoading(true); setError(null);
+    try {
+      const [linesData, summaryData] = await Promise.all([
+        apiFetch<BankLine[]>('/bank-reconciliation/lines'),
+        apiFetch<BankSummary>('/bank-reconciliation/summary'),
+      ]);
+      setBankLines(linesData);
+      setBankSummary(summaryData);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load bank reconciliation data');
+    } finally { setLoading(false); }
+  }
+
+  async function uploadStatement(file: File) {
+    setUploadingStatement(true); setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch(`${BASE_URL}/bank-reconciliation/import`, {
+        method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: formData,
+      });
+      if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.message || 'Import failed');
+      await loadBankLines();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to import statement');
+    } finally { setUploadingStatement(false); }
+  }
+
+  async function toggleSuggestions(lineId: number) {
+    if (expandedLineId === lineId) { setExpandedLineId(null); setSuggestions([]); return; }
+    setExpandedLineId(lineId); setLoadingSuggestions(true); setSuggestions([]);
+    try {
+      setSuggestions(await apiFetch<MatchSuggestion[]>(`/bank-reconciliation/${lineId}/suggestions`));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load match suggestions');
+    } finally { setLoadingSuggestions(false); }
+  }
+
+  async function confirmMatch(lineId: number, ledgerEntryId: number) {
+    try {
+      await apiFetch(`/bank-reconciliation/${lineId}/match`, { method: 'POST', body: JSON.stringify({ ledgerEntryId }) });
+      setExpandedLineId(null);
+      await loadBankLines();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to confirm match');
+    }
+  }
+
+  async function unmatchLine(lineId: number) {
+    try {
+      await apiFetch(`/bank-reconciliation/${lineId}/unmatch`, { method: 'POST' });
+      await loadBankLines();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to unmatch');
+    }
+  }
+
+  async function ignoreLine(lineId: number) {
+    try {
+      await apiFetch(`/bank-reconciliation/${lineId}/ignore`, { method: 'POST' });
+      await loadBankLines();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to ignore line');
+    }
+  }
+
   useEffect(() => {
     setSelectedAccount(null);
     if (tab === 'trial-balance') loadTrialBalance();
     else if (tab === 'pnl') loadPnl();
     else if (tab === 'balance-sheet') loadBalanceSheet();
     else if (tab === 'vat') loadVatSummary();
+    else if (tab === 'bank-recon') loadBankLines();
     else loadMutualSettlements();
   }, [tab, from, to]);
 
@@ -204,7 +285,7 @@ export default function AccountingPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['trial-balance', 'pnl', 'balance-sheet', 'vat', 'mutual-settlements'] as Tab[]).map((tKey) => (
+        {(['trial-balance', 'pnl', 'balance-sheet', 'vat', 'bank-recon', 'mutual-settlements'] as Tab[]).map((tKey) => (
           <button
             key={tKey}
             type="button"
@@ -220,7 +301,7 @@ export default function AccountingPage() {
         ))}
       </div>
 
-      {tab !== 'mutual-settlements' && (
+      {tab !== 'mutual-settlements' && tab !== 'bank-recon' && (
         <div className="card" style={{ marginBottom: 16, padding: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
           <Calendar size={15} style={{ color: 'var(--ink-soft)' }} />
           {tab !== 'balance-sheet' && (
@@ -461,6 +542,119 @@ export default function AccountingPage() {
               </tr>
             </tbody>
           </table>
+        </div>
+      )}
+
+      {tab === 'bank-recon' && (
+        <div>
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{t('accounting.bankUnmatchedCount')}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: bankSummary && bankSummary.unmatchedCount > 0 ? 'var(--stamp, #F2701C)' : 'var(--success, #2E7D32)' }}>
+                    {bankSummary?.unmatchedCount ?? 0}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{t('accounting.bankUnmatchedAmount')}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800 }}>₪{(bankSummary?.unmatchedAmount ?? 0).toLocaleString()}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{t('accounting.bankMatchedCount')}</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--success, #2E7D32)' }}>{bankSummary?.matchedCount ?? 0}</div>
+                </div>
+              </div>
+              <label className="ghost" style={{ cursor: uploadingStatement ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', border: '1px dashed var(--border)', borderRadius: 8 }}>
+                <Upload size={15} />
+                {uploadingStatement ? t('accounting.bankUploading') : t('accounting.bankUploadStatement')}
+                <input
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  disabled={uploadingStatement}
+                  style={{ display: 'none' }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadStatement(f); e.target.value = ''; }}
+                />
+              </label>
+            </div>
+          </div>
+
+          <div className="card" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
+                  <th style={{ padding: '8px 12px' }}>{t('accounting.date')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('accounting.description')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('accounting.bankAmount')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('accounting.bankStatus')}</th>
+                  <th style={{ padding: '8px 12px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {bankLines.map((line) => (
+                  <Fragment key={line.id}>
+                    <tr style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>{line.date}</td>
+                      <td style={{ padding: '8px 12px' }}>{line.description}</td>
+                      <td style={{ padding: '8px 12px', fontWeight: 600, color: line.amount >= 0 ? 'var(--success, #2E7D32)' : 'var(--danger, #C62828)' }}>
+                        {line.amount >= 0 ? '+' : ''}₪{line.amount.toLocaleString()}
+                      </td>
+                      <td style={{ padding: '8px 12px' }}>
+                        <span style={{
+                          fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                          background: line.status === 'matched' ? '#d4edda' : line.status === 'ignored' ? '#e2e3e5' : '#fff3cd',
+                          color: line.status === 'matched' ? '#155724' : line.status === 'ignored' ? '#6c757d' : '#856404',
+                        }}>
+                          {t(`accounting.bankStatus_${line.status}`)}
+                        </span>
+                        {line.matchedLedgerEntry && (
+                          <div style={{ fontSize: 11, color: 'var(--ink-soft)', marginTop: 2 }}>{line.matchedLedgerEntry.description}</div>
+                        )}
+                      </td>
+                      <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                        {line.status === 'unmatched' && (
+                          <>
+                            <button className="ghost" title={t('accounting.bankFindMatch')} onClick={() => toggleSuggestions(line.id)} style={{ marginRight: 6 }}>
+                              <Check size={14} />
+                            </button>
+                            <button className="ghost" title={t('accounting.bankIgnore')} onClick={() => ignoreLine(line.id)}>
+                              <Ban size={14} />
+                            </button>
+                          </>
+                        )}
+                        {line.status === 'matched' && (
+                          <button className="ghost" title={t('accounting.bankUnmatch')} onClick={() => unmatchLine(line.id)}><X size={14} /></button>
+                        )}
+                      </td>
+                    </tr>
+                    {expandedLineId === line.id && (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '8px 12px 16px', background: 'var(--surface-muted, #f7f7f7)' }}>
+                          {loadingSuggestions ? (
+                            <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{t('common.loading')}</div>
+                          ) : suggestions.length === 0 ? (
+                            <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{t('accounting.bankNoSuggestions')}</div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {suggestions.map((s) => (
+                                <div key={s.ledgerEntryId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'var(--surface, #fff)', borderRadius: 6, fontSize: 12.5 }}>
+                                  <span>{s.date} — {s.description} — ₪{Math.abs(s.amount).toLocaleString()} ({s.daysApart === 0 ? t('accounting.bankSameDay') : t('accounting.bankDaysApart', { count: s.daysApart })})</span>
+                                  <button type="button" onClick={() => confirmMatch(line.id, s.ledgerEntryId)} style={{ fontSize: 12 }}>{t('accounting.bankConfirmMatch')}</button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
+                ))}
+                {bankLines.length === 0 && !loading && (
+                  <tr><td colSpan={5} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('accounting.bankEmpty')}</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
