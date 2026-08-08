@@ -18,6 +18,11 @@ interface BalanceSheetData {
 interface MutualSettlementRow { clientName: string; invoiced: number; paid: number; balance: number; }
 interface LedgerCardRow { date: string; type: string; documentNumber: string; debit: number; credit: number; balance: number; }
 interface LedgerCardData { clientName?: string; supplierName?: string; rows: LedgerCardRow[]; closingBalance: number; }
+interface AdvancePaymentPeriod {
+  periodFrom: string; periodTo: string; revenue: number; rate: number; amountDue: number;
+  paid: boolean; paidAmount?: number; paidDate?: string; recordId?: number;
+}
+interface AdvancePaymentSettings { rate: number; frequency: 'monthly' | 'bimonthly'; }
 interface VatSummaryData { period: { from: string; to: string }; outputVat: number; inputVat: number; netVat: number; }
 interface CashFlowRow { name: string; amount: number; }
 interface CashFlowData {
@@ -33,7 +38,7 @@ interface BankLine {
 interface BankSummary { unmatchedCount: number; unmatchedAmount: number; matchedCount: number; }
 interface MatchSuggestion { ledgerEntryId: number; date: string; description: string; amount: number; daysApart: number; }
 
-type Tab = 'trial-balance' | 'pnl' | 'cash-flow' | 'balance-sheet' | 'vat' | 'bank-recon' | 'ledger-card' | 'mutual-settlements';
+type Tab = 'trial-balance' | 'pnl' | 'cash-flow' | 'balance-sheet' | 'vat' | 'advance-payments' | 'bank-recon' | 'ledger-card' | 'mutual-settlements';
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
 function toDateStr(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -52,6 +57,14 @@ export default function AccountingPage() {
   const [ledgerCardContacts, setLedgerCardContacts] = useState<string[]>([]);
   const [ledgerCardSelected, setLedgerCardSelected] = useState('');
   const [ledgerCard, setLedgerCard] = useState<LedgerCardData | null>(null);
+  const [advanceYear, setAdvanceYear] = useState(new Date().getFullYear());
+  const [advancePeriods, setAdvancePeriods] = useState<AdvancePaymentPeriod[]>([]);
+  const [advanceSettings, setAdvanceSettings] = useState<AdvancePaymentSettings>({ rate: 0, frequency: 'bimonthly' });
+  const [editingRate, setEditingRate] = useState('');
+  const [editingFrequency, setEditingFrequency] = useState<'monthly' | 'bimonthly'>('bimonthly');
+  const [markPaidTarget, setMarkPaidTarget] = useState<AdvancePaymentPeriod | null>(null);
+  const [markPaidAmount, setMarkPaidAmount] = useState('');
+  const [markPaidDate, setMarkPaidDate] = useState(new Date().toISOString().slice(0, 10));
   const [vatSummary, setVatSummary] = useState<VatSummaryData | null>(null);
   const [cashFlow, setCashFlow] = useState<CashFlowData | null>(null);
   const [bankLines, setBankLines] = useState<BankLine[]>([]);
@@ -136,6 +149,59 @@ export default function AccountingPage() {
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load ledger card');
     } finally { setLoading(false); }
+  }
+
+  async function loadAdvancePayments() {
+    setLoading(true); setError(null);
+    try {
+      const [settings, periods] = await Promise.all([
+        apiFetch<AdvancePaymentSettings>('/tax-advance-payments/settings'),
+        apiFetch<AdvancePaymentPeriod[]>(`/tax-advance-payments/periods?year=${advanceYear}`),
+      ]);
+      setAdvanceSettings(settings);
+      setEditingRate(String(settings.rate));
+      setEditingFrequency(settings.frequency);
+      setAdvancePeriods(periods);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load advance payments');
+    } finally { setLoading(false); }
+  }
+
+  async function saveAdvanceSettings() {
+    try {
+      await apiFetch('/tax-advance-payments/settings', {
+        method: 'PUT', body: JSON.stringify({ rate: Number(editingRate), frequency: editingFrequency }),
+      });
+      loadAdvancePayments();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to save settings');
+    }
+  }
+
+  async function confirmMarkPaid() {
+    if (!markPaidTarget) return;
+    try {
+      await apiFetch('/tax-advance-payments/mark-paid', {
+        method: 'POST',
+        body: JSON.stringify({
+          periodFrom: markPaidTarget.periodFrom, periodTo: markPaidTarget.periodTo,
+          paidAmount: Number(markPaidAmount), paidDate: markPaidDate,
+        }),
+      });
+      setMarkPaidTarget(null);
+      loadAdvancePayments();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to record payment');
+    }
+  }
+
+  async function unmarkAdvancePaid(recordId: number) {
+    try {
+      await apiFetch(`/tax-advance-payments/${recordId}`, { method: 'DELETE' });
+      loadAdvancePayments();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to unmark payment');
+    }
   }
 
   async function loadVatSummary() {
@@ -232,6 +298,7 @@ export default function AccountingPage() {
     else if (tab === 'cash-flow') loadCashFlow();
     else if (tab === 'bank-recon') loadBankLines();
     else if (tab === 'ledger-card') loadLedgerCardContacts(ledgerCardType);
+    else if (tab === 'advance-payments') loadAdvancePayments();
     else loadMutualSettlements();
   }, [tab, from, to]);
 
@@ -329,7 +396,7 @@ export default function AccountingPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['trial-balance', 'pnl', 'cash-flow', 'balance-sheet', 'vat', 'bank-recon', 'ledger-card', 'mutual-settlements'] as Tab[]).map((tKey) => (
+        {(['trial-balance', 'pnl', 'cash-flow', 'balance-sheet', 'vat', 'advance-payments', 'bank-recon', 'ledger-card', 'mutual-settlements'] as Tab[]).map((tKey) => (
           <button
             key={tKey}
             type="button"
@@ -345,7 +412,7 @@ export default function AccountingPage() {
         ))}
       </div>
 
-      {tab !== 'mutual-settlements' && tab !== 'bank-recon' && tab !== 'ledger-card' && (
+      {tab !== 'mutual-settlements' && tab !== 'bank-recon' && tab !== 'ledger-card' && tab !== 'advance-payments' && (
         <div className="card" style={{ marginBottom: 16, padding: 16, display: 'flex', gap: 10, alignItems: 'center' }}>
           <Calendar size={15} style={{ color: 'var(--ink-soft)' }} />
           {tab !== 'balance-sheet' && (
@@ -754,6 +821,88 @@ export default function AccountingPage() {
               </tbody>
             </table>
           </div>
+        </div>
+      )}
+
+      {tab === 'advance-payments' && (
+        <div>
+          <div className="card" style={{ padding: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+              <div>
+                <label style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{t('accounting.advanceRate')}</label>
+                <input type="number" step="0.01" value={editingRate} onChange={(e) => setEditingRate(e.target.value)} style={{ width: 100 }} />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>{t('accounting.advanceFrequency')}</label>
+                <select value={editingFrequency} onChange={(e) => setEditingFrequency(e.target.value as any)}>
+                  <option value="bimonthly">{t('accounting.advanceBimonthly')}</option>
+                  <option value="monthly">{t('accounting.advanceMonthly')}</option>
+                </select>
+              </div>
+              <button type="button" onClick={saveAdvanceSettings}>{t('accounting.advanceSaveSettings')}</button>
+              <div style={{ marginInlineStart: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button className="ghost" onClick={() => { setAdvanceYear((y) => y - 1); }}>◀</button>
+                <span style={{ fontWeight: 700, fontSize: 15 }}>{advanceYear}</span>
+                <button className="ghost" onClick={() => { setAdvanceYear((y) => y + 1); }}>▶</button>
+              </div>
+            </div>
+          </div>
+
+          <div className="card" style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
+                  <th style={{ padding: '8px 12px' }}>{t('accounting.advancePeriod')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('accounting.advanceRevenue')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('accounting.advanceRate')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('accounting.advanceAmountDue')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('accounting.bankStatus')}</th>
+                  <th style={{ padding: '8px 12px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {advancePeriods.map((p) => (
+                  <tr key={p.periodFrom} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>{p.periodFrom} – {p.periodTo}</td>
+                    <td style={{ padding: '8px 12px' }}>₪{p.revenue.toLocaleString()}</td>
+                    <td style={{ padding: '8px 12px' }}>{p.rate}%</td>
+                    <td style={{ padding: '8px 12px', fontWeight: 600 }}>₪{p.amountDue.toLocaleString()}</td>
+                    <td style={{ padding: '8px 12px' }}>
+                      <span style={{
+                        fontSize: 11, padding: '2px 8px', borderRadius: 10,
+                        background: p.paid ? '#d4edda' : '#fff3cd',
+                        color: p.paid ? '#155724' : '#856404',
+                      }}>
+                        {p.paid ? t('accounting.advancePaid') : t('accounting.advanceUnpaid')}
+                      </span>
+                      {p.paid && p.paidDate && <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{p.paidDate}</div>}
+                    </td>
+                    <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>
+                      {p.paid ? (
+                        <button className="ghost" onClick={() => p.recordId && unmarkAdvancePaid(p.recordId)}>{t('accounting.advanceUnmark')}</button>
+                      ) : (
+                        <button type="button" onClick={() => { setMarkPaidTarget(p); setMarkPaidAmount(String(p.amountDue)); }}>{t('accounting.advanceMarkPaid')}</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {markPaidTarget && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={() => setMarkPaidTarget(null)}>
+              <div className="card" style={{ width: 360 }} onClick={(e) => e.stopPropagation()}>
+                <h3 style={{ marginTop: 0 }}>{t('accounting.advanceMarkPaid')}</h3>
+                <p style={{ fontSize: 13, color: 'var(--ink-soft)' }}>{markPaidTarget.periodFrom} – {markPaidTarget.periodTo}</p>
+                <label>{t('accounting.advanceAmountDue')}</label>
+                <input type="number" value={markPaidAmount} onChange={(e) => setMarkPaidAmount(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+                <label>{t('accounting.date')}</label>
+                <input type="date" value={markPaidDate} onChange={(e) => setMarkPaidDate(e.target.value)} style={{ width: '100%', marginBottom: 14 }} />
+                <button type="button" onClick={confirmMarkPaid} style={{ width: '100%' }}>{t('accounting.advanceConfirmPayment')}</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
