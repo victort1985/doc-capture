@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Building2, TrendingUp, Receipt, CreditCard, AlertTriangle, Calendar, Download } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie, Legend } from 'recharts';
 import { apiFetch, apiFetchBlob } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -225,6 +226,26 @@ export default function FinancialReportsPage() {
 
           <div className="card" style={{ padding: 16 }}>
             <h3 style={{ marginTop: 0 }}>{t('financialReports.byMethod')}</h3>
+            {Object.keys(data.payments.byMethod).length > 0 && (
+              <div style={{ width: '100%', height: 200, marginBottom: 12 }}>
+                <ResponsiveContainer>
+                  <PieChart>
+                    <Pie
+                      data={Object.entries(data.payments.byMethod).map(([method, v]) => ({ name: t(`financialReports.${methodLabels[method] ?? method}`), value: v.total }))}
+                      dataKey="value"
+                      nameKey="name"
+                      outerRadius={70}
+                      label={(entry: any) => `${entry.name}: ₪${entry.value.toLocaleString()}`}
+                    >
+                      {Object.keys(data.payments.byMethod).map((_, i) => (
+                        <Cell key={i} fill={['#1D3557', '#457B9D', '#F2701C', '#2E7D32', '#6A4C93', '#C62828'][i % 6]} />
+                      ))}
+                    </Pie>
+                    <Tooltip formatter={(v: any) => `₪${Number(v).toLocaleString()}`} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
@@ -251,6 +272,30 @@ export default function FinancialReportsPage() {
           {aging && (
             <div className="card" style={{ padding: 16, marginTop: 16 }}>
               <h3 style={{ marginTop: 0 }}>{t('financialReports.agingTitle')}</h3>
+              <div style={{ width: '100%', height: 220, marginBottom: 16 }}>
+                <ResponsiveContainer>
+                  <BarChart
+                    data={[
+                      { name: t('financialReports.agingBucket_current'), value: aging.current.total, fill: '#2E7D32' },
+                      { name: t('financialReports.agingBucket_days31to60'), value: aging.days31to60.total, fill: '#8DB600' },
+                      { name: t('financialReports.agingBucket_days61to90'), value: aging.days61to90.total, fill: '#F2701C' },
+                      { name: t('financialReports.agingBucket_days91to120'), value: aging.days91to120.total, fill: '#E85D04' },
+                      { name: t('financialReports.agingBucket_over120'), value: aging.over120.total, fill: '#C62828' },
+                    ]}
+                    margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #eee)" />
+                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={(v: any) => `₪${Number(v).toLocaleString()}`} />
+                    <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                      {[aging.current, aging.days31to60, aging.days61to90, aging.days91to120, aging.over120].map((_, i) => (
+                        <Cell key={i} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>

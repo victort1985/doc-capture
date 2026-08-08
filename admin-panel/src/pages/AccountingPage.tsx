@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Calendar, ArrowLeft, Download } from 'lucide-react';
+import { Calendar, ArrowLeft, Download, TrendingUp } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { apiFetch, apiFetchBlob } from '../services/api';
 
 interface TrialBalanceRow { accountId: number; code: string; name: string; type: string; debit: number; credit: number; }
@@ -15,8 +16,9 @@ interface BalanceSheetData {
   balances: boolean;
 }
 interface MutualSettlementRow { clientName: string; invoiced: number; paid: number; balance: number; }
+interface VatSummaryData { period: { from: string; to: string }; outputVat: number; inputVat: number; netVat: number; }
 
-type Tab = 'trial-balance' | 'pnl' | 'balance-sheet' | 'mutual-settlements';
+type Tab = 'trial-balance' | 'pnl' | 'balance-sheet' | 'vat' | 'mutual-settlements';
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
 function toDateStr(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -30,6 +32,7 @@ export default function AccountingPage() {
   const [pnl, setPnl] = useState<PnlData | null>(null);
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetData | null>(null);
   const [mutualSettlements, setMutualSettlements] = useState<MutualSettlementRow[]>([]);
+  const [vatSummary, setVatSummary] = useState<VatSummaryData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedAccount, setSelectedAccount] = useState<TrialBalanceRow | null>(null);
@@ -71,11 +74,21 @@ export default function AccountingPage() {
     } finally { setLoading(false); }
   }
 
+  async function loadVatSummary() {
+    setLoading(true); setError(null);
+    try {
+      setVatSummary(await apiFetch<VatSummaryData>(`/accounting/vat-summary?${new URLSearchParams({ from, to }).toString()}`));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load VAT summary');
+    } finally { setLoading(false); }
+  }
+
   useEffect(() => {
     setSelectedAccount(null);
     if (tab === 'trial-balance') loadTrialBalance();
     else if (tab === 'pnl') loadPnl();
     else if (tab === 'balance-sheet') loadBalanceSheet();
+    else if (tab === 'vat') loadVatSummary();
     else loadMutualSettlements();
   }, [tab, from, to]);
 
@@ -173,7 +186,7 @@ export default function AccountingPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['trial-balance', 'pnl', 'balance-sheet', 'mutual-settlements'] as Tab[]).map((tKey) => (
+        {(['trial-balance', 'pnl', 'balance-sheet', 'vat', 'mutual-settlements'] as Tab[]).map((tKey) => (
           <button
             key={tKey}
             type="button"
@@ -249,6 +262,49 @@ export default function AccountingPage() {
       {tab === 'pnl' && pnl && (
         <div className="card" style={{ padding: 16 }}>
           <h3 style={{ marginTop: 0 }}>{t('accounting.tab_pnl')}</h3>
+          <div style={{ width: '100%', height: 260, marginBottom: 20 }}>
+            <ResponsiveContainer>
+              <BarChart
+                data={[
+                  { name: t('accounting.totalRevenue'), value: pnl.totalRevenue, fill: '#2E7D32' },
+                  { name: t('accounting.totalExpenses'), value: pnl.totalExpenses, fill: '#C62828' },
+                  { name: t('accounting.netProfit'), value: pnl.netProfit, fill: pnl.netProfit >= 0 ? '#1D3557' : '#C62828' },
+                ]}
+                margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #eee)" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(v: any) => `₪${Number(v).toFixed(2)}`} />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {[pnl.totalRevenue, pnl.totalExpenses, pnl.netProfit].map((_, i) => (
+                    <Cell key={i} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          {pnl.expenses.length > 0 && (
+            <div style={{ width: '100%', height: 220, marginBottom: 20 }}>
+              <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 4 }}>{t('accounting.expenseBreakdown')}</div>
+              <ResponsiveContainer>
+                <PieChart>
+                  <Pie
+                    data={pnl.expenses.map((r) => ({ name: r.name, value: r.amount }))}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={80}
+                    label={(entry: any) => `${entry.name}: ₪${entry.value.toFixed(0)}`}
+                  >
+                    {pnl.expenses.map((_, i) => (
+                      <Cell key={i} fill={['#1D3557', '#457B9D', '#F2701C', '#C62828', '#6A4C93', '#2E7D32'][i % 6]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: any) => `₪${Number(v).toFixed(2)}`} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          )}
           <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: 16 }}>
             <tbody>
               <tr style={{ fontWeight: 700 }}><td colSpan={2} style={{ padding: '6px 0' }}>{t('accounting.revenue')}</td></tr>
@@ -306,6 +362,47 @@ export default function AccountingPage() {
               <tr><td style={{ padding: '4px 0 4px 16px' }}>{t('accounting.retainedEarnings')}</td><td style={{ padding: '4px 0', textAlign: 'right' }}>₪{balanceSheet.retainedEarnings.toFixed(2)}</td></tr>
               <tr style={{ borderTop: '1px solid var(--border, #ccc)', fontWeight: 700 }}>
                 <td style={{ padding: '6px 0' }}>{t('accounting.totalEquity')}</td><td style={{ padding: '6px 0', textAlign: 'right' }}>₪{balanceSheet.totalEquity.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab === 'vat' && vatSummary && (
+        <div className="card" style={{ padding: 16 }}>
+          <h3 style={{ marginTop: 0 }}>{t('accounting.tab_vat')}</h3>
+          <p style={{ fontSize: 13, color: 'var(--ink-soft)', marginTop: 0 }}>{t('accounting.vatDisclaimer')}</p>
+          <div style={{ width: '100%', height: 240, marginBottom: 20 }}>
+            <ResponsiveContainer>
+              <BarChart
+                data={[
+                  { name: t('accounting.vatOutput'), value: vatSummary.outputVat, fill: '#2E7D32' },
+                  { name: t('accounting.vatInput'), value: vatSummary.inputVat, fill: '#457B9D' },
+                  { name: t('accounting.vatNet'), value: vatSummary.netVat, fill: vatSummary.netVat >= 0 ? '#F2701C' : '#2E7D32' },
+                ]}
+                margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #eee)" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(v: any) => `₪${Number(v).toFixed(2)}`} />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {[vatSummary.outputVat, vatSummary.inputVat, vatSummary.netVat].map((_, i) => (
+                    <Cell key={i} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr><td style={{ padding: '6px 0' }}>{t('accounting.vatOutput')}</td><td style={{ padding: '6px 0', textAlign: 'right' }}>₪{vatSummary.outputVat.toFixed(2)}</td></tr>
+              <tr><td style={{ padding: '6px 0' }}>{t('accounting.vatInput')}</td><td style={{ padding: '6px 0', textAlign: 'right' }}>₪{vatSummary.inputVat.toFixed(2)}</td></tr>
+              <tr style={{ borderTop: '1px solid var(--border, #ccc)', fontWeight: 800, fontSize: 15 }}>
+                <td style={{ padding: '8px 0' }}>{t('accounting.vatNet')}</td>
+                <td style={{ padding: '8px 0', textAlign: 'right', color: vatSummary.netVat >= 0 ? 'var(--stamp, #F2701C)' : 'var(--success, green)' }}>
+                  ₪{vatSummary.netVat.toFixed(2)}
+                </td>
               </tr>
             </tbody>
           </table>
