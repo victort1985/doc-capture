@@ -1,6 +1,8 @@
-import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { WarehouseService } from './warehouse.service';
 import { TransactionType } from './entities/warehouse-transaction.entity';
+import { WarehouseCogsService } from './warehouse-cogs.service';
+import { CostMethod } from './entities/warehouse-cost-settings.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -12,7 +14,10 @@ type RequestUser = { id: number; organizationId: number | null; permissions?: Re
 @Controller('warehouse')
 @UseGuards(JwtAuthGuard)
 export class WarehouseController {
-  constructor(private readonly warehouseService: WarehouseService) {}
+  constructor(
+    private readonly warehouseService: WarehouseService,
+    private readonly cogsService: WarehouseCogsService,
+  ) {}
 
   // ── Barcode ────────────────────────────────────────────────────────
 
@@ -81,10 +86,10 @@ export class WarehouseController {
   @Post('items/:id/transactions')
   addTransaction(
     @Param('id', ParseIntPipe) id: number,
-    @Body() dto: { type: TransactionType; quantity: number; reason?: string; referenceCallId?: number },
+    @Body() dto: { type: TransactionType; quantity: number; reason?: string; referenceCallId?: number; unitCost?: number },
     @CurrentUser() user: RequestUser,
   ) {
-    return this.warehouseService.addTransaction(id, dto.type, dto.quantity, dto.reason, dto.referenceCallId, user.id, user.organizationId);
+    return this.warehouseService.addTransaction(id, dto.type, dto.quantity, dto.reason, dto.referenceCallId, user.id, user.organizationId, dto.unitCost);
   }
 
   // ── Repairs ────────────────────────────────────────────────────────
@@ -148,5 +153,22 @@ export class WarehouseController {
       throw new ForbiddenException('You do not have permission to transfer warehouse equipment');
     }
     return this.warehouseService.createTransfer(dto, user.id, user.organizationId);
+  }
+
+  // ── Cost of Goods Sold (FIFO / weighted-average) ─────────────────────
+
+  @Get('cogs/settings')
+  getCogsSettings(@CurrentUser() user: RequestUser) {
+    return this.cogsService.getSettings(user.organizationId);
+  }
+
+  @Put('cogs/settings')
+  updateCogsSettings(@Body() body: { method: CostMethod }, @CurrentUser() user: RequestUser) {
+    return this.cogsService.updateSettings(user.organizationId, body.method);
+  }
+
+  @Get('cogs/report')
+  getCogsReport(@Query('from') from: string, @Query('to') to: string, @CurrentUser() user: RequestUser) {
+    return this.cogsService.getCogsForPeriod(user.organizationId, new Date(from), new Date(to));
   }
 }

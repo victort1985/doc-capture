@@ -41,6 +41,7 @@ export default function WarehousePage() {
   const [confirmDelete, setConfirmDelete] = useState<{ kind: 'item' | 'category'; id: number; label: string } | null>(null);
   const [txQty, setTxQty] = useState('1');
   const [txReason, setTxReason] = useState('');
+  const [txUnitCost, setTxUnitCost] = useState('');
   const [filter, setFilter] = useState('');
   const [historyItem, setHistoryItem] = useState<Item | null>(null);
   const [historyEvents, setHistoryEvents] = useState<HistoryEvent[] | null>(null);
@@ -118,9 +119,12 @@ export default function WarehousePage() {
     if (!txModal) return;
     await apiFetch(`/warehouse/items/${txModal.item.id}/transactions`, {
       method: 'POST',
-      body: JSON.stringify({ type: txModal.type, quantity: parseInt(txQty) || 1, reason: txReason || undefined }),
+      body: JSON.stringify({
+        type: txModal.type, quantity: parseInt(txQty) || 1, reason: txReason || undefined,
+        unitCost: txModal.type === 'in' && txUnitCost ? Number(txUnitCost) : undefined,
+      }),
     });
-    setTxModal(null); setTxQty('1'); setTxReason(''); load();
+    setTxModal(null); setTxQty('1'); setTxReason(''); setTxUnitCost(''); load();
   }
 
   const filtered = items.filter(i => !filter || i.name.toLowerCase().includes(filter.toLowerCase()) || i.barcode.includes(filter));
@@ -234,6 +238,12 @@ export default function WarehousePage() {
             <h3 style={{ marginTop: 0 }}>{txModal.type === 'in' ? `➕ ${t('warehouse.addToStock')}` : `➖ ${t('warehouse.removeFromStock')}`} — {txModal.item.name}</h3>
             <label>{t('warehouse.quantity')}</label>
             <input type="number" min="1" value={txQty} onChange={e => setTxQty(e.target.value)} style={{ marginBottom: 10 }} />
+            {txModal.type === 'in' && (
+              <>
+                <label>{t('warehouse.unitCostOptional')}</label>
+                <input type="number" min="0" step="0.01" value={txUnitCost} onChange={e => setTxUnitCost(e.target.value)} placeholder={t('warehouse.unitCostHint')} style={{ marginBottom: 10 }} />
+              </>
+            )}
             <label>{t('warehouse.reasonOptional')}</label>
             <input value={txReason} onChange={e => setTxReason(e.target.value)} placeholder={t('warehouse.reasonPlaceholder')} />
             <div className="form-actions" style={{ marginTop: 14 }}>

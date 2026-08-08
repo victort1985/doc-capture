@@ -24,6 +24,7 @@ interface AdvancePaymentPeriod {
 }
 interface AdvancePaymentSettings { rate: number; frequency: 'monthly' | 'bimonthly'; }
 interface VatSummaryData { period: { from: string; to: string }; outputVat: number; inputVat: number; netVat: number; }
+interface CogsData { totalCogs: number; unknownCostCount: number; }
 interface CashFlowRow { name: string; amount: number; }
 interface CashFlowData {
   period: { from: string; to: string }; openingBalance: number;
@@ -66,6 +67,7 @@ export default function AccountingPage() {
   const [markPaidAmount, setMarkPaidAmount] = useState('');
   const [markPaidDate, setMarkPaidDate] = useState(new Date().toISOString().slice(0, 10));
   const [vatSummary, setVatSummary] = useState<VatSummaryData | null>(null);
+  const [cogs, setCogs] = useState<CogsData | null>(null);
   const [cashFlow, setCashFlow] = useState<CashFlowData | null>(null);
   const [bankLines, setBankLines] = useState<BankLine[]>([]);
   const [bankSummary, setBankSummary] = useState<BankSummary | null>(null);
@@ -91,6 +93,11 @@ export default function AccountingPage() {
     setLoading(true); setError(null);
     try {
       setPnl(await apiFetch<PnlData>(`/accounting/profit-and-loss?${new URLSearchParams({ from, to }).toString()}`));
+      try {
+        setCogs(await apiFetch<CogsData>(`/warehouse/cogs/report?${new URLSearchParams({ from, to }).toString()}`));
+      } catch {
+        setCogs(null);
+      }
       // Compare against the immediately-preceding period of the SAME
       // length (e.g. viewing August 1-31 compares to July 1-31, not a
       // fixed "last calendar month") — this matches what an
@@ -531,6 +538,23 @@ export default function AccountingPage() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+          {cogs && cogs.totalCogs > 0 && (
+            <div style={{ background: 'var(--surface-muted, #f7f7f7)', borderRadius: 8, padding: '10px 14px', marginBottom: 16, fontSize: 13 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span>{t('accounting.grossRevenue')}</span><span>₪{pnl.totalRevenue.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span>{t('accounting.cogs')}</span><span>−₪{cogs.totalCogs.toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, borderTop: '1px solid var(--border, #ddd)', paddingTop: 4 }}>
+                <span>{t('accounting.grossProfit')}</span>
+                <span>₪{(pnl.totalRevenue - cogs.totalCogs).toLocaleString()} ({pnl.totalRevenue > 0 ? (((pnl.totalRevenue - cogs.totalCogs) / pnl.totalRevenue) * 100).toFixed(1) : 0}%)</span>
+              </div>
+              {cogs.unknownCostCount > 0 && (
+                <div style={{ marginTop: 6, fontSize: 11.5, color: 'var(--stamp, #F2701C)' }}>{t('accounting.unknownCostWarning', { count: cogs.unknownCostCount })}</div>
+              )}
+            </div>
+          )}
           {pnl.expenses.length > 0 && (
             <div style={{ width: '100%', height: 220, marginBottom: 20 }}>
               <div style={{ fontSize: 12, color: 'var(--ink-soft)', marginBottom: 4 }}>{t('accounting.expenseBreakdown')}</div>

@@ -7,6 +7,7 @@ import { WarehouseTransaction } from './entities/warehouse-transaction.entity';
 import { WarehouseRepair } from './entities/warehouse-repair.entity';
 import { WarehouseTransfer } from './entities/warehouse-transfer.entity';
 import { ServiceCall } from '../calls/entities/service-call.entity';
+import { WarehouseCogsService } from './warehouse-cogs.service';
 
 describe('WarehouseService.generateBarcode', () => {
   let service: WarehouseService;
@@ -26,6 +27,7 @@ describe('WarehouseService.generateBarcode', () => {
         { provide: getRepositoryToken(WarehouseRepair), useValue: {} },
         { provide: getRepositoryToken(WarehouseTransfer), useValue: {} },
         { provide: getRepositoryToken(ServiceCall), useValue: {} },
+        { provide: WarehouseCogsService, useValue: {} },
       ],
     }).compile();
 

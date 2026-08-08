@@ -8,6 +8,8 @@ import { WarehouseRepair } from './entities/warehouse-repair.entity';
 import { WarehouseTransfer } from './entities/warehouse-transfer.entity';
 import { ServiceCall } from '../calls/entities/service-call.entity';
 
+import { WarehouseCogsService } from './warehouse-cogs.service';
+
 @Injectable()
 export class WarehouseService {
   constructor(
@@ -17,6 +19,7 @@ export class WarehouseService {
     @InjectRepository(WarehouseRepair) private readonly repairsRepo: Repository<WarehouseRepair>,
     @InjectRepository(WarehouseTransfer) private readonly transfersRepo: Repository<WarehouseTransfer>,
     @InjectRepository(ServiceCall) private readonly callsRepo: Repository<ServiceCall>,
+    private readonly cogsService: WarehouseCogsService,
   ) {}
 
   // ── Barcode generation ─────────────────────────────────────────────
@@ -148,6 +151,7 @@ export class WarehouseService {
     referenceCallId: number | undefined,
     userId: number,
     organizationId: number | null,
+    unitCost?: number,
   ): Promise<WarehouseTransaction> {
     const item = await this.itemsRepo.findOne({ where: { id: itemId }, relations: ['organization'] });
     if (!item) throw new NotFoundException('Item not found');
@@ -155,14 +159,20 @@ export class WarehouseService {
     const delta = type === TransactionType.IN ? quantity : -quantity;
     item.quantity = Math.max(0, item.quantity + delta);
     await this.itemsRepo.save(item);
-    return this.txRepo.save(this.txRepo.create({
+    const tx = await this.txRepo.save(this.txRepo.create({
       item: { id: itemId } as any,
       type,
       quantity,
       reason,
       referenceCallId,
       registeredBy: { id: userId } as any,
+      unitCost: type === TransactionType.IN ? unitCost : undefined,
     }));
+    if (type === TransactionType.OUT) {
+      tx.item = item; // cogsService needs item.id, already have it loaded
+      await this.cogsService.recordOutCost(tx, organizationId);
+    }
+    return tx;
   }
 
   // ── Repair methods ──────────────────────────────────────────────────────
