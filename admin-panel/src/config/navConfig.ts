@@ -1,5 +1,5 @@
 import {
-  PhoneCall, Contact, MapPin, Tag, FileSpreadsheet, ReceiptText, FileText, Undo2, Banknote, Handshake,
+  PhoneCall, Contact, MapPin, Tag, FileSpreadsheet, ReceiptText, FileText, Undo2, Banknote, Handshake, BellRing,
   FileMinus, FilePlus2, CreditCard, TrendingUp, BookOpen, Receipt, Landmark, Package, Car, Repeat,
   CalendarClock, BarChart2, Users, ShieldCheck, Users2, HardDrive, FileSliders, FileStack,
   Smartphone, CalendarDays, ScrollText, Building2, Palette, HardDriveDownload, Timer, PackageSearch, ArrowLeftRight, FileDown,
@@ -69,6 +69,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/recurring-documents', labelKey: 'nav.recurringDocuments', icon: Repeat },
       { to: '/expenses', labelKey: 'nav.expenses', icon: Receipt },
       { to: '/tax-authority-settings', labelKey: 'nav.taxAuthority', icon: Landmark },
+      { to: '/overdue-reminders', labelKey: 'nav.overdueReminders', icon: BellRing },
       { to: '/currency-rates', labelKey: 'nav.currencyRates', icon: TrendingUp },
     ],
   },

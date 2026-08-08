@@ -10,6 +10,6 @@ import { DocumentSendingService } from './document-sending.service';
   imports: [TypeOrmModule.forFeature([DocumentEmailSettings, Organization])],
   controllers: [DocumentEmailSettingsController],
   providers: [DocumentEmailSettingsService, DocumentSendingService],
-  exports: [DocumentSendingService],
+  exports: [DocumentSendingService, DocumentEmailSettingsService],
 })
 export class DocumentEmailModule {}

@@ -1,4 +1,25 @@
 {
+  "overdueReminders": {
+    "eyebrow": "Финансы",
+    "title": "Напоминания о просрочке",
+    "enable": "Автоматически отправлять напоминания",
+    "thresholds": "Пороги (дней после выставления)",
+    "addThresholdPlaceholder": "Например: 21",
+    "messageTemplate": "Текст письма (необязательно)",
+    "templateHint": "Доступны: {{clientName}}, {{invoiceNumber}}, {{total}}, {{daysOverdue}}. Если оставить пустым — будет использован стандартный текст.",
+    "saveSettings": "Сохранить настройки",
+    "saved": "Настройки сохранены.",
+    "runNow": "Проверить сейчас",
+    "running": "Проверяю…",
+    "ranNow": "Проверка запущена — письма отправлены при необходимости.",
+    "daysOverdue": "{{count}} дн.",
+    "sendLog": "Журнал отправки",
+    "sentAt": "Когда",
+    "threshold": "Порог",
+    "sent": "Отправлено",
+    "failed": "Не отправлено",
+    "emptyLog": "Напоминаний пока не отправлялось."
+  },
   "crm": {
     "eyebrow": "CRM",
     "title": "Сделки",
@@ -90,6 +111,7 @@
     "auditLog": "Журнал действий",
     "expenses": "Расходы и закупки",
     "taxAuthority": "Налоговая",
+    "overdueReminders": "Напоминания о просрочке",
     "currencyRates": "Курсы валют",
     "templateDesigner": "Дизайнер документов",
     "backup": "Бэкапы",

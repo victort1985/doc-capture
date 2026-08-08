@@ -1,4 +1,25 @@
 {
+  "overdueReminders": {
+    "eyebrow": "כספים",
+    "title": "תזכורות פיגור בתשלום",
+    "enable": "שלח תזכורות אוטומטית",
+    "thresholds": "ספי זמן (ימים מההנפקה)",
+    "addThresholdPlaceholder": "לדוגמה: 21",
+    "messageTemplate": "טקסט המייל (אופציונלי)",
+    "templateHint": "זמינים: {{clientName}}, {{invoiceNumber}}, {{total}}, {{daysOverdue}}. אם ריק — ישמש טקסט ברירת מחדל.",
+    "saveSettings": "שמור הגדרות",
+    "saved": "ההגדרות נשמרו.",
+    "runNow": "בדוק עכשיו",
+    "running": "בודק…",
+    "ranNow": "הבדיקה הופעלה — מיילים נשלחו במידת הצורך.",
+    "daysOverdue": "{{count}} ימים",
+    "sendLog": "יומן שליחה",
+    "sentAt": "מתי",
+    "threshold": "סף",
+    "sent": "נשלח",
+    "failed": "נכשל",
+    "emptyLog": "עדיין לא נשלחו תזכורות."
+  },
   "crm": {
     "eyebrow": "CRM",
     "title": "עסקאות",
@@ -90,6 +111,7 @@
     "auditLog": "יומן פעולות",
     "expenses": "הוצאות ורכישות",
     "taxAuthority": "רשות המסים",
+    "overdueReminders": "תזכורות פיגור",
     "currencyRates": "שערי מטבע",
     "templateDesigner": "מעצב מסמכים",
     "backup": "גיבויים",

@@ -1,4 +1,25 @@
 {
+  "overdueReminders": {
+    "eyebrow": "Finance",
+    "title": "Overdue Reminders",
+    "enable": "Automatically send reminders",
+    "thresholds": "Thresholds (days after issue)",
+    "addThresholdPlaceholder": "e.g. 21",
+    "messageTemplate": "Email text (optional)",
+    "templateHint": "Available: {{clientName}}, {{invoiceNumber}}, {{total}}, {{daysOverdue}}. Leave blank to use the default text.",
+    "saveSettings": "Save settings",
+    "saved": "Settings saved.",
+    "runNow": "Check now",
+    "running": "Checking…",
+    "ranNow": "Check triggered — emails sent where needed.",
+    "daysOverdue": "{{count}}d",
+    "sendLog": "Send log",
+    "sentAt": "When",
+    "threshold": "Threshold",
+    "sent": "Sent",
+    "failed": "Failed",
+    "emptyLog": "No reminders sent yet."
+  },
   "crm": {
     "eyebrow": "CRM",
     "title": "Deals",
@@ -90,6 +111,7 @@
     "auditLog": "Audit Log",
     "expenses": "Expenses & Purchases",
     "taxAuthority": "Tax Authority",
+    "overdueReminders": "Overdue Reminders",
     "currencyRates": "Currency Rates",
     "templateDesigner": "Document Designer",
     "backup": "Backups",

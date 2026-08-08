@@ -52,6 +52,7 @@ import RecurringDocumentsPage from './pages/RecurringDocumentsPage';
 import AuditLogPage from './pages/AuditLogPage';
 import ExpensesPage from './pages/ExpensesPage';
 import TaxAuthoritySettingsPage from './pages/TaxAuthoritySettingsPage';
+import OverdueRemindersPage from './pages/OverdueRemindersPage';
 import CurrencyRatesPage from './pages/CurrencyRatesPage';
 import TemplateDesignerPage from './pages/TemplateDesignerPage';
 import BackupPage from './pages/BackupPage';
@@ -132,6 +133,7 @@ export default function App() {
           <Route path="/audit-log" element={<AuditLogPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/tax-authority-settings" element={<TaxAuthoritySettingsPage />} />
+          <Route path="/overdue-reminders" element={<OverdueRemindersPage />} />
           <Route path="/currency-rates" element={<CurrencyRatesPage />} />
           <Route path="/template-designer" element={<TemplateDesignerPage />} />
           <Route path="/backup" element={<BackupPage />} />
