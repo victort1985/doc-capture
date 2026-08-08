@@ -17,6 +17,7 @@ import TemplatesPage from './pages/TemplatesPage';
 import FilesPage from './pages/FilesPage';
 import LocationsPage from './pages/LocationsPage';
 import CallsPage from './pages/CallsPage';
+import CrmDealsPage from './pages/CrmDealsPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import HomePage from './pages/HomePage';
 import PhoneBookPage from './pages/PhoneBookPage';
@@ -101,6 +102,7 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/calls" element={<CallsPage />} />
+          <Route path="/crm-deals" element={<CrmDealsPage />} />
           <Route path="/phonebook" element={<PhoneBookPage />} />
           <Route path="/fleet" element={<FleetPage />} />
           <Route path="/warehouse" element={<WarehousePage />} />

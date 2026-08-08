@@ -1,5 +1,5 @@
 import {
-  PhoneCall, Contact, MapPin, Tag, FileSpreadsheet, ReceiptText, FileText, Undo2, Banknote,
+  PhoneCall, Contact, MapPin, Tag, FileSpreadsheet, ReceiptText, FileText, Undo2, Banknote, Handshake,
   FileMinus, FilePlus2, CreditCard, TrendingUp, BookOpen, Receipt, Landmark, Package, Car, Repeat,
   CalendarClock, BarChart2, Users, ShieldCheck, Users2, HardDrive, FileSliders, FileStack,
   Smartphone, CalendarDays, ScrollText, Building2, Palette, HardDriveDownload, Timer, PackageSearch, ArrowLeftRight, FileDown,
@@ -37,6 +37,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: PhoneCall,
     items: [
       { to: '/calls', labelKey: 'nav.calls', icon: PhoneCall },
+      { to: '/crm-deals', labelKey: 'nav.crmDeals', icon: Handshake },
       { to: '/phonebook', labelKey: 'nav.phonebook', icon: Contact },
       { to: '/locations', labelKey: 'nav.locations', icon: MapPin },
     ],
