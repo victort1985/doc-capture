@@ -206,6 +206,109 @@ export class AccountingService {
       };
     });
   }
+
+  /** Cash flow statement (תזרים מזומנים) — the third core financial
+   * report alongside P&L and balance sheet, direct method: every
+   * ledger entry that actually touches Cash(1000)/Bank(1010),
+   * grouped by sourceType, split into money in vs money out. Uses
+   * sourceType rather than re-deriving activity type from account
+   * codes, since LedgerPostingService already labels every posting
+   * with exactly what generated it (payment/expense/supplier-payment
+   * are the only source types that ever touch a cash-like account —
+   * invoices, credit/debit notes, and supplier invoices themselves
+   * only move receivables/payables, not cash, until the payment
+   * actually happens). Opening balance is the cash-account balance
+   * the instant before `from`; closing is opening + net change,
+   * which should equal (and is a good sanity-check against) the
+   * balance sheet's own Cash+Bank total as of `to`. */
+  async cashFlowStatement(organizationId: number | null, from: string, to: string) {
+    const cashAccounts = await this.findAllAccounts(organizationId);
+    const cashLikeIds = cashAccounts.filter((a) => a.code === '1000' || a.code === '1010').map((a) => a.id);
+    if (cashLikeIds.length === 0) {
+      return { period: { from, to }, openingBalance: 0, inflows: [], totalIn: 0, outflows: [], totalOut: 0, netChange: 0, closingBalance: 0 };
+    }
+
+    const epoch = '1970-01-01';
+    const dayBeforeFrom = new Date(from);
+    dayBeforeFrom.setDate(dayBeforeFrom.getDate() - 1);
+    const openingBalance = await this.cashBalance(organizationId, cashLikeIds, epoch, dayBeforeFrom.toISOString().slice(0, 10));
+
+    const inQb = this.ledgerRepo.createQueryBuilder('e')
+      .select('e."sourceType"', 'sourceType')
+      .addSelect('SUM(e.amount)', 'total')
+      .where('e.date BETWEEN :from AND :to', { from, to })
+      .andWhere('e."debitAccountId" IN (:...ids)', { ids: cashLikeIds })
+      .groupBy('e."sourceType"');
+    if (organizationId != null) inQb.andWhere('e."organizationId" = :orgId', { orgId: organizationId });
+    const inflowRows = await inQb.getRawMany<{ sourceType: string | null; total: string }>();
+
+    const outQb = this.ledgerRepo.createQueryBuilder('e')
+      .select('e."sourceType"', 'sourceType')
+      .addSelect('SUM(e.amount)', 'total')
+      .where('e.date BETWEEN :from AND :to', { from, to })
+      .andWhere('e."creditAccountId" IN (:...ids)', { ids: cashLikeIds })
+      .groupBy('e."sourceType"');
+    if (organizationId != null) outQb.andWhere('e."organizationId" = :orgId', { orgId: organizationId });
+    const outflowRows = await outQb.getRawMany<{ sourceType: string | null; total: string }>();
+
+    const label = (sourceType: string | null): string => {
+      switch (sourceType) {
+        case 'payment': return 'תקבולים מלקוחות (Customer payments)';
+        case 'expense': case 'expense-vat': return 'הוצאות שוטפות (Operating expenses)';
+        case 'supplier-payment': return 'תשלומים לספקים (Supplier payments)';
+        default: return sourceType ?? 'אחר (Other)';
+      }
+    };
+    // expense + expense-vat are the same real-world transaction split
+    // across two postings (net cost, reclaimable VAT) — merge them
+    // back into one line here so the cash flow statement reads as
+    // "how much cash actually left for this expense", not two
+    // confusingly-separate rows for what was one payment.
+    const merge = (rows: { sourceType: string | null; total: string }[]) => {
+      const byLabel = new Map<string, number>();
+      for (const r of rows) {
+        const key = label(r.sourceType);
+        byLabel.set(key, (byLabel.get(key) ?? 0) + Number(r.total));
+      }
+      return Array.from(byLabel.entries()).map(([name, amount]) => ({ name, amount: Math.round(amount * 100) / 100 }));
+    };
+
+    const inflows = merge(inflowRows);
+    const outflows = merge(outflowRows);
+    const totalIn = round2(inflows.reduce((s, r) => s + r.amount, 0));
+    const totalOut = round2(outflows.reduce((s, r) => s + r.amount, 0));
+    const netChange = round2(totalIn - totalOut);
+
+    return {
+      period: { from, to },
+      openingBalance,
+      inflows,
+      totalIn,
+      outflows,
+      totalOut,
+      netChange,
+      closingBalance: round2(openingBalance + netChange),
+    };
+  }
+
+  private async cashBalance(organizationId: number | null, cashLikeIds: number[], from: string, to: string): Promise<number> {
+    const debitQb = this.ledgerRepo.createQueryBuilder('e')
+      .select('COALESCE(SUM(e.amount), 0)', 'total')
+      .where('e.date BETWEEN :from AND :to', { from, to })
+      .andWhere('e."debitAccountId" IN (:...ids)', { ids: cashLikeIds });
+    if (organizationId != null) debitQb.andWhere('e."organizationId" = :orgId', { orgId: organizationId });
+    const debitTotal = Number((await debitQb.getRawOne())?.total ?? 0);
+
+    const creditQb = this.ledgerRepo.createQueryBuilder('e')
+      .select('COALESCE(SUM(e.amount), 0)', 'total')
+      .where('e.date BETWEEN :from AND :to', { from, to })
+      .andWhere('e."creditAccountId" IN (:...ids)', { ids: cashLikeIds });
+    if (organizationId != null) creditQb.andWhere('e."organizationId" = :orgId', { orgId: organizationId });
+    const creditTotal = Number((await creditQb.getRawOne())?.total ?? 0);
+
+    return Math.round((debitTotal - creditTotal) * 100) / 100;
+  }
+
   /** VAT summary (דוח תקופתי מע"מ) — output VAT collected on sales
    * (net credit to account 2100) minus input VAT paid on deductible
    * purchases (net debit to account 1200, the new account this same

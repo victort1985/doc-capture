@@ -41,6 +41,11 @@ export class AccountingController {
     return this.service.vatSummary(user.organizationId, from, to);
   }
 
+  @Get('cash-flow')
+  cashFlow(@CurrentUser() user: ReqUser, @Query('from') from: string, @Query('to') to: string) {
+    return this.service.cashFlowStatement(user.organizationId, from, to);
+  }
+
   @Get('balance-sheet')
   balanceSheet(@CurrentUser() user: ReqUser, @Query('asOf') asOf: string) {
     return this.service.balanceSheet(user.organizationId, asOf);

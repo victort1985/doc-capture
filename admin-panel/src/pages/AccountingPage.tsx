@@ -17,6 +17,12 @@ interface BalanceSheetData {
 }
 interface MutualSettlementRow { clientName: string; invoiced: number; paid: number; balance: number; }
 interface VatSummaryData { period: { from: string; to: string }; outputVat: number; inputVat: number; netVat: number; }
+interface CashFlowRow { name: string; amount: number; }
+interface CashFlowData {
+  period: { from: string; to: string }; openingBalance: number;
+  inflows: CashFlowRow[]; totalIn: number; outflows: CashFlowRow[]; totalOut: number;
+  netChange: number; closingBalance: number;
+}
 interface BankLine {
   id: number; date: string; description: string; amount: number; reference?: string;
   status: 'unmatched' | 'matched' | 'ignored'; importBatchId: string;
@@ -25,7 +31,7 @@ interface BankLine {
 interface BankSummary { unmatchedCount: number; unmatchedAmount: number; matchedCount: number; }
 interface MatchSuggestion { ledgerEntryId: number; date: string; description: string; amount: number; daysApart: number; }
 
-type Tab = 'trial-balance' | 'pnl' | 'balance-sheet' | 'vat' | 'bank-recon' | 'mutual-settlements';
+type Tab = 'trial-balance' | 'pnl' | 'cash-flow' | 'balance-sheet' | 'vat' | 'bank-recon' | 'mutual-settlements';
 
 function pad(n: number) { return String(n).padStart(2, '0'); }
 function toDateStr(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
@@ -41,6 +47,7 @@ export default function AccountingPage() {
   const [balanceSheet, setBalanceSheet] = useState<BalanceSheetData | null>(null);
   const [mutualSettlements, setMutualSettlements] = useState<MutualSettlementRow[]>([]);
   const [vatSummary, setVatSummary] = useState<VatSummaryData | null>(null);
+  const [cashFlow, setCashFlow] = useState<CashFlowData | null>(null);
   const [bankLines, setBankLines] = useState<BankLine[]>([]);
   const [bankSummary, setBankSummary] = useState<BankSummary | null>(null);
   const [uploadingStatement, setUploadingStatement] = useState(false);
@@ -111,6 +118,15 @@ export default function AccountingPage() {
       setVatSummary(await apiFetch<VatSummaryData>(`/accounting/vat-summary?${new URLSearchParams({ from, to }).toString()}`));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load VAT summary');
+    } finally { setLoading(false); }
+  }
+
+  async function loadCashFlow() {
+    setLoading(true); setError(null);
+    try {
+      setCashFlow(await apiFetch<CashFlowData>(`/accounting/cash-flow?${new URLSearchParams({ from, to }).toString()}`));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load cash flow statement');
     } finally { setLoading(false); }
   }
 
@@ -187,6 +203,7 @@ export default function AccountingPage() {
     else if (tab === 'pnl') loadPnl();
     else if (tab === 'balance-sheet') loadBalanceSheet();
     else if (tab === 'vat') loadVatSummary();
+    else if (tab === 'cash-flow') loadCashFlow();
     else if (tab === 'bank-recon') loadBankLines();
     else loadMutualSettlements();
   }, [tab, from, to]);
@@ -285,7 +302,7 @@ export default function AccountingPage() {
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-        {(['trial-balance', 'pnl', 'balance-sheet', 'vat', 'bank-recon', 'mutual-settlements'] as Tab[]).map((tKey) => (
+        {(['trial-balance', 'pnl', 'cash-flow', 'balance-sheet', 'vat', 'bank-recon', 'mutual-settlements'] as Tab[]).map((tKey) => (
           <button
             key={tKey}
             type="button"
@@ -498,6 +515,61 @@ export default function AccountingPage() {
               <tr><td style={{ padding: '4px 0 4px 16px' }}>{t('accounting.retainedEarnings')}</td><td style={{ padding: '4px 0', textAlign: 'right' }}>₪{balanceSheet.retainedEarnings.toFixed(2)}</td></tr>
               <tr style={{ borderTop: '1px solid var(--border, #ccc)', fontWeight: 700 }}>
                 <td style={{ padding: '6px 0' }}>{t('accounting.totalEquity')}</td><td style={{ padding: '6px 0', textAlign: 'right' }}>₪{balanceSheet.totalEquity.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {tab === 'cash-flow' && cashFlow && (
+        <div className="card" style={{ padding: 16 }}>
+          <h3 style={{ marginTop: 0 }}>{t('accounting.tab_cash_flow')}</h3>
+          <div style={{ width: '100%', height: 220, marginBottom: 20 }}>
+            <ResponsiveContainer>
+              <BarChart
+                data={[
+                  { name: t('accounting.cashOpening'), value: cashFlow.openingBalance, fill: '#457B9D' },
+                  { name: t('accounting.cashIn'), value: cashFlow.totalIn, fill: '#2E7D32' },
+                  { name: t('accounting.cashOut'), value: -cashFlow.totalOut, fill: '#C62828' },
+                  { name: t('accounting.cashClosing'), value: cashFlow.closingBalance, fill: '#1D3557' },
+                ]}
+                margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border, #eee)" />
+                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
+                <Tooltip formatter={(v: any) => `₪${Number(v).toLocaleString()}`} />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                  {[0, 1, 2, 3].map((i) => <Cell key={i} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <tbody>
+              <tr style={{ borderBottom: '1px solid var(--border, #ccc)' }}>
+                <td style={{ padding: '6px 0' }}>{t('accounting.cashOpening')}</td>
+                <td style={{ padding: '6px 0', textAlign: 'right', fontWeight: 600 }}>₪{cashFlow.openingBalance.toLocaleString()}</td>
+              </tr>
+              <tr style={{ fontWeight: 700 }}><td colSpan={2} style={{ padding: '12px 0 6px' }}>{t('accounting.cashIn')}</td></tr>
+              {cashFlow.inflows.map((r) => (
+                <tr key={r.name}><td style={{ padding: '4px 0 4px 16px' }}>{r.name}</td><td style={{ padding: '4px 0', textAlign: 'right' }}>₪{r.amount.toLocaleString()}</td></tr>
+              ))}
+              <tr style={{ borderTop: '1px solid var(--border, #eee)', fontWeight: 700 }}>
+                <td style={{ padding: '6px 0' }}>{t('accounting.cashTotalIn')}</td><td style={{ padding: '6px 0', textAlign: 'right' }}>₪{cashFlow.totalIn.toLocaleString()}</td>
+              </tr>
+              <tr style={{ fontWeight: 700 }}><td colSpan={2} style={{ padding: '12px 0 6px' }}>{t('accounting.cashOut')}</td></tr>
+              {cashFlow.outflows.map((r) => (
+                <tr key={r.name}><td style={{ padding: '4px 0 4px 16px' }}>{r.name}</td><td style={{ padding: '4px 0', textAlign: 'right' }}>₪{r.amount.toLocaleString()}</td></tr>
+              ))}
+              <tr style={{ borderTop: '1px solid var(--border, #eee)', fontWeight: 700 }}>
+                <td style={{ padding: '6px 0' }}>{t('accounting.cashTotalOut')}</td><td style={{ padding: '6px 0', textAlign: 'right' }}>₪{cashFlow.totalOut.toLocaleString()}</td>
+              </tr>
+              <tr style={{ borderTop: '2px solid var(--border, #999)', fontWeight: 800, fontSize: 15 }}>
+                <td style={{ padding: '8px 0' }}>{t('accounting.cashClosing')}</td>
+                <td style={{ padding: '8px 0', textAlign: 'right', color: cashFlow.closingBalance >= 0 ? 'var(--success, green)' : 'var(--danger, crimson)' }}>
+                  ₪{cashFlow.closingBalance.toLocaleString()}
+                </td>
               </tr>
             </tbody>
           </table>
