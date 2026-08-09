@@ -80,6 +80,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/expenses', labelKey: 'nav.expenses', icon: Receipt },
       { to: '/tax-authority-settings', labelKey: 'nav.taxAuthority', icon: Landmark },
       { to: '/overdue-reminders', labelKey: 'nav.overdueReminders', icon: BellRing },
+      { to: '/card-acquiring-settings', labelKey: 'nav.cardAcquiring', icon: CreditCard },
       { to: '/currency-rates', labelKey: 'nav.currencyRates', icon: TrendingUp },
     ],
   },

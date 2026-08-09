@@ -1,4 +1,17 @@
 {
+  "cardAcquiring": {
+    "eyebrow": "Finance",
+    "title": "Card Acquiring",
+    "notConnectedTitle": "Direct card charging isn't connected yet",
+    "notConnectedExplainer": "This is scaffolding for a future integration with a real payment gateway (Stripe, Tranzila, or CardCom). The setting below saves your choice, but no actual card charging happens yet — record payments manually (cash/transfer/etc.) once you've actually received them.",
+    "provider": "Payment gateway",
+    "providerNone": "Not connected",
+    "apiKey": "API key",
+    "apiKeyPlaceholder": "Available once a real gateway is connected",
+    "apiKeyHint": "Stored encrypted. Does nothing yet — no real integration exists.",
+    "saveSettings": "Save",
+    "saved": "Saved."
+  },
   "timeClock": {
     "eyebrow": "Time Clock",
     "title": "Time Clock",
@@ -162,6 +175,7 @@
     "expenses": "Expenses & Purchases",
     "taxAuthority": "Tax Authority",
     "overdueReminders": "Overdue Reminders",
+    "cardAcquiring": "Card Acquiring",
     "currencyRates": "Currency Rates",
     "templateDesigner": "Document Designer",
     "backup": "Backups",

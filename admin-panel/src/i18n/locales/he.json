@@ -1,4 +1,17 @@
 {
+  "cardAcquiring": {
+    "eyebrow": "כספים",
+    "title": "סליקת אשראי",
+    "notConnectedTitle": "סליקת אשראי ישירה עדיין לא מחוברת",
+    "notConnectedExplainer": "זהו שלד להכנה לחיבור עתידי לשער תשלומים אמיתי (Stripe, Tranzila או CardCom). ההגדרה למטה שומרת את הבחירה, אך אין עדיין חיוב אשראי בפועל — רשום תשלומים ידנית (מזומן/העברה/וכו') לאחר קבלתם בפועל.",
+    "provider": "שער תשלומים",
+    "providerNone": "לא מחובר",
+    "apiKey": "מפתח API",
+    "apiKeyPlaceholder": "יהיה זמין כאשר שער אמיתי יחובר",
+    "apiKeyHint": "מאוחסן מוצפן. עדיין לא עושה כלום — אין אינטגרציה אמיתית.",
+    "saveSettings": "שמור",
+    "saved": "נשמר."
+  },
   "timeClock": {
     "eyebrow": "שעון נוכחות",
     "title": "שעון נוכחות",
@@ -162,6 +175,7 @@
     "expenses": "הוצאות ורכישות",
     "taxAuthority": "רשות המסים",
     "overdueReminders": "תזכורות פיגור",
+    "cardAcquiring": "סליקת אשראי",
     "currencyRates": "שערי מטבע",
     "templateDesigner": "מעצב מסמכים",
     "backup": "גיבויים",

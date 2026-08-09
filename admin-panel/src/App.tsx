@@ -57,6 +57,7 @@ import AuditLogPage from './pages/AuditLogPage';
 import ExpensesPage from './pages/ExpensesPage';
 import TaxAuthoritySettingsPage from './pages/TaxAuthoritySettingsPage';
 import OverdueRemindersPage from './pages/OverdueRemindersPage';
+import CardAcquiringSettingsPage from './pages/CardAcquiringSettingsPage';
 import CurrencyRatesPage from './pages/CurrencyRatesPage';
 import TemplateDesignerPage from './pages/TemplateDesignerPage';
 import BackupPage from './pages/BackupPage';
@@ -142,6 +143,7 @@ export default function App() {
           <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/tax-authority-settings" element={<TaxAuthoritySettingsPage />} />
           <Route path="/overdue-reminders" element={<OverdueRemindersPage />} />
+          <Route path="/card-acquiring-settings" element={<CardAcquiringSettingsPage />} />
           <Route path="/currency-rates" element={<CurrencyRatesPage />} />
           <Route path="/template-designer" element={<TemplateDesignerPage />} />
           <Route path="/backup" element={<BackupPage />} />
