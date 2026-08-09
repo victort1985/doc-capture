@@ -9,7 +9,6 @@ import '../widgets/copyright_notice.dart';
 import '../widgets/stamp_mark.dart';
 import '../demo_consent_dialog.dart';
 import 'connection_settings_screen.dart';
-import 'terms_of_service_gate_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -93,31 +92,21 @@ class _LoginScreenState extends State<LoginScreen> with SingleTickerProviderStat
         await appState.authService.clearSavedCredentials();
       }
       if (!mounted) return;
-      if (!(appState.currentUser?.tosAccepted ?? false)) {
-        final accepted = await Navigator.of(context).push<bool>(
-          MaterialPageRoute(builder: (_) => TermsOfServiceGateScreen(language: appState.currentUser?.language ?? 'he')),
-        );
-        if (accepted != true) {
-          // Cannot proceed without accepting — stay on the login
-          // screen rather than pushing through to RootScreen.
-          setState(() => _loading = false);
-          return;
-        }
-        if (!mounted) return;
-      }
       if (appState.currentUser?.isDemoMode ?? false) {
         await showDemoConsentDialog(context);
         if (!mounted) return;
       }
       // Nothing else to do here — main.dart's own top-level routing
       // (which reactively watches AppState) takes it from here: it'll
-      // show OrganizationPickerGateScreen if there's more than one
-      // organization to choose from, or RootScreen directly if there's
-      // nothing to pick. See main.dart's own routing logic and
-      // AppState.orgConfirmed's doc comment for why this moved out of
-      // here — a manual push from this one call site was exactly the
-      // kind of single-point-of-failure that made the picker skippable
-      // before.
+      // show TermsOfServiceGateScreen if tosAccepted is still false,
+      // then OrganizationPickerGateScreen if there's more than one
+      // organization to choose from, or RootScreen directly if
+      // there's nothing left to gate on. See main.dart's own routing
+      // logic for why both of those moved out of here — a manual
+      // push from this one call site was exactly the kind of single-
+      // point-of-failure that made either gate skippable before (the
+      // org-picker one specifically already had this fixed; TOS had
+      // the exact same latent bug and is fixed the same way now).
     } on DioException catch (e) {
       if (!mounted) return;
       final l10n = AppLocalizations.of(context)!;
