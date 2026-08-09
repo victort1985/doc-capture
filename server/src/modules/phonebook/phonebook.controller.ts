@@ -27,6 +27,8 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { PriceTierService } from '../price-list/price-tier.service';
+import { PriceListService } from '../price-list/price-list.service';
 
 const MAX_FILE_SIZE = 15 * 1024 * 1024;
 
@@ -35,7 +37,11 @@ type RequestUser = { id: number; organizationId: number | null; allowedOrganizat
 @Controller('phonebook')
 @UseGuards(JwtAuthGuard)
 export class PhoneBookController {
-  constructor(private readonly phoneBookService: PhoneBookService) {}
+  constructor(
+    private readonly phoneBookService: PhoneBookService,
+    private readonly priceTierService: PriceTierService,
+    private readonly priceListService: PriceListService,
+  ) {}
 
   // Reading the phone book is available to any authenticated user (spec
   // item 4: anyone opening a call can pick a contact), but always scoped
@@ -82,6 +88,25 @@ export class PhoneBookController {
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
     return this.phoneBookService.findOne(id, user.organizationId);
+  }
+
+  /** Prices this specific client actually pays — their assigned
+   * tier's catalog, or the standard catalog (no tier-price/overridden
+   * distinction, since there's no tier at all) if they have none.
+   * What a person actually wants when building a quote/invoice for a
+   * client who may or may not be on a special pricing tier, without
+   * needing to check separately first. */
+  @Get(':id/price-catalog')
+  async getPriceCatalog(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: RequestUser) {
+    const contact = await this.phoneBookService.findOne(id, user.organizationId);
+    if (contact.priceTier) {
+      return this.priceTierService.getCatalogForTier(contact.priceTier.id, user.organizationId);
+    }
+    const items = await this.priceListService.findAll(user.organizationId);
+    return items.map((item) => ({
+      id: item.id, name: item.name, type: item.type,
+      basePrice: Number(item.price), tierPrice: Number(item.price), overridden: false,
+    }));
   }
 
   @Get(':id/photo')

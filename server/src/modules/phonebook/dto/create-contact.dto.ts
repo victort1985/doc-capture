@@ -51,4 +51,10 @@ export class CreateContactDto {
 
   @IsOptional()
   creditLimit?: number;
+
+  /** Only meaningful for CLIENT-category contacts — see
+   * PhoneBookContact.priceTier's own doc comment. */
+  @IsInt()
+  @IsOptional()
+  priceTierId?: number;
 }

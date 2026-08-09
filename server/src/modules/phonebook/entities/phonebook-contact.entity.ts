@@ -12,6 +12,7 @@ import { Location } from '../../locations/entities/location.entity';
 import { StorageConnection } from '../../storage/entities/storage-connection.entity';
 import { User } from '../../users/entities/user.entity';
 import { Organization } from '../../organizations/entities/organization.entity';
+import { PriceTier } from '../../price-list/entities/price-tier.entity';
 
 export enum ContactCategory {
   CLIENT = 'client',
@@ -55,6 +56,15 @@ export class PhoneBookContact {
 
   @Column()
   lastName: string;
+
+  /** Only meaningful for CLIENT-category contacts — which pricing
+   * tier this client belongs to, so quotes/invoices built for them
+   * can suggest tier-specific prices instead of the standard catalog
+   * price. Null means "standard pricing," not "no tier configured
+   * yet" vs "explicitly standard" — there's no meaningful difference
+   * between those two for how prices actually get looked up. */
+  @ManyToOne(() => PriceTier, { nullable: true, onDelete: 'SET NULL' })
+  priceTier?: PriceTier | null;
 
   @ManyToOne(() => City, { nullable: true, onDelete: 'SET NULL' })
   city?: City;

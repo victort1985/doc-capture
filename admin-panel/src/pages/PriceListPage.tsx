@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Plus, Trash2, Pencil, Building2 } from 'lucide-react';
+import { Plus, Trash2, Pencil, Building2, Layers, X } from 'lucide-react';
 import { apiFetch } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
 interface PriceItem { id: number; name: string; type: 'device' | 'service'; price: number; notes?: string | null; }
 interface Org { id: number; name: string; }
+interface PriceTier { id: number; name: string; }
+interface CatalogForTier { id: number; name: string; type: string; basePrice: number; tierPrice: number; overridden: boolean; }
 
 export default function PriceListPage() {
   const { t } = useTranslation();
@@ -14,7 +16,7 @@ export default function PriceListPage() {
   const [orgs, setOrgs] = useState<Org[]>([]);
   const [selOrgId, setSelOrgId] = useState<number | null>(null);
   const [items, setItems] = useState<PriceItem[]>([]);
-  const [tab, setTab] = useState<'device' | 'service'>('device');
+  const [tab, setTab] = useState<'device' | 'service' | 'tiers'>('device');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<PriceItem | null>(null);
@@ -62,7 +64,9 @@ export default function PriceListPage() {
               </select>
             </div>
           )}
-          <button type="button" onClick={() => { setEditing(null); setShowForm(true); }}><Plus size={15} /> {t('prices.add')}</button>
+          {tab !== 'tiers' && (
+            <button type="button" onClick={() => { setEditing(null); setShowForm(true); }}><Plus size={15} /> {t('prices.add')}</button>
+          )}
         </div>
       </div>
 
@@ -71,10 +75,14 @@ export default function PriceListPage() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
         <button type="button" className={tab === 'device' ? '' : 'ghost'} onClick={() => setTab('device')}>{t('prices.devices')}</button>
         <button type="button" className={tab === 'service' ? '' : 'ghost'} onClick={() => setTab('service')}>{t('prices.services')}</button>
+        <button type="button" className={tab === 'tiers' ? '' : 'ghost'} onClick={() => setTab('tiers')}><Layers size={13} /> {t('prices.tiers')}</button>
       </div>
 
       {error && <div className="error-banner">{error}</div>}
 
+      {tab === 'tiers' ? (
+        <PriceTiersPanel orgId={selOrgId} isSuperAdmin={isSuperAdmin} allItems={items} />
+      ) : (
       <div className="card" style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
@@ -103,11 +111,12 @@ export default function PriceListPage() {
           </tbody>
         </table>
       </div>
+      )}
 
       {showForm && (
         <PriceForm
           initial={editing}
-          defaultType={tab}
+          defaultType={tab === 'tiers' ? 'device' : tab}
           orgId={selOrgId}
           isSuperAdmin={isSuperAdmin}
           onClose={() => setShowForm(false)}
@@ -165,6 +174,138 @@ function PriceForm({ initial, defaultType, orgId, isSuperAdmin, onClose, onSaved
           <button disabled={saving} onClick={save}>{saving ? t('common.saving') : t('common.save')}</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function PriceTiersPanel({ orgId, isSuperAdmin, allItems }: { orgId: number | null; isSuperAdmin: boolean; allItems: PriceItem[] }) {
+  const { t } = useTranslation();
+  const [tiers, setTiers] = useState<PriceTier[]>([]);
+  const [selectedTierId, setSelectedTierId] = useState<number | null>(null);
+  const [catalog, setCatalog] = useState<CatalogForTier[]>([]);
+  const [newTierName, setNewTierName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [editingOverrides, setEditingOverrides] = useState<Record<number, string>>({});
+
+  const qs = isSuperAdmin && orgId ? `?orgId=${orgId}` : '';
+
+  async function loadTiers() {
+    try {
+      const data = await apiFetch<PriceTier[]>(`/price-list/tiers${qs}`);
+      setTiers(data);
+      if (data.length && !selectedTierId) setSelectedTierId(data[0].id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load tiers');
+    }
+  }
+  useEffect(() => { loadTiers(); }, [orgId]);
+
+  async function loadCatalog(tierId: number) {
+    setLoading(true); setError(null);
+    try {
+      const data = await apiFetch<CatalogForTier[]>(`/price-list/tiers/${tierId}/catalog${qs}`);
+      setCatalog(data);
+      setEditingOverrides(Object.fromEntries(data.filter(d => d.overridden).map(d => [d.id, String(d.tierPrice)])));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load catalog');
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { if (selectedTierId) loadCatalog(selectedTierId); }, [selectedTierId]);
+
+  async function addTier() {
+    if (!newTierName.trim()) return;
+    try {
+      const tier = await apiFetch<PriceTier>(`/price-list/tiers${qs}`, { method: 'POST', body: JSON.stringify({ name: newTierName.trim() }) });
+      setNewTierName('');
+      await loadTiers();
+      setSelectedTierId(tier.id);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to create tier');
+    }
+  }
+
+  async function removeTier(id: number, name: string) {
+    if (!confirm(t('prices.deleteTierConfirm', { name }))) return;
+    await apiFetch(`/price-list/tiers/${id}${qs}`, { method: 'DELETE' });
+    setSelectedTierId(null);
+    loadTiers();
+  }
+
+  async function saveOverride(itemId: number) {
+    if (!selectedTierId) return;
+    const raw = editingOverrides[itemId];
+    const price = raw?.trim() ? Number(raw) : null;
+    await apiFetch(`/price-list/tiers/${selectedTierId}/overrides/${itemId}${qs}`, { method: 'PUT', body: JSON.stringify({ price }) });
+    loadCatalog(selectedTierId);
+  }
+
+  return (
+    <div>
+      <p style={{ color: 'var(--ink-soft)', fontSize: 13.5, marginTop: -4, marginBottom: 16 }}>{t('prices.tiersExplainer')}</p>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div className="card" style={{ padding: 12, minWidth: 200 }}>
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+            <input value={newTierName} onChange={e => setNewTierName(e.target.value)} placeholder={t('prices.newTierPlaceholder')} style={{ fontSize: 12.5 }} />
+            <button type="button" className="ghost" onClick={addTier}><Plus size={14} /></button>
+          </div>
+          {tiers.map(tier => (
+            <div
+              key={tier.id}
+              onClick={() => setSelectedTierId(tier.id)}
+              style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '8px 10px', borderRadius: 6, cursor: 'pointer', marginBottom: 4, fontSize: 13.5,
+                background: selectedTierId === tier.id ? 'var(--primary-wash, #E8EDF3)' : 'transparent',
+                fontWeight: selectedTierId === tier.id ? 700 : 400,
+              }}
+            >
+              <span>{tier.name}</span>
+              <button onClick={(e) => { e.stopPropagation(); removeTier(tier.id, tier.name); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', display: 'flex' }}><X size={13} /></button>
+            </div>
+          ))}
+          {tiers.length === 0 && <div style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{t('prices.noTiers')}</div>}
+        </div>
+
+        {selectedTierId && (
+          <div className="card" style={{ flex: 1, minWidth: 320, overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border, #e5e5e5)' }}>
+                  <th style={{ padding: '8px 12px' }}>{t('prices.name')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('prices.basePrice')}</th>
+                  <th style={{ padding: '8px 12px' }}>{t('prices.tierPrice')}</th>
+                  <th style={{ padding: '8px 12px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {catalog.map(entry => (
+                  <tr key={entry.id} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                    <td style={{ padding: '6px 12px' }}>{entry.name}</td>
+                    <td style={{ padding: '6px 12px', color: 'var(--ink-soft)' }}>₪{entry.basePrice.toFixed(2)}</td>
+                    <td style={{ padding: '6px 12px' }}>
+                      <input
+                        type="number" step="0.01"
+                        placeholder={entry.basePrice.toFixed(2)}
+                        value={editingOverrides[entry.id] ?? ''}
+                        onChange={e => setEditingOverrides(prev => ({ ...prev, [entry.id]: e.target.value }))}
+                        style={{ width: 90, fontSize: 12.5, fontWeight: entry.overridden ? 700 : 400 }}
+                      />
+                    </td>
+                    <td style={{ padding: '6px 12px' }}>
+                      <button type="button" className="ghost" onClick={() => saveOverride(entry.id)} style={{ fontSize: 11.5 }}>{t('common.save')}</button>
+                    </td>
+                  </tr>
+                ))}
+                {catalog.length === 0 && !loading && (
+                  <tr><td colSpan={4} style={{ padding: '16px 12px', color: 'var(--ink-soft)' }}>{t('prices.empty')}</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      {error && <div className="error-banner" style={{ marginTop: 12 }}>{error}</div>}
     </div>
   );
 }

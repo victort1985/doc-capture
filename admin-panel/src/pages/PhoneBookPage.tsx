@@ -21,7 +21,9 @@ interface Contact {
   taxId?: string;
   paymentTermsDays?: number;
   creditLimit?: number;
+  priceTier?: { id: number; name: string } | null;
 }
+interface PriceTier { id: number; name: string; }
 interface ParsedContact {
   firstName: string;
   lastName: string;
@@ -35,7 +37,7 @@ interface ParsedContact {
 const EMPTY_FORM = {
   clientIdentifier: '',
   category: 'client', firstName: '', lastName: '', cityId: '', organizationId: '',
-  position: '', phone: '', email: '', notes: '', taxId: '', paymentTermsDays: '', creditLimit: '',
+  position: '', phone: '', email: '', notes: '', taxId: '', paymentTermsDays: '', creditLimit: '', priceTierId: '',
 };
 
 export default function PhoneBookPage() {
@@ -44,6 +46,7 @@ export default function PhoneBookPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [cities, setCities] = useState<City[]>([]);
   const [locations, setLocations] = useState<Location[]>([]);
+  const [priceTiers, setPriceTiers] = useState<PriceTier[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState('');
   const [query, setQuery] = useState('');
@@ -77,6 +80,7 @@ export default function PhoneBookPage() {
       setSelectedIds(new Set());
       setCities(ci);
       setLocations(lo);
+      apiFetch<PriceTier[]>('/price-list/tiers').then(setPriceTiers).catch(() => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load phone book');
     }
@@ -153,6 +157,7 @@ export default function PhoneBookPage() {
       notes: c.notes || '',
       taxId: c.taxId || '', paymentTermsDays: c.paymentTermsDays != null ? String(c.paymentTermsDays) : '',
       creditLimit: c.creditLimit != null ? String(c.creditLimit) : '',
+      priceTierId: c.priceTier ? String(c.priceTier.id) : '',
     });
     setShowForm(true);
   }
@@ -529,6 +534,15 @@ export default function PhoneBookPage() {
                   <input type="number" value={form.creditLimit} onChange={(e) => setForm({ ...form, creditLimit: e.target.value })} placeholder="₪" />
                 </div>
               </>
+            )}
+            {form.category === 'client' && (
+              <div>
+                <label>{t('phonebook.priceTier')}</label>
+                <select value={form.priceTierId} onChange={(e) => setForm({ ...form, priceTierId: e.target.value })}>
+                  <option value="">{t('phonebook.priceTierStandard')}</option>
+                  {priceTiers.map((tr) => <option key={tr.id} value={tr.id}>{tr.name}</option>)}
+                </select>
+              </div>
             )}
             <div style={{ gridColumn: '1 / -1' }}>
               <label>{t('phonebook.notes')}</label>

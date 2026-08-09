@@ -11,6 +11,7 @@ import { GoogleContactsController } from './google-contacts.controller';
 import { StorageModule } from '../storage/storage.module';
 import { LocationsModule } from '../locations/locations.module';
 import { TemplatesModule } from '../templates/templates.module';
+import { PriceListModule } from '../price-list/price-list.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { TemplatesModule } from '../templates/templates.module';
     StorageModule,
     LocationsModule,
     TemplatesModule,
+    PriceListModule,
   ],
   controllers: [PhoneBookController, GoogleContactsController],
   providers: [PhoneBookService, GoogleContactsService],

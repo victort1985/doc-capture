@@ -13,6 +13,7 @@ import { TemplatesService } from '../templates/templates.service';
 import { processPhoto } from '../files/processors/photo.processor';
 import { parseVCard } from './vcard-parser.util';
 import { ParsedContact } from './phonebook.types';
+import { PriceTier } from '../price-list/entities/price-tier.entity';
 import {
   DEFAULT_PHONEBOOK_PATTERN,
   resolvePhoneBookNamePattern,
@@ -27,10 +28,28 @@ export class PhoneBookService {
     private readonly citiesRepo: Repository<City>,
     @InjectRepository(Location)
     private readonly locationsRepo: Repository<Location>,
+    @InjectRepository(PriceTier)
+    private readonly priceTiersRepo: Repository<PriceTier>,
     private readonly storageService: StorageService,
     private readonly locationsService: LocationsService,
     private readonly templatesService: TemplatesService,
   ) {}
+
+  /** Verifies a priceTierId (if provided) belongs to the caller's own
+   * organization before assigning it — same fetch-then-compare
+   * isolation pattern used throughout this app; returns undefined for
+   * "field not touched" (dto value was undefined) vs null for
+   * "explicitly cleared" (dto value was null), matching how the rest
+   * of create/update already distinguish those two cases for other
+   * optional relations. */
+  private async resolvePriceTier(priceTierId: number | undefined, tenantId: number | null): Promise<PriceTier | null | undefined> {
+    if (priceTierId === undefined) return undefined;
+    if (priceTierId === null) return null;
+    const tier = await this.priceTiersRepo.findOne({ where: { id: priceTierId }, relations: ['organization'] });
+    if (!tier) throw new BadRequestException('Price tier not found');
+    if (tenantId != null && tier.organization?.id !== tenantId) throw new BadRequestException('Price tier not found');
+    return tier;
+  }
 
   /**
    * Search-as-you-type by first/last name prefix, optionally filtered by
@@ -82,7 +101,7 @@ export class PhoneBookService {
   async findOne(id: number, tenantId?: number | null): Promise<PhoneBookContact> {
     const contact = await this.contactsRepo.findOne({
       where: { id },
-      relations: ['city', 'city.region', 'organization', 'createdBy', 'tenant'],
+      relations: ['city', 'city.region', 'organization', 'createdBy', 'tenant', 'priceTier'],
     });
     if (!contact) throw new NotFoundException('Contact not found');
     if (tenantId != null && contact.tenant != null && contact.tenant.id !== tenantId) {
@@ -118,6 +137,7 @@ export class PhoneBookService {
     const clientIdentifier = dto.clientIdentifier != null
       ? await this.claimIdentifier(dto.clientIdentifier, tenantId)
       : await this.assignSmallestFreeIdentifier(tenantId);
+    const priceTier = await this.resolvePriceTier(dto.priceTierId, tenantId);
 
     const contact = this.contactsRepo.create({
       clientIdentifier,
@@ -133,6 +153,7 @@ export class PhoneBookService {
       taxId: dto.taxId,
       paymentTermsDays: dto.paymentTermsDays,
       creditLimit: dto.creditLimit,
+      priceTier: priceTier ?? undefined,
       createdBy: { id: userId } as any,
       tenant: tenantId != null ? ({ id: tenantId } as any) : undefined,
     });
@@ -168,6 +189,10 @@ export class PhoneBookService {
       clientIdentifier = dto.clientIdentifier;
     }
 
+    const priceTier = dto.priceTierId !== undefined
+      ? await this.resolvePriceTier(dto.priceTierId, tenantId)
+      : contact.priceTier;
+
     Object.assign(contact, {
       clientIdentifier,
       category: dto.category ?? contact.category,
@@ -175,6 +200,7 @@ export class PhoneBookService {
       lastName: dto.lastName ?? contact.lastName,
       city,
       organization,
+      priceTier: priceTier === null ? null : (priceTier ?? contact.priceTier),
       position: dto.position ?? contact.position,
       phone: dto.phone ?? contact.phone,
       email: dto.email ?? contact.email,
