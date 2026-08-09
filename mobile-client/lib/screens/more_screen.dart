@@ -7,6 +7,7 @@ import 'calendar_screen.dart';
 import 'management_screen.dart';
 import 'settings_screen.dart';
 import 'inventory_screen.dart';
+import 'time_clock_screen.dart';
 import '../widgets/organization_logo_background.dart';
 
 /// The 4th bottom tab in the "Action Hub" nav style — everything that
@@ -35,6 +36,17 @@ class MoreScreen extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right, size: 18),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const OrganizationLogoBackground(child: InventoryScreen())),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.access_time_outlined, color: AppColors.inkSoft),
+                title: Text(l10n.timeClockTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                trailing: const Icon(Icons.chevron_right, size: 18),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const OrganizationLogoBackground(child: TimeClockScreen())),
                 ),
               ),
             ),
