@@ -17,6 +17,8 @@ import TemplatesPage from './pages/TemplatesPage';
 import FilesPage from './pages/FilesPage';
 import LocationsPage from './pages/LocationsPage';
 import CallsPage from './pages/CallsPage';
+import TimeClockPage from './pages/TimeClockPage';
+import TimesheetPage from './pages/TimesheetPage';
 import CrmDealsPage from './pages/CrmDealsPage';
 import OrganizationsPage from './pages/OrganizationsPage';
 import HomePage from './pages/HomePage';
@@ -105,6 +107,8 @@ export default function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/organizations" element={<OrganizationsPage />} />
           <Route path="/calls" element={<CallsPage />} />
+          <Route path="/time-clock" element={<TimeClockPage />} />
+          <Route path="/timesheet" element={<TimesheetPage />} />
           <Route path="/crm-deals" element={<CrmDealsPage />} />
           <Route path="/phonebook" element={<PhoneBookPage />} />
           <Route path="/fleet" element={<FleetPage />} />

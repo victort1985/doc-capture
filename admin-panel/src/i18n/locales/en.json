@@ -1,4 +1,24 @@
 {
+  "timeClock": {
+    "eyebrow": "Time Clock",
+    "title": "Time Clock",
+    "clockIn": "Clock in",
+    "clockOut": "Clock out",
+    "clockedInSince": "Clocked in since",
+    "notClockedIn": "Not currently clocked in"
+  },
+  "timesheet": {
+    "eyebrow": "Time Clock",
+    "title": "Timesheet",
+    "employee": "Employee",
+    "totalHours": "Total hours",
+    "shifts": "Shifts",
+    "clockIn": "Clock in",
+    "clockOut": "Clock out",
+    "stillOpen": "Shift open",
+    "deleteConfirm": "Delete this timesheet entry?",
+    "noData": "No data for this period."
+  },
   "purchasing": {
     "eyebrow": "Warehouse",
     "title": "Purchasing Recommendations",
@@ -98,6 +118,8 @@
     "groupOffice": "Office",
     "organizations": "Organizations",
     "calls": "Calls",
+    "timeClock": "My Time Clock",
+    "timesheet": "Timesheet Report",
     "crmDeals": "Deals",
     "users": "Users",
     "phonebook": "Phone book",
@@ -1510,6 +1532,7 @@
     "noOrganization": "This account is a super-admin, not assigned to one organization — pick an organization from the switcher in the header (top right) to manage its Tax Authority settings."
   },
   "navGroups": {
+    "timeClock": "Time Clock",
     "crm": "Clients",
     "documents": "Documents",
     "finance": "Finance",

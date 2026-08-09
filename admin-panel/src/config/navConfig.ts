@@ -32,6 +32,15 @@ export interface NavGroup {
  */
 export const NAV_GROUPS: NavGroup[] = [
   {
+    key: 'timeClock',
+    labelKey: 'navGroups.timeClock',
+    icon: Timer,
+    items: [
+      { to: '/time-clock', labelKey: 'nav.timeClock', icon: Timer },
+      { to: '/timesheet', labelKey: 'nav.timesheet', icon: BarChart2, adminOnly: true },
+    ],
+  },
+  {
     key: 'crm',
     labelKey: 'navGroups.crm',
     icon: PhoneCall,

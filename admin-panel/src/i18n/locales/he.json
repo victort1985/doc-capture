@@ -1,4 +1,24 @@
 {
+  "timeClock": {
+    "eyebrow": "שעון נוכחות",
+    "title": "שעון נוכחות",
+    "clockIn": "התחל משמרת",
+    "clockOut": "סיים משמרת",
+    "clockedInSince": "במשמרת מאז",
+    "notClockedIn": "לא במשמרת כרגע"
+  },
+  "timesheet": {
+    "eyebrow": "שעון נוכחות",
+    "title": "דוח שעות",
+    "employee": "עובד",
+    "totalHours": "סה\"כ שעות",
+    "shifts": "משמרות",
+    "clockIn": "התחלה",
+    "clockOut": "סיום",
+    "stillOpen": "משמרת פתוחה",
+    "deleteConfirm": "למחוק את רשומת השעון הזו?",
+    "noData": "אין נתונים לתקופה זו."
+  },
   "purchasing": {
     "eyebrow": "מחסן",
     "title": "המלצות רכש",
@@ -98,6 +118,8 @@
     "groupOffice": "משרד",
     "organizations": "ארגונים",
     "calls": "קריאות שירות",
+    "timeClock": "שעון הנוכחות שלי",
+    "timesheet": "דוח שעות",
     "users": "משתמשים",
     "phonebook": "פנקס טלפונים",
     "crmDeals": "עסקאות",
@@ -1510,6 +1532,7 @@
     "noOrganization": "חשבון זה הוא סופר-אדמין ואינו משויך לארגון אחד — יש לבחור ארגון דרך המחליף בראש הדף (למעלה) כדי לנהל את הגדרות רשות המסים שלו."
   },
   "navGroups": {
+    "timeClock": "שעון נוכחות",
     "crm": "לקוחות",
     "documents": "מסמכים",
     "finance": "כספים",
