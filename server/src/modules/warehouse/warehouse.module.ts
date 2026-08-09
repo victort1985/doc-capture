@@ -10,11 +10,12 @@ import { WarehouseCostSettings } from './entities/warehouse-cost-settings.entity
 import { WarehouseService } from './warehouse.service';
 import { WarehouseController } from './warehouse.controller';
 import { WarehouseCogsService } from './warehouse-cogs.service';
+import { PurchasingRecommendationsService } from './purchasing-recommendations.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([WarehouseCategory, WarehouseItem, WarehouseTransaction, WarehouseRepair, WarehouseTransfer, ServiceCall, WarehouseCostSettings])],
   controllers: [WarehouseController],
-  providers: [WarehouseService, WarehouseCogsService],
+  providers: [WarehouseService, WarehouseCogsService, PurchasingRecommendationsService],
   exports: [WarehouseService],
 })
 export class WarehouseModule {}

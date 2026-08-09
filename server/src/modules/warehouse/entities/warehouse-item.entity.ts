@@ -24,6 +24,25 @@ export class WarehouseItem {
   @Column({ default: 0 })
   quantity: number; // current stock
 
+  /** Optional explicit "reorder when stock hits this" threshold — a
+   * person who knows their own supplier lead times can set this
+   * directly. Left unset, purchasing recommendations fall back to a
+   * consumption-rate estimate instead (see
+   * PurchasingRecommendationsService — "will run out in N days at the
+   * recent usage rate" rather than a fixed number nobody configured).
+   * Zero and null are treated the same (no explicit threshold). */
+  @Column({ type: 'int', nullable: true })
+  reorderPoint?: number | null;
+
+  /** Plain text, not a foreign key — matches how supplierName is
+   * stored everywhere else in this app (SupplierInvoice etc., no
+   * dedicated Supplier entity exists). Purely informational, shown on
+   * a purchasing recommendation so "reorder this" also suggests who
+   * from, without requiring supplier master data this app doesn't
+   * otherwise track. */
+  @Column({ type: 'varchar', nullable: true })
+  preferredSupplierName?: string | null;
+
   @Column({ nullable: true })
   unit?: string; // шт, кг, м…
 

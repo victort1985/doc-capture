@@ -1,4 +1,15 @@
 {
+  "purchasing": {
+    "eyebrow": "Warehouse",
+    "title": "Purchasing Recommendations",
+    "explainer": "Based on reorder points and recent 90-day consumption rate — what's worth ordering first.",
+    "allGood": "Nothing to reorder right now — stock levels look fine.",
+    "currentStock": "In stock: {{count}} {{unit}}",
+    "belowReorderPoint": "below reorder point ({{point}})",
+    "projectedDays": "~{{days}} days of stock left",
+    "supplier": "Supplier",
+    "suggestedOrder": "Suggested order"
+  },
   "costCenters": {
     "eyebrow": "Finance",
     "title": "Cost Centers",
@@ -93,6 +104,7 @@
     "locations": "Locations",
     "fleet": "Fleet",
     "warehouse": "Warehouse",
+    "purchasingRecommendations": "Purchasing Recommendations",
     "reports": "Reports",
     "permissions": "Permissions",
     "groups": "Groups",
@@ -769,6 +781,9 @@
     "unit": "Unit",
     "locationShelf": "Location / shelf",
     "description": "Description",
+    "reorderPoint": "Reorder point",
+    "reorderPointHint": "Reorder when stock hits…",
+    "preferredSupplier": "Preferred supplier",
     "searchPlaceholder": "Search by name or barcode…",
     "warehouse": "Warehouse",
     "location": "Location",

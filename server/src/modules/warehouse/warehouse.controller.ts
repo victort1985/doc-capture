@@ -2,6 +2,7 @@ import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe,
 import { WarehouseService } from './warehouse.service';
 import { TransactionType } from './entities/warehouse-transaction.entity';
 import { WarehouseCogsService } from './warehouse-cogs.service';
+import { PurchasingRecommendationsService } from './purchasing-recommendations.service';
 import { CostMethod } from './entities/warehouse-cost-settings.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -17,6 +18,7 @@ export class WarehouseController {
   constructor(
     private readonly warehouseService: WarehouseService,
     private readonly cogsService: WarehouseCogsService,
+    private readonly purchasingService: PurchasingRecommendationsService,
   ) {}
 
   // ── Barcode ────────────────────────────────────────────────────────
@@ -170,5 +172,12 @@ export class WarehouseController {
   @Get('cogs/report')
   getCogsReport(@Query('from') from: string, @Query('to') to: string, @CurrentUser() user: RequestUser) {
     return this.cogsService.getCogsForPeriod(user.organizationId, new Date(from), new Date(to));
+  }
+
+  // ── Purchasing recommendations ───────────────────────────────────────
+
+  @Get('purchasing-recommendations')
+  getPurchasingRecommendations(@CurrentUser() user: RequestUser) {
+    return this.purchasingService.getRecommendations(user.organizationId);
   }
 }

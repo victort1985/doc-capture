@@ -9,6 +9,7 @@ interface Item {
   id: number; name: string; barcode: string; description?: string;
   category?: Category; quantity: number; unit?: string; location?: string; notes?: string; price?: number;
   warehouseLocation?: { id: number; name: string };
+  reorderPoint?: number | null; preferredSupplierName?: string | null;
 }
 
 interface HistoryEvent {
@@ -186,6 +187,8 @@ export default function WarehousePage() {
             <div><label>{t('warehouse.unit')}</label><input value={form.unit ?? ''} onChange={e => setForm({ ...form, unit: e.target.value })} placeholder="pcs, kg, m…" /></div>
             <div><label>{t('warehouse.locationShelf')}</label><input value={form.location ?? ''} onChange={e => setForm({ ...form, location: e.target.value })} /></div>
             <div><label>{t('prices.price')}</label><input type="number" step="0.01" value={form.price ?? ''} onChange={e => setForm({ ...form, price: e.target.value ? Number(e.target.value) : undefined })} /></div>
+            <div><label>{t('warehouse.reorderPoint')}</label><input type="number" value={form.reorderPoint ?? ''} onChange={e => setForm({ ...form, reorderPoint: e.target.value ? Number(e.target.value) : undefined })} placeholder={t('warehouse.reorderPointHint')} /></div>
+            <div><label>{t('warehouse.preferredSupplier')}</label><input value={form.preferredSupplierName ?? ''} onChange={e => setForm({ ...form, preferredSupplierName: e.target.value })} /></div>
             <div style={{ gridColumn: '1/-1' }}><label>{t('warehouse.description')}</label><textarea value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} rows={2} style={{ width: '100%' }} /></div>
           </div>
           <div className="form-actions">

@@ -1,4 +1,15 @@
 {
+  "purchasing": {
+    "eyebrow": "מחסן",
+    "title": "המלצות רכש",
+    "explainer": "בהתבסס על נקודת הזמנה מחדש וקצב הצריכה ב-90 הימים האחרונים — מה כדאי להזמין קודם.",
+    "allGood": "אין כרגע מה להזמין מחדש — רמות המלאי תקינות.",
+    "currentStock": "במלאי: {{count}} {{unit}}",
+    "belowReorderPoint": "מתחת לנקודת ההזמנה מחדש ({{point}})",
+    "projectedDays": "נותרו כ-{{days}} ימי מלאי",
+    "supplier": "ספק",
+    "suggestedOrder": "כמות מומלצת להזמנה"
+  },
   "costCenters": {
     "eyebrow": "כספים",
     "title": "מרכזי עלות",
@@ -93,6 +104,7 @@
     "locations": "לוקיישנים",
     "fleet": "רכבים",
     "warehouse": "מחסן",
+    "purchasingRecommendations": "המלצות רכש",
     "reports": "דוחות",
     "permissions": "הרשאות",
     "groups": "קבוצות",
@@ -769,6 +781,9 @@
     "unit": "יחידה",
     "locationShelf": "מיקום / מדף",
     "description": "תיאור",
+    "reorderPoint": "נקודת הזמנה מחדש",
+    "reorderPointHint": "הזמן מחדש כשהמלאי מגיע ל…",
+    "preferredSupplier": "ספק מועדף",
     "searchPlaceholder": "חיפוש לפי שם או ברקוד…",
     "warehouse": "מחסן",
     "location": "מיקום",

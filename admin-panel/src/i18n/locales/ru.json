@@ -1,4 +1,15 @@
 {
+  "purchasing": {
+    "eyebrow": "Склад",
+    "title": "Рекомендации по закупкам",
+    "explainer": "На основе точки перезаказа и скорости расхода за последние 90 дней — что стоит заказать в первую очередь.",
+    "allGood": "Пополнять пока нечего — все запасы в порядке.",
+    "currentStock": "На складе: {{count}} {{unit}}",
+    "belowReorderPoint": "ниже точки перезаказа ({{point}})",
+    "projectedDays": "запаса хватит примерно на {{days}} дн.",
+    "supplier": "Поставщик",
+    "suggestedOrder": "Рекомендуемый заказ"
+  },
   "costCenters": {
     "eyebrow": "Финансы",
     "title": "Центры затрат",
@@ -93,6 +104,7 @@
     "locations": "Локации",
     "fleet": "Автопарк",
     "warehouse": "Склад",
+    "purchasingRecommendations": "Рекомендации по закупкам",
     "reports": "Отчёты",
     "permissions": "Права доступа",
     "groups": "Группы",
@@ -769,6 +781,9 @@
     "unit": "Ед. изм.",
     "locationShelf": "Локация / полка",
     "description": "Описание",
+    "reorderPoint": "Точка перезаказа",
+    "reorderPointHint": "Заказать, когда остаток опустится до…",
+    "preferredSupplier": "Предпочитаемый поставщик",
     "searchPlaceholder": "Поиск по названию или штрихкоду…",
     "warehouse": "Склад",
     "location": "Локация",

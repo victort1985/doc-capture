@@ -23,6 +23,7 @@ import HomePage from './pages/HomePage';
 import PhoneBookPage from './pages/PhoneBookPage';
 import FleetPage from './pages/FleetPage';
 import WarehousePage from './pages/WarehousePage';
+import PurchasingRecommendationsPage from './pages/PurchasingRecommendationsPage';
 import ReportsPage from './pages/ReportsPage';
 import PermissionsPage from './pages/PermissionsPage';
 import GroupsPage from './pages/GroupsPage';
@@ -108,6 +109,7 @@ export default function App() {
           <Route path="/phonebook" element={<PhoneBookPage />} />
           <Route path="/fleet" element={<FleetPage />} />
           <Route path="/warehouse" element={<WarehousePage />} />
+          <Route path="/purchasing-recommendations" element={<PurchasingRecommendationsPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/permissions" element={<PermissionsPage />} />
           <Route path="/groups" element={<GroupsPage />} />
