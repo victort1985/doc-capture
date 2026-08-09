@@ -67,4 +67,8 @@ export class CreateExpenseDto {
   @IsString()
   @IsOptional()
   referenceNumber?: string;
+
+  @IsInt()
+  @IsOptional()
+  costCenterId?: number;
 }

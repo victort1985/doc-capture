@@ -5,6 +5,7 @@ import {
 import { Organization } from '../../organizations/entities/organization.entity';
 import { User } from '../../users/entities/user.entity';
 import { numericTransformer } from '../../../common/transformers/numeric.transformer';
+import { CostCenter } from '../../cost-centers/entities/cost-center.entity';
 
 export enum InvoiceStatus {
   DRAFT = 'draft',
@@ -80,6 +81,10 @@ export class Invoice {
 
   @Column({ type: 'text', nullable: true })
   notes?: string;
+
+  /** See CostCenter's own doc comment. */
+  @ManyToOne(() => CostCenter, { nullable: true, onDelete: 'SET NULL' })
+  costCenter?: CostCenter | null;
 
   @Column({ type: 'enum', enum: InvoiceStatus, default: InvoiceStatus.DRAFT })
   status: InvoiceStatus;

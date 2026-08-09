@@ -1,4 +1,19 @@
 {
+  "costCenters": {
+    "eyebrow": "Finance",
+    "title": "Cost Centers",
+    "newPlaceholder": "e.g. Project A",
+    "add": "Add",
+    "noneYet": "No cost centers yet.",
+    "deleteConfirm": "Delete cost center \"{{name}}\"? Documents already tagged with it stay as-is but show as unassigned.",
+    "name": "Name",
+    "revenue": "Revenue",
+    "expenses": "Expenses",
+    "supplierInvoices": "Supplier invoices",
+    "net": "Net",
+    "unassigned": "Unassigned",
+    "noData": "No data for this period."
+  },
   "overdueReminders": {
     "eyebrow": "Finance",
     "title": "Overdue Reminders",
@@ -108,6 +123,7 @@
     "returnSettings": "Return settings",
     "accounting": "Accounting",
     "recurringDocuments": "Recurring Documents",
+    "costCenters": "Cost Centers",
     "auditLog": "Audit Log",
     "expenses": "Expenses & Purchases",
     "taxAuthority": "Tax Authority",
@@ -1427,6 +1443,8 @@
     "date": "Date",
     "vatAmount": "VAT amount",
     "vatAmountHint": "Auto-calculated ~18% of the amount, editable",
+    "costCenter": "Cost center",
+    "costCenterNone": "None",
     "description": "Description",
     "category": "Category",
     "method": "Method",

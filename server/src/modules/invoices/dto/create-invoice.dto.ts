@@ -62,6 +62,10 @@ export class CreateInvoiceDto {
   @IsOptional()
   deliveryNoteId?: number;
 
+  @IsInt()
+  @IsOptional()
+  costCenterId?: number;
+
   /** Falls back to this if quoteId isn't set — e.g. an invoice created
    * from a delivery note rather than a quote. See order-chain module. */
   @IsString()

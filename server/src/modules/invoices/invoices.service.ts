@@ -98,6 +98,7 @@ export class InvoicesService {
       currency,
       exchangeRateToIls,
       vatCategory: dto.vatCategory ?? 'standard',
+      costCenter: dto.costCenterId ? ({ id: dto.costCenterId } as any) : undefined,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });

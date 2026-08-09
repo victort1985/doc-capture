@@ -46,6 +46,7 @@ export class ExpensesService {
       accountNumber: dto.accountNumber,
       checkDate: dto.checkDate,
       referenceNumber: dto.referenceNumber,
+      costCenter: dto.costCenterId ? ({ id: dto.costCenterId } as any) : undefined,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });
@@ -79,6 +80,7 @@ export class ExpensesService {
       description: dto.description,
       amount: dto.amount,
       vatAmount: dto.vatAmount,
+      costCenter: dto.costCenterId ? ({ id: dto.costCenterId } as any) : undefined,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
     });

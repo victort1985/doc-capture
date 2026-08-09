@@ -47,6 +47,7 @@ import { ExpensesModule } from './modules/expenses/expenses.module';
 import { RecurringDocumentsModule } from './modules/recurring-documents/recurring-documents.module';
 import { CrmModule } from './modules/crm/crm.module';
 import { OverdueReminderModule } from './modules/overdue-reminders/overdue-reminder.module';
+import { CostCentersModule } from './modules/cost-centers/cost-centers.module';
 import { InvoiceIsraelModule } from './modules/invoice-israel/invoice-israel.module';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { TemplateDesignModule } from './modules/template-design/template-design.module';
@@ -120,6 +121,7 @@ const hasAdminBuild = existsSync(join(publicDir, 'index.html'));
     RecurringDocumentsModule,
     CrmModule,
     OverdueReminderModule,
+    CostCentersModule,
     InvoiceIsraelModule,
     CurrencyModule,
     TemplateDesignModule,

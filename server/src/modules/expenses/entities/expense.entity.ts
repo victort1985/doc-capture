@@ -6,6 +6,7 @@ import { Organization } from '../../organizations/entities/organization.entity';
 import { User } from '../../users/entities/user.entity';
 import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 import { PaymentMethod } from '../../payments/entities/payment.entity';
+import { CostCenter } from '../../cost-centers/entities/cost-center.entity';
 
 /**
  * A direct expense (requirement #13 — "расходы") — paid immediately
@@ -26,6 +27,11 @@ export class Expense {
 
   @Column({ nullable: true })
   category?: string;
+
+  /** Which project/department/branch this spend belongs to, if any —
+   * see CostCenter's own doc comment. */
+  @ManyToOne(() => CostCenter, { nullable: true, onDelete: 'SET NULL' })
+  costCenter?: CostCenter | null;
 
   @Column({ type: 'numeric', precision: 12, scale: 2, transformer: numericTransformer })
   amount: number;

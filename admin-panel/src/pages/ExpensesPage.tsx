@@ -343,6 +343,10 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
   const [error, setError] = useState<string | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [parsing, setParsing] = useState(false);
+  const [costCenters, setCostCenters] = useState<{ id: number; name: string }[]>([]);
+  const [costCenterId, setCostCenterId] = useState('');
+
+  useEffect(() => { apiFetch<{ id: number; name: string }[]>('/cost-centers').then(setCostCenters).catch(() => {}); }, []);
 
   // amount is always VAT-inclusive (matches a real receipt's printed
   // total — see Expense.vatAmount's own backend doc comment). Until
@@ -399,6 +403,7 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
         body: JSON.stringify({
           date: date || undefined, description, category: category || undefined, amount: Number(amount), method,
           vatAmount: vatAmount ? Number(vatAmount) : undefined,
+          costCenterId: costCenterId ? Number(costCenterId) : undefined,
           cardLast4: details.cardLast4 || undefined,
           cardType: details.cardType || undefined,
           approvalNumber: details.approvalNumber || undefined,
@@ -459,6 +464,15 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
           placeholder={t('expenses.vatAmountHint')}
           style={{ width: '100%', marginBottom: 10 }}
         />
+        {costCenters.length > 0 && (
+          <>
+            <label>{t('expenses.costCenter')}</label>
+            <select value={costCenterId} onChange={e => setCostCenterId(e.target.value)} style={{ width: '100%', marginBottom: 10 }}>
+              <option value="">{t('expenses.costCenterNone')}</option>
+              {costCenters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </>
+        )}
         <PaymentMethodFields method={method} setMethod={setMethod} details={details} setDetails={setDetails} />
         {error && <div className="error-banner" style={{ marginBottom: 10 }}>{error}</div>}
         <button type="button" disabled={saving || !description.trim() || !amount} onClick={submit} style={{ width: '100%' }}>

@@ -34,4 +34,8 @@ export class CreateSupplierInvoiceDto {
   @IsNumber()
   @IsOptional()
   vatAmount?: number;
+
+  @IsInt()
+  @IsOptional()
+  costCenterId?: number;
 }

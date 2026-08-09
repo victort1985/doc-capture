@@ -1,4 +1,19 @@
 {
+  "costCenters": {
+    "eyebrow": "כספים",
+    "title": "מרכזי עלות",
+    "newPlaceholder": "לדוגמה: פרויקט א",
+    "add": "הוסף",
+    "noneYet": "אין עדיין מרכזי עלות.",
+    "deleteConfirm": "למחוק את מרכז העלות \"{{name}}\"? מסמכים שכבר תויגו אליו יישארו, אך יוצגו כלא משויכים.",
+    "name": "שם",
+    "revenue": "הכנסות",
+    "expenses": "הוצאות",
+    "supplierInvoices": "חשבוניות ספק",
+    "net": "נטו",
+    "unassigned": "לא משויך",
+    "noData": "אין נתונים לתקופה זו."
+  },
   "overdueReminders": {
     "eyebrow": "כספים",
     "title": "תזכורות פיגור בתשלום",
@@ -108,6 +123,7 @@
     "returnSettings": "הגדרות החזרה",
     "accounting": "הנהלת חשבונות",
     "recurringDocuments": "מסמכים חוזרים",
+    "costCenters": "מרכזי עלות",
     "auditLog": "יומן פעולות",
     "expenses": "הוצאות ורכישות",
     "taxAuthority": "רשות המסים",
@@ -1427,6 +1443,8 @@
     "date": "תאריך",
     "vatAmount": "סכום מע\"מ",
     "vatAmountHint": "מחושב אוטומטית כ-18% מהסכום, ניתן לשינוי",
+    "costCenter": "מרכז עלות",
+    "costCenterNone": "ללא",
     "description": "תיאור",
     "category": "קטגוריה",
     "method": "אמצעי",
