@@ -1429,6 +1429,7 @@
     "client": "Клиент",
     "invoiced": "Выставлено",
     "paid": "Оплачено",
+    "exportJournalCsv": "Экспорт проводок (CSV)",
     "exportExcel": "Экспорт в Excel"
   },
   "auditLog": {

@@ -1429,6 +1429,7 @@
     "client": "Client",
     "invoiced": "Invoiced",
     "paid": "Paid",
+    "exportJournalCsv": "Export journal (CSV)",
     "exportExcel": "Export Excel"
   },
   "auditLog": {

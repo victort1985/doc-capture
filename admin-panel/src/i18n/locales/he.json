@@ -1429,6 +1429,7 @@
     "client": "לקוח",
     "invoiced": "הופק",
     "paid": "שולם",
+    "exportJournalCsv": "ייצוא יומן (CSV)",
     "exportExcel": "ייצוא ל-Excel"
   },
   "auditLog": {

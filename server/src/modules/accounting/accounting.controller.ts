@@ -74,4 +74,28 @@ export class AccountingController {
     });
     res.send(buffer);
   }
+
+  /** General ledger detail as plain CSV — separate from export.xlsx's
+   * own multi-tab workbook because a plain CSV of just the
+   * transaction-level journal is what most OTHER accounting software
+   * and external bookkeeping firms actually want to import, versus a
+   * multi-sheet Excel file meant for a person to read directly. */
+  @Get('export-journal.csv')
+  async exportJournalCsv(@CurrentUser() user: ReqUser, @Query('from') from: string, @Query('to') to: string, @Res() res: Response) {
+    const rows = await this.service.allLedgerEntries(user.organizationId, from, to);
+    const escape = (v: unknown) => {
+      const s = String(v ?? '');
+      return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const header = ['Date', 'Description', 'Debit Account Code', 'Debit Account', 'Credit Account Code', 'Credit Account', 'Amount', 'Source Type', 'Source ID'];
+    const lines = [header.join(',')];
+    for (const r of rows) {
+      lines.push([r.date, r.description, r.debitAccountCode, r.debitAccountName, r.creditAccountCode, r.creditAccountName, r.amount, r.sourceType, r.sourceId].map(escape).join(','));
+    }
+    res.set({
+      'Content-Type': 'text/csv; charset=utf-8',
+      'Content-Disposition': `attachment; filename="general_ledger_${from}_${to}.csv"`,
+    });
+    res.send('\uFEFF' + lines.join('\n')); // BOM so Excel opens Hebrew/UTF-8 content correctly rather than mangling it
+  }
 }

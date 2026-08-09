@@ -207,6 +207,38 @@ export class AccountingService {
     });
   }
 
+  /** Every ledger entry in a period, unfiltered by account — the
+   * "general ledger detail" or "journal export" an external
+   * bookkeeper actually needs to review or re-import the books
+   * elsewhere, versus generalLedger's own single-account view or the
+   * summary-only tabs exportWorkbook already had (trial balance/P&L/
+   * balance sheet show TOTALS per account, never the individual
+   * transactions that add up to them — an accountant reconciling the
+   * books, or a firm taking over bookkeeping mid-year, needs the
+   * transaction-level detail this provides). */
+  async allLedgerEntries(organizationId: number | null, from: string, to: string) {
+    const qb = this.ledgerRepo
+      .createQueryBuilder('e')
+      .leftJoinAndSelect('e.debitAccount', 'debitAccount')
+      .leftJoinAndSelect('e.creditAccount', 'creditAccount')
+      .where('e.date BETWEEN :from AND :to', { from, to })
+      .orderBy('e.date', 'ASC')
+      .addOrderBy('e.id', 'ASC');
+    if (organizationId != null) qb.andWhere('e."organizationId" = :orgId', { orgId: organizationId });
+    const rows = await qb.getMany();
+    return rows.map((e) => ({
+      date: e.date,
+      description: e.description,
+      debitAccountCode: e.debitAccount.code,
+      debitAccountName: e.debitAccount.name,
+      creditAccountCode: e.creditAccount.code,
+      creditAccountName: e.creditAccount.name,
+      amount: Number(e.amount),
+      sourceType: e.sourceType,
+      sourceId: e.sourceId,
+    }));
+  }
+
   /** Cash flow statement (תזרים מזומנים) — the third core financial
    * report alongside P&L and balance sheet, direct method: every
    * ledger entry that actually touches Cash(1000)/Bank(1010),
@@ -381,6 +413,24 @@ export class AccountingService {
     balanceSheetTab.addRows(balance.equity);
     balanceSheetTab.addRow(['', 'Retained Earnings', balance.retainedEarnings]);
     balanceSheetTab.addRow(['', 'Total Equity', balance.totalEquity]);
+
+    // General ledger detail — see allLedgerEntries's own doc comment
+    // for why this exists alongside the three summary-only tabs
+    // above.
+    const journal = await this.allLedgerEntries(organizationId, from, to);
+    const journalSheet = workbook.addWorksheet('General Ledger Detail');
+    journalSheet.columns = [
+      { header: 'Date', key: 'date', width: 12 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Debit Account Code', key: 'debitAccountCode', width: 10 },
+      { header: 'Debit Account', key: 'debitAccountName', width: 28 },
+      { header: 'Credit Account Code', key: 'creditAccountCode', width: 10 },
+      { header: 'Credit Account', key: 'creditAccountName', width: 28 },
+      { header: 'Amount', key: 'amount', width: 14 },
+      { header: 'Source Type', key: 'sourceType', width: 16 },
+      { header: 'Source ID', key: 'sourceId', width: 10 },
+    ];
+    journalSheet.addRows(journal);
 
     const arrayBuffer = await workbook.xlsx.writeBuffer();
     return Buffer.from(arrayBuffer);

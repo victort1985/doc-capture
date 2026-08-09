@@ -394,6 +394,22 @@ export default function AccountingPage() {
           >
             <Download size={15} /> {t('accounting.exportExcel')}
           </button>
+          <button
+            type="button"
+            className="ghost"
+            onClick={async () => {
+              try {
+                const url = await apiFetchBlob(`/accounting/export-journal.csv?${new URLSearchParams({ from, to }).toString()}`);
+                const a = document.createElement('a');
+                a.href = url; a.download = `general_ledger_${from}_${to}.csv`;
+                a.click();
+              } catch (e) {
+                alert(e instanceof Error ? e.message : 'Export failed');
+              }
+            }}
+          >
+            <Download size={15} /> {t('accounting.exportJournalCsv')}
+          </button>
           <button type="button" className="ghost" onClick={seedDefaults}>{t('accounting.seedDefaults')}</button>
         </div>
       </div>
