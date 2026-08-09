@@ -299,14 +299,27 @@ ${invoicesXml}
    * Good enough for a quick balance check, not a substitute for
    * cross-referencing against the actual client list for anything
    * that needs to be precise. */
+  /** Balance owed per client, for every document type that actually
+   * affects it — invoices and debit notes increase what's owed,
+   * credit notes and payments decrease it, matching AR's own debit/
+   * credit convention in the double-entry ledger (see
+   * LedgerPostingService). Previously only counted invoices and
+   * payments, silently missing credit/debit notes entirely — a fully-
+   * credited invoice would have shown as fully outstanding here even
+   * though it isn't (found and left unfixed while building the
+   * client-ledger feature, which got this right from the start —
+   * fixed now to bring this report in line with that one, since they
+   * should never disagree about the same balance). */
   @Get('mutual-settlements')
   async mutualSettlements(@CurrentUser() user: ReqUser, @Query('orgId') orgIdParam?: string) {
     const organizationId = user.organizationId ?? (orgIdParam ? Number(orgIdParam) : null);
     const orgFilter = organizationId != null ? { organization: { id: organizationId } } : {};
 
-    const [invoices, payments] = await Promise.all([
+    const [invoices, payments, creditNotes, debitNotes] = await Promise.all([
       this.invoicesRepo.find({ where: orgFilter as any }),
       this.paymentsRepo.find({ where: orgFilter as any }),
+      this.creditNotesRepo.find({ where: orgFilter as any }),
+      this.debitNotesRepo.find({ where: orgFilter as any }),
     ]);
 
     const byClient = new Map<string, { invoiced: number; paid: number }>();
@@ -316,10 +329,22 @@ ${invoicesXml}
       entry.invoiced += Number(inv.total);
       byClient.set(key, entry);
     }
+    for (const dn of debitNotes) {
+      const key = dn.clientName;
+      const entry = byClient.get(key) ?? { invoiced: 0, paid: 0 };
+      entry.invoiced += Number(dn.total);
+      byClient.set(key, entry);
+    }
     for (const p of payments) {
       const key = p.clientName;
       const entry = byClient.get(key) ?? { invoiced: 0, paid: 0 };
       entry.paid += Number(p.amount);
+      byClient.set(key, entry);
+    }
+    for (const cn of creditNotes) {
+      const key = cn.clientName;
+      const entry = byClient.get(key) ?? { invoiced: 0, paid: 0 };
+      entry.paid += Number(cn.total);
       byClient.set(key, entry);
     }
 
