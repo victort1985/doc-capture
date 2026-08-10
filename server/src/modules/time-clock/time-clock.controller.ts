@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { TimeClockService } from './time-clock.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -23,9 +24,23 @@ export class TimeClockController {
     return this.service.clockOut(user.id, body?.notes);
   }
 
+  /** Explicitly sends a real JSON body (`res.json(null)`) rather than
+   * returning the value directly — NestJS/Express's default behavior
+   * for a controller returning JS `null` is an EMPTY response body
+   * with no Content-Type at all (confirmed by inspecting the raw
+   * response: Content-Length: 0, no Content-Type header), not valid
+   * JSON `null`. That's genuinely surprising for an endpoint whose
+   * whole contract is "returns the shift, or null" — a client's JSON
+   * parser has nothing to parse and has to guess what an empty body
+   * means, which is exactly what caused a real mobile bug (a "String
+   * is not a subtype of Map" cast error instead of correctly reading
+   * "no open shift" — found via a real-device screenshot, fixed
+   * defensively on the client too, but this is the actual root
+   * cause). */
   @Get('my-status')
-  getMyStatus(@CurrentUser() user: ReqUser) {
-    return this.service.getMyOpenShift(user.id);
+  async getMyStatus(@CurrentUser() user: ReqUser, @Res() res: Response) {
+    const shift = await this.service.getMyOpenShift(user.id);
+    res.json(shift);
   }
 
   @Get('entries')
