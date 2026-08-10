@@ -1,9 +1,34 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/time_clock_service.dart';
+
+/// Surfaces the server's own error message (e.g. "Already clocked in
+/// since 10:23…", "No open shift to clock out of.") rather than
+/// Dio's own generic exception description — the raw DioException
+/// toString() a person saw before this fix explains Dio's *plumbing*
+/// (validateStatus, where to read HTTP docs) but never actually shows
+/// what the server said was wrong, which is the one thing that
+/// explains WHY the action failed. Falls back to a plain HTTP-status
+/// message only if the server genuinely didn't send a JSON body with
+/// a message field (e.g. a network-level failure with no response at
+/// all), matching the same overall shape login_screen.dart's own
+/// error handling already established for its own DioException cases.
+String _extractErrorMessage(Object error) {
+  if (error is DioException) {
+    final data = error.response?.data;
+    final message = (data is Map) ? data['message'] : null;
+    if (message is String && message.isNotEmpty) return message;
+    if (message is Map && message['message'] is String) return message['message'] as String;
+    final status = error.response?.statusCode;
+    if (status != null) return 'HTTP $status';
+    return error.message ?? error.type.name;
+  }
+  return error.toString();
+}
 
 class TimeClockScreen extends StatefulWidget {
   const TimeClockScreen({super.key});
@@ -44,7 +69,7 @@ class _TimeClockScreenState extends State<TimeClockScreen> {
         });
       }
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = _extractErrorMessage(e));
     } finally {
       setState(() => _loading = false);
     }
@@ -56,7 +81,7 @@ class _TimeClockScreenState extends State<TimeClockScreen> {
       await _svc.clockIn();
       await _load();
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = _extractErrorMessage(e));
     } finally {
       setState(() => _busy = false);
     }
@@ -68,7 +93,7 @@ class _TimeClockScreenState extends State<TimeClockScreen> {
       await _svc.clockOut();
       await _load();
     } catch (e) {
-      setState(() => _error = e.toString());
+      setState(() => _error = _extractErrorMessage(e));
     } finally {
       setState(() => _busy = false);
     }
