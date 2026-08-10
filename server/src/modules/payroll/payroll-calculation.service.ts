@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { HolidayCalendarEntry } from './entities/holiday-calendar-entry.entity';
 import { EmployeeSalarySettings, SalaryType } from './entities/employee-salary-settings.entity';
+import { TimeClockEntry } from '../time-clock/entities/time-clock-entry.entity';
+import { OrganizationPayrollSettings } from './entities/organization-payroll-settings.entity';
 
 const DEFAULT_SHABBAT_START_HOUR = 18;
 const DEFAULT_SHABBAT_END_HOUR = 20;
@@ -56,6 +58,8 @@ export class PayrollCalculationService {
   constructor(
     @InjectRepository(HolidayCalendarEntry) private readonly holidaysRepo: Repository<HolidayCalendarEntry>,
     @InjectRepository(EmployeeSalarySettings) private readonly salaryRepo: Repository<EmployeeSalarySettings>,
+    @InjectRepository(TimeClockEntry) private readonly timeClockRepo: Repository<TimeClockEntry>,
+    @InjectRepository(OrganizationPayrollSettings) private readonly orgSettingsRepo: Repository<OrganizationPayrollSettings>,
   ) {}
 
   private async isHoliday(organizationId: number | null, date: string): Promise<boolean> {
@@ -177,5 +181,79 @@ export class PayrollCalculationService {
       salaryType: SalaryType.HOURLY,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
     });
+  }
+
+  /** Categorizes every REAL, closed shift a person worked in a period
+   * — the shared piece both the Timekeeper view and the payslip
+   * report build on, so they can never disagree about the same
+   * underlying hours. Open shifts (still clocked in) are excluded,
+   * same reasoning as TimeClockService.getTimesheet's own totals —
+   * counting a still-running shift would make the same report return
+   * a different answer depending on when it's viewed.
+   *
+   * Correctly threads accumulated daily hours ACROSS multiple shifts
+   * on the same calendar day (a split shift — clock out for lunch,
+   * clock back in) so the 8-hour regular/2-hour-tier1 thresholds
+   * apply to the day as a whole, not reset per shift; regular and
+   * rest-day accumulation are tracked separately per calendar date
+   * since they're independent thresholds (see categorizeShift's own
+   * doc comment). */
+  async categorizePeriod(userId: number, organizationId: number | null, from: string, to: string) {
+    const orgSettings = await this.orgSettingsRepo.findOne({ where: organizationId != null ? { organization: { id: organizationId } } : {} });
+    const shabbatStartHour = orgSettings?.shabbatStartHour ?? 18;
+    const shabbatEndHour = orgSettings?.shabbatEndHour ?? 20;
+
+    const entries = await this.timeClockRepo.find({
+      where: { user: { id: userId } },
+      order: { clockIn: 'ASC' },
+    });
+    const closedInRange = entries.filter((e) => {
+      if (!e.clockOut) return false;
+      const dateKey = e.clockIn.toISOString().slice(0, 10);
+      return dateKey >= from && dateKey <= to;
+    });
+
+    const regularAccruedByDate = new Map<string, number>();
+    const restAccruedByDate = new Map<string, number>();
+    const shiftBreakdowns: Array<CategorizedHours & { entryId: number; date: string; clockIn: string; clockOut: string }> = [];
+    const total: CategorizedHours = { regular: 0, overtimeTier1: 0, overtimeTier2: 0, restDay: 0, restDayOvertimeTier1: 0, restDayOvertimeTier2: 0 };
+
+    for (const entry of closedInRange) {
+      const dateKey = entry.clockIn.toISOString().slice(0, 10);
+      const priorRegular = regularAccruedByDate.get(dateKey) ?? 0;
+      const priorRest = restAccruedByDate.get(dateKey) ?? 0;
+      const categorized = await this.categorizeShift(
+        organizationId, entry.clockIn, entry.clockOut!, priorRegular, priorRest, shabbatStartHour, shabbatEndHour,
+      );
+      const shiftTotalRegularSide = categorized.regular + categorized.overtimeTier1 + categorized.overtimeTier2;
+      const shiftTotalRestSide = categorized.restDay + categorized.restDayOvertimeTier1 + categorized.restDayOvertimeTier2;
+      regularAccruedByDate.set(dateKey, priorRegular + shiftTotalRegularSide);
+      restAccruedByDate.set(dateKey, priorRest + shiftTotalRestSide);
+
+      shiftBreakdowns.push({
+        entryId: entry.id, date: dateKey,
+        clockIn: entry.clockIn.toISOString(), clockOut: entry.clockOut!.toISOString(),
+        ...categorized,
+      });
+      total.regular += categorized.regular;
+      total.overtimeTier1 += categorized.overtimeTier1;
+      total.overtimeTier2 += categorized.overtimeTier2;
+      total.restDay += categorized.restDay;
+      total.restDayOvertimeTier1 += categorized.restDayOvertimeTier1;
+      total.restDayOvertimeTier2 += categorized.restDayOvertimeTier2;
+    }
+
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    return {
+      shifts: shiftBreakdowns.map((s) => ({
+        ...s,
+        regular: round2(s.regular), overtimeTier1: round2(s.overtimeTier1), overtimeTier2: round2(s.overtimeTier2),
+        restDay: round2(s.restDay), restDayOvertimeTier1: round2(s.restDayOvertimeTier1), restDayOvertimeTier2: round2(s.restDayOvertimeTier2),
+      })),
+      total: {
+        regular: round2(total.regular), overtimeTier1: round2(total.overtimeTier1), overtimeTier2: round2(total.overtimeTier2),
+        restDay: round2(total.restDay), restDayOvertimeTier1: round2(total.restDayOvertimeTier1), restDayOvertimeTier2: round2(total.restDayOvertimeTier2),
+      },
+    };
   }
 }

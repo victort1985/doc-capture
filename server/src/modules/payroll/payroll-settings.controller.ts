@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { PayrollSettingsService } from './payroll-settings.service';
 import { PayrollCalculationService } from './payroll-calculation.service';
@@ -69,6 +69,18 @@ export class PayrollSettingsController {
   @Post('calculate-preview')
   calculatePreview(@Body() dto: { clockIn: string; clockOut: string }, @CurrentUser() user: ReqUser) {
     return this.calcService.categorizeShift(user.organizationId, new Date(dto.clockIn), new Date(dto.clockOut));
+  }
+
+  /** The Timekeeper view's own data source — every real closed shift
+   * for one employee in a period, categorized. */
+  @Get('timekeeper/:userId')
+  getTimekeeperData(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @CurrentUser() user: ReqUser,
+  ) {
+    return this.calcService.categorizePeriod(userId, user.organizationId, from, to);
   }
 
   @Get('holidays')
