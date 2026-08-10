@@ -1,10 +1,13 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, MoreThanOrEqual, Repository } from 'typeorm';
 import { FileTemplate, TemplateAppliesTo } from './entities/file-template.entity';
 import { FileRecord, FileRecordType } from './entities/file-record.entity';
 import { CreateTemplateDto } from './dto/create-template.dto';
 import { UpdateTemplateDto } from './dto/update-template.dto';
+import { User } from '../users/entities/user.entity';
+
+type Requester = { organizationId: number | null };
 
 @Injectable()
 export class TemplatesService {
@@ -13,19 +16,66 @@ export class TemplatesService {
     private readonly templatesRepo: Repository<FileTemplate>,
     @InjectRepository(FileRecord)
     private readonly recordsRepo: Repository<FileRecord>,
+    @InjectRepository(User)
+    private readonly usersRepo: Repository<User>,
   ) {}
 
-  findAll(): Promise<FileTemplate[]> {
-    return this.templatesRepo.find();
+  /** A regular org admin sees their own organization's per-user
+   * templates plus the truly-global ones (no owner at all — shared
+   * platform-wide by design, see findApplicableTemplate's own doc
+   * comment). A super-admin (organizationId == null) sees everything,
+   * matching every other admin listing in this app. Previously
+   * returned every template from every organization unconditionally
+   * — a regular admin from one org could list, edit, and delete a
+   * completely different org's personal file-naming templates. */
+  findAll(requester: Requester): Promise<FileTemplate[]> {
+    if (requester.organizationId == null) {
+      return this.templatesRepo.find({ relations: ['user', 'user.organization'] });
+    }
+    return this.templatesRepo
+      .createQueryBuilder('tpl')
+      .leftJoinAndSelect('tpl.user', 'user')
+      .leftJoin('user.organization', 'organization')
+      .where('tpl.userId IS NULL')
+      .orWhere('organization.id = :orgId', { orgId: requester.organizationId })
+      .getMany();
   }
 
-  async findOne(id: number): Promise<FileTemplate> {
-    const tpl = await this.templatesRepo.findOne({ where: { id } });
+  /** Same fetch-then-compare cross-org isolation pattern used
+   * throughout this app — a global template (no owner) is editable
+   * by a super-admin only, since it's shared platform-wide and a
+   * regular org admin changing it would silently affect every other
+   * organization too. */
+  private async findOneScoped(id: number, requester: Requester): Promise<FileTemplate> {
+    const tpl = await this.templatesRepo.findOne({ where: { id }, relations: ['user', 'user.organization'] });
     if (!tpl) throw new NotFoundException('Template not found');
+    if (requester.organizationId == null) return tpl; // super-admin
+    if (!tpl.user) throw new ForbiddenException('Only a super-admin can modify a global template.');
+    if (tpl.user.organization?.id !== requester.organizationId) throw new NotFoundException('Template not found');
     return tpl;
   }
 
-  create(dto: CreateTemplateDto): Promise<FileTemplate> {
+  async findOne(id: number, requester: Requester): Promise<FileTemplate> {
+    return this.findOneScoped(id, requester);
+  }
+
+  async create(requester: Requester, dto: CreateTemplateDto): Promise<FileTemplate> {
+    if (dto.userId) {
+      // Verify the target user actually belongs to the caller's own
+      // organization — otherwise a regular admin could attribute a
+      // template to (and have it apply for) a user in a different
+      // organization entirely.
+      const targetUser = await this.usersRepo.findOne({ where: { id: dto.userId }, relations: ['organization'] });
+      if (!targetUser) throw new NotFoundException('User not found');
+      if (requester.organizationId != null && targetUser.organization?.id !== requester.organizationId) {
+        throw new ForbiddenException('That user is not in your organization.');
+      }
+    } else if (requester.organizationId != null) {
+      // A regular admin creating a template with no owner at all
+      // would silently create a GLOBAL, platform-wide template —
+      // only a super-admin should be able to do that.
+      throw new ForbiddenException('Only a super-admin can create a global template — pick a specific user instead.');
+    }
     return this.templatesRepo.save(
       this.templatesRepo.create({
         name: dto.name,
@@ -36,8 +86,8 @@ export class TemplatesService {
     );
   }
 
-  async update(id: number, dto: UpdateTemplateDto): Promise<FileTemplate> {
-    const tpl = await this.findOne(id);
+  async update(id: number, requester: Requester, dto: UpdateTemplateDto): Promise<FileTemplate> {
+    const tpl = await this.findOneScoped(id, requester);
     Object.assign(tpl, {
       name: dto.name ?? tpl.name,
       pattern: dto.pattern ?? tpl.pattern,
@@ -46,8 +96,8 @@ export class TemplatesService {
     return this.templatesRepo.save(tpl);
   }
 
-  async remove(id: number): Promise<void> {
-    const tpl = await this.findOne(id);
+  async remove(id: number, requester: Requester): Promise<void> {
+    const tpl = await this.findOneScoped(id, requester);
     await this.templatesRepo.remove(tpl);
   }
 

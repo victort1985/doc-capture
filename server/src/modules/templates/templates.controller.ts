@@ -16,6 +16,9 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+
+type ReqUser = { organizationId: number | null };
 
 @Controller()
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -24,22 +27,22 @@ export class TemplatesController {
   constructor(private readonly templatesService: TemplatesService) {}
 
   @Get('templates')
-  findAll() {
-    return this.templatesService.findAll();
+  findAll(@CurrentUser() user: ReqUser) {
+    return this.templatesService.findAll(user);
   }
 
   @Post('templates')
-  create(@Body() dto: CreateTemplateDto) {
-    return this.templatesService.create(dto);
+  create(@Body() dto: CreateTemplateDto, @CurrentUser() user: ReqUser) {
+    return this.templatesService.create(user, dto);
   }
 
   @Patch('templates/:id')
-  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTemplateDto) {
-    return this.templatesService.update(id, dto);
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateTemplateDto, @CurrentUser() user: ReqUser) {
+    return this.templatesService.update(id, user, dto);
   }
 
   @Delete('templates/:id')
-  remove(@Param('id', ParseIntPipe) id: number) {
-    return this.templatesService.remove(id);
+  remove(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
+    return this.templatesService.remove(id, user);
   }
 }
