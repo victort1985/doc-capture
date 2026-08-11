@@ -2,7 +2,7 @@ import {
   PhoneCall, Contact, MapPin, Tag, FileSpreadsheet, ReceiptText, FileText, Undo2, Banknote, Handshake, BellRing, FolderKanban, ShoppingCart,
   FileMinus, FilePlus2, CreditCard, TrendingUp, BookOpen, Receipt, Landmark, Package, Car, Repeat,
   CalendarClock, BarChart2, Users, ShieldCheck, Users2, HardDrive, FileSliders, FileStack,
-  Smartphone, CalendarDays, ScrollText, Building2, Palette, HardDriveDownload, Timer, PackageSearch, ArrowLeftRight, FileDown,
+  Smartphone, CalendarDays, ScrollText, Building2, Palette, HardDriveDownload, Timer, PackageSearch, ArrowLeftRight, FileDown, Wallet,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -77,6 +77,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { to: '/accounting', labelKey: 'nav.accounting', icon: BookOpen },
       { to: '/recurring-documents', labelKey: 'nav.recurringDocuments', icon: Repeat },
       { to: '/cost-centers', labelKey: 'nav.costCenters', icon: FolderKanban },
+      { to: '/salary-settings', labelKey: 'nav.salarySettings', icon: Wallet },
       { to: '/expenses', labelKey: 'nav.expenses', icon: Receipt },
       { to: '/tax-authority-settings', labelKey: 'nav.taxAuthority', icon: Landmark },
       { to: '/overdue-reminders', labelKey: 'nav.overdueReminders', icon: BellRing },

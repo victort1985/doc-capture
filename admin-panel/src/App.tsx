@@ -12,6 +12,7 @@ import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import UsersPage from './pages/UsersPage';
 import TimekeeperPage from './pages/TimekeeperPage';
+import SalarySettingsPage from './pages/SalarySettingsPage';
 import StoragePage from './pages/StoragePage';
 import StorageRoutingPage from './pages/StorageRoutingPage';
 import TemplatesPage from './pages/TemplatesPage';
@@ -158,6 +159,7 @@ export default function App() {
           <Route path="/devices" element={<DevicesPage />} />
           <Route path="/users" element={<UsersPage />} />
           <Route path="/timekeeper" element={<TimekeeperPage />} />
+          <Route path="/salary-settings" element={<SalarySettingsPage />} />
           <Route path="/locations" element={<LocationsPage />} />
           <Route path="/storage" element={<StoragePage />} />
           <Route path="/storage-routing" element={<StorageRoutingPage />} />
