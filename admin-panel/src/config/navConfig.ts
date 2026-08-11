@@ -74,6 +74,7 @@ export const NAV_GROUPS: NavGroup[] = [
     adminOnly: true,
     items: [
       { to: '/financial-reports', labelKey: 'nav.financialReports', icon: TrendingUp },
+      { to: '/payslip', labelKey: 'nav.payslip', icon: FileDown },
       { to: '/accounting', labelKey: 'nav.accounting', icon: BookOpen },
       { to: '/recurring-documents', labelKey: 'nav.recurringDocuments', icon: Repeat },
       { to: '/cost-centers', labelKey: 'nav.costCenters', icon: FolderKanban },

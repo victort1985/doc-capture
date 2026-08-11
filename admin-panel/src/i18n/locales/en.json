@@ -1,4 +1,21 @@
 {
+  "payslip": {
+    "eyebrow": "Reports",
+    "title": "Payslip",
+    "print": "Print",
+    "documentTitle": "Payslip",
+    "periodTo": "to",
+    "grossOnlyDisclaimer": "This document shows gross pay with a full hour-category breakdown. Income tax, National Insurance, and health tax are not calculated — those depend on the employee's personal tax situation. Final net pay should be confirmed by an accountant.",
+    "category": "Category",
+    "hours": "Hours",
+    "rate": "Rate",
+    "amount": "Amount",
+    "noHours": "No hours worked this period.",
+    "globalNote": "Global salary — a fixed amount independent of hours worked. The breakdown above is shown for reference, to compare against the itemized (hourly) calculation.",
+    "grossPay": "Gross pay",
+    "floorWarningTitle": "Warning: possible minimum-floor issue",
+    "floorWarningBody": "The itemized calculation for actual hours worked would be ₪{{itemized}}, which exceeds the stated salary of ₪{{stated}}. Review by an accountant or labor lawyer recommended."
+  },
   "salarySettings": {
     "eyebrow": "Finance",
     "title": "Salary",
@@ -203,6 +220,7 @@
     "payments": "Payments",
     "paymentSettings": "Payment settings",
     "financialReports": "Financial Reports",
+    "payslip": "Payslip",
     "creditNotes": "Credit Notes",
     "creditNoteSettings": "Credit Note settings",
     "debitNotes": "Debit Notes",

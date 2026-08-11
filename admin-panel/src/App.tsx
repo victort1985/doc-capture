@@ -46,6 +46,7 @@ import InvoiceSettingsPage from './pages/InvoiceSettingsPage';
 import PaymentSettingsPage from './pages/PaymentSettingsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import FinancialReportsPage from './pages/FinancialReportsPage';
+import PayslipPage from './pages/PayslipPage';
 import CreditNotesPage from './pages/CreditNotesPage';
 import CreditNoteSettingsPage from './pages/CreditNoteSettingsPage';
 import DebitNotesPage from './pages/DebitNotesPage';
@@ -132,6 +133,7 @@ export default function App() {
           <Route path="/invoice-settings" element={<InvoiceSettingsPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/financial-reports" element={<FinancialReportsPage />} />
+          <Route path="/payslip" element={<PayslipPage />} />
           <Route path="/credit-notes" element={<CreditNotesPage />} />
           <Route path="/credit-note-settings" element={<CreditNoteSettingsPage />} />
           <Route path="/debit-notes" element={<DebitNotesPage />} />
