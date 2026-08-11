@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, U
 import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { PayrollSettingsService } from './payroll-settings.service';
 import { PayrollCalculationService } from './payroll-calculation.service';
+import { PayslipService } from './payslip.service';
 import { SalaryType } from './entities/employee-salary-settings.entity';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
@@ -60,6 +61,7 @@ export class PayrollSettingsController {
   constructor(
     private readonly service: PayrollSettingsService,
     private readonly calcService: PayrollCalculationService,
+    private readonly payslipService: PayslipService,
   ) {}
 
   /** Lets an admin/accountant verify the hour-categorization math for
@@ -81,6 +83,19 @@ export class PayrollSettingsController {
     @CurrentUser() user: ReqUser,
   ) {
     return this.calcService.categorizePeriod(userId, user.organizationId, from, to);
+  }
+
+  /** The payslip report's own data source — see PayslipService's own
+   * doc comment for exactly what this does and deliberately does not
+   * compute (gross pay only, no tax/National-Insurance withholding). */
+  @Get('payslip/:userId')
+  getPayslip(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Query('from') from: string,
+    @Query('to') to: string,
+    @CurrentUser() user: ReqUser,
+  ) {
+    return this.payslipService.generatePayslip(userId, user.organizationId, from, to);
   }
 
   @Get('holidays')
