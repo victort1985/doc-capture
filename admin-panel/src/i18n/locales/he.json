@@ -1,4 +1,21 @@
 {
+  "timekeeper": {
+    "eyebrow": "צוות",
+    "title": "שעון נוכחות (מנהל)",
+    "viewList": "רשימה",
+    "viewCalendar": "לוח שנה",
+    "date": "תאריך",
+    "clockIn": "כניסה",
+    "clockOut": "יציאה",
+    "breakdown": "פירוט",
+    "noData": "אין רשומות בחודש זה.",
+    "cat_regular": "רגיל",
+    "cat_overtimeTier1": "שעות נוספות 125%",
+    "cat_overtimeTier2": "שעות נוספות 150%",
+    "cat_restDay": "שבת/חג 150%",
+    "cat_restDayOvertimeTier1": "נוספות בשבת 175%",
+    "cat_restDayOvertimeTier2": "נוספות בשבת 200%"
+  },
   "cardAcquiring": {
     "eyebrow": "כספים",
     "title": "סליקת אשראי",
@@ -134,6 +151,7 @@
     "timeClock": "שעון הנוכחות שלי",
     "timesheet": "דוח שעות",
     "users": "משתמשים",
+    "timekeeper": "שעון נוכחות",
     "phonebook": "פנקס טלפונים",
     "crmDeals": "עסקאות",
     "locations": "לוקיישנים",

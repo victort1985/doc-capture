@@ -1,4 +1,21 @@
 {
+  "timekeeper": {
+    "eyebrow": "Команда",
+    "title": "Тайм-кипер",
+    "viewList": "Список",
+    "viewCalendar": "Календарь",
+    "date": "Дата",
+    "clockIn": "Начало",
+    "clockOut": "Конец",
+    "breakdown": "Разбивка",
+    "noData": "Нет отметок за этот месяц.",
+    "cat_regular": "Обычные",
+    "cat_overtimeTier1": "Переработка 125%",
+    "cat_overtimeTier2": "Переработка 150%",
+    "cat_restDay": "Шаббат/праздник 150%",
+    "cat_restDayOvertimeTier1": "Переработка в шаббат 175%",
+    "cat_restDayOvertimeTier2": "Переработка в шаббат 200%"
+  },
   "cardAcquiring": {
     "eyebrow": "Финансы",
     "title": "Приём карт",
@@ -134,6 +151,7 @@
     "timeClock": "Мой табель",
     "timesheet": "Отчёт по времени",
     "users": "Пользователи",
+    "timekeeper": "Тайм-кипер",
     "phonebook": "Телефонная книга",
     "crmDeals": "Сделки",
     "locations": "Локации",

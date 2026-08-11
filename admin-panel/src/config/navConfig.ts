@@ -103,6 +103,7 @@ export const NAV_GROUPS: NavGroup[] = [
     icon: Users,
     items: [
       { to: '/users', labelKey: 'nav.users', icon: Users },
+      { to: '/timekeeper', labelKey: 'nav.timekeeper', icon: CalendarClock },
       { to: '/permissions', labelKey: 'nav.permissions', icon: ShieldCheck },
       { to: '/groups', labelKey: 'nav.groups', icon: Users2 },
     ],

@@ -1,4 +1,21 @@
 {
+  "timekeeper": {
+    "eyebrow": "Team",
+    "title": "Timekeeper",
+    "viewList": "List",
+    "viewCalendar": "Calendar",
+    "date": "Date",
+    "clockIn": "Clock in",
+    "clockOut": "Clock out",
+    "breakdown": "Breakdown",
+    "noData": "No entries this month.",
+    "cat_regular": "Regular",
+    "cat_overtimeTier1": "Overtime 125%",
+    "cat_overtimeTier2": "Overtime 150%",
+    "cat_restDay": "Shabbat/Holiday 150%",
+    "cat_restDayOvertimeTier1": "Shabbat overtime 175%",
+    "cat_restDayOvertimeTier2": "Shabbat overtime 200%"
+  },
   "cardAcquiring": {
     "eyebrow": "Finance",
     "title": "Card Acquiring",
@@ -135,6 +152,7 @@
     "timesheet": "Timesheet Report",
     "crmDeals": "Deals",
     "users": "Users",
+    "timekeeper": "Timekeeper",
     "phonebook": "Phone book",
     "locations": "Locations",
     "fleet": "Fleet",
