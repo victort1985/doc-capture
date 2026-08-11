@@ -8,6 +8,8 @@ import 'management_screen.dart';
 import 'settings_screen.dart';
 import 'inventory_screen.dart';
 import 'time_clock_screen.dart';
+import 'my_timekeeper_screen.dart';
+import 'my_payslip_screen.dart';
 import '../widgets/organization_logo_background.dart';
 
 /// The 4th bottom tab in the "Action Hub" nav style — everything that
@@ -47,6 +49,28 @@ class MoreScreen extends StatelessWidget {
                 trailing: const Icon(Icons.chevron_right, size: 18),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const OrganizationLogoBackground(child: TimeClockScreen())),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.event_note_outlined, color: AppColors.inkSoft),
+                title: Text(l10n.myTimekeeperTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                trailing: const Icon(Icons.chevron_right, size: 18),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const OrganizationLogoBackground(child: MyTimekeeperScreen())),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.receipt_long_outlined, color: AppColors.inkSoft),
+                title: Text(l10n.myPayslipTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
+                trailing: const Icon(Icons.chevron_right, size: 18),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const OrganizationLogoBackground(child: MyPayslipScreen())),
                 ),
               ),
             ),
