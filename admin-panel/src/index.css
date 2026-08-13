@@ -695,6 +695,15 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
     flex-direction: row !important;
     padding-top: 14px;
     margin-top: 8px;
+    /* Extra bottom padding beyond the usual safe-area-inset alone —
+       iOS Safari's own floating minimized-URL-bar pill (not
+       anything this app renders) sits in roughly this region when
+       scrolling, and safe-area-inset-bottom alone doesn't account
+       for it since that pill isn't part of the OS-level safe area,
+       it's Safari's own transient UI chrome. Extra clearance here
+       means the real footer content (org name, settings, sign-out)
+       stays visually clear of it instead of getting overlapped. */
+    padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Main content — below topbar */

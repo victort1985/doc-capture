@@ -20,9 +20,24 @@ create` on every run, so anything inside it needs to be re-placed by a
 script every time, same as this).
 """
 
+import re
+
 SETTINGS_PATH = "android/settings.gradle.kts"
 APP_BUILD_PATH = "android/app/build.gradle.kts"
 GOOGLE_SERVICES_VERSION = "4.5.0"
+
+# Matches the kotlin.android plugin registration line regardless of its
+# OWN version number — e.g. `id("org.jetbrains.kotlin.android") version
+# "2.3.20" apply false`. Originally an exact-string match pinned to
+# "2.3.20" specifically; broke the first time Flutter's stable channel
+# bumped its own bundled Kotlin version in the `flutter create`
+# template (CI pins channel: 'stable' with no Flutter version pin at
+# all, so this WILL happen again — regex-matching the surrounding
+# structure rather than the version number itself is what actually
+# fixes the underlying fragility, not just this one instance of it).
+KOTLIN_PLUGIN_LINE_RE = re.compile(
+    r'id\("org\.jetbrains\.kotlin\.android"\) version "[^"]+" apply false'
+)
 
 
 def main() -> None:
@@ -30,19 +45,21 @@ def main() -> None:
         settings = f.read()
 
     if "com.google.gms.google-services" not in settings:
-        marker = 'id("org.jetbrains.kotlin.android") version "2.3.20" apply false'
-        if marker not in settings:
+        match = KOTLIN_PLUGIN_LINE_RE.search(settings)
+        if not match:
             raise SystemExit(
                 f"Expected kotlin.android plugin line not found in {SETTINGS_PATH} "
-                "(template may have changed format) — refusing to guess where to insert."
+                "(template may have changed format beyond just its version number — "
+                "refusing to guess where to insert)."
             )
+        marker = match.group(0)
         settings = settings.replace(
             marker,
             f'{marker}\n    id("com.google.gms.google-services") version "{GOOGLE_SERVICES_VERSION}" apply false',
         )
         with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
             f.write(settings)
-        print(f"Registered com.google.gms.google-services {GOOGLE_SERVICES_VERSION} in {SETTINGS_PATH}")
+        print(f"Registered com.google.gms.google-services {GOOGLE_SERVICES_VERSION} in {SETTINGS_PATH} (matched kotlin.android line: {marker})")
     else:
         print(f"google-services already registered in {SETTINGS_PATH}, nothing to do.")
 

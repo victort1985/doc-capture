@@ -73,9 +73,30 @@ export default function SalarySettingsPage() {
     if (!settings || selectedUserId == null) return;
     setSaving(true); setError(null); setNotice(null);
     try {
+      // Send ONLY the fields the DTO actually declares — `settings`
+      // in state came from the GET response, which (correctly, for
+      // display purposes) includes the full entity's `user` relation
+      // object. Spreading that whole object back into the PUT body
+      // sent a `user` field the backend's whitelist validation
+      // doesn't recognize (SalarySettingsDto has no such field),
+      // which failed every save with "property user should not
+      // exist" — caught from a real screenshot, not something the
+      // earlier live-server testing happened to exercise since that
+      // testing called the API directly rather than round-tripping
+      // through this exact save-what-you-loaded UI pattern.
+      const payload = {
+        salaryType: settings.salaryType,
+        hourlyRate: settings.hourlyRate ?? undefined,
+        globalMonthlySalary: settings.globalMonthlySalary ?? undefined,
+        overtimeFirst2HoursPercent: settings.overtimeFirst2HoursPercent,
+        overtimeBeyond2HoursPercent: settings.overtimeBeyond2HoursPercent,
+        restDayPercent: settings.restDayPercent,
+        restDayOvertimeFirst2HoursPercent: settings.restDayOvertimeFirst2HoursPercent,
+        restDayOvertimeBeyond2HoursPercent: settings.restDayOvertimeBeyond2HoursPercent,
+      };
       const saved = await apiFetch<SalarySettings>(`/payroll/salary/${selectedUserId}`, {
         method: 'PUT',
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
       setSettings(saved);
       setNotice(t('salarySettings.saved'));
