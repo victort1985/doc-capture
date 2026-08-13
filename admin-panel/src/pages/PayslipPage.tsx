@@ -103,7 +103,7 @@ export default function PayslipPage() {
                   <td style={{ padding: '6px 8px' }}>{l.category}</td>
                   <td style={{ padding: '6px 8px', textAlign: 'right' }}>{l.hours}</td>
                   <td style={{ padding: '6px 8px', textAlign: 'right' }}>{l.ratePercent}%</td>
-                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>₪{l.amount.toLocaleString()}</td>
+                  <td style={{ padding: '6px 8px', textAlign: 'right' }}>₪{(l.amount ?? 0).toLocaleString()}</td>
                 </tr>
               ))}
               {payslip.lines.length === 0 && (
@@ -120,7 +120,7 @@ export default function PayslipPage() {
 
           <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 18, paddingTop: 12, borderTop: '2px solid var(--border, #333)', marginBottom: payslip.globalFloorCheck ? 16 : 0 }}>
             <span>{t('payslip.grossPay')}</span>
-            <span>₪{payslip.grossPay.toLocaleString()}</span>
+            <span>₪{(payslip.grossPay ?? 0).toLocaleString()}</span>
           </div>
 
           {payslip.globalFloorCheck?.belowFloor && (
@@ -129,8 +129,8 @@ export default function PayslipPage() {
               <div style={{ fontSize: 12.5 }}>
                 <strong>{t('payslip.floorWarningTitle')}</strong><br />
                 {t('payslip.floorWarningBody', {
-                  stated: payslip.globalFloorCheck.statedGlobalAmount.toLocaleString(),
-                  itemized: payslip.globalFloorCheck.itemizedEquivalent.toLocaleString(),
+                  stated: (payslip.globalFloorCheck.statedGlobalAmount ?? 0).toLocaleString(),
+                  itemized: (payslip.globalFloorCheck.itemizedEquivalent ?? 0).toLocaleString(),
                 })}
               </div>
             </div>
