@@ -705,6 +705,20 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
        stays visually clear of it instead of getting overlapped. */
     padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   }
+  /* On a genuinely narrow phone, avatar + username + org-switcher
+     label + settings icon + sign-out icon don't all fit on one row
+     without something giving — the equivalent space-saving rule
+     (hide the username text) already existed for the 768-1023px
+     tablet breakpoint, but was missing here at phone width, so the
+     org-switcher's own label was overlapping the settings gear icon
+     (reported directly, with a screenshot circling exactly this).
+     Hiding the username text (the avatar circle alone is still
+     enough identity at this size) and giving the settings/sign-out
+     icon buttons flex-shrink:0 guarantees they always keep their
+     full tap-target size instead of being what quietly gives way
+     under space pressure. */
+  .user-chip span { display: none; }
+  .sidebar-footer > button { flex-shrink: 0; }
 
   /* Main content — below topbar */
   .layout {
