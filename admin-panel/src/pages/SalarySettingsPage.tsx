@@ -6,6 +6,7 @@ import { apiFetch } from '../services/api';
 interface Employee { id: number; username: string; }
 interface SalarySettings {
   salaryType: 'hourly' | 'global';
+  standardWorkdayHours: number;
   hourlyRate?: number | null;
   globalMonthlySalary?: number | null;
   overtimeFirst2HoursPercent: number;
@@ -86,6 +87,7 @@ export default function SalarySettingsPage() {
       // through this exact save-what-you-loaded UI pattern.
       const payload = {
         salaryType: settings.salaryType,
+        standardWorkdayHours: settings.standardWorkdayHours,
         hourlyRate: settings.hourlyRate ?? undefined,
         globalMonthlySalary: settings.globalMonthlySalary ?? undefined,
         overtimeFirst2HoursPercent: settings.overtimeFirst2HoursPercent,
@@ -141,6 +143,17 @@ export default function SalarySettingsPage() {
             <option value="hourly">{t('salarySettings.typeHourly')}</option>
             <option value="global">{t('salarySettings.typeGlobal')}</option>
           </select>
+
+          <label>{t('salarySettings.standardWorkdayHours')}</label>
+          <select
+            value={settings.standardWorkdayHours}
+            onChange={(e) => updateField('standardWorkdayHours', Number(e.target.value))}
+            style={{ width: '100%', marginBottom: 4 }}
+          >
+            <option value={8}>{t('salarySettings.workday8')}</option>
+            <option value={6}>{t('salarySettings.workday6')}</option>
+          </select>
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 0, marginBottom: 12 }}>{t('salarySettings.standardWorkdayHint')}</p>
 
           {settings.salaryType === 'hourly' ? (
             <>

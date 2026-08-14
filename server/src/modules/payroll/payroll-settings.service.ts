@@ -15,6 +15,7 @@ const LEGAL_MINIMUMS = {
 
 export interface UpdateSalarySettingsInput {
   salaryType: SalaryType;
+  standardWorkdayHours?: number;
   hourlyRate?: number;
   globalMonthlySalary?: number;
   overtimeFirst2HoursPercent?: number;
@@ -78,6 +79,7 @@ export class PayrollSettingsService {
     return this.salaryRepo.create({
       user: { id: userId } as any,
       salaryType: SalaryType.HOURLY,
+      standardWorkdayHours: 8,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
     });
   }
@@ -102,6 +104,9 @@ export class PayrollSettingsService {
     if (input.salaryType === SalaryType.GLOBAL && !input.globalMonthlySalary) {
       throw new BadRequestException('A monthly amount is required for globally-paid employees.');
     }
+    if (input.standardWorkdayHours != null && ![6, 8].includes(input.standardWorkdayHours)) {
+      throw new BadRequestException('standardWorkdayHours must be either 6 or 8.');
+    }
 
     let settings = await this.salaryRepo.findOne({ where: { user: { id: userId } } });
     if (!settings) {
@@ -111,6 +116,7 @@ export class PayrollSettingsService {
       });
     }
     settings.salaryType = input.salaryType;
+    settings.standardWorkdayHours = input.standardWorkdayHours ?? settings.standardWorkdayHours ?? 8;
     settings.hourlyRate = input.salaryType === SalaryType.HOURLY ? input.hourlyRate : null;
     settings.globalMonthlySalary = input.salaryType === SalaryType.GLOBAL ? input.globalMonthlySalary : null;
     if (input.overtimeFirst2HoursPercent != null) settings.overtimeFirst2HoursPercent = input.overtimeFirst2HoursPercent;

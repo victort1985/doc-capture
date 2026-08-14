@@ -50,6 +50,24 @@ export class EmployeeSalarySettings {
   @Column({ type: 'enum', enum: SalaryType, default: SalaryType.HOURLY })
   salaryType: SalaryType;
 
+  /** How many hours make up this employee's own standard workday
+   * before overtime starts — see PayrollCalculationService's own doc
+   * comment for the legal basis: חוק שעות עבודה ומנוחה defines
+   * overtime relative to the employee's own standard daily quota, not
+   * a fixed universal number. The common cases are 8 hours (the
+   * default, matching most workplaces) or 6 hours (common for
+   * physical-labor roles, some collective agreements, and part-time
+   * arrangements) — deliberately a closed choice between exactly
+   * these two rather than an arbitrary number, matching how this was
+   * actually requested and avoiding a free-text field an admin could
+   * accidentally set to something legally meaningless (e.g. 0 or 24).
+   * The SAME threshold applies whether the day in question is an
+   * ordinary day or a rest day/holiday — what changes between those
+   * is the PERCENTAGE paid, not where the regular-vs-overtime line
+   * falls; both use this same value. */
+  @Column({ type: 'int', default: 8 })
+  standardWorkdayHours: number;
+
   @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
   hourlyRate?: number | null;
 

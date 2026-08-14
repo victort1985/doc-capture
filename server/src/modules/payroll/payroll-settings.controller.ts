@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Put, Query, UseGuards } from '@nestjs/common';
-import { IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsIn, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 import { PayrollSettingsService } from './payroll-settings.service';
 import { PayrollCalculationService } from './payroll-calculation.service';
 import { PayslipService } from './payslip.service';
@@ -31,6 +31,9 @@ class OrgHoursDto {
 class SalarySettingsDto {
   @IsEnum(SalaryType)
   salaryType: SalaryType;
+
+  @IsIn([6, 8]) @IsOptional()
+  standardWorkdayHours?: number;
 
   @IsNumber() @IsOptional()
   hourlyRate?: number;

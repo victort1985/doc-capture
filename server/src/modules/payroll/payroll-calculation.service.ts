@@ -81,9 +81,15 @@ export class PayrollCalculationService {
    * 15-minute slices (fine enough for real payroll accuracy without
    * true continuous integration). `priorRegularHoursToday` lets a
    * later shift on the same calendar day (a split shift) correctly
-   * continue accumulating toward the daily 8-hour quota rather than
+   * continue accumulating toward the daily quota rather than
    * resetting to zero; `priorRestHoursToday` does the same for the
-   * rest-day's own 2-hour overtime-tier threshold. */
+   * rest-day's own equivalent threshold. `standardWorkdayHours` is
+   * the employee's own standard-day length (see
+   * EmployeeSalarySettings.standardWorkdayHours's own doc comment for
+   * the legal basis — overtime starts relative to THIS number, not a
+   * fixed 8, and the tier1/tier2 split point moves with it: tier1 is
+   * always the first 2 hours beyond this threshold, tier2 is
+   * everything past that, on both ordinary and rest days alike). */
   async categorizeShift(
     organizationId: number | null,
     clockIn: Date,
@@ -92,6 +98,7 @@ export class PayrollCalculationService {
     priorRestHoursToday = 0,
     shabbatStartHour = DEFAULT_SHABBAT_START_HOUR,
     shabbatEndHour = DEFAULT_SHABBAT_END_HOUR,
+    standardWorkdayHours = 8,
   ): Promise<CategorizedHours> {
     const result: CategorizedHours = {
       regular: 0, overtimeTier1: 0, overtimeTier2: 0,
@@ -102,6 +109,7 @@ export class PayrollCalculationService {
     let cursor = new Date(clockIn);
     let regularAccrued = priorRegularHoursToday;
     let restAccrued = priorRestHoursToday;
+    const tier2Threshold = standardWorkdayHours + 2;
 
     const datesInvolved = new Set<string>();
     for (let t = new Date(clockIn); t < clockOut; t = new Date(t.getTime() + 24 * 3600 * 1000)) {
@@ -118,21 +126,23 @@ export class PayrollCalculationService {
       const isRest = this.isRestPeriod(cursor, shabbatStartHour, shabbatEndHour) || (holidayByDate.get(dateKey) ?? false);
 
       if (isRest) {
-        // Matches the worked legal example exactly (60 ILS/hour,
-        // 11 hours entirely within a rest period → 8h@150%(restDay) +
-        // 2h@175%(tier1) + 1h@200%(tier2) = 1050 ILS): the rest day's
-        // OWN first 8 hours worked that day get the plain 150% base
-        // rate, hours 9-10 get 175% (150%+25% first-tier overtime),
-        // 11+ gets 200% (150%+50%). An earlier version of this
-        // method incorrectly applied the 175%/200% split starting
-        // from hour 1 instead of hour 8 — caught by testing against
-        // this exact worked example, whose TOTAL happened to still
-        // match by coincidence (every hour in that specific example
-        // was already effectively overtime), which is exactly why a
-        // single aggregate-total check isn't enough verification on
-        // its own; the bucket-by-bucket breakdown had to match too.
-        if (restAccrued < 8) {
-          const toRestDay = Math.min(sliceHours, 8 - restAccrued);
+        // Matches the worked legal example exactly for an 8-hour
+        // standard day (60 ILS/hour, 11 hours entirely within a rest
+        // period → 8h@150%(restDay) + 2h@175%(tier1) + 1h@200%(tier2)
+        // = 1050 ILS): the rest day's OWN first `standardWorkdayHours`
+        // worked that day get the plain 150% base rate, the next 2
+        // hours get 175% (150%+25% first-tier overtime), beyond that
+        // gets 200% (150%+50%). An earlier version of this method
+        // incorrectly applied the 175%/200% split starting from hour
+        // 1 instead of the standard-day threshold — caught by testing
+        // against this exact worked example, whose TOTAL happened to
+        // still match by coincidence (every hour in that specific
+        // example was already effectively overtime), which is exactly
+        // why a single aggregate-total check isn't enough
+        // verification on its own; the bucket-by-bucket breakdown had
+        // to match too.
+        if (restAccrued < standardWorkdayHours) {
+          const toRestDay = Math.min(sliceHours, standardWorkdayHours - restAccrued);
           result.restDay += toRestDay;
           if (sliceHours > toRestDay) {
             const remaining = sliceHours - toRestDay;
@@ -140,8 +150,8 @@ export class PayrollCalculationService {
             result.restDayOvertimeTier1 += toTier1;
             if (remaining > toTier1) result.restDayOvertimeTier2 += remaining - toTier1;
           }
-        } else if (restAccrued < 10) {
-          const toTier1 = Math.min(sliceHours, 10 - restAccrued);
+        } else if (restAccrued < tier2Threshold) {
+          const toTier1 = Math.min(sliceHours, tier2Threshold - restAccrued);
           result.restDayOvertimeTier1 += toTier1;
           if (sliceHours > toTier1) result.restDayOvertimeTier2 += sliceHours - toTier1;
         } else {
@@ -149,8 +159,8 @@ export class PayrollCalculationService {
         }
         restAccrued += sliceHours;
       } else {
-        if (regularAccrued < 8) {
-          const toRegular = Math.min(sliceHours, 8 - regularAccrued);
+        if (regularAccrued < standardWorkdayHours) {
+          const toRegular = Math.min(sliceHours, standardWorkdayHours - regularAccrued);
           result.regular += toRegular;
           if (sliceHours > toRegular) {
             const remaining = sliceHours - toRegular;
@@ -158,8 +168,8 @@ export class PayrollCalculationService {
             result.overtimeTier1 += toTier1;
             if (remaining > toTier1) result.overtimeTier2 += remaining - toTier1;
           }
-        } else if (regularAccrued < 10) {
-          const toTier1 = Math.min(sliceHours, 10 - regularAccrued);
+        } else if (regularAccrued < tier2Threshold) {
+          const toTier1 = Math.min(sliceHours, tier2Threshold - regularAccrued);
           result.overtimeTier1 += toTier1;
           if (sliceHours > toTier1) result.overtimeTier2 += sliceHours - toTier1;
         } else {
@@ -179,6 +189,7 @@ export class PayrollCalculationService {
     return this.salaryRepo.create({
       user: { id: userId } as any,
       salaryType: SalaryType.HOURLY,
+      standardWorkdayHours: 8,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
     });
   }
@@ -202,6 +213,8 @@ export class PayrollCalculationService {
     const orgSettings = await this.orgSettingsRepo.findOne({ where: organizationId != null ? { organization: { id: organizationId } } : {} });
     const shabbatStartHour = orgSettings?.shabbatStartHour ?? 18;
     const shabbatEndHour = orgSettings?.shabbatEndHour ?? 20;
+    const salarySettings = await this.getSalarySettings(userId, organizationId);
+    const standardWorkdayHours = salarySettings.standardWorkdayHours ?? 8;
 
     const entries = await this.timeClockRepo.find({
       where: { user: { id: userId } },
@@ -223,7 +236,7 @@ export class PayrollCalculationService {
       const priorRegular = regularAccruedByDate.get(dateKey) ?? 0;
       const priorRest = restAccruedByDate.get(dateKey) ?? 0;
       const categorized = await this.categorizeShift(
-        organizationId, entry.clockIn, entry.clockOut!, priorRegular, priorRest, shabbatStartHour, shabbatEndHour,
+        organizationId, entry.clockIn, entry.clockOut!, priorRegular, priorRest, shabbatStartHour, shabbatEndHour, standardWorkdayHours,
       );
       const shiftTotalRegularSide = categorized.regular + categorized.overtimeTier1 + categorized.overtimeTier2;
       const shiftTotalRestSide = categorized.restDay + categorized.restDayOvertimeTier1 + categorized.restDayOvertimeTier2;
