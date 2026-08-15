@@ -11,6 +11,7 @@ const STANDARD_MONTHLY_HOURS = Math.round(STANDARD_WEEKLY_HOURS * 4.33 * 100) / 
 
 export interface PayslipLine {
   category: string;
+  categoryKey: keyof CategorizedHours;
   hours: number;
   ratePercent: number;
   amount: number;
@@ -105,7 +106,7 @@ export class PayslipService {
       .filter((cat) => hours[cat] > 0)
       .map((cat) => {
         const amount = Math.round(hours[cat] * rateForItemizedCalc * (percentByCategory[cat] / 100) * 100) / 100;
-        return { category: CATEGORY_LABELS[cat], hours: hours[cat], ratePercent: percentByCategory[cat], amount };
+        return { category: CATEGORY_LABELS[cat], categoryKey: cat, hours: hours[cat], ratePercent: percentByCategory[cat], amount };
       });
 
     const itemizedTotal = Math.round(lines.reduce((sum, l) => sum + l.amount, 0) * 100) / 100;
