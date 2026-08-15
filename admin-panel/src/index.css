@@ -229,6 +229,18 @@ html[dir="rtl"] table { text-align: right; }
   justify-content: space-between;
   gap: 8px;
 }
+/* The two icon buttons (settings, sign-out) must never shrink or get
+   squeezed — a long organization name (OrgSwitcher's own label,
+   capped but still real width) or username should be what yields
+   space first, never these fixed-size, always-clickable controls.
+   Originally only set within the phone-width media query below,
+   after a real overlap was reported on mobile — but the exact same
+   underlying issue (nothing guaranteeing these buttons keep their
+   size) applies at ANY viewport width once the organization name is
+   long enough, including desktop, which is where a second report of
+   the same visual overlap came from. Moved here so it's universal,
+   not just a phone-specific patch. */
+.sidebar-footer > button { flex-shrink: 0; }
 .user-chip { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .avatar {
   width: 28px; height: 28px; border-radius: 50%;
@@ -713,12 +725,11 @@ td.mono, th.mono { font-family: var(--font-mono); font-size: 12px; }
      org-switcher's own label was overlapping the settings gear icon
      (reported directly, with a screenshot circling exactly this).
      Hiding the username text (the avatar circle alone is still
-     enough identity at this size) and giving the settings/sign-out
-     icon buttons flex-shrink:0 guarantees they always keep their
-     full tap-target size instead of being what quietly gives way
-     under space pressure. */
+     enough identity at this size) frees up the extra room phones
+     specifically need — the settings/sign-out buttons' own
+     flex-shrink:0 protection is now set universally above, not
+     just here. */
   .user-chip span { display: none; }
-  .sidebar-footer > button { flex-shrink: 0; }
 
   /* Main content — below topbar */
   .layout {
