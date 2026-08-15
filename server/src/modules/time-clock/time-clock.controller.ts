@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, ForbiddenException, Get, Param, ParseIntPipe, Patch, Post, Query, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { TimeClockService } from './time-clock.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -7,7 +7,7 @@ import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
-type ReqUser = { id: number; organizationId: number | null };
+type ReqUser = { id: number; role: string; organizationId: number | null; permissions?: Record<string, boolean> };
 
 @Controller('time-clock')
 @UseGuards(JwtAuthGuard)
@@ -66,6 +66,25 @@ export class TimeClockController {
     @CurrentUser() user: ReqUser,
   ) {
     return this.service.adjustEntry(id, user.organizationId, body.clockIn, body.clockOut);
+  }
+
+  /** Backfills a whole shift at once — gated by the specific
+   * payroll.manageTimeClockEntries permission rather than blanket
+   * @Roles(ADMIN) like most of this controller's other endpoints, so
+   * an admin can grant this one narrow ability (fixing/entering
+   * attendance) to someone without handing them everything else ADMIN
+   * implies. Admins have it by default anyway (see
+   * ROLE_DEFAULTS[ADMIN] — every key true), so this check alone
+   * already covers both cases without needing @Roles too. */
+  @Post('manual-entry')
+  createManualEntry(
+    @Body() body: { userId: number; date: string; startTime: string; endTime: string; costCenterId?: number },
+    @CurrentUser() user: ReqUser,
+  ) {
+    if (!user.permissions?.['payroll.manageTimeClockEntries']) {
+      throw new ForbiddenException('You do not have permission to manually add time clock entries.');
+    }
+    return this.service.createManualEntry(body.userId, user.organizationId, body.date, body.startTime, body.endTime, body.costCenterId);
   }
 
   @Delete(':id')

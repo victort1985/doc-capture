@@ -400,6 +400,17 @@ export default function UsersPage() {
                 {t('users.viewMonthlyGrossSalaryHint')}
               </label>
             </div>
+            <div>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={form.permissions['payroll.manageTimeClockEntries'] ?? false}
+                  onChange={(e) => setForm({ ...form, permissions: { ...form.permissions, 'payroll.manageTimeClockEntries': e.target.checked } })}
+                  style={{ marginRight: 6 }}
+                />
+                {t('users.manageTimeClockEntriesHint')}
+              </label>
+            </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label>{t('users.coversRegions')}</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>

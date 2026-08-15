@@ -20,6 +20,16 @@ export const FEATURE_KEYS = [
   // my-payslip endpoint) at the bottom of the screen if granted, or
   // the screen behaves exactly as if this key didn't exist otherwise.
   'payroll.viewMonthlyGrossSalary',
+  // The admin panel's own Timesheet Report page (all its endpoints
+  // already require ADMIN role at the controller level) — this is a
+  // SEPARATE, narrower permission checked ON TOP of that for the
+  // specific "manually backfill a shift" action, so an admin can
+  // grant it to someone who needs to fix attendance records without
+  // handing them full admin access to everything else the role
+  // implies. Regular ADMIN role still has it by default (matches
+  // ROLE_DEFAULTS[ADMIN] below, every key true) — this only matters
+  // for extending it to a non-admin.
+  'payroll.manageTimeClockEntries',
   // Unlike every key above (which only ever hides/shows something
   // inside an already-logged-in session), this one gates the login
   // itself — see AuthService.login()'s enforcement for
@@ -50,6 +60,7 @@ export const ROLE_DEFAULTS: Record<UserRole, Record<FeatureKey, boolean>> = {
     'office.delivery_notes': false, 'office.quotes': false, 'office.invoices': false, 'office.orders': false, 'office.payments': false,
     'office.returns': false, 'office.credit_notes': false, 'office.debit_notes': false, 'office.expenses': false, 'office.rentals': false,
     'payroll.viewMonthlyGrossSalary': false,
+    'payroll.manageTimeClockEntries': false,
     'system.adminPanelAccess': false,
   },
 };

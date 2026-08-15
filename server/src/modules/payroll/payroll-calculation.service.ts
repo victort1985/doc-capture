@@ -209,6 +209,35 @@ export class PayrollCalculationService {
    * rest-day accumulation are tracked separately per calendar date
    * since they're independent thresholds (see categorizeShift's own
    * doc comment). */
+  /** Categorizes every REAL, closed shift a person worked in a period
+   * — the shared piece both the Timekeeper view and the payslip
+   * report build on, so they can never disagree about the same
+   * underlying hours. Open shifts (still clocked in) are excluded,
+   * same reasoning as TimeClockService.getTimesheet's own totals -
+   * counting a still-running shift would make the same report return
+   * a different answer depending on when it's viewed.
+   *
+   * Hours accumulate toward the daily regular/overtime thresholds by
+   * WORKDAY GROUP, not by calendar date — two shifts count as the
+   * SAME workday (continuing the same accumulated total, not each
+   * getting a fresh regular-hours allowance) whenever the gap between
+   * one shift's clockOut and the next shift's clockIn is under 6
+   * hours, regardless of whether that gap crosses midnight. This
+   * matches how a real workday actually works: someone who finishes
+   * late and is back within a few hours is continuing the same
+   * stretch of work, not starting a fresh day - splitting that across
+   * a calendar-date boundary would silently understate real overtime
+   * by giving each half its own regular-hours quota. A gap of 6 hours
+   * or more (or the very first shift) starts a new workday group.
+   *
+   * Walks the person's ENTIRE shift history (not just the requested
+   * [from, to] window) to correctly establish workday-group
+   * boundaries and carry over accumulated hours into shifts that
+   * start the requested period already mid-workday-group (e.g. a
+   * shift that began the evening before `from`) - only the OUTPUT
+   * (shiftBreakdowns/total) is filtered to the requested range,
+   * exactly like before; the accumulation state itself needs the
+   * fuller history to be correct at the boundary. */
   async categorizePeriod(userId: number, organizationId: number | null, from: string, to: string) {
     const orgSettings = await this.orgSettingsRepo.findOne({ where: organizationId != null ? { organization: { id: organizationId } } : {} });
     const shabbatStartHour = orgSettings?.shabbatStartHour ?? 18;
@@ -216,32 +245,40 @@ export class PayrollCalculationService {
     const salarySettings = await this.getSalarySettings(userId, organizationId);
     const standardWorkdayHours = salarySettings.standardWorkdayHours ?? 8;
 
+    const WORKDAY_GROUP_GAP_HOURS = 6;
+
     const entries = await this.timeClockRepo.find({
       where: { user: { id: userId } },
       order: { clockIn: 'ASC' },
     });
-    const closedInRange = entries.filter((e) => {
-      if (!e.clockOut) return false;
-      const dateKey = e.clockIn.toISOString().slice(0, 10);
-      return dateKey >= from && dateKey <= to;
-    });
+    const closedAll = entries.filter((e) => e.clockOut != null);
 
-    const regularAccruedByDate = new Map<string, number>();
-    const restAccruedByDate = new Map<string, number>();
     const shiftBreakdowns: Array<CategorizedHours & { entryId: number; date: string; clockIn: string; clockOut: string }> = [];
     const total: CategorizedHours = { regular: 0, overtimeTier1: 0, overtimeTier2: 0, restDay: 0, restDayOvertimeTier1: 0, restDayOvertimeTier2: 0 };
 
-    for (const entry of closedInRange) {
-      const dateKey = entry.clockIn.toISOString().slice(0, 10);
-      const priorRegular = regularAccruedByDate.get(dateKey) ?? 0;
-      const priorRest = restAccruedByDate.get(dateKey) ?? 0;
+    let regularAccrued = 0;
+    let restAccrued = 0;
+    let previousClockOut: Date | null = null;
+
+    for (const entry of closedAll) {
+      const startsNewWorkdayGroup = previousClockOut == null
+        || (entry.clockIn.getTime() - previousClockOut.getTime()) >= WORKDAY_GROUP_GAP_HOURS * 3600 * 1000;
+      if (startsNewWorkdayGroup) {
+        regularAccrued = 0;
+        restAccrued = 0;
+      }
+
       const categorized = await this.categorizeShift(
-        organizationId, entry.clockIn, entry.clockOut!, priorRegular, priorRest, shabbatStartHour, shabbatEndHour, standardWorkdayHours,
+        organizationId, entry.clockIn, entry.clockOut!, regularAccrued, restAccrued, shabbatStartHour, shabbatEndHour, standardWorkdayHours,
       );
       const shiftTotalRegularSide = categorized.regular + categorized.overtimeTier1 + categorized.overtimeTier2;
       const shiftTotalRestSide = categorized.restDay + categorized.restDayOvertimeTier1 + categorized.restDayOvertimeTier2;
-      regularAccruedByDate.set(dateKey, priorRegular + shiftTotalRegularSide);
-      restAccruedByDate.set(dateKey, priorRest + shiftTotalRestSide);
+      regularAccrued += shiftTotalRegularSide;
+      restAccrued += shiftTotalRestSide;
+      previousClockOut = entry.clockOut!;
+
+      const dateKey = entry.clockIn.toISOString().slice(0, 10);
+      if (dateKey < from || dateKey > to) continue; // accumulation state above still needed this shift even though it's outside the requested output window
 
       shiftBreakdowns.push({
         entryId: entry.id, date: dateKey,
