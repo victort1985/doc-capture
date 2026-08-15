@@ -74,6 +74,41 @@ class _RootScreenState extends State<RootScreen> {
     super.dispose();
   }
 
+  /// A small, semi-transparent settings/menu shortcut pinned to the
+  /// top corner — end-aligned via PositionedDirectional so Flutter's
+  /// own RTL handling puts it at the physical right for LTR languages
+  /// (Russian/English) and the physical left for Hebrew automatically,
+  /// matching what was actually requested, without this needing to
+  /// branch on the current locale itself. Lives in a Stack ABOVE each
+  /// of this screen's own Scaffold variants below (desktop rail,
+  /// Action Hub, classic bottom-nav) so it stays in the same fixed
+  /// spot regardless of which TAB is currently selected within
+  /// RootScreen — pushed sub-screens (Settings, Time Clock, etc.,
+  /// reached via Navigator.push from the More tab) sit on top of this
+  /// whole screen in the navigation stack and are unaffected, which
+  /// matches how the request was scoped ("regardless of which tab"),
+  /// not a global overlay surviving every possible pushed screen too.
+  Widget _buildPinnedMenuButton(BuildContext context) {
+    return PositionedDirectional(
+      top: MediaQuery.of(context).padding.top + 8,
+      end: 12,
+      child: Material(
+        color: Colors.black.withOpacity(0.35),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const OrganizationLogoBackground(child: MoreScreen())),
+          ),
+          child: const Padding(
+            padding: EdgeInsets.all(10),
+            child: Icon(Icons.settings, color: Colors.white, size: 22),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
@@ -152,7 +187,7 @@ class _RootScreenState extends State<RootScreen> {
 
     if (isDesktop) {
       // ── Desktop layout: NavigationRail sidebar + content ──────────────────
-      return Scaffold(
+      return Stack(children: [Scaffold(
         body: Row(children: [
           NavigationRail(
               extended: MediaQuery.of(context).size.width >= 1200,
@@ -192,7 +227,7 @@ class _RootScreenState extends State<RootScreen> {
               ),
             ),
         ]),
-      );
+      ), _buildPinnedMenuButton(context)]);
     }
 
     // ── Mobile layout ───────────────────────────────────────────────────
@@ -239,7 +274,7 @@ class _RootScreenState extends State<RootScreen> {
         );
       }
 
-      return Scaffold(
+      return Stack(children: [Scaffold(
         body: OrganizationLogoBackground(
           child: IndexedStack(
             index: actionHubIndex,
@@ -266,11 +301,11 @@ class _RootScreenState extends State<RootScreen> {
             ),
           ),
         ),
-      );
+      ), _buildPinnedMenuButton(context)]);
     }
 
     // ── Classic mobile layout: customizable bottom nav ─────────────────────
-    return Scaffold(
+    return Stack(children: [Scaffold(
       body: OrganizationLogoBackground(
         child: IndexedStack(
           index: canonicalIndex,
@@ -284,6 +319,6 @@ class _RootScreenState extends State<RootScreen> {
         doneLabel: l10n.bottomNavDone,
         editHintLabel: l10n.bottomNavEditHint,
       ),
-    );
+    ), _buildPinnedMenuButton(context)]);
   }
 }

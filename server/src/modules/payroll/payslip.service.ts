@@ -80,10 +80,34 @@ export class PayslipService {
    * verify on its own — informed consent and genuineness of the
    * average are factual questions about how the arrangement was
    * actually reached, not derivable from stored numbers). */
-  async generatePayslip(userId: number, organizationId: number | null, from: string, to: string): Promise<Payslip> {
+  /** `skipOwnershipCheck` exists for the self-service endpoints (see
+   * PayrollSelfServiceController), where userId is ALWAYS the
+   * caller's own id straight from their JWT — never attacker-
+   * controlled — so there's nothing to verify. The check matters for
+   * the ADMIN endpoint (an admin looking up an arbitrary employee
+   * id), but was incorrectly applied to self-lookups too — confirmed
+   * root cause: JwtStrategy's "acting as org" mechanism
+   * (X-Active-Org header, used when a super-admin or multi-org admin
+   * switches which organization's data they're viewing) puts the
+   * SWITCHED org into `organizationId`, not the account's own real
+   * one. A super-admin's own `targetUser.organization` is always
+   * null/undefined — so the moment they'd switched their active org
+   * context to view ANY specific organization and then opened their
+   * OWN "My Payslip", the mismatch check (undefined !== the switched
+   * org id) incorrectly threw "Employee not found" on a person
+   * looking up literally themselves. Reproduced exactly via a live
+   * request with X-Active-Org set before this fix, confirmed
+   * resolved after. Regardless of this flag, organizationId is still
+   * used for the FUNCTIONAL lookups below (holidays, Shabbat window)
+   * — skipping the check doesn't skip using the org's real settings,
+   * it only skips the identity-mismatch guard that doesn't apply when
+   * the id is provably the caller's own. */
+  async generatePayslip(userId: number, organizationId: number | null, from: string, to: string, skipOwnershipCheck = false): Promise<Payslip> {
     const targetUser = await this.usersRepo.findOne({ where: { id: userId }, relations: ['organization'] });
     if (!targetUser) throw new NotFoundException('Employee not found');
-    if (organizationId != null && targetUser.organization?.id !== organizationId) throw new NotFoundException('Employee not found');
+    if (!skipOwnershipCheck && organizationId != null && targetUser.organization?.id !== organizationId) {
+      throw new NotFoundException('Employee not found');
+    }
 
     const { total: hours } = await this.calcService.categorizePeriod(userId, organizationId, from, to);
     const settings = await this.settingsService.getSalarySettings(userId, organizationId);

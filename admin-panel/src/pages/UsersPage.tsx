@@ -389,6 +389,17 @@ export default function UsersPage() {
                 {t('users.warehouseTransferHint')}
               </label>
             </div>
+            <div>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={form.permissions['payroll.viewMonthlyGrossSalary'] ?? false}
+                  onChange={(e) => setForm({ ...form, permissions: { ...form.permissions, 'payroll.viewMonthlyGrossSalary': e.target.checked } })}
+                  style={{ marginRight: 6 }}
+                />
+                {t('users.viewMonthlyGrossSalaryHint')}
+              </label>
+            </div>
             <div style={{ gridColumn: '1 / -1' }}>
               <label>{t('users.coversRegions')}</label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>

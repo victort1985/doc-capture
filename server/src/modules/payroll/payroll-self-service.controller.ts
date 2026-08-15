@@ -32,6 +32,6 @@ export class PayrollSelfServiceController {
 
   @Get('my-payslip')
   getMyPayslip(@Query('from') from: string, @Query('to') to: string, @CurrentUser() user: ReqUser) {
-    return this.payslipService.generatePayslip(user.id, user.organizationId, from, to);
+    return this.payslipService.generatePayslip(user.id, user.organizationId, from, to, true);
   }
 }

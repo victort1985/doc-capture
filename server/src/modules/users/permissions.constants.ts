@@ -15,6 +15,11 @@ export const FEATURE_KEYS = [
   // none of these doesn't see the Office tab at all.
   'office.delivery_notes', 'office.quotes', 'office.invoices', 'office.orders', 'office.payments',
   'office.returns', 'office.credit_notes', 'office.debit_notes', 'office.expenses', 'office.rentals',
+  // Mobile Time Clock screen — shows the employee their own running
+  // monthly gross-pay total (see PayrollSelfServiceController's own
+  // my-payslip endpoint) at the bottom of the screen if granted, or
+  // the screen behaves exactly as if this key didn't exist otherwise.
+  'payroll.viewMonthlyGrossSalary',
   // Unlike every key above (which only ever hides/shows something
   // inside an already-logged-in session), this one gates the login
   // itself — see AuthService.login()'s enforcement for
@@ -44,6 +49,7 @@ export const ROLE_DEFAULTS: Record<UserRole, Record<FeatureKey, boolean>> = {
     'orgs.switch': false,
     'office.delivery_notes': false, 'office.quotes': false, 'office.invoices': false, 'office.orders': false, 'office.payments': false,
     'office.returns': false, 'office.credit_notes': false, 'office.debit_notes': false, 'office.expenses': false, 'office.rentals': false,
+    'payroll.viewMonthlyGrossSalary': false,
     'system.adminPanelAccess': false,
   },
 };

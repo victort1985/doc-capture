@@ -1089,6 +1089,7 @@
     "city": "City",
     "globalHint": "Global (notified about every call, any region)",
     "warehouseTransferHint": "Can transfer warehouse equipment between locations",
+    "viewMonthlyGrossSalaryHint": "Sees their own real-time monthly gross salary on the Time Clock screen in the mobile app",
     "coversRegions": "Covers regions (call notification routing)",
     "noRegionsYet": "No regions defined yet — see Locations.",
     "createUser": "Create user",

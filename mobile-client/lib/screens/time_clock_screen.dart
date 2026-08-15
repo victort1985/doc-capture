@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/time_clock_service.dart';
+import '../services/payroll_service.dart';
+import '../store/app_state.dart';
 
 /// Surfaces the server's own error message (e.g. "Already clocked in
 /// since 10:23…", "No open shift to clock out of.") rather than
@@ -38,23 +40,62 @@ class TimeClockScreen extends StatefulWidget {
 
 class _TimeClockScreenState extends State<TimeClockScreen> {
   late final TimeClockService _svc;
+  late final PayrollService _payrollSvc;
   TimeClockShift? _openShift;
   bool _loading = true;
   bool _busy = false;
   String? _error;
   Timer? _ticker;
+  Timer? _salaryTicker;
+  double? _monthlyGrossPay;
+  bool _canViewGrossSalary = false;
 
   @override
   void initState() {
     super.initState();
     _svc = TimeClockService(context.read<ApiService>());
+    _payrollSvc = PayrollService(context.read<ApiService>());
+    _canViewGrossSalary = context.read<AppState>().currentUser?.hasPermission('payroll.viewMonthlyGrossSalary') ?? false;
     _load();
+    if (_canViewGrossSalary) {
+      _loadMonthlyGrossPay();
+      // Refreshed periodically (not just once) so the figure actually
+      // behaves like a "real-time" running total, matching what was
+      // asked for — every 60s, same cadence as the existing elapsed-
+      // time ticker below, rather than a separate faster interval that
+      // would just hammer the server for a number that only meaningfully
+      // changes as whole minutes of clocked-in time accumulate anyway.
+      _salaryTicker = Timer.periodic(const Duration(minutes: 1), (_) {
+        if (mounted) _loadMonthlyGrossPay();
+      });
+    }
   }
 
   @override
   void dispose() {
     _ticker?.cancel();
+    _salaryTicker?.cancel();
     super.dispose();
+  }
+
+  /// Silently does nothing on failure — this widget is a bonus, not
+  /// the point of the screen (clocking in/out still has to work even
+  /// if, say, salary settings were never configured for this
+  /// employee and the payslip endpoint errors for some unrelated
+  /// reason). No error banner here would just be noise layered on top
+  /// of whatever the main clock-in/out flow's own error handling
+  /// already shows.
+  Future<void> _loadMonthlyGrossPay() async {
+    try {
+      final now = DateTime.now();
+      final from = DateTime(now.year, now.month, 1);
+      final to = DateTime(now.year, now.month + 1, 0);
+      String fmt(DateTime d) => '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+      final payslip = await _payrollSvc.getMyPayslip(fmt(from), fmt(to));
+      if (mounted) setState(() => _monthlyGrossPay = payslip.grossPay);
+    } catch (_) {
+      // Intentionally swallowed — see this method's own doc comment.
+    }
   }
 
   Future<void> _load() async {
@@ -80,6 +121,7 @@ class _TimeClockScreenState extends State<TimeClockScreen> {
     try {
       await _svc.clockIn();
       await _load();
+      if (_canViewGrossSalary) _loadMonthlyGrossPay();
     } catch (e) {
       setState(() => _error = _extractErrorMessage(e));
     } finally {
@@ -92,6 +134,7 @@ class _TimeClockScreenState extends State<TimeClockScreen> {
     try {
       await _svc.clockOut();
       await _load();
+      if (_canViewGrossSalary) _loadMonthlyGrossPay();
     } catch (e) {
       setState(() => _error = _extractErrorMessage(e));
     } finally {
@@ -168,6 +211,24 @@ class _TimeClockScreenState extends State<TimeClockScreen> {
                 ),
               ),
       ),
+      bottomNavigationBar: (_canViewGrossSalary && _monthlyGrossPay != null)
+          ? SafeArea(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  border: Border(top: BorderSide(color: Colors.grey.shade300)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(l10n.timeClockMonthlyGross, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    Text('₪${_monthlyGrossPay!.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+                  ],
+                ),
+              ),
+            )
+          : null,
     );
   }
 }
