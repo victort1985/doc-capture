@@ -150,8 +150,11 @@ export default function SalarySettingsPage() {
             onChange={(e) => updateField('standardWorkdayHours', Number(e.target.value))}
             style={{ width: '100%', marginBottom: 4 }}
           >
-            <option value={8}>{t('salarySettings.workday8')}</option>
-            <option value={6}>{t('salarySettings.workday6')}</option>
+            <option value={8}>{t('salarySettings.hours8')}</option>
+            <option value={7}>{t('salarySettings.hours7')}</option>
+            <option value={6}>{t('salarySettings.hours6')}</option>
+            <option value={5}>{t('salarySettings.hours5')}</option>
+            <option value={4}>{t('salarySettings.hours4')}</option>
           </select>
           <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 0, marginBottom: 12 }}>{t('salarySettings.standardWorkdayHint')}</p>
 

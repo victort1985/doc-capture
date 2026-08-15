@@ -104,8 +104,8 @@ export class PayrollSettingsService {
     if (input.salaryType === SalaryType.GLOBAL && !input.globalMonthlySalary) {
       throw new BadRequestException('A monthly amount is required for globally-paid employees.');
     }
-    if (input.standardWorkdayHours != null && ![6, 8].includes(input.standardWorkdayHours)) {
-      throw new BadRequestException('standardWorkdayHours must be either 6 or 8.');
+    if (input.standardWorkdayHours != null && (input.standardWorkdayHours < 4 || input.standardWorkdayHours > 8)) {
+      throw new BadRequestException('standardWorkdayHours must be between 4 and 8.');
     }
 
     let settings = await this.salaryRepo.findOne({ where: { user: { id: userId } } });

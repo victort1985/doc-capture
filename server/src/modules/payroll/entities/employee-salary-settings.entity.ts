@@ -1,6 +1,7 @@
 import { Column, CreateDateColumn, Entity, ManyToOne, OneToOne, PrimaryGeneratedColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Organization } from '../../organizations/entities/organization.entity';
+import { numericTransformer } from '../../../common/transformers/numeric.transformer';
 
 export enum SalaryType {
   HOURLY = 'hourly',
@@ -54,39 +55,37 @@ export class EmployeeSalarySettings {
    * before overtime starts — see PayrollCalculationService's own doc
    * comment for the legal basis: חוק שעות עבודה ומנוחה defines
    * overtime relative to the employee's own standard daily quota, not
-   * a fixed universal number. The common cases are 8 hours (the
-   * default, matching most workplaces) or 6 hours (common for
-   * physical-labor roles, some collective agreements, and part-time
-   * arrangements) — deliberately a closed choice between exactly
-   * these two rather than an arbitrary number, matching how this was
-   * actually requested and avoiding a free-text field an admin could
-   * accidentally set to something legally meaningless (e.g. 0 or 24).
-   * The SAME threshold applies whether the day in question is an
-   * ordinary day or a rest day/holiday — what changes between those
-   * is the PERCENTAGE paid, not where the regular-vs-overtime line
-   * falls; both use this same value. */
+   * a fixed universal number. Allowed range is 4-8 hours (covers
+   * everything from a short part-time day up to the standard full
+   * day) — a bounded RANGE rather than an arbitrary free-text number,
+   * so an admin still can't accidentally set something legally
+   * meaningless (e.g. 0 or 24), but isn't limited to only the two
+   * most common values either. The SAME threshold applies whether the
+   * day in question is an ordinary day or a rest day/holiday — what
+   * changes between those is the PERCENTAGE paid, not where the
+   * regular-vs-overtime line falls; both use this same value. */
   @Column({ type: 'int', default: 8 })
   standardWorkdayHours: number;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true, transformer: numericTransformer })
   hourlyRate?: number | null;
 
-  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true })
+  @Column({ type: 'numeric', precision: 10, scale: 2, nullable: true, transformer: numericTransformer })
   globalMonthlySalary?: number | null;
 
-  @Column({ type: 'numeric', precision: 6, scale: 2, default: 125 })
+  @Column({ type: 'numeric', precision: 6, scale: 2, default: 125, transformer: numericTransformer })
   overtimeFirst2HoursPercent: number;
 
-  @Column({ type: 'numeric', precision: 6, scale: 2, default: 150 })
+  @Column({ type: 'numeric', precision: 6, scale: 2, default: 150, transformer: numericTransformer })
   overtimeBeyond2HoursPercent: number;
 
-  @Column({ type: 'numeric', precision: 6, scale: 2, default: 150 })
+  @Column({ type: 'numeric', precision: 6, scale: 2, default: 150, transformer: numericTransformer })
   restDayPercent: number;
 
-  @Column({ type: 'numeric', precision: 6, scale: 2, default: 175 })
+  @Column({ type: 'numeric', precision: 6, scale: 2, default: 175, transformer: numericTransformer })
   restDayOvertimeFirst2HoursPercent: number;
 
-  @Column({ type: 'numeric', precision: 6, scale: 2, default: 200 })
+  @Column({ type: 'numeric', precision: 6, scale: 2, default: 200, transformer: numericTransformer })
   restDayOvertimeBeyond2HoursPercent: number;
 
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
