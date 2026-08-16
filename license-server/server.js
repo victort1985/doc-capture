@@ -12,7 +12,7 @@ const { provisionTenantHostname, deprovisionTenantHostname, cloudflareAutomation
 
 const app = express();
 app.use(express.json());
-app.use('/admin-ui', express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), { index: 'admin.html' }));
 
 const JWT_SECRET = process.env.ADMIN_JWT_SECRET;
 if (!JWT_SECRET) throw new Error('ADMIN_JWT_SECRET is not set in .env');

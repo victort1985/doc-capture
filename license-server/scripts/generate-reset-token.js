@@ -39,4 +39,4 @@ const baseUrl = process.env.LICENSE_PUBLIC_URL || 'https://license.vixor.app';
 console.log(`Reset token generated for '${username}', valid for 1 hour.`);
 console.log('');
 console.log(`Open this URL to set a new password:`);
-console.log(`${baseUrl}/admin-ui/reset-password.html?username=${encodeURIComponent(username)}&token=${rawToken}`);
+console.log(`${baseUrl}/reset-password.html?username=${encodeURIComponent(username)}&token=${rawToken}`);

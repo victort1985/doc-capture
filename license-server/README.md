@@ -28,7 +28,7 @@ node scripts/create-admin.js yourname a-strong-password
 npm start
 ```
 
-Admin UI: `http://<this-machine>:4100/admin-ui/admin.html`
+Admin UI: `http://<this-machine>:4100/` (serves the admin panel directly, no extra path needed)
 
 ## Running it permanently (systemd, same pattern as the main server)
 
@@ -53,10 +53,11 @@ WantedBy=multi-user.target
 
 Every customer's Vixor ERP server needs to reach `POST /verify` on
 this machine — put it behind a reverse proxy with HTTPS (Caddy/Nginx +
-Let's Encrypt), same as discussed for the main server. The `/admin-ui`
-path should ideally be firewalled to your own IP only, or at minimum
-rely on the login — it's your control panel for every customer's
-license.
+Let's Encrypt), same as discussed for the main server. Everything else
+(the admin panel itself, and every `/admin/*` route) should ideally be
+firewalled to your own IP only, or at minimum rely on the login — it's
+your control panel for every customer's license. `POST /verify` is the
+one path that genuinely needs to stay open to the world.
 
 ## What each customer needs from you
 
