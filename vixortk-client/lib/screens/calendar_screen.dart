@@ -133,7 +133,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
       if (_selectedDay != null)
         Expanded(
           child: _shiftsOnDay(_selectedDay!).isEmpty
-              ? Center(child: Text(l10n.payrollNoData))
+              ? Center(child: Text(AppLocalizations.of(context)!.payrollNoData))
               : ListView(
                   padding: const EdgeInsets.all(12),
                   children: [for (final shift in _shiftsOnDay(_selectedDay!)) _buildShiftCard(context, shift)],
