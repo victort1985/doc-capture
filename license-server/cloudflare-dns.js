@@ -34,6 +34,32 @@ async function cf(path, opts = {}) {
   return body.result;
 }
 
+/** A Cloudflare Zone ID is specific to exactly one registered domain
+ * — it's not possible to manage vixor.app's DNS through doc-
+ * capture.app's zone, or vice versa. If TENANT_BASE_DOMAIN gets
+ * changed (e.g. to switch which domain new tenants are provisioned
+ * under) without ALSO updating CLOUDFLARE_ZONE_ID to the matching
+ * zone, addDnsRecord would either silently fail or — worse — succeed
+ * against the wrong zone, creating a tenant that's completely
+ * unreachable under the domain it was supposedly just set up on, with
+ * no obvious error pointing at why. Checked once per DNS operation
+ * (cheap - one extra API call) rather than only at startup, since
+ * .env can change between calls to a long-running process only via a
+ * restart anyway, but this stays correct even if that assumption
+ * ever changes. */
+async function assertZoneMatchesBaseDomain(baseDomain) {
+  const zoneId = requireEnv('CLOUDFLARE_ZONE_ID');
+  const zone = await cf(`/zones/${zoneId}`);
+  if (zone.name !== baseDomain) {
+    throw new Error(
+      `CLOUDFLARE_ZONE_ID in .env points to the "${zone.name}" zone, but TENANT_BASE_DOMAIN is "${baseDomain}" — ` +
+      `these must be the SAME domain (a Cloudflare zone only manages DNS for the one domain it belongs to). ` +
+      `Update CLOUDFLARE_ZONE_ID to the zone ID for "${baseDomain}" (find it in the Cloudflare dashboard under ` +
+      `that domain's Overview page, or via GET /zones?name=${baseDomain} with your API token) before provisioning.`
+    );
+  }
+}
+
 async function getIngressRules() {
   const accountId = requireEnv('CLOUDFLARE_ACCOUNT_ID');
   const tunnelId = requireEnv('CLOUDFLARE_TUNNEL_ID');
@@ -97,7 +123,8 @@ async function removeDnsRecord(hostname) {
 
 /** Full add: tunnel ingress rule + DNS record. Returns the public URL. */
 async function provisionTenantHostname(slug, port) {
-  const baseDomain = process.env.TENANT_BASE_DOMAIN || 'doc-capture.app';
+  const baseDomain = process.env.TENANT_BASE_DOMAIN || 'vixor.app';
+  await assertZoneMatchesBaseDomain(baseDomain);
   const hostname = `${slug}.${baseDomain}`;
   await addTunnelHostname(hostname, port);
   await addDnsRecord(hostname);
@@ -106,7 +133,7 @@ async function provisionTenantHostname(slug, port) {
 
 /** Full teardown: DNS record + tunnel ingress rule. */
 async function deprovisionTenantHostname(slug) {
-  const baseDomain = process.env.TENANT_BASE_DOMAIN || 'doc-capture.app';
+  const baseDomain = process.env.TENANT_BASE_DOMAIN || 'vixor.app';
   const hostname = `${slug}.${baseDomain}`;
   await removeDnsRecord(hostname);
   await removeTunnelHostname(hostname);

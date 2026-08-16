@@ -167,7 +167,7 @@ app.delete('/admin/licenses/:id', requireAdmin, async (req, res) => {
   }
 
   if (license.provisioned) {
-    const baseDomain = process.env.TENANT_BASE_DOMAIN || 'doc-capture.app';
+    const baseDomain = process.env.TENANT_BASE_DOMAIN || 'vixor.app';
     if (cloudflareAutomationEnabled() && license.public_url && license.public_url.endsWith(baseDomain)) {
       try {
         await deprovisionTenantHostname(license.slug);
