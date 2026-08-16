@@ -89,10 +89,31 @@ jobs:
           git commit -m "debug: vixortk android build output"
           git push --force origin debug-logs-vixortk-android
 
+      - name: Rename APK to a distinctive filename
+        # Flutter's own build output is always literally
+        # "app-release.apk" regardless of project name - the MAIN
+        # Vixor ERP app's own workflow uses that exact same generic
+        # filename for ITS OWN apk. When a tag accidentally triggers
+        # both workflows at once (see the "vixortk-v*" vs the main
+        # app's own "v*" tag-pattern collision — a vixortk-vX.Y.Z tag
+        # also starts with "v"), BOTH workflows attach an asset named
+        # "app-release.apk" to the SAME GitHub Release for that same
+        # tag - and GitHub Releases only keep one asset per unique
+        # filename, so whichever upload runs second silently
+        # overwrites the first. This is exactly what happened on the
+        # vixortk-v1.0.1 release: VixorTK's own real APK got replaced
+        # by the main app's own same-named APK, discovered only when
+        # the file size didn't match what was verified moments after
+        # the build (58MB became 88MB, the main app's own APK is
+        # simply a bigger app). Renaming to something that can never
+        # collide with the main app's own output filename is the
+        # actual fix - not just a naming preference.
+        run: mv build/app/outputs/flutter-apk/app-release.apk build/app/outputs/flutter-apk/vixortk-android.apk
+
       - uses: actions/upload-artifact@v4
         with:
           name: vixortk-android
-          path: vixortk-client/build/app/outputs/flutter-apk/app-release.apk
+          path: vixortk-client/build/app/outputs/flutter-apk/vixortk-android.apk
         continue-on-error: true
 
       # Same fallback delivery path as the main app's own mobile-build.yml
@@ -103,7 +124,7 @@ jobs:
           git config user.email "ci@doccapture.local"
           git config user.name "CI Bot"
           git checkout -B build-vixortk-android
-          git add -f vixortk-client/build/app/outputs/flutter-apk/app-release.apk
+          git add -f vixortk-client/build/app/outputs/flutter-apk/vixortk-android.apk
           git commit -m "build: vixortk android apk"
           git push --force origin build-vixortk-android
 
@@ -111,7 +132,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: vixortk-client/build/app/outputs/flutter-apk/app-release.apk
+          files: vixortk-client/build/app/outputs/flutter-apk/vixortk-android.apk
 
   ios:
     name: VixorTK iOS IPA (unsigned)
