@@ -1,0 +1,46 @@
+name: vixor_tk
+description: VixorTK — Time Clock & Payroll companion for Vixor ERP
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: ^0.20.2
+  google_fonts: ^6.2.1
+
+  # Networking
+  dio: ^5.4.3
+
+  # Auth/token storage + connection-file decryption (must match the
+  # main Vixor ERP app's own algorithm exactly — see
+  # connection_file_crypto.dart's own doc comment)
+  flutter_secure_storage: ^9.2.2
+  shared_preferences: ^2.2.3
+  crypto: ^3.0.3
+  encrypt: ^5.0.3
+
+  # State management
+  provider: ^6.1.2
+
+  # Connection-file (.vxconn) import
+  file_picker: ^8.0.6
+
+  # Calendar tab (month view)
+  table_calendar: ^3.1.3
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  generate: true # enables flutter gen-l10n from l10n.yaml
+  assets:
+    - assets/icons/

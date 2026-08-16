@@ -57,14 +57,23 @@ export class TimeClockController {
     return this.service.getTimesheet(user.organizationId, from, to);
   }
 
+  /** Corrects an existing shift's clock-in/out times — same
+   * permission gate as POST /time-clock/manual-entry below (checked
+   * directly rather than @Roles(ADMIN)), since "prescribe or correct
+   * shifts" was requested together as one capability an admin can
+   * grant without full admin access. Deliberately does NOT extend
+   * this same permission to DELETE below — removing a shift entirely
+   * stays admin-only, a narrower scope than what was actually asked
+   * for (add/correct, not remove). */
   @Patch(':id')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN)
   adjustEntry(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: { clockIn?: string; clockOut?: string | null },
     @CurrentUser() user: ReqUser,
   ) {
+    if (user.role !== UserRole.ADMIN && !user.permissions?.['payroll.manageTimeClockEntries']) {
+      throw new ForbiddenException('You do not have permission to correct time clock entries.');
+    }
     return this.service.adjustEntry(id, user.organizationId, body.clockIn, body.clockOut);
   }
 
