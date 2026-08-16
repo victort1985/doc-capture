@@ -1,0 +1,217 @@
+name: VixorTK build
+
+# Manual trigger any time from the Actions tab ("Run workflow"), plus
+# automatic on VixorTK-specific version tags (vixortk-v1.0.0 etc.) so
+# tagging a release also produces downloadable builds attached to a
+# GitHub Release. Deliberately a SEPARATE tag prefix from the main
+# app's own "v*" pattern (mobile-build.yml) so tagging one release
+# never accidentally triggers a build of the other app.
+on:
+  workflow_dispatch:
+    inputs:
+      server_url:
+        description: 'Server API base URL to bake into the build (e.g. https://vixor.app/api). Leave empty to keep the https://app.doc-capture.app/api default.'
+        required: false
+        default: ''
+  push:
+    tags:
+      - 'vixortk-v*'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  android:
+    name: VixorTK Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vixortk-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      # android/ isn't committed, same reasoning as the main app's own
+      # mobile-build.yml — generated fresh every build. A DISTINCT org
+      # (com.vixor, not the main app's com.doccapture) gives VixorTK
+      # its own package name (com.vixor.vixor_tk vs.
+      # com.doccapture.doc_capture) so both apps can be installed on
+      # the same device side by side without any namespace collision —
+      # they're genuinely separate apps sharing a backend, not two
+      # builds of the same app.
+      - name: flutter create (android scaffolding)
+        run: flutter create . --platforms=android --project-name vixor_tk --org com.vixor
+
+      - name: Set Android app name
+        run: |
+          sed -i 's/android:label="vixor_tk"/android:label="VixorTK"/g' android/app/src/main/AndroidManifest.xml
+          echo "Android label set to VixorTK"
+
+      - name: Set server URL
+        if: ${{ inputs.server_url != '' }}
+        run: sed -i "s#https://app.doc-capture.app/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
+
+      - run: flutter pub get
+
+      - name: Generate VixorTK app icons (Android)
+        run: pip install Pillow --break-system-packages -q && python3 ../.github/scripts/patch_vixortk_android_icon.py
+
+      - name: Bump compileSdk/targetSdk to 36
+        run: python3 ../.github/scripts/patch_android_sdk_version.py
+
+      - name: Bump file_picker's own compileSdk to 36
+        run: python3 ../.github/scripts/patch_file_picker_sdk_version.py
+
+      - name: flutter build apk --release
+        run: |
+          set -o pipefail
+          flutter build apk --release 2>&1 | tee /tmp/build-vixortk-android.log
+
+      - name: Push diagnostic log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-vixortk-android
+          mkdir -p .ci-debug
+          cp /tmp/build-vixortk-android.log .ci-debug/build-vixortk-android.log
+          git add -f .ci-debug/build-vixortk-android.log
+          git commit -m "debug: vixortk android build output"
+          git push --force origin debug-logs-vixortk-android
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vixortk-android
+          path: vixortk-client/build/app/outputs/flutter-apk/app-release.apk
+        continue-on-error: true
+
+      # Same fallback delivery path as the main app's own mobile-build.yml
+      # (upload-artifact@v4 has been unreliable in this repo).
+      - name: Push APK to git as a fallback delivery path
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B build-vixortk-android
+          git add -f vixortk-client/build/app/outputs/flutter-apk/app-release.apk
+          git commit -m "build: vixortk android apk"
+          git push --force origin build-vixortk-android
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: vixortk-client/build/app/outputs/flutter-apk/app-release.apk
+
+  ios:
+    name: VixorTK iOS IPA (unsigned)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: vixortk-client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+
+      - name: Disable Swift Package Manager globally (flutter_secure_storage doesn't support it yet)
+        run: flutter config --no-enable-swift-package-manager
+
+      - name: flutter create (ios scaffolding)
+        run: flutter create . --platforms=ios --project-name vixor_tk --org com.vixor
+
+      - name: Set iOS app name
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName 'VixorTK'" ios/Runner/Info.plist 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Set :CFBundleName 'VixorTK'" ios/Runner/Info.plist 2>/dev/null || true
+          echo "iOS display name set to VixorTK"
+
+      - name: Bump iOS deployment target to 15.0
+        run: python3 ../.github/scripts/patch_ios_deployment_target.py
+
+      - name: Set server URL
+        if: ${{ inputs.server_url != '' }}
+        run: sed -i '' "s#https://app.doc-capture.app/api#${{ inputs.server_url }}#g" lib/services/api_service.dart
+
+      - run: flutter pub get
+
+      - name: Generate VixorTK app icons
+        run: python3 -m pip install Pillow --break-system-packages -q 2>/dev/null || pip3 install Pillow -q && python3 ../.github/scripts/patch_vixortk_ios_icon.py
+
+      # Same code-signing workaround as the main app's own mobile-build.yml
+      # (Flutter's own --no-codesign has a known regression, flutter/flutter#101765).
+      - name: Patch Xcode project — disable code signing
+        run: |
+          PROJ=ios/Runner.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' "$PROJ" || \
+          sed -i    's/DEVELOPMENT_TEAM = [A-Z0-9]*;/DEVELOPMENT_TEAM = "";/g' "$PROJ"
+          sed -i '' 's/CODE_SIGN_IDENTITY = ".*";/CODE_SIGN_IDENTITY = "";/g' "$PROJ" || \
+          sed -i    's/CODE_SIGN_IDENTITY = ".*";/CODE_SIGN_IDENTITY = "";/g' "$PROJ"
+          sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PROJ" || \
+          sed -i    's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PROJ"
+          echo "Patched: $(grep -c 'DEVELOPMENT_TEAM = \"\"' $PROJ) team entries cleared"
+
+      - name: Build iOS app (unsigned .app bundle)
+        run: |
+          set -o pipefail
+          flutter build ios \
+            --release \
+            --no-codesign \
+            2>&1 | tee /tmp/build-vixortk-ios.log
+
+      - name: Package unsigned IPA (Payload/Runner.app → .ipa)
+        run: |
+          set -e
+          APP_DIR=build/ios/iphoneos
+          mkdir -p "$APP_DIR/Payload"
+          cp -r "$APP_DIR/Runner.app" "$APP_DIR/Payload/"
+          cd "$APP_DIR"
+          zip -r ../../../vixortk-ios-unsigned.ipa Payload
+          echo "IPA size: $(du -sh ../../../vixortk-ios-unsigned.ipa | cut -f1)"
+
+      - name: Push diagnostic log on failure
+        if: failure()
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B debug-logs-vixortk-ios
+          mkdir -p .ci-debug
+          cp /tmp/build-vixortk-ios.log .ci-debug/build-vixortk-ios.log
+          git add -f .ci-debug/build-vixortk-ios.log
+          git commit -m "debug: vixortk ios build output"
+          git push --force origin debug-logs-vixortk-ios
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vixortk-ios-unsigned
+          path: vixortk-client/vixortk-ios-unsigned.ipa
+        continue-on-error: true
+
+      - name: Push IPA to git as a fallback delivery path
+        working-directory: ${{ github.workspace }}
+        run: |
+          git config user.email "ci@doccapture.local"
+          git config user.name "CI Bot"
+          git checkout -B build-vixortk-ios
+          git add -f vixortk-client/vixortk-ios-unsigned.ipa
+          git commit -m "build: vixortk ios unsigned ipa"
+          git push --force origin build-vixortk-ios
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: vixortk-client/vixortk-ios-unsigned.ipa
