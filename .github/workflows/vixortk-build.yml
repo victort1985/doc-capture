@@ -161,7 +161,24 @@ jobs:
           sed -i    's/CODE_SIGN_IDENTITY = ".*";/CODE_SIGN_IDENTITY = "";/g' "$PROJ"
           sed -i '' 's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PROJ" || \
           sed -i    's/PROVISIONING_PROFILE_SPECIFIER = ".*";/PROVISIONING_PROFILE_SPECIFIER = "";/g' "$PROJ"
-          echo "Patched: $(grep -c 'DEVELOPMENT_TEAM = \"\"' $PROJ) team entries cleared"
+          # Clearing team/identity/profile alone wasn't enough on the
+          # first real CI attempt for this app (confirmed via the
+          # pushed diagnostic log: "Building a deployable iOS app
+          # requires a selected Development Team" still fired even
+          # though this step itself reported success) — a fresh
+          # `flutter create` scaffold defaults CODE_SIGN_STYLE to
+          # Automatic, which makes Xcode try to auto-provision a team
+          # regardless of what the other three fields say. Forcing
+          # Manual here is the missing piece; the main app's own
+          # workflow apparently never hit this because its own
+          # committed history predates whatever Flutter/Xcode template
+          # version changed this default, so this fix is VixorTK-
+          # specific for now rather than backported blindly to the
+          # other workflow without its own equivalent failure to
+          # confirm the same root cause there.
+          sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PROJ" || \
+          sed -i    's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Manual;/g' "$PROJ"
+          echo "Patched: $(grep -c 'DEVELOPMENT_TEAM = \"\"' $PROJ) team entries cleared, $(grep -c 'CODE_SIGN_STYLE = Manual' $PROJ) signing-style entries set to Manual"
 
       - name: Build iOS app (unsigned .app bundle)
         run: |

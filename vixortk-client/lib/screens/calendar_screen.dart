@@ -144,14 +144,12 @@ class _CalendarScreenState extends State<CalendarScreen> {
 
   Widget _buildListView(BuildContext context) {
     final shifts = _period?.shifts ?? [];
-    if (shifts.isEmpty) return Center(child: Text(l10n(context).payrollNoData));
+    if (shifts.isEmpty) return Center(child: Text(AppLocalizations.of(context)!.payrollNoData));
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [for (final shift in shifts) _buildShiftCard(context, shift)],
     );
   }
-
-  AppLocalizations l10n(BuildContext context) => AppLocalizations.of(context)!;
 
   Widget _buildShiftCard(BuildContext context, TimekeeperShift shift) {
     final restDay = _isRestDayShift(shift);
