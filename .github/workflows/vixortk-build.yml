@@ -51,6 +51,17 @@ jobs:
       - name: flutter create (android scaffolding)
         run: flutter create . --platforms=android --project-name vixor_tk --org com.vixor
 
+      - name: Patch AndroidManifest.xml — INTERNET permission + cleartext traffic
+        # CRITICAL, not optional — see this script's own doc comment
+        # for the full story: without this, Android blocks ALL network
+        # access for the app at the OS level, which surfaced in the
+        # very first published release as "DNS lookup errno 7" / DoH
+        # fallback also failing on Android specifically, while the
+        # identical .vxconn connection file worked fine on iOS (which
+        # has no equivalent manifest-permission gate). A real,
+        # reported, shipped bug — not a preventive measure.
+        run: python3 ../.github/scripts/patch_vixortk_android_manifest.py
+
       - name: Set Android app name
         run: |
           sed -i 's/android:label="vixor_tk"/android:label="VixorTK"/g' android/app/src/main/AndroidManifest.xml
