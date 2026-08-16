@@ -145,17 +145,28 @@ app.delete('/admin/licenses/:id', requireAdmin, async (req, res) => {
   if (!license) return res.status(404).json({ error: 'Not found' });
 
   let output = '';
-  if (license.provisioned) {
-    try {
-      output = await deprovisionTenant(license.slug);
-    } catch (err) {
-      // Leave the license row in place if teardown fails — better to
-      // surface a stuck/half-deleted tenant for manual cleanup than
-      // to silently lose the record while a real server + database
-      // are still running somewhere.
-      return res.status(500).json({ error: err.message, output: err.output || '' });
-    }
+  // Always attempt teardown, not just when license.provisioned is
+  // set — a provisioning attempt that failed PARTWAY through (the
+  // exact scenario that produces a stuck "slug already exists" row —
+  // provisioned stays 0, but provision-tenant.sh may already have
+  // created a real database/systemd service before it errored out)
+  // would otherwise leave that real infrastructure permanently
+  // orphaned and untracked once this row is deleted. deprovision-
+  // tenant.sh is deliberately idempotent for exactly this reason
+  // (systemctl disable --now || echo "(was not running)", dropdb
+  // --if-exists, rm -rf) — safe to run even when nothing was ever
+  // actually provisioned, so there's no longer a reason to skip it.
+  try {
+    output = await deprovisionTenant(license.slug);
+  } catch (err) {
+    // Leave the license row in place if teardown fails — better to
+    // surface a stuck/half-deleted tenant for manual cleanup than
+    // to silently lose the record while a real server + database
+    // are still running somewhere.
+    return res.status(500).json({ error: err.message, output: err.output || '' });
+  }
 
+  if (license.provisioned) {
     const baseDomain = process.env.TENANT_BASE_DOMAIN || 'doc-capture.app';
     if (cloudflareAutomationEnabled() && license.public_url && license.public_url.endsWith(baseDomain)) {
       try {
@@ -181,8 +192,18 @@ app.post('/admin/tenants', requireAdmin, async (req, res) => {
   if (!slug || !customerName || !port || !dbPassword) {
     return res.status(400).json({ error: 'slug, customerName, port, and dbPassword are all required.' });
   }
-  if (db.prepare('SELECT id FROM licenses WHERE slug = ?').get(slug)) {
-    return res.status(409).json({ error: `A tenant with slug "${slug}" already exists.` });
+  const existingBySlug = db.prepare('SELECT id FROM licenses WHERE slug = ?').get(slug);
+  if (existingBySlug) {
+    // A slug collision here is almost always a STUCK row from an
+    // earlier provisioning attempt that failed partway through (the
+    // license row is deliberately kept on failure — see the catch
+    // block below — so it can be investigated, but that also means
+    // this exact 409 is the normal, expected shape of "retry a failed
+    // provision"). Returning the existing row's own id lets the admin
+    // UI offer "delete it and retry" directly from this error,
+    // instead of the admin having to separately find and remove the
+    // stuck row through the licenses table first.
+    return res.status(409).json({ error: `A tenant with slug "${slug}" already exists.`, existingLicenseId: existingBySlug.id });
   }
 
   const key = crypto.randomBytes(32).toString('hex');

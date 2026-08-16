@@ -159,7 +159,7 @@ function api(path, opts = {}) {
       showLoggedOut('Your session expired — please sign in again.');
       throw Object.assign(new Error('Session expired'), { isSessionExpiry: true });
     }
-    if (!r.ok) throw Object.assign(new Error(body.error || `Request failed (${r.status})`), { output: body.output });
+    if (!r.ok) throw Object.assign(new Error(body.error || `Request failed (${r.status})`), { output: body.output, existingLicenseId: body.existingLicenseId });
     return body;
   });
 }
@@ -208,9 +208,12 @@ async function provisionTenant() {
 
   const out = document.getElementById('provisionOutput');
   out.classList.remove('hidden');
-  out.textContent = 'Provisioning… this can take a couple of minutes on the first tenant (building the app).';
-  try {
-    const res = await api('/admin/tenants', { method: 'POST', body: JSON.stringify({ customerName, slug, port: Number(port), maxDevices, dbPassword, publicUrl: publicUrl || undefined }) });
+
+  const payload = { customerName, slug, port: Number(port), maxDevices, dbPassword, publicUrl: publicUrl || undefined };
+
+  async function attempt() {
+    out.textContent = 'Provisioning… this can take a couple of minutes on the first tenant (building the app).';
+    const res = await api('/admin/tenants', { method: 'POST', body: JSON.stringify(payload) });
     out.textContent = res.output + `\n\n✅ Done. License key: ${res.license.key}`;
     document.getElementById('tCustomer').value = '';
     document.getElementById('tSlug').value = '';
@@ -218,7 +221,40 @@ async function provisionTenant() {
     document.getElementById('tPublicUrl').value = '';
     document.getElementById('tDbPassword').value = '';
     loadLicenses();
+  }
+
+  try {
+    await attempt();
   } catch (e) {
+    if (e.existingLicenseId) {
+      // Almost always a stuck row from an earlier provisioning
+      // attempt that failed partway through (see server.js's own
+      // comment on the 409 route for why the row survives a failure
+      // instead of being cleaned up automatically) — offer to remove
+      // it and immediately retry with the exact same form values,
+      // rather than making the admin separately find the stuck row in
+      // the licenses table, delete it there, then come back and
+      // re-fill this whole form from scratch.
+      const confirmed = confirm(
+        `A tenant with slug "${slug}" already exists — this is usually a leftover from an earlier provisioning attempt that failed partway through.\n\n` +
+        `Delete the existing "${slug}" tenant (database + server, if anything was actually created) and try creating it again?`
+      );
+      if (confirmed) {
+        out.textContent = `Removing the existing "${slug}" tenant before retrying…`;
+        try {
+          await api(`/admin/licenses/${e.existingLicenseId}`, { method: 'DELETE' });
+        } catch (deleteErr) {
+          out.textContent = `❌ Could not remove the existing tenant: ${deleteErr.message}\n\n${deleteErr.output || ''}\n\nFix this manually before retrying.`;
+          return;
+        }
+        try {
+          await attempt();
+        } catch (retryErr) {
+          out.textContent = `❌ ${retryErr.message}\n\n${retryErr.output || ''}`;
+        }
+        return;
+      }
+    }
     out.textContent = `❌ ${e.message}\n\n${e.output || ''}`;
   }
 }
