@@ -262,12 +262,39 @@ async function provisionTenant() {
 async function deployAll() {
   const out = document.getElementById('deployOutput');
   out.classList.remove('hidden');
-  out.textContent = 'Deploying… this can take a few minutes.';
+  out.textContent = 'Starting deploy…';
   try {
-    const res = await api('/admin/deploy', { method: 'POST' });
-    out.textContent = res.output;
+    await api('/admin/deploy', { method: 'POST' });
   } catch (e) {
-    out.textContent = `❌ ${e.message}\n\n${e.output || ''}`;
+    // A 409 here just means a deploy the admin (or someone else) already
+    // kicked off is still running — fall through to polling for it
+    // instead of treating this as a failure, since that job is real
+    // and worth watching too.
+    if (!e.message || !e.message.includes('already in progress')) {
+      out.textContent = `❌ ${e.message}\n\n${e.output || ''}`;
+      return;
+    }
+  }
+  pollDeployStatus(out);
+}
+
+/** Polls every 3s instead of holding one long-lived request open —
+ * see server.js's own comment on POST /admin/deploy for why: nothing
+ * about this polling loop can ever time out from a long-running
+ * deploy, since each individual request is fast regardless of how
+ * long the underlying job takes. */
+async function pollDeployStatus(out) {
+  try {
+    const status = await api('/admin/deploy/status');
+    if (status.running) {
+      const elapsed = status.startedAt ? Math.round((Date.now() - new Date(status.startedAt).getTime()) / 1000) : 0;
+      out.textContent = `Deploying… (${elapsed}s elapsed, this can take several minutes)`;
+      setTimeout(() => pollDeployStatus(out), 3000);
+      return;
+    }
+    out.textContent = status.error ? `❌ ${status.error}\n\n${status.output || ''}` : (status.output || '✅ Done.');
+  } catch (e) {
+    out.textContent = `❌ Lost track of the deploy status: ${e.message}`;
   }
 }
 

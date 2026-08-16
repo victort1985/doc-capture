@@ -239,13 +239,38 @@ app.post('/admin/tenants', requireAdmin, async (req, res) => {
   }
 });
 
-app.post('/admin/deploy', requireAdmin, async (req, res) => {
-  try {
-    const output = await deployAll();
-    res.json({ ok: true, output });
-  } catch (err) {
-    res.status(500).json({ error: err.message, output: err.output || '' });
+// In-memory deploy job state — this is a single-process internal tool
+// used by one admin at a time, so a plain module-level variable is
+// enough; no job queue/database needed. Kept intentionally simple.
+let deployJob = { running: false, output: '', error: null, startedAt: null, finishedAt: null };
+
+app.post('/admin/deploy', requireAdmin, (req, res) => {
+  if (deployJob.running) {
+    return res.status(409).json({ error: 'A deploy is already in progress.', startedAt: deployJob.startedAt });
   }
+  // Deliberately NOT awaited here — the whole point of this change.
+  // deployAll() can legitimately take several minutes (npm install +
+  // build across the whole stack, see provision.js's own 15-minute
+  // internal timeout, "builds can be slow on a modest machine"), and
+  // holding the HTTP response open that whole time was the actual
+  // bug: whatever sits between the browser and this process (reverse
+  // proxy, Cloudflare Tunnel, or the browser's own fetch handling)
+  // was cutting the connection well before the real work finished,
+  // surfacing as a bare "Load failed" with no useful information -
+  // the deploy itself may well have still been running, or even
+  // succeeding, server-side with no way for the admin to see that.
+  // Returning immediately and letting the client poll status instead
+  // means no single request ever needs to stay open more than a
+  // moment, regardless of what timeout anything in between imposes.
+  deployJob = { running: true, output: '', error: null, startedAt: new Date().toISOString(), finishedAt: null };
+  deployAll()
+    .then((output) => { deployJob = { ...deployJob, running: false, output, finishedAt: new Date().toISOString() }; })
+    .catch((err) => { deployJob = { ...deployJob, running: false, output: err.output || '', error: err.message, finishedAt: new Date().toISOString() }; });
+  res.status(202).json({ started: true });
+});
+
+app.get('/admin/deploy/status', requireAdmin, (req, res) => {
+  res.json(deployJob);
 });
 
 app.post('/admin/licenses/:id/connection-info', requireAdmin, (req, res) => {
