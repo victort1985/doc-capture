@@ -8,7 +8,6 @@ import '../l10n/app_localizations.dart';
 import '../services/connection_file_crypto.dart';
 import '../services/settings_service.dart';
 import '../store/app_state.dart';
-import 'connection_diagnostics_screen.dart';
 import 'login_screen.dart';
 
 /// Deliberately has no manual "type in a server address" path anymore —
@@ -132,31 +131,6 @@ class _ConnectionSettingsScreenState extends State<ConnectionSettingsScreen> {
                 ? const SizedBox(height: 16, width: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.file_open_outlined, size: 18),
             label: Text(l10n.connectionImportButton),
-          ),
-          const SizedBox(height: 20),
-          OutlinedButton.icon(
-            onPressed: () async {
-              final appState = context.read<AppState>();
-              String? clientId;
-              String? clientSecret;
-              if (_currentConfig?.mode == ConnectionMode.cloud) {
-                final (id, secret) = await appState.getCfServiceToken();
-                clientId = id;
-                clientSecret = secret;
-              }
-              if (!mounted) return;
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => ConnectionDiagnosticsScreen(
-                    config: _currentConfig ?? const ConnectionConfig(mode: ConnectionMode.direct, address: ''),
-                    clientId: clientId,
-                    clientSecret: clientSecret,
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.network_check, size: 18),
-            label: Text(l10n.connectionDiagnosticsButton),
           ),
         ],
       ),

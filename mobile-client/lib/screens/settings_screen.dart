@@ -70,39 +70,6 @@ class SettingsScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(children: [
-                  const Icon(Icons.dashboard_customize_outlined, size: 18, color: AppColors.inkSoft),
-                  const SizedBox(width: 8),
-                  Text(l10n.navStyleSectionTitle, style: const TextStyle(fontWeight: FontWeight.w600)),
-                ]),
-                const SizedBox(height: 12),
-                RadioListTile<String>(
-                  contentPadding: EdgeInsets.zero,
-                  value: 'classic',
-                  groupValue: appState.navStyle,
-                  onChanged: (v) { if (v != null) appState.setNavStyle(v); },
-                  title: Text(l10n.navStyleClassic, style: const TextStyle(fontSize: 13.5)),
-                ),
-                RadioListTile<String>(
-                  contentPadding: EdgeInsets.zero,
-                  value: 'actionHub',
-                  groupValue: appState.navStyle,
-                  onChanged: (v) { if (v != null) appState.setNavStyle(v); },
-                  title: Text(l10n.navStyleActionHub, style: const TextStyle(fontSize: 13.5)),
-                ),
-                const SizedBox(height: 4),
-                Text(l10n.navStyleHint, style: const TextStyle(fontSize: 11.5, color: AppColors.inkSoft)),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
           child: ListTile(
             leading: const Icon(Icons.dns_outlined, color: AppColors.inkSoft),
             title: Text(l10n.connectionSettingsTitle, style: const TextStyle(fontWeight: FontWeight.w600)),

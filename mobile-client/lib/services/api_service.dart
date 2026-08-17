@@ -4,7 +4,6 @@ import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 
-import 'connection_diagnostics.dart';
 import 'dns_lookup.dart';
 
 /// Thin wrapper around Dio carrying the JWT and a configurable base URL.
@@ -33,11 +32,6 @@ class ApiService {
         return client;
       },
     );
-    // TEMPORARY: logs every request this client makes into an in-memory,
-    // never-persisted diagnostics log — see connection_diagnostics.dart
-    // for why and the plan to remove it once cloud-mode connectivity is
-    // confirmed solid across real devices/networks.
-    _dio.interceptors.add(DiagnosticsInterceptor());
   }
 
   String _baseUrl;

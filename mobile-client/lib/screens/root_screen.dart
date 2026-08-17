@@ -11,7 +11,7 @@ import 'office_screen.dart';
 import '../store/app_state.dart';
 import 'calls_stats_screen.dart';
 import '../widgets/organization_logo_background.dart';
-import '../widgets/customizable_bottom_nav.dart';
+import '../widgets/bottom_nav_tab.dart';
 import '../widgets/create_document_sheet.dart';
 import 'more_screen.dart';
 import 'home_screen.dart';
@@ -25,11 +25,8 @@ class RootScreen extends StatefulWidget {
 }
 
 class _RootScreenState extends State<RootScreen> {
-  int _index = 0; // still used for the desktop NavigationRail, which doesn't need reordering
-  String? _selectedId;
+  int _index = 0; // used by the desktop NavigationRail only
   String _actionHubSelectedId = 'dashboard';
-  List<String>? _tabOrder;
-  Set<String>? _lastBaseTabIds;
   final _callsListKey = GlobalKey<CallsListScreenState>();
 
   @override
@@ -48,7 +45,7 @@ class _RootScreenState extends State<RootScreen> {
       onCallCreated: (id, place, createdBy) => _popup(
         l10n.callPopupCreated(place, createdBy),
         onTap: () {
-          setState(() { _index = 1; _selectedId = 'calls'; _actionHubSelectedId = 'calls'; }); // switch to the Calls tab
+          setState(() { _index = 1; _actionHubSelectedId = 'calls'; }); // switch to the Calls tab
           _callsListKey.currentState?.openCall(id);
         },
       ),
@@ -81,13 +78,13 @@ class _RootScreenState extends State<RootScreen> {
   /// matching what was actually requested, without this needing to
   /// branch on the current locale itself. Lives in a Stack ABOVE each
   /// of this screen's own Scaffold variants below (desktop rail,
-  /// Action Hub, classic bottom-nav) so it stays in the same fixed
-  /// spot regardless of which TAB is currently selected within
-  /// RootScreen — pushed sub-screens (Settings, Time Clock, etc.,
-  /// reached via Navigator.push from the More tab) sit on top of this
-  /// whole screen in the navigation stack and are unaffected, which
-  /// matches how the request was scoped ("regardless of which tab"),
-  /// not a global overlay surviving every possible pushed screen too.
+  /// mobile Action Hub) so it stays in the same fixed spot regardless
+  /// of which TAB is currently selected within RootScreen — pushed
+  /// sub-screens (Settings, Time Clock, etc., reached via
+  /// Navigator.push from the More tab) sit on top of this whole screen
+  /// in the navigation stack and are unaffected, which matches how the
+  /// request was scoped ("regardless of which tab"), not a global
+  /// overlay surviving every possible pushed screen too.
   Widget _buildPinnedMenuButton(BuildContext context) {
     return PositionedDirectional(
       top: MediaQuery.of(context).padding.top + 8,
@@ -146,38 +143,6 @@ class _RootScreenState extends State<RootScreen> {
       if (hasOfficeAccess) BottomNavTab(id: 'office', icon: Icons.apartment_outlined, selectedIcon: Icons.apartment, label: l10n.officeTitle),
     ];
 
-    final currentBaseIds = baseTabs.map((t) => t.id).toSet();
-    final baseIdsChanged = _lastBaseTabIds != null &&
-        (currentBaseIds.length != _lastBaseTabIds!.length || !currentBaseIds.every(_lastBaseTabIds!.contains));
-    if (baseIdsChanged) {
-      // The set of available tabs changed since the last build (most
-      // commonly: permissions finished loading asynchronously after
-      // the first frame, or changed while the app was backgrounded and
-      // got refreshed on resume) — force a fresh read+reconcile against
-      // SharedPreferences rather than trusting whatever _tabOrder
-      // already holds in memory.
-      _tabOrder = null;
-    }
-    _lastBaseTabIds = currentBaseIds;
-
-    if (_tabOrder == null) {
-      // Kick off the (async) load once; render with the default order
-      // in the meantime so the first frame isn't blocked on disk I/O.
-      CustomizableBottomNav.loadOrder(baseTabs).then((order) {
-        if (mounted) setState(() => _tabOrder = order);
-      });
-    }
-    final order = _tabOrder ?? baseTabs.map((t) => t.id).toList();
-    final byId = { for (final t in baseTabs) t.id: t };
-    final orderedTabs = order.where(byId.containsKey).map((id) => byId[id]!).toList();
-    for (final t in baseTabs) {
-      if (!orderedTabs.any((o) => o.id == t.id)) orderedTabs.add(t);
-    }
-
-    _selectedId ??= orderedTabs.first.id;
-    if (!orderedTabs.any((t) => t.id == _selectedId)) _selectedId = orderedTabs.first.id;
-    final canonicalIndex = canonicalIds.indexOf(_selectedId!).clamp(0, canonicalIds.length - 1);
-
     // Desktop still uses the plain fixed-order rail — reordering a
     // touch-only gesture doesn't map cleanly onto a rail meant to be
     // used with a mouse, and a desktop user isn't the one juggling a
@@ -230,94 +195,70 @@ class _RootScreenState extends State<RootScreen> {
       ), _buildPinnedMenuButton(context)]);
     }
 
-    // ── Mobile layout ───────────────────────────────────────────────────
-    final navStyle = context.watch<AppState>().navStyle;
+    // ── Mobile layout: Action Hub (fewer bottom tabs + a FAB opening a
+    // full grid of every document type — see create_document_sheet.dart)
+    // — the only mobile nav style now; the earlier customizable/
+    // reorderable "classic" nav and its per-device settings toggle were
+    // removed outright, not just defaulted away from.
+    final actionHubIds = ['dashboard', 'calls', 'phonebook', 'more'];
+    if (!actionHubIds.contains(_actionHubSelectedId)) _actionHubSelectedId = 'dashboard';
+    final actionHubIndex = canonicalIds.indexOf(_actionHubSelectedId).clamp(0, canonicalIds.length - 1);
 
-    if (navStyle == 'actionHub') {
-      // ── Action Hub: fewer bottom tabs + a FAB opening a full grid of
-      // every document type (including the 4 new ones — see
-      // create_document_sheet.dart) instead of digging through the
-      // classic nav's Office sub-tabs. Selectable per-device in
-      // Settings; the classic customizable nav (orderedTabs above)
-      // stays the default and is left completely untouched by this
-      // branch, including its own reorder-persistence logic.
-      final actionHubIds = ['dashboard', 'calls', 'phonebook', 'more'];
-      if (!actionHubIds.contains(_actionHubSelectedId)) _actionHubSelectedId = 'dashboard';
-      final actionHubIndex = canonicalIds.indexOf(_actionHubSelectedId).clamp(0, canonicalIds.length - 1);
+    final actionHubTabs = [
+      (id: 'dashboard', icon: Icons.dashboard_outlined, selectedIcon: Icons.dashboard, label: l10n.navHome),
+      (id: 'calls', icon: Icons.support_agent_outlined, selectedIcon: Icons.support_agent, label: l10n.callsTitle),
+      (id: 'phonebook', icon: Icons.contacts_outlined, selectedIcon: Icons.contacts, label: l10n.navContacts),
+      (id: 'more', icon: Icons.menu_outlined, selectedIcon: Icons.menu, label: l10n.navMore),
+    ];
+    // Split around the middle so the FAB notch sits centered between
+    // two tabs on each side, matching CircularNotchedRectangle's
+    // expectation of a symmetric BottomAppBar.
+    final leftTabs = actionHubTabs.sublist(0, 2);
+    final rightTabs = actionHubTabs.sublist(2);
 
-      final actionHubTabs = [
-        (id: 'dashboard', icon: Icons.dashboard_outlined, selectedIcon: Icons.dashboard, label: l10n.navHome),
-        (id: 'calls', icon: Icons.support_agent_outlined, selectedIcon: Icons.support_agent, label: l10n.callsTitle),
-        (id: 'phonebook', icon: Icons.contacts_outlined, selectedIcon: Icons.contacts, label: l10n.navContacts),
-        (id: 'more', icon: Icons.menu_outlined, selectedIcon: Icons.menu, label: l10n.navMore),
-      ];
-      // Split around the middle so the FAB notch sits centered between
-      // two tabs on each side, matching CircularNotchedRectangle's
-      // expectation of a symmetric BottomAppBar.
-      final leftTabs = actionHubTabs.sublist(0, 2);
-      final rightTabs = actionHubTabs.sublist(2);
-
-      Widget buildTab(({String id, IconData icon, IconData selectedIcon, String label}) tab) {
-        final selected = tab.id == _actionHubSelectedId;
-        return Expanded(
-          child: InkWell(
-            onTap: () => setState(() => _actionHubSelectedId = tab.id),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(selected ? tab.selectedIcon : tab.icon, size: 22, color: selected ? AppColors.primary : Colors.grey.shade500),
-                const SizedBox(height: 2),
-                Text(tab.label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: selected ? AppColors.primary : Colors.grey.shade500)),
-              ],
-            ),
-          ),
-        );
-      }
-
-      return Stack(children: [Scaffold(
-        body: OrganizationLogoBackground(
-          child: IndexedStack(
-            index: actionHubIndex,
-            children: canonicalIds.map((id) => screensById[id]!).toList(),
+    Widget buildTab(({String id, IconData icon, IconData selectedIcon, String label}) tab) {
+      final selected = tab.id == _actionHubSelectedId;
+      return Expanded(
+        child: InkWell(
+          onTap: () => setState(() => _actionHubSelectedId = tab.id),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(selected ? tab.selectedIcon : tab.icon, size: 22, color: selected ? AppColors.primary : Colors.grey.shade500),
+              const SizedBox(height: 2),
+              Text(tab.label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: selected ? AppColors.primary : Colors.grey.shade500)),
+            ],
           ),
         ),
-        floatingActionButton: FloatingActionButton(
-          backgroundColor: AppColors.stamp,
-          onPressed: () => showCreateDocumentSheet(context),
-          child: const Icon(Icons.add, color: Colors.white),
-        ),
-        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-        bottomNavigationBar: BottomAppBar(
-          shape: const CircularNotchedRectangle(),
-          notchMargin: 8,
-          child: SafeArea(
-            child: SizedBox(
-              height: 56,
-              child: Row(children: [
-                ...leftTabs.map(buildTab),
-                const SizedBox(width: 40), // room for the FAB notch
-                ...rightTabs.map(buildTab),
-              ]),
-            ),
-          ),
-        ),
-      ), _buildPinnedMenuButton(context)]);
+      );
     }
 
-    // ── Classic mobile layout: customizable bottom nav ─────────────────────
     return Stack(children: [Scaffold(
       body: OrganizationLogoBackground(
         child: IndexedStack(
-          index: canonicalIndex,
+          index: actionHubIndex,
           children: canonicalIds.map((id) => screensById[id]!).toList(),
         ),
       ),
-      bottomNavigationBar: CustomizableBottomNav(
-        tabs: orderedTabs,
-        selectedId: _selectedId!,
-        onSelect: (id) => setState(() => _selectedId = id),
-        doneLabel: l10n.bottomNavDone,
-        editHintLabel: l10n.bottomNavEditHint,
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.stamp,
+        onPressed: () => showCreateDocumentSheet(context),
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(),
+        notchMargin: 8,
+        child: SafeArea(
+          child: SizedBox(
+            height: 56,
+            child: Row(children: [
+              ...leftTabs.map(buildTab),
+              const SizedBox(width: 40), // room for the FAB notch
+              ...rightTabs.map(buildTab),
+            ]),
+          ),
+        ),
       ),
     ), _buildPinnedMenuButton(context)]);
   }

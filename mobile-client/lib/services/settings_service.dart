@@ -16,29 +16,6 @@ class SettingsService {
     await prefs.setString(_languageKey, languageCode);
   }
 
-  // --- Bottom navigation style --------------------------------------
-  // 'classic': the original customizable/reorderable bottom nav
-  // (Home/Calls/Phonebook/Calendar/Management/Office).
-  // 'actionHub': fewer bottom tabs (Home/Calls/Contacts/More) plus a
-  // floating action button opening a bottom sheet with every document
-  // type as a one-tap shortcut — see root_screen.dart /
-  // action_hub_shell.dart. Kept switchable rather than replacing the
-  // classic nav outright, since the reorderable version has real
-  // users already depending on their customized tab order.
-
-  static const _navStyleKey = 'app_nav_style';
-  static const defaultNavStyle = 'classic';
-
-  Future<String> getNavStyle() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_navStyleKey) ?? defaultNavStyle;
-  }
-
-  Future<void> setNavStyle(String navStyle) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_navStyleKey, navStyle);
-  }
-
   // --- Server connection -----------------------------------------------
   // Two ways to reach the server:
   //   direct: a plain address (LAN IP, or any reachable URL) — talked to
