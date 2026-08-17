@@ -88,6 +88,32 @@ export class EmployeeSalarySettings {
   @Column({ type: 'numeric', precision: 6, scale: 2, default: 200, transformer: numericTransformer })
   restDayOvertimeBeyond2HoursPercent: number;
 
+  /** City name (for display) + coordinates, used to compute the
+   * EXACT candle-lighting/havdalah times for this specific employee's
+   * work location via @hebcal/core, rather than relying on the
+   * organization-wide fixed-hour Shabbat window
+   * (OrganizationPayrollSettings.shabbatStartHour/EndHour). Per the
+   * legal basis confirmed before building this (a Labor Court ruling
+   * interpreting "Shabbat" in חוק שעות עבודה ומנוחה according to its
+   * meaning in Jewish tradition — actual sunset to nightfall, not a
+   * fixed clock time or a single national reference point like
+   * Jerusalem) — the legally correct DEFAULT, absent an employer's own
+   * written definition, genuinely does depend on the actual location
+   * where the employee works. Null (the default for every existing
+   * employee) means "no city set" — PayrollCalculationService falls
+   * back to the organization's own fixed-hour window in that case,
+   * preserving the existing behavior and any employer's own written,
+   * contractually-defined rest-period hours, which the law explicitly
+   * allows to override the astronomical default. */
+  @Column({ type: 'varchar', nullable: true })
+  cityName?: string | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  cityLat?: number | null;
+
+  @Column({ type: 'double precision', nullable: true })
+  cityLon?: number | null;
+
   @ManyToOne(() => Organization, { nullable: true, onDelete: 'CASCADE' })
   organization?: Organization;
 

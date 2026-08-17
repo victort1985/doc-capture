@@ -1,6 +1,6 @@
 {
   "name": "vixor-erp-server",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "private": true,
   "scripts": {
     "build": "nest build",
@@ -15,6 +15,7 @@
     "create-admin": "node scripts/create-admin.js"
   },
   "dependencies": {
+    "@hebcal/core": "^6.9.2",
     "@nestjs/common": "^10.4.0",
     "@nestjs/config": "^3.2.3",
     "@nestjs/core": "^10.4.0",

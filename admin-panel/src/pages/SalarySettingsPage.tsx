@@ -4,6 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 import { apiFetch } from '../services/api';
 
 interface Employee { id: number; username: string; }
+interface IsraeliCity { nameHe: string; nameEn: string; nameRu: string; lat: number; lon: number; }
 interface SalarySettings {
   salaryType: 'hourly' | 'global';
   standardWorkdayHours: number;
@@ -14,6 +15,9 @@ interface SalarySettings {
   restDayPercent: number;
   restDayOvertimeFirst2HoursPercent: number;
   restDayOvertimeBeyond2HoursPercent: number;
+  cityName?: string | null;
+  cityLat?: number | null;
+  cityLon?: number | null;
 }
 
 type PercentField =
@@ -95,6 +99,14 @@ export default function SalarySettingsPage() {
         restDayPercent: settings.restDayPercent,
         restDayOvertimeFirst2HoursPercent: settings.restDayOvertimeFirst2HoursPercent,
         restDayOvertimeBeyond2HoursPercent: settings.restDayOvertimeBeyond2HoursPercent,
+        // Explicit null (not undefined/omitted) when no city is set —
+        // the backend's own update logic checks `!== undefined`
+        // specifically for these three fields so that clearing a
+        // previously-set city (going back to the org-wide fixed-hour
+        // Shabbat window) is possible, not just adding one.
+        cityName: settings.cityName ?? null,
+        cityLat: settings.cityLat ?? null,
+        cityLon: settings.cityLon ?? null,
       };
       const saved = await apiFetch<SalarySettings>(`/payroll/salary/${selectedUserId}`, {
         method: 'PUT',
@@ -158,6 +170,13 @@ export default function SalarySettingsPage() {
           </select>
           <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 0, marginBottom: 12 }}>{t('salarySettings.standardWorkdayHint')}</p>
 
+          <label>{t('salarySettings.city')}</label>
+          <CitySearchField
+            value={settings.cityName ?? ''}
+            onSelect={(city) => setSettings((s) => (s ? { ...s, cityName: city?.nameHe ?? null, cityLat: city?.lat ?? null, cityLon: city?.lon ?? null } : s))}
+          />
+          <p style={{ fontSize: 12, color: 'var(--ink-soft)', marginTop: 4, marginBottom: 12 }}>{t('salarySettings.cityHint')}</p>
+
           {settings.salaryType === 'hourly' ? (
             <>
               <label>{t('salarySettings.hourlyRate')}</label>
@@ -213,3 +232,79 @@ export default function SalarySettingsPage() {
     </div>
   );
 }
+
+/** Type-ahead search over the server's own curated Israeli city list
+ * (GET /payroll/cities) — debounced so every keystroke doesn't fire a
+ * request, matching this app's own established pattern elsewhere for
+ * search-as-you-type fields. Selecting a suggestion stores its
+ * coordinates on the salary settings (see SalarySettings.cityLat/Lon);
+ * clearing the text field back to empty explicitly clears the
+ * selection too, since a half-typed leftover city name with no
+ * matching coordinates would be worse than no city at all. */
+function CitySearchField({ value, onSelect }: { value: string; onSelect: (city: IsraeliCity | null) => void }) {
+  const { t, i18n } = useTranslation();
+  const [query, setQuery] = useState(value);
+  const [results, setResults] = useState<IsraeliCity[]>([]);
+  const [open, setOpen] = useState(false);
+
+  useEffect(() => setQuery(value), [value]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = setTimeout(() => {
+      apiFetch<IsraeliCity[]>(`/payroll/cities?q=${encodeURIComponent(query)}`)
+        .then(setResults)
+        .catch(() => setResults([]));
+    }, 200);
+    return () => clearTimeout(handle);
+  }, [query, open]);
+
+  function labelFor(city: IsraeliCity): string {
+    if (i18n.language === 'ru') return city.nameRu;
+    if (i18n.language === 'en') return city.nameEn;
+    return city.nameHe;
+  }
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        type="text"
+        value={query}
+        placeholder={t('salarySettings.citySearchPlaceholder')}
+        onFocus={() => setOpen(true)}
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOpen(true);
+          if (e.target.value.trim() === '') onSelect(null);
+        }}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        style={{ width: '100%' }}
+      />
+      {open && results.length > 0 && (
+        <ul
+          style={{
+            position: 'absolute', zIndex: 20, top: '100%', left: 0, right: 0,
+            background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
+            maxHeight: 220, overflowY: 'auto', margin: 0, padding: 4, listStyle: 'none',
+            boxShadow: '0 8px 20px rgba(0,0,0,0.12)',
+          }}
+        >
+          {results.map((city) => (
+            <li
+              key={`${city.lat},${city.lon}`}
+              onMouseDown={() => {
+                setQuery(labelFor(city));
+                setOpen(false);
+                onSelect(city);
+              }}
+              style={{ padding: '8px 10px', cursor: 'pointer', borderRadius: 6 }}
+            >
+              {labelFor(city)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+

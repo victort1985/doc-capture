@@ -5,6 +5,7 @@ import { HolidayCalendarEntry } from './entities/holiday-calendar-entry.entity';
 import { EmployeeSalarySettings, SalaryType } from './entities/employee-salary-settings.entity';
 import { TimeClockEntry } from '../time-clock/entities/time-clock-entry.entity';
 import { OrganizationPayrollSettings } from './entities/organization-payroll-settings.entity';
+import { HebcalZmanimService } from './hebcal-zmanim.service';
 
 const DEFAULT_SHABBAT_START_HOUR = 18;
 const DEFAULT_SHABBAT_END_HOUR = 20;
@@ -60,6 +61,7 @@ export class PayrollCalculationService {
     @InjectRepository(EmployeeSalarySettings) private readonly salaryRepo: Repository<EmployeeSalarySettings>,
     @InjectRepository(TimeClockEntry) private readonly timeClockRepo: Repository<TimeClockEntry>,
     @InjectRepository(OrganizationPayrollSettings) private readonly orgSettingsRepo: Repository<OrganizationPayrollSettings>,
+    private readonly zmanimService: HebcalZmanimService,
   ) {}
 
   private async isHoliday(organizationId: number | null, date: string): Promise<boolean> {
@@ -69,7 +71,25 @@ export class PayrollCalculationService {
     return count > 0;
   }
 
-  private isRestPeriod(dt: Date, shabbatStartHour: number, shabbatEndHour: number): boolean {
+  /** Whether `dt` falls within the weekly rest period. When
+   * `preciseWindow` is available (the employee has a city assigned —
+   * see EmployeeSalarySettings.cityLat/cityLon's own doc comment for
+   * the legal basis), uses the EXACT candle-lighting-to-havdalah
+   * window for that specific week/location computed by
+   * HebcalZmanimService — real astronomical times, not a fixed clock
+   * hour. Falls back to the configurable fixed-hour window (the
+   * organization's own written definition, or the wide employee-
+   * favoring default) when no city is set or the precise calculation
+   * couldn't be produced for some reason. */
+  private isRestPeriod(
+    dt: Date,
+    shabbatStartHour: number,
+    shabbatEndHour: number,
+    preciseWindow?: { candleLighting: Date; havdalah: Date } | null,
+  ): boolean {
+    if (preciseWindow) {
+      return dt >= preciseWindow.candleLighting && dt < preciseWindow.havdalah;
+    }
     const day = dt.getDay(); // 0=Sunday, 5=Friday, 6=Saturday
     const hour = dt.getHours() + dt.getMinutes() / 60;
     if (day === 5) return hour >= shabbatStartHour;
@@ -99,11 +119,21 @@ export class PayrollCalculationService {
     shabbatStartHour = DEFAULT_SHABBAT_START_HOUR,
     shabbatEndHour = DEFAULT_SHABBAT_END_HOUR,
     standardWorkdayHours = 8,
+    cityLat?: number | null,
+    cityLon?: number | null,
   ): Promise<CategorizedHours> {
     const result: CategorizedHours = {
       regular: 0, overtimeTier1: 0, overtimeTier2: 0,
       restDay: 0, restDayOvertimeTier1: 0, restDayOvertimeTier2: 0,
     };
+
+    // Computed ONCE per shift (not per 15-minute slice below) — a
+    // real shift spans at most a couple of calendar days, so a single
+    // week-anchored lookup covers it; recomputing per-slice would just
+    // repeat the identical calculation many times over for no benefit.
+    const preciseWindow = (cityLat != null && cityLon != null)
+      ? await this.zmanimService.getShabbatWindow(clockIn, cityLat, cityLon)
+      : null;
 
     const SLICE_HOURS = 0.25;
     let cursor = new Date(clockIn);
@@ -123,7 +153,7 @@ export class PayrollCalculationService {
       const sliceEnd = new Date(Math.min(cursor.getTime() + SLICE_HOURS * 3600 * 1000, clockOut.getTime()));
       const sliceHours = (sliceEnd.getTime() - cursor.getTime()) / 3600000;
       const dateKey = cursor.toISOString().slice(0, 10);
-      const isRest = this.isRestPeriod(cursor, shabbatStartHour, shabbatEndHour) || (holidayByDate.get(dateKey) ?? false);
+      const isRest = this.isRestPeriod(cursor, shabbatStartHour, shabbatEndHour, preciseWindow) || (holidayByDate.get(dateKey) ?? false);
 
       if (isRest) {
         // Matches the worked legal example exactly for an 8-hour
@@ -244,6 +274,8 @@ export class PayrollCalculationService {
     const shabbatEndHour = orgSettings?.shabbatEndHour ?? 20;
     const salarySettings = await this.getSalarySettings(userId, organizationId);
     const standardWorkdayHours = salarySettings.standardWorkdayHours ?? 8;
+    const cityLat = salarySettings.cityLat ?? null;
+    const cityLon = salarySettings.cityLon ?? null;
 
     const WORKDAY_GROUP_GAP_HOURS = 6;
 
@@ -269,7 +301,7 @@ export class PayrollCalculationService {
       }
 
       const categorized = await this.categorizeShift(
-        organizationId, entry.clockIn, entry.clockOut!, regularAccrued, restAccrued, shabbatStartHour, shabbatEndHour, standardWorkdayHours,
+        organizationId, entry.clockIn, entry.clockOut!, regularAccrued, restAccrued, shabbatStartHour, shabbatEndHour, standardWorkdayHours, cityLat, cityLon,
       );
       const shiftTotalRegularSide = categorized.regular + categorized.overtimeTier1 + categorized.overtimeTier2;
       const shiftTotalRestSide = categorized.restDay + categorized.restDayOvertimeTier1 + categorized.restDayOvertimeTier2;

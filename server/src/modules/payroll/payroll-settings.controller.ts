@@ -4,6 +4,7 @@ import { PayrollSettingsService } from './payroll-settings.service';
 import { PayrollCalculationService } from './payroll-calculation.service';
 import { PayslipService } from './payslip.service';
 import { SalaryType } from './entities/employee-salary-settings.entity';
+import { searchIsraeliCities } from './data/israeli-cities';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
@@ -55,6 +56,15 @@ class SalarySettingsDto {
 
   @IsNumber() @IsOptional()
   restDayOvertimeBeyond2HoursPercent?: number;
+
+  @IsString() @IsOptional()
+  cityName?: string | null;
+
+  @IsNumber() @IsOptional()
+  cityLat?: number | null;
+
+  @IsNumber() @IsOptional()
+  cityLon?: number | null;
 }
 
 @Controller('payroll')
@@ -66,6 +76,17 @@ export class PayrollSettingsController {
     private readonly calcService: PayrollCalculationService,
     private readonly payslipService: PayslipService,
   ) {}
+
+  /** Backs the Salary Settings page's own city autocomplete field —
+   * a static, curated list (see data/israeli-cities.ts's own doc
+   * comment for what it does and doesn't cover), searched server-side
+   * so the client never needs its own copy of the list. No
+   * organization scoping needed — this is reference data, not
+   * anything tenant-specific. */
+  @Get('cities')
+  searchCities(@Query('q') q?: string) {
+    return searchIsraeliCities(q ?? '');
+  }
 
   /** Lets an admin/accountant verify the hour-categorization math for
    * any hypothetical shift directly — genuinely useful for spot-

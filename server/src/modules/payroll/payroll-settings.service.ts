@@ -23,6 +23,9 @@ export interface UpdateSalarySettingsInput {
   restDayPercent?: number;
   restDayOvertimeFirst2HoursPercent?: number;
   restDayOvertimeBeyond2HoursPercent?: number;
+  cityName?: string | null;
+  cityLat?: number | null;
+  cityLon?: number | null;
 }
 
 @Injectable()
@@ -124,6 +127,15 @@ export class PayrollSettingsService {
     if (input.restDayPercent != null) settings.restDayPercent = input.restDayPercent;
     if (input.restDayOvertimeFirst2HoursPercent != null) settings.restDayOvertimeFirst2HoursPercent = input.restDayOvertimeFirst2HoursPercent;
     if (input.restDayOvertimeBeyond2HoursPercent != null) settings.restDayOvertimeBeyond2HoursPercent = input.restDayOvertimeBeyond2HoursPercent;
+    // City is intentionally allowed to be explicitly SET TO NULL
+    // (clearing it, "no specific city assigned" — falls back to the
+    // organization's own fixed-hour Shabbat window) — so this checks
+    // `!== undefined`, not `!= null` like the percentage fields above,
+    // since `null` here is a meaningful value to persist, not "field
+    // omitted from this request."
+    if (input.cityName !== undefined) settings.cityName = input.cityName;
+    if (input.cityLat !== undefined) settings.cityLat = input.cityLat;
+    if (input.cityLon !== undefined) settings.cityLon = input.cityLon;
     return this.salaryRepo.save(settings);
   }
 }
