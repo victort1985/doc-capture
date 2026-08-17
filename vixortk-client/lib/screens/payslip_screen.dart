@@ -67,12 +67,15 @@ class _PayslipScreenState extends State<PayslipScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(l10n.navPayslip),
-        actions: [
-          IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _shiftMonth(-1)),
-          Center(child: Text('${_monthAnchor.month}/${_monthAnchor.year}')),
-          IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _shiftMonth(1)),
-        ],
+        centerTitle: true,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(icon: const Icon(Icons.chevron_left), onPressed: () => _shiftMonth(-1)),
+            Text('${_monthAnchor.month}/${_monthAnchor.year}'),
+            IconButton(icon: const Icon(Icons.chevron_right), onPressed: () => _shiftMonth(1)),
+          ],
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

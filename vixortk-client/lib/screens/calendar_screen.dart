@@ -81,13 +81,15 @@ class _CalendarScreenState extends State<CalendarScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(l10n.navCalendar),
-        actions: [
-          IconButton(
-            icon: Icon(_viewMode == _CalendarViewMode.month ? Icons.list : Icons.calendar_view_month),
-            tooltip: _viewMode == _CalendarViewMode.month ? l10n.calendarListView : l10n.calendarMonthView,
-            onPressed: () => setState(() => _viewMode = _viewMode == _CalendarViewMode.month ? _CalendarViewMode.list : _CalendarViewMode.month),
-          ),
-        ],
+        // Moved from `actions` (end-aligned) to `leading` (start-
+        // aligned) — the opposite corner from RootScreen's own pinned
+        // settings-gear shortcut, which also sits end-aligned above
+        // every screen and was visually overlapping this icon before.
+        leading: IconButton(
+          icon: Icon(_viewMode == _CalendarViewMode.month ? Icons.list : Icons.calendar_view_month),
+          tooltip: _viewMode == _CalendarViewMode.month ? l10n.calendarListView : l10n.calendarMonthView,
+          onPressed: () => setState(() => _viewMode = _viewMode == _CalendarViewMode.month ? _CalendarViewMode.list : _CalendarViewMode.month),
+        ),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

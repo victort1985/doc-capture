@@ -5,6 +5,7 @@ import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
 import '../services/time_clock_service.dart';
 import '../store/app_state.dart';
+import '../widgets/organization_logo_background.dart';
 import 'home_screen.dart';
 import 'timekeeper_screen.dart';
 import 'payslip_screen.dart';
@@ -131,7 +132,9 @@ class _RootScreenState extends State<RootScreen> {
 
     return Stack(children: [
       Scaffold(
-        body: IndexedStack(index: _index, children: screens),
+        body: OrganizationLogoBackground(
+          child: IndexedStack(index: _index, children: screens),
+        ),
         floatingActionButton: FloatingActionButton(
           backgroundColor: AppColors.stamp,
           onPressed: _clockBusy ? null : _onCenterButtonPressed,
