@@ -2,7 +2,6 @@ import 'dart:io' show Platform;
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_service.dart';
-import 'device_id.dart';
 
 class AuthUser {
   final int id;
@@ -70,11 +69,28 @@ class AuthService {
   static const _savedPasswordKey = 'saved_password';
 
   Future<AuthUser> login(String username, String password, {String? totpCode}) async {
-    final deviceId = await getOrCreateDeviceId();
+    // Deliberately does NOT send deviceId — unlike the main Vixor ERP
+    // app, which registers one per install for admin-side device
+    // management (revocation, the license's own per-organization
+    // device cap). VixorTK is a companion self-service app running on
+    // a device an employee already has, not a new physical endpoint
+    // an organization is adding to its fleet — since each app has its
+    // own isolated local storage (different bundle IDs,
+    // com.vixor.vixor_tk vs com.doccapture.doc_capture), VixorTK
+    // always generates a device ID the server has genuinely never
+    // seen before, even on a phone that already has the main app
+    // installed and its own device already registered/approved. Real
+    // bug this caused: logging into VixorTK once an organization's
+    // device cap was already reached (by real, legitimate main-app
+    // devices) threw a 403 from TimeClockController's own device-
+    // limit check trying to register VixorTK as an ADDITIONAL device.
+    // Omitting deviceId entirely makes the server's own
+    // registerOrTouch() a no-op (it already has an `if (!deviceId)
+    // return;` early exit for exactly this "older client without
+    // device registration" case) — no server-side change needed.
     final response = await _api.post('/auth/login', {
       'username': username,
       'password': password,
-      'deviceId': deviceId,
       'platform': Platform.operatingSystem,
       if (totpCode != null) 'totpCode': totpCode,
     });
