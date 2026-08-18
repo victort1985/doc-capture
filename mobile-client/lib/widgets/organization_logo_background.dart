@@ -24,14 +24,20 @@ class OrganizationLogoBackground extends StatefulWidget {
   const OrganizationLogoBackground({
     super.key,
     required this.child,
-    this.fit = BoxFit.cover,
+    this.fit = BoxFit.contain,
     this.backgroundColor,
   });
   final Widget child;
 
-  /// How the logo image is scaled. Defaults to [BoxFit.cover] (mobile).
-  /// Desktop uses [BoxFit.fitHeight] so the logo spans the full window
-  /// height without ever stretching its width out of proportion.
+  /// How the logo image is scaled. Defaults to [BoxFit.contain] on
+  /// both mobile and desktop — the whole logo stays visible within
+  /// the screen/window bounds and its own aspect ratio is never
+  /// altered (unlike [BoxFit.cover], which crops to fill the space,
+  /// or [BoxFit.fitHeight]/[BoxFit.fitWidth], which can push the
+  /// other dimension outside the visible area — both of which read as
+  /// "stretched" or oddly-cropped for a LOGO specifically, where the
+  /// whole mark being recognizable matters more than filling every
+  /// pixel of the backdrop).
   final BoxFit fit;
 
   /// Solid color painted as the base layer, in front of whatever sits

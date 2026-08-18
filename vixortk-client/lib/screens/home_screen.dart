@@ -131,7 +131,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('VixorTK')),
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(title: const Text('VixorTK'), backgroundColor: Colors.transparent),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(

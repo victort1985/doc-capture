@@ -79,7 +79,9 @@ class _CalendarScreenState extends State<CalendarScreen> {
     final l10n = AppLocalizations.of(context)!;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: Text(l10n.navCalendar),
         // Moved from `actions` (end-aligned) to `leading` (start-
         // aligned) — the opposite corner from RootScreen's own pinned

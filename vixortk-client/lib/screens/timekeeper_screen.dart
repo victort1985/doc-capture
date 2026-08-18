@@ -121,7 +121,9 @@ class _TimekeeperScreenState extends State<TimekeeperScreen> {
     final period = _period;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         centerTitle: true,
         // Month selector moved into the (centered) title — it used to
         // sit in `actions` (end-aligned), which put it directly under

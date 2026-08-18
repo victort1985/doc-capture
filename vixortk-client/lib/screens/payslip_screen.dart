@@ -66,7 +66,9 @@ class _PayslipScreenState extends State<PayslipScreen> {
     final payslip = _payslip;
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         centerTitle: true,
         title: Row(
           mainAxisSize: MainAxisSize.min,

@@ -38,7 +38,8 @@ class SettingsScreen extends StatelessWidget {
     final user = appState.currentUser;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.navSettings)),
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(title: Text(l10n.navSettings), backgroundColor: Colors.transparent),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [

@@ -183,7 +183,6 @@ class _RootScreenState extends State<RootScreen> {
             const VerticalDivider(width: 1, thickness: 1, color: Color(0x22FFFFFF)),
             Expanded(
               child: OrganizationLogoBackground(
-                fit: BoxFit.fitHeight,
                 backgroundColor: Colors.white,
                 child: IndexedStack(
                   index: canonicalIds.indexOf(destinations[_index].id).clamp(0, canonicalIds.length - 1),
