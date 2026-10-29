@@ -1,46 +1,24 @@
 import sharp from 'sharp';
-import { detectDocumentCornersViaEdges } from './document-scanner-edges';
+import { scanDocument, rectifiedSize } from './docscan';
 
 /**
- * Pure-JavaScript document scanner — zero WASM/native dependencies (see
- * /document-scan-module at the repo root for the standalone CLI version
- * and the history of why an OpenCV.js-based approach was abandoned: it
- * hung on every real upload, even isolated in a worker_thread with an
- * enforced timeout).
+ * Document scanner, in three composable steps so the upload flow can put a
+ * real review step between capture and storage:
  *
- * This module is deliberately split into three composable steps, rather
- * than one do-everything function, so the upload flow can put a real
- * review step in between capture and finalizing to storage (auto-detect
- * -> let the user drag corners / pick a filter / adjust brightness and
- * contrast / toggle shadow removal, previewing each change -> only then
- * commit):
+ *   1. detectDocumentCorners() — finds the page's 4 corners. Implemented in
+ *      ./docscan (v2): several independent methods (Canny, colour distance,
+ *      brightness, saturation and an ONNX AI segmentation model) each
+ *      propose a quadrilateral for the specific photo, the candidates are
+ *      scored from evidence in that photo, the best one wins and its sides
+ *      are then snapped to the real paper edge with sub-pixel accuracy.
  *
- *   1. detectDocumentCorners() — finds the page's 4 corners (plus the
- *      traced top/bottom boundary curve, for correcting genuine physical
- *      page curvature, not just camera-angle tilt).
- *
- *   2. warpDocument() — given corners (either the detected ones, or
- *      whatever the user dragged them to), performs the perspective
- *      correction. Only trusts the traced curves for genuine curvature
- *      correction when they're supplied; manual corner edits get a
- *      plain 4-point transform.
+ *   2. warpDocument() — perspective-corrects given corners (detected, or
+ *      dragged by the user) into a flat page. The output proportions are
+ *      measured from the perspective itself (not guessed), snapping to
+ *      A4 only when the measurement agrees.
  *
  *   3. applyFilters() — brightness/contrast/shadow-removal/B&W-vs-colour,
- *      independent of cropping, so the client can flip between filter
- *      options without re-running detection or re-warping.
- *
- * On detection approach: an earlier version of this module tried actual
- * edge detection (Sobel -> non-max suppression -> hysteresis, i.e. a
- * Canny-style pipeline) with flood-fill-from-border closure, which is
- * the textbook "proper" way to do this and is indifferent to what's
- * *inside* the document. It passed every synthetic test but failed
- * outright on 2 of 3 real photos this project has actually needed to
- * handle — real-world JPEG noise/texture produces far more spurious
- * gradient edges than clean synthetic images do, and tuning around that
- * reliably needs much more real-world data than was available. The
- * brightness + seeded dual-pass approach below is less elegant but is
- * what's actually been verified against every real photo encountered
- * during this feature's development.
+ *      independent of cropping.
  */
 
 // ---------------------------------------------------------------------
@@ -56,15 +34,18 @@ export type Quad = [Point, Point, Point, Point];
 
 export interface DetectedDocument {
   corners: Quad;
-  /** Traced boundary curves for all 4 edges (not just top/bottom) — only
-   * meaningful when passed back into warpDocument() alongside the *same,
+  /** Legacy (v1) traced boundary curves — no longer produced by detection;
+   * only present on old scan sessions. Meaningful when passed back into warpDocument() alongside the *same,
    * unmodified* corners; a manually-edited quad should omit these and
    * get a plain 4-point transform instead. top/bottom are indexed by
    * full-resolution x (column), left/right by full-resolution y (row). */
-  topCurve: number[];
-  bottomCurve: number[];
-  leftCurve: number[];
-  rightCurve: number[];
+  topCurve?: number[];
+  bottomCurve?: number[];
+  leftCurve?: number[];
+  rightCurve?: number[];
+  /** Which detection method won and its 0..1 confidence (v2 detector). */
+  method?: string;
+  score?: number;
   imageWidth: number;
   imageHeight: number;
 }
@@ -115,372 +96,21 @@ function boxBlur(gray: Buffer | Uint8ClampedArray | Float32Array, width: number,
   return src as Float32Array;
 }
 
-function binaryErode(mask: Uint8Array, width: number, height: number, radius: number): Uint8Array {
-  const tmp = new Uint8Array(mask.length);
-  for (let y = 0; y < height; y++) {
-    const row = y * width;
-    for (let x = 0; x < width; x++) {
-      let allOn = 1;
-      for (let dx = -radius; dx <= radius; dx++) {
-        const xx = x + dx;
-        if (xx < 0 || xx >= width || !mask[row + xx]) { allOn = 0; break; }
-      }
-      tmp[row + x] = allOn;
-    }
-  }
-  const out = new Uint8Array(mask.length);
-  for (let x = 0; x < width; x++) {
-    for (let y = 0; y < height; y++) {
-      let allOn = 1;
-      for (let dy = -radius; dy <= radius; dy++) {
-        const yy = y + dy;
-        if (yy < 0 || yy >= height || !tmp[yy * width + x]) { allOn = 0; break; }
-      }
-      out[y * width + x] = allOn;
-    }
-  }
-  return out;
-}
-
-function binaryDilate(mask: Uint8Array, width: number, height: number, radius: number): Uint8Array {
-  const tmp = new Uint8Array(mask.length);
-  for (let y = 0; y < height; y++) {
-    const row = y * width;
-    for (let x = 0; x < width; x++) {
-      let anyOn = 0;
-      for (let dx = -radius; dx <= radius; dx++) {
-        const xx = x + dx;
-        if (xx >= 0 && xx < width && mask[row + xx]) { anyOn = 1; break; }
-      }
-      tmp[row + x] = anyOn;
-    }
-  }
-  const out = new Uint8Array(mask.length);
-  for (let x = 0; x < width; x++) {
-    for (let y = 0; y < height; y++) {
-      let anyOn = 0;
-      for (let dy = -radius; dy <= radius; dy++) {
-        const yy = y + dy;
-        if (yy >= 0 && yy < height && tmp[yy * width + x]) { anyOn = 1; break; }
-      }
-      out[y * width + x] = anyOn;
-    }
-  }
-  return out;
-}
-
-function largestConnectedComponent(binary: Uint8Array, width: number, height: number): Uint8Array {
-  const n = width * height;
-  const visited = new Uint8Array(n);
-  const stack = new Int32Array(n);
-  let bestPixels: number[] | null = null;
-
-  for (let start = 0; start < n; start++) {
-    if (binary[start] === 0 || visited[start]) continue;
-    let sp = 0;
-    stack[sp++] = start;
-    visited[start] = 1;
-    const pixels: number[] = [];
-    while (sp > 0) {
-      const idx = stack[--sp];
-      pixels.push(idx);
-      const x = idx % width;
-      if (x > 0 && binary[idx - 1] && !visited[idx - 1]) { visited[idx - 1] = 1; stack[sp++] = idx - 1; }
-      if (x < width - 1 && binary[idx + 1] && !visited[idx + 1]) { visited[idx + 1] = 1; stack[sp++] = idx + 1; }
-      if (idx - width >= 0 && binary[idx - width] && !visited[idx - width]) { visited[idx - width] = 1; stack[sp++] = idx - width; }
-      if (idx + width < n && binary[idx + width] && !visited[idx + width]) { visited[idx + width] = 1; stack[sp++] = idx + width; }
-    }
-    if (!bestPixels || pixels.length > bestPixels.length) bestPixels = pixels;
-  }
-
-  const out = new Uint8Array(n);
-  if (bestPixels) for (const idx of bestPixels) out[idx] = 1;
-  return out;
-}
-
-/** Flood-fills starting from a single seed pixel — used to let a
- * coarser, more forgiving detection pass recover fine detail (dense
- * text, a QR code) that's actually attached to the real document,
- * without also scooping up an unrelated noisy blob elsewhere in the
- * frame that independently passes the coarse threshold (e.g.
- * reflections on a glossy background). */
-function connectedComponentFrom(binary: Uint8Array, width: number, height: number, seed: number): Uint8Array {
-  const n = width * height;
-  const visited = new Uint8Array(n);
-  const stack = new Int32Array(n);
-  const out = new Uint8Array(n);
-  if (binary[seed] === 0) return out;
-
-  let sp = 0;
-  stack[sp++] = seed;
-  visited[seed] = 1;
-  while (sp > 0) {
-    const idx = stack[--sp];
-    out[idx] = 1;
-    const x = idx % width;
-    if (x > 0 && binary[idx - 1] && !visited[idx - 1]) { visited[idx - 1] = 1; stack[sp++] = idx - 1; }
-    if (x < width - 1 && binary[idx + 1] && !visited[idx + 1]) { visited[idx + 1] = 1; stack[sp++] = idx + 1; }
-    if (idx - width >= 0 && binary[idx - width] && !visited[idx - width]) { visited[idx - width] = 1; stack[sp++] = idx - width; }
-    if (idx + width < n && binary[idx + width] && !visited[idx + width]) { visited[idx + width] = 1; stack[sp++] = idx + width; }
-  }
-  return out;
-}
-
-function otsuThreshold(gray: Uint8ClampedArray | Buffer | Float32Array): number {
-  const hist = new Array(256).fill(0);
-  for (let i = 0; i < gray.length; i++) hist[Math.max(0, Math.min(255, Math.round(gray[i])))]++;
-  const total = gray.length;
-
-  let sum = 0;
-  for (let t = 0; t < 256; t++) sum += t * hist[t];
-
-  let sumB = 0, wB = 0, maxVar = 0, threshold = 127;
-  for (let t = 0; t < 256; t++) {
-    wB += hist[t];
-    if (wB === 0) continue;
-    const wF = total - wB;
-    if (wF === 0) break;
-    sumB += t * hist[t];
-    const mB = sumB / wB;
-    const mF = (sum - sumB) / wF;
-    const between = wB * wF * (mB - mF) * (mB - mF);
-    if (between > maxVar) { maxVar = between; threshold = t; }
-  }
-  return threshold;
-}
-
-/** Percentile-based contrast stretch: maps the `lowPct`-th and
- * `highPct`-th brightness percentiles to 0/255. More robust than a
- * plain min/max stretch, which a single outlier pixel can throw off. */
-function stretchContrast(gray: Uint8ClampedArray | Uint8Array | Buffer, lowPct: number, highPct: number): Buffer {
-  const hist = new Array(256).fill(0);
-  for (let i = 0; i < gray.length; i++) hist[gray[i]]++;
-  const total = gray.length;
-
-  let cum = 0, lo = 0;
-  for (let v = 0; v < 256; v++) {
-    cum += hist[v];
-    if ((cum / total) * 100 >= lowPct) { lo = v; break; }
-  }
-  cum = 0;
-  let hi = 255;
-  for (let v = 255; v >= 0; v--) {
-    cum += hist[v];
-    if ((cum / total) * 100 >= highPct) { hi = v; break; }
-  }
-
-  const range = Math.max(1, hi - lo);
-  const out = Buffer.alloc(gray.length);
-  for (let i = 0; i < gray.length; i++) {
-    out[i] = Math.max(0, Math.min(255, Math.round(((gray[i] - lo) / range) * 255)));
-  }
-  return out;
-}
-
-// ---------------------------------------------------------------------
-// Corner / boundary detection
-// ---------------------------------------------------------------------
-
-function findCorners(regionIn: Uint8Array, width: number, height: number): Quad | null {
-  const openRadius = Math.max(6, Math.round(Math.min(width, height) * 0.05));
-  const opened = binaryDilate(binaryErode(regionIn, width, height, openRadius), width, height, openRadius);
-  const region = largestConnectedComponent(opened, width, height);
-
-  const points: Point[] = [];
-  for (let y = 0; y < height; y++) {
-    for (let x = 0; x < width; x++) {
-      if (region[y * width + x]) points.push({ x, y });
-    }
-  }
-
-  const fraction = points.length / (width * height);
-  if (fraction < 0.03 || fraction > 0.97 || points.length === 0) return null;
-
-  const pct = 0.008;
-  const nth = (arr: Point[], fromStart: boolean) => {
-    const idx = fromStart ? Math.floor(arr.length * pct) : Math.ceil(arr.length * (1 - pct)) - 1;
-    return arr[Math.max(0, Math.min(arr.length - 1, idx))];
-  };
-
-  const bySum = [...points].sort((a, b) => (a.x + a.y) - (b.x + b.y));
-  const byDiff = [...points].sort((a, b) => (a.x - a.y) - (b.x - b.y));
-
-  const tl = nth(bySum, true);
-  const br = nth(bySum, false);
-  const bl = nth(byDiff, true);
-  const tr = nth(byDiff, false);
-
-  return [tl, tr, br, bl];
-}
-
-/** Traces one boundary edge as a curve — e.g. for the top edge, the
- * topmost region pixel in each column (y as a function of x); for the
- * left edge, the leftmost region pixel in each row (x as a function of
- * y). `axis` picks which way to scan (by column or by row), `pick`
- * picks which extreme along that scan to record. */
-function traceEdgeCurve(
-  region: Uint8Array, width: number, height: number,
-  axis: 'byColumn' | 'byRow', pick: 'first' | 'last',
-): Float64Array {
-  const outer = axis === 'byColumn' ? width : height;
-  const inner = axis === 'byColumn' ? height : width;
-  const curve = new Float64Array(outer).fill(-1);
-
-  for (let o = 0; o < outer; o++) {
-    let found = -1;
-    for (let i = 0; i < inner; i++) {
-      const idx = axis === 'byColumn' ? i * width + o : o * width + i;
-      if (region[idx]) {
-        found = i;
-        if (pick === 'first') break;
-      }
-    }
-    curve[o] = found;
-  }
-
-  // Fill any gaps (an outer index with no region pixels at all) from the
-  // nearest valid neighbor, then smooth to remove per-index jaggedness
-  // from the mask's own edge noise while still tracking genuine,
-  // gradual curvature.
-  let lastValid = -1;
-  for (let o = 0; o < outer; o++) {
-    if (curve[o] !== -1) lastValid = curve[o];
-    else if (lastValid !== -1) curve[o] = lastValid;
-  }
-  lastValid = -1;
-  for (let o = outer - 1; o >= 0; o--) {
-    if (curve[o] !== -1) lastValid = curve[o];
-    else if (lastValid !== -1 && curve[o] === -1) curve[o] = lastValid;
-  }
-
-  const radius = Math.max(3, Math.round(outer * 0.04));
-  const smoothed = new Float64Array(outer);
-  let acc = 0;
-  for (let o = -radius; o <= radius; o++) acc += curve[Math.min(outer - 1, Math.max(0, o))];
-  for (let o = 0; o < outer; o++) {
-    smoothed[o] = acc / (radius * 2 + 1);
-    const add = Math.min(outer - 1, o + radius + 1);
-    const sub = Math.max(0, o - radius);
-    acc += curve[add] - curve[sub];
-  }
-
-  // Small inward safety margin — detection tends to catch a thin sliver
-  // of background/shadow right at the true edge. 'first' (top/left)
-  // moves inward by increasing the index; 'last' (bottom/right) moves
-  // inward by decreasing it.
-  const margin = inner * 0.012;
-  for (let o = 0; o < outer; o++) {
-    smoothed[o] += pick === 'first' ? margin : -margin;
-  }
-
-  return smoothed;
-}
-
-/** Traces all 4 edges of the document region — not just top/bottom.
- * Earlier versions of this only corrected vertical curvature (a
- * straight line for left/right); tracing all four sides and blending
- * them (see warpGrid's Coons patch) corrects genuine distortion along
- * either axis instead of just one. */
-function traceAllBoundaryCurves(region: Uint8Array, width: number, height: number) {
-  return {
-    top: traceEdgeCurve(region, width, height, 'byColumn', 'first'),
-    bottom: traceEdgeCurve(region, width, height, 'byColumn', 'last'),
-    left: traceEdgeCurve(region, width, height, 'byRow', 'first'),
-    right: traceEdgeCurve(region, width, height, 'byRow', 'last'),
-  };
-}
-
 /**
- * Locates the document's 4 corners plus the traced top/bottom boundary
- * curve (for correcting genuine physical page curvature). Returns null
- * if no confident document region was found.
- *
- * `imageBuffer` should already be EXIF-rotated (e.g. via sharp's
- * `.rotate()`) before being passed in.
+ * Locates the document's 4 corners (full-resolution coordinates). Returns
+ * null if no confident document was found. `imageBuffer` should already be
+ * EXIF-rotated. SCANNER_AI_ENABLED=false turns off only the AI method.
  */
 export async function detectDocumentCorners(imageBuffer: Buffer): Promise<DetectedDocument | null> {
   const meta = await sharp(imageBuffer).metadata();
-  const width = meta.width!, height = meta.height!;
-
-  const scale = Math.min(1, 900 / Math.max(width, height));
-  const smallW = Math.round(width * scale), smallH = Math.round(height * scale);
-  const graySmall = await sharp(imageBuffer).resize(smallW, smallH).greyscale().raw().toBuffer();
-
-  // Edge-based detection (Canny + "does this region's shape actually
-  // look like a quadrilateral" check — see document-scanner-edges.ts)
-  // is tried first: it succeeds on low page/background-contrast photos
-  // the brightness-based approach below structurally can't (verified
-  // directly against 5 real photos where many detected corners showed
-  // under a 10-point brightness difference between "inside" and
-  // "outside"). It's deliberately conservative and declines (returns
-  // null) whenever it isn't confident, in which case this falls through
-  // to the brightness-based pipeline exactly as it worked before this
-  // was added. SCANNER_EDGE_DETECTION_ENABLED=false disables this
-  // entirely without a redeploy, for a full rollback to prior behavior
-  // if it causes problems in a case not covered by testing.
-  let smallCorners: Quad | null = null;
-  let region: Uint8Array | null = null;
-  if (process.env.SCANNER_EDGE_DETECTION_ENABLED !== 'false') {
-    const edgeResult = detectDocumentCornersViaEdges(graySmall, smallW, smallH);
-    if (edgeResult) {
-      smallCorners = edgeResult.corners;
-      region = edgeResult.region;
-    }
-  }
-
-  if (!smallCorners || !region) {
-    const stretchedSmall = stretchContrast(graySmall, 2, 2);
-
-    const openRadius = Math.max(6, Math.round(Math.min(smallW, smallH) * 0.05));
-
-    const blurredFine = boxBlur(stretchedSmall, smallW, smallH, 8, 3);
-    const thresholdFine = otsuThreshold(blurredFine);
-    const binaryFine = new Uint8Array(blurredFine.length);
-    for (let i = 0; i < blurredFine.length; i++) binaryFine[i] = blurredFine[i] > thresholdFine ? 1 : 0;
-    const openedFine = binaryDilate(binaryErode(binaryFine, smallW, smallH, openRadius), smallW, smallH, openRadius);
-    const fineCore = largestConnectedComponent(openedFine, smallW, smallH);
-    const seed = fineCore.indexOf(1);
-
-    if (seed === -1) {
-      region = openedFine;
-    } else {
-      const blurredCoarse = boxBlur(stretchedSmall, smallW, smallH, 50, 2);
-      const thresholdCoarse = otsuThreshold(blurredCoarse);
-      const combined = new Uint8Array(blurredFine.length);
-      for (let i = 0; i < blurredFine.length; i++) {
-        combined[i] = (binaryFine[i] || blurredCoarse[i] > thresholdCoarse) ? 1 : 0;
-      }
-      const openedCombined = binaryDilate(binaryErode(combined, smallW, smallH, openRadius), smallW, smallH, openRadius);
-      region = connectedComponentFrom(openedCombined, smallW, smallH, seed);
-    }
-
-    smallCorners = findCorners(region, smallW, smallH);
-    if (!smallCorners) return null;
-  }
-
-  const curvesSmall = traceAllBoundaryCurves(region, smallW, smallH);
-  const topCurveFull = new Array<number>(width);
-  const bottomCurveFull = new Array<number>(width);
-  for (let x = 0; x < width; x++) {
-    const sx = Math.min(smallW - 1, Math.max(0, Math.round(x * scale)));
-    topCurveFull[x] = curvesSmall.top[sx] / scale;
-    bottomCurveFull[x] = curvesSmall.bottom[sx] / scale;
-  }
-  const leftCurveFull = new Array<number>(height);
-  const rightCurveFull = new Array<number>(height);
-  for (let y = 0; y < height; y++) {
-    const sy = Math.min(smallH - 1, Math.max(0, Math.round(y * scale)));
-    leftCurveFull[y] = curvesSmall.left[sy] / scale;
-    rightCurveFull[y] = curvesSmall.right[sy] / scale;
-  }
-
-  const corners = smallCorners.map((p) => ({ x: p.x / scale, y: p.y / scale })) as Quad;
-
+  const found = await scanDocument(imageBuffer);
+  if (!found) return null;
   return {
-    corners,
-    topCurve: topCurveFull, bottomCurve: bottomCurveFull,
-    leftCurve: leftCurveFull, rightCurve: rightCurveFull,
-    imageWidth: width, imageHeight: height,
+    corners: found.corners,
+    imageWidth: meta.width!,
+    imageHeight: meta.height!,
+    method: found.method,
+    score: found.score,
   };
 }
 
@@ -669,17 +299,26 @@ export async function warpDocument(
   const { width, height } = info;
   const [tl, tr, br, bl] = quad;
 
-  let outWidth = Math.round(Math.max(Math.hypot(tr.x - tl.x, tr.y - tl.y), Math.hypot(br.x - bl.x, br.y - bl.y)));
-  let outHeight = Math.round(Math.max(Math.hypot(bl.x - tl.x, bl.y - tl.y), Math.hypot(br.x - tr.x, br.y - tr.y)));
-  outWidth = Math.max(10, outWidth);
-  outHeight = Math.max(10, outHeight);
-
-  if (targetRatio) {
-    const naturalRatio = Math.max(outWidth, outHeight) / Math.min(outWidth, outHeight);
-    if (Math.abs(naturalRatio - targetRatio) / targetRatio < 0.12) {
-      if (outHeight >= outWidth) outHeight = Math.round(outWidth * targetRatio);
-      else outWidth = Math.round(outHeight * targetRatio);
+  let outWidth: number, outHeight: number;
+  if (curves) {
+    // legacy curved-page path (old sessions only): keep its original sizing
+    outWidth = Math.max(10, Math.round(Math.max(Math.hypot(tr.x - tl.x, tr.y - tl.y), Math.hypot(br.x - bl.x, br.y - bl.y))));
+    outHeight = Math.max(10, Math.round(Math.max(Math.hypot(bl.x - tl.x, bl.y - tl.y), Math.hypot(br.x - tr.x, br.y - tr.y))));
+    if (targetRatio) {
+      const naturalRatio = Math.max(outWidth, outHeight) / Math.min(outWidth, outHeight);
+      if (Math.abs(naturalRatio - targetRatio) / targetRatio < 0.12) {
+        if (outHeight >= outWidth) outHeight = Math.round(outWidth * targetRatio);
+        else outWidth = Math.round(outHeight * targetRatio);
+      }
     }
+  } else {
+    // true proportions of the page, measured from the perspective itself
+    const longSide = Math.max(10, Math.round(Math.max(
+      Math.hypot(tr.x - tl.x, tr.y - tl.y), Math.hypot(br.x - bl.x, br.y - bl.y),
+      Math.hypot(bl.x - tl.x, bl.y - tl.y), Math.hypot(br.x - tr.x, br.y - tr.y))));
+    const size = rectifiedSize(quad, width, height, targetRatio, longSide);
+    outWidth = Math.max(10, size.width);
+    outHeight = Math.max(10, size.height);
   }
 
   const warped = curves

@@ -105,7 +105,7 @@ export class ScanSessionsService {
     const session = await this.getOwned(sessionId, userId);
     const corners = dto.corners.map((p) => ({ x: p.x, y: p.y })) as Quad;
 
-    const curves = this.matchesDetected(session, corners)
+    const curves = session.detectedTopCurve && session.detectedBottomCurve && session.detectedLeftCurve && session.detectedRightCurve && this.matchesDetected(session, corners)
       ? {
           topCurve: session.detectedTopCurve!, bottomCurve: session.detectedBottomCurve!,
           leftCurve: session.detectedLeftCurve!, rightCurve: session.detectedRightCurve!,
