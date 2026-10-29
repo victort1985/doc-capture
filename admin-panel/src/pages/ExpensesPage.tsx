@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, X, CheckCircle2, Upload, Paperclip } from 'lucide-react';
 import { apiFetch, BASE_URL, getToken } from '../services/api';
@@ -329,80 +329,145 @@ function PaymentMethodFields({ method, setMethod, details, setDetails }: {
   );
 }
 
+type Conf = 'high' | 'low';
+interface ScanFields {
+  language: string; vendorName: string | null; vendorTaxId: string | null; documentType: string | null; documentNumber: string | null;
+  allocationNumber: string | null; transactionDate: string | null; total: number | null; vatAmount: number | null; vatRate: number | null;
+  currency: string | null; paymentMethod: string | null; cardLast4: string | null; cardType: string | null; approvalNumber: string | null;
+  installments: number | null; categoryCode: string | null; confidence: Record<string, Conf>;
+}
+interface ScanResponse { fields: ScanFields; cropped: boolean; warnings: string[]; ocrLanguages: string[]; rawText: string; scanImage: string | null; }
+
 function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const { t } = useTranslation();
   const [date, setDate] = useState('');
+  const [dateTouched, setDateTouched] = useState(false);
+  const [transactionDate, setTransactionDate] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('');
   const [amount, setAmount] = useState('');
   const [vatAmount, setVatAmount] = useState('');
   const [vatTouched, setVatTouched] = useState(false);
+  const [vatRate, setVatRate] = useState('18');
+  const [vatDeductible, setVatDeductible] = useState('100');
+  const [vendorName, setVendorName] = useState('');
+  const [vendorTaxId, setVendorTaxId] = useState('');
+  const [documentType, setDocumentType] = useState('');
+  const [documentNumber, setDocumentNumber] = useState('');
+  const [allocationNumber, setAllocationNumber] = useState('');
+  const [currency, setCurrency] = useState('ILS');
+  const [foreignAmount, setForeignAmount] = useState('');
+  const [exchangeRate, setExchangeRate] = useState('');
   const [method, setMethod] = useState<PayMethod>('cash');
   const [details, setDetails] = useState<PayMethodDetails>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [scan, setScan] = useState<ScanResponse | null>(null);
+  const [auto, setAuto] = useState<Record<string, Conf>>({});
+  const [confirmed, setConfirmed] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [showRaw, setShowRaw] = useState(false);
   const [costCenters, setCostCenters] = useState<{ id: number; name: string }[]>([]);
   const [costCenterId, setCostCenterId] = useState('');
 
   useEffect(() => { apiFetch<{ id: number; name: string }[]>('/cost-centers').then(setCostCenters).catch(() => {}); }, []);
 
-  // amount is always VAT-inclusive (matches a real receipt's printed
-  // total — see Expense.vatAmount's own backend doc comment). Until
-  // the person edits the VAT field themselves, keep it in sync with
-  // amount assuming the standard 18% rate baked in — this is a
-  // starting guess to save typing on the common case, never silently
-  // final: vatTouched stops the auto-sync the moment they type
-  // something different (including clearing it, for a VAT-exempt
-  // purchase with no formal tax invoice to reclaim against).
-  function handleAmountChange(v: string) {
-    setAmount(v);
-    if (!vatTouched) {
-      const n = Number(v);
-      setVatAmount(n > 0 ? (Math.round((n * 18 / 118) * 100) / 100).toString() : '');
+  const foreign = currency !== 'ILS';
+  const amountIls = foreign ? Math.round(Number(foreignAmount) * Number(exchangeRate) * 100) / 100 : Number(amount);
+  const amountValid = Number.isFinite(amountIls) && amountIls > 0;
+
+  // amount is always VAT-inclusive (matches a real receipt's printed total — see
+  // Expense.vatAmount's backend doc comment). Until the person edits the VAT field
+  // themselves, keep it in sync assuming the chosen rate.
+  function syncVat(total: number, rate = Number(vatRate)) {
+    if (!vatTouched && total > 0 && rate > 0) setVatAmount((Math.round((total * rate / (100 + rate)) * 100) / 100).toString());
+    else if (!vatTouched && !(total > 0)) setVatAmount('');
+  }
+  function handleAmountChange(v: string) { setAmount(v); syncVat(Number(v)); markEdited('total'); }
+  function markEdited(name: string) { setAuto(a => { if (!(name in a)) return a; const n = { ...a }; delete n[name]; return n; }); }
+
+  // visual cue for scanner-filled fields: yellow = less certain, green edge = confident
+  function cue(name: string): React.CSSProperties {
+    const c = auto[name];
+    if (c === 'low') return { background: 'rgba(250, 204, 21, 0.18)', borderColor: '#d9a400' };
+    if (c === 'high') return { borderInlineStartWidth: 3, borderInlineStartColor: '#2e9e5b' };
+    return {};
+  }
+  const fieldStyle = (name: string, extra: React.CSSProperties = {}): React.CSSProperties => ({ width: '100%', marginBottom: 10, ...cue(name), ...extra });
+
+  function applyScan(res: ScanResponse) {
+    const f = res.fields;
+    const a: Record<string, Conf> = {};
+    const mark = (name: string, v: unknown, c?: Conf) => { if (v != null && v !== '') a[name] = c ?? 'high'; };
+    const conf = f.confidence ?? {};
+    if (f.vendorName) { setVendorName(f.vendorName); setDescription(prev => prev.trim() ? prev : f.vendorName!); mark('vendorName', f.vendorName, conf.vendorName); mark('description', f.vendorName, conf.vendorName); }
+    if (f.vendorTaxId) { setVendorTaxId(f.vendorTaxId); mark('vendorTaxId', f.vendorTaxId, conf.vendorTaxId); }
+    if (f.documentType) { setDocumentType(f.documentType); mark('documentType', f.documentType, conf.documentType); }
+    if (f.documentNumber) { setDocumentNumber(f.documentNumber); mark('documentNumber', f.documentNumber, conf.documentNumber); }
+    if (f.allocationNumber) { setAllocationNumber(f.allocationNumber); mark('allocationNumber', f.allocationNumber, conf.allocationNumber); }
+    if (f.transactionDate) {
+      setTransactionDate(f.transactionDate); mark('transactionDate', f.transactionDate, conf.transactionDate);
+      if (!dateTouched) setDate(f.transactionDate);
     }
+    const cur = f.currency && /^[A-Z]{3}$/.test(f.currency) ? f.currency : 'ILS';
+    setCurrency(cur); if (f.currency) mark('currency', cur, conf.currency);
+    let totalForVat = 0;
+    if (f.total != null) {
+      if (cur === 'ILS') { setAmount(String(f.total)); setForeignAmount(''); totalForVat = f.total; }
+      else { setForeignAmount(String(f.total)); setAmount(''); mark('foreignAmount', f.total, conf.total); }
+      mark('total', f.total, conf.total);
+    }
+    if (f.vatRate != null) { setVatRate(String(f.vatRate)); mark('vatRate', f.vatRate, conf.vatRate); }
+    if (f.vatAmount != null) { setVatAmount(String(f.vatAmount)); setVatTouched(true); mark('vatAmount', f.vatAmount, conf.vatAmount); }
+    else { setVatTouched(false); if (totalForVat > 0) setVatAmount(String(Math.round((totalForVat * (f.vatRate ?? 18) / (100 + (f.vatRate ?? 18))) * 100) / 100)); }
+    if (f.paymentMethod) { setMethod(f.paymentMethod as PayMethod); mark('method', f.paymentMethod, conf.paymentMethod); }
+    setDetails(d => ({
+      ...d,
+      ...(f.cardLast4 ? { cardLast4: f.cardLast4 } : {}), ...(f.cardType ? { cardType: f.cardType } : {}),
+      ...(f.approvalNumber ? { approvalNumber: f.approvalNumber } : {}), ...(f.installments ? { installments: String(f.installments) } : {}),
+    }));
+    if (f.categoryCode) { setCategory(prev => prev.trim() ? prev : t(`expenses.category_${f.categoryCode}`)); mark('category', f.categoryCode, 'low'); }
+    setAuto(a);
+    setConfirmed(false);
   }
 
-  /** Uploads the receipt to OCR extraction (POST /expenses/parse-receipt
-   * — see that endpoint's own doc comment) and pre-fills whatever it
-   * confidently found. Nothing here is treated as final — every field
-   * stays editable, and OCR can come back with nulls for anything it
-   * couldn't read. The same File is kept in state and attached to the
-   * expense for real once it's actually created below, rather than
-   * uploading it a second time. */
+  /** Sends the photo/PDF to the scanner (POST /expenses/scan): the server crops,
+   * straightens and cleans it, detects the language, reads it and returns the fields. */
   async function handleFileSelect(file: File) {
     setReceiptFile(file);
-    setParsing(true);
+    setParsing(true); setError(null);
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch(`${BASE_URL}/expenses/parse-receipt`, {
-        method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: formData,
-      });
-      if (!res.ok) throw new Error('Parse failed');
-      const parsed: { amount: number | null; date: string | null; vendor: string | null } = await res.json();
-      if (parsed.amount != null) handleAmountChange(String(parsed.amount));
-      if (parsed.date) setDate(parsed.date);
-      if (parsed.vendor && !description.trim()) setDescription(parsed.vendor);
+      const res = await fetch(`${BASE_URL}/expenses/scan`, { method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: formData });
+      if (!res.ok) throw new Error('Scan failed');
+      const data: ScanResponse = await res.json();
+      setScan(data);
+      applyScan(data);
     } catch (e) {
-      // OCR is a convenience, not a requirement — if it fails, the
-      // person just fills the form by hand, same as before this
-      // feature existed. Not worth blocking or alarming over.
-      console.warn('Receipt OCR failed:', e);
-    } finally {
-      setParsing(false);
-    }
+      console.warn('Receipt scan failed:', e);
+      setScan(null);
+      setError(t('expenses.scanFailed'));
+    } finally { setParsing(false); }
   }
 
   async function submit() {
     setSaving(true); setError(null);
     try {
+      if (foreign && !(Number(exchangeRate) > 0)) throw new Error(t('expenses.exchangeRate'));
       const res = await apiFetch<{ id: number }>('/expenses', {
         method: 'POST',
         body: JSON.stringify({
-          date: date || undefined, description, category: category || undefined, amount: Number(amount), method,
+          date: date || transactionDate || undefined, transactionDate: transactionDate || undefined,
+          description, category: category || undefined, amount: amountIls, method,
           vatAmount: vatAmount ? Number(vatAmount) : undefined,
+          vatRate: vatRate ? Number(vatRate) : undefined,
+          vatDeductiblePercent: vatDeductible !== '100' ? Number(vatDeductible) : undefined,
+          vendorName: vendorName || undefined, vendorTaxId: vendorTaxId || undefined,
+          documentType: documentType || undefined, documentNumber: documentNumber || undefined, allocationNumber: allocationNumber || undefined,
+          currency: foreign ? currency : undefined, foreignAmount: foreign ? Number(foreignAmount) : undefined, exchangeRate: foreign ? Number(exchangeRate) : undefined,
+          scanLanguage: scan?.fields.language || undefined,
           costCenterId: costCenterId ? Number(costCenterId) : undefined,
           cardLast4: details.cardLast4 || undefined,
           cardType: details.cardType || undefined,
@@ -416,9 +481,11 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
           referenceNumber: details.referenceNumber || undefined,
         }),
       });
-      if (receiptFile) {
-        const formData = new FormData();
-        formData.append('file', receiptFile);
+      // store the cleaned scan (falls back to the original upload) in the Expenses folder
+      const formData = new FormData();
+      if (scan?.scanImage) formData.append('file', await (await fetch(scan.scanImage)).blob(), 'receipt.jpg');
+      else if (receiptFile) formData.append('file', receiptFile);
+      if (formData.has('file')) {
         await fetch(`${BASE_URL}/expenses/${res.id}/receipt`, {
           method: 'POST', headers: { Authorization: `Bearer ${getToken()}` }, body: formData,
         }).catch(() => {}); // the expense itself is already saved — a failed receipt attach shouldn't block that
@@ -429,55 +496,153 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
     } finally { setSaving(false); }
   }
 
+  const camRef = useRef<HTMLInputElement | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const needsConfirm = !!scan;
+  const docTypes = ['tax_invoice', 'tax_invoice_receipt', 'receipt', 'invoice', 'credit_note', 'cash_slip', 'other'];
+  const row2: React.CSSProperties = { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 };
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={onClose}>
-      <div className="card" style={{ width: 440 }} onClick={e => e.stopPropagation()}>
+      <div className="card" style={{ width: scan ? 'min(980px, 96vw)' : 460, maxHeight: '94vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
           <h2 style={{ margin: 0 }}>{t('expenses.newExpense')}</h2>
           <button className="ghost" onClick={onClose}><X size={16} /></button>
         </div>
 
-        <label className="ghost" style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, marginBottom: 14, padding: '10px 0', border: '1px dashed var(--border)', borderRadius: 8 }}>
-          <Upload size={15} />
-          {parsing ? t('expenses.scanningReceipt') : receiptFile ? receiptFile.name : t('expenses.uploadReceiptToAutofill')}
-          <input
-            type="file"
-            accept="image/*,.pdf"
-            style={{ display: 'none' }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
-          />
-        </label>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+          <input ref={el => { camRef.current = el; }} type="file" accept="image/*" capture="environment" style={{ display: 'none' }}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); e.target.value = ''; }} />
+          <input ref={el => { fileRef.current = el; }} type="file" accept="image/*,.pdf" style={{ display: 'none' }}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); e.target.value = ''; }} />
+          <button type="button" disabled={parsing} onClick={() => camRef.current?.click()} style={{ flex: 1 }}>{t('expenses.takePhoto')}</button>
+          <button type="button" className="ghost" disabled={parsing} onClick={() => fileRef.current?.click()} style={{ flex: 1, border: '1px dashed var(--border)' }}>
+            <Upload size={15} /> {scan ? t('expenses.retake') : t('expenses.chooseFile')}
+          </button>
+        </div>
+        {parsing && <div style={{ marginBottom: 12, color: 'var(--muted)' }}>{t('expenses.scanningReceipt')}</div>}
 
-        <label>{t('expenses.date')}</label>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
-        <label>{t('expenses.description')}</label>
-        <input value={description} onChange={e => setDescription(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
-        <label>{t('expenses.category')}</label>
-        <input value={category} onChange={e => setCategory(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
-        <label>{t('expenses.amount')}</label>
-        <input type="number" value={amount} onChange={e => handleAmountChange(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
-        <label>{t('expenses.vatAmount')}</label>
-        <input
-          type="number"
-          value={vatAmount}
-          onChange={e => { setVatTouched(true); setVatAmount(e.target.value); }}
-          placeholder={t('expenses.vatAmountHint')}
-          style={{ width: '100%', marginBottom: 10 }}
-        />
-        {costCenters.length > 0 && (
-          <>
-            <label>{t('expenses.costCenter')}</label>
-            <select value={costCenterId} onChange={e => setCostCenterId(e.target.value)} style={{ width: '100%', marginBottom: 10 }}>
-              <option value="">{t('expenses.costCenterNone')}</option>
-              {costCenters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          {scan && (
+            <div style={{ flex: '1 1 300px', minWidth: 260, maxWidth: 420 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8, fontSize: 13 }}>
+                <span style={{ background: 'var(--surface-muted)', padding: '3px 8px', borderRadius: 6 }}>{t('expenses.scanLanguage')}: <b>{t(`expenses.lang_${scan.fields.language}`)}</b></span>
+                <span style={{ background: 'var(--surface-muted)', padding: '3px 8px', borderRadius: 6 }}>{scan.cropped ? t('expenses.scanCropped') : t('expenses.scanNotCropped')}</span>
+              </div>
+              {scan.scanImage && <img src={scan.scanImage} alt={t('expenses.scanTitle')} style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />}
+              {scan.warnings.length > 0 && <div className="error-banner" style={{ marginTop: 8, fontSize: 12 }}>{scan.warnings.join(' · ')}</div>}
+              <button type="button" className="ghost" style={{ marginTop: 8 }} onClick={() => setShowRaw(v => !v)}>{t('expenses.recognizedText')}</button>
+              {showRaw && <pre style={{ whiteSpace: 'pre-wrap', fontSize: 12, maxHeight: 220, overflow: 'auto', background: 'var(--surface-muted)', padding: 8, borderRadius: 6 }}>{scan.rawText}</pre>}
+            </div>
+          )}
+
+          <div style={{ flex: '2 1 380px', minWidth: 300 }}>
+            {scan && <div style={{ marginBottom: 10, fontSize: 13, color: 'var(--muted)' }}>{t('expenses.scanReviewNotice')}</div>}
+
+            <div style={row2}>
+              <div>
+                <label>{t('expenses.transactionDate')}</label>
+                <input type="date" value={transactionDate} style={fieldStyle('transactionDate')}
+                  onChange={e => { setTransactionDate(e.target.value); markEdited('transactionDate'); if (!dateTouched) setDate(e.target.value); }} />
+              </div>
+              <div>
+                <label>{t('expenses.date')}</label>
+                <input type="date" value={date} title={t('expenses.dateHint')} style={fieldStyle('date')}
+                  onChange={e => { setDate(e.target.value); setDateTouched(true); }} />
+              </div>
+            </div>
+            <label>{t('expenses.vendorName')}</label>
+            <input value={vendorName} onChange={e => { setVendorName(e.target.value); markEdited('vendorName'); }} style={fieldStyle('vendorName')} />
+            <label>{t('expenses.description')}</label>
+            <input value={description} onChange={e => { setDescription(e.target.value); markEdited('description'); }} style={fieldStyle('description')} />
+            <label>{t('expenses.category')}</label>
+            <input value={category} onChange={e => { setCategory(e.target.value); markEdited('category'); }} style={fieldStyle('category')} />
+
+            <div style={row2}>
+              <div>
+                <label>{t('expenses.currency')}</label>
+                <input value={currency} maxLength={3} onChange={e => { setCurrency(e.target.value.toUpperCase() || 'ILS'); markEdited('currency'); }} style={fieldStyle('currency')} />
+              </div>
+              <div>
+                <label>{foreign ? t('expenses.foreignAmount') : t('expenses.amount')}</label>
+                <input type="number" value={foreign ? foreignAmount : amount} style={fieldStyle(foreign ? 'foreignAmount' : 'total')}
+                  onChange={e => { if (foreign) { setForeignAmount(e.target.value); markEdited('foreignAmount'); markEdited('total'); } else handleAmountChange(e.target.value); }} />
+              </div>
+            </div>
+            {foreign && (
+              <div style={row2}>
+                <div>
+                  <label>{t('expenses.exchangeRate')}</label>
+                  <input type="number" step="0.0001" value={exchangeRate} onChange={e => setExchangeRate(e.target.value)} style={{ width: '100%', marginBottom: 10 }} />
+                </div>
+                <div>
+                  <label>{t('expenses.amountIlsComputed')}</label>
+                  <input readOnly value={amountValid ? String(amountIls) : ''} style={{ width: '100%', marginBottom: 10, opacity: 0.8 }} />
+                </div>
+              </div>
+            )}
+
+            <div style={row2}>
+              <div>
+                <label>{t('expenses.vatAmount')}</label>
+                <input type="number" value={vatAmount} placeholder={t('expenses.vatAmountHint')} style={fieldStyle('vatAmount')}
+                  onChange={e => { setVatTouched(true); setVatAmount(e.target.value); markEdited('vatAmount'); }} />
+              </div>
+              <div>
+                <label>{t('expenses.vatRate')}</label>
+                <input type="number" step="0.01" value={vatRate} style={fieldStyle('vatRate')}
+                  onChange={e => { setVatRate(e.target.value); markEdited('vatRate'); syncVat(foreign ? 0 : Number(amount), Number(e.target.value)); }} />
+              </div>
+            </div>
+            <label>{t('expenses.vatDeductible')}</label>
+            <select value={vatDeductible} onChange={e => setVatDeductible(e.target.value)} style={{ width: '100%', marginBottom: 10 }}>
+              <option value="100">{t('expenses.vatDeductibleFull')}</option>
+              <option value="66.67">{t('expenses.vatDeductible2of3')}</option>
+              <option value="25">{t('expenses.vatDeductibleQuarter')}</option>
+              <option value="0">{t('expenses.vatDeductibleNone')}</option>
             </select>
-          </>
-        )}
-        <PaymentMethodFields method={method} setMethod={setMethod} details={details} setDetails={setDetails} />
-        {error && <div className="error-banner" style={{ marginBottom: 10 }}>{error}</div>}
-        <button type="button" disabled={saving || !description.trim() || !amount} onClick={submit} style={{ width: '100%' }}>
-          {saving ? t('common.saving') : t('expenses.submit')}
-        </button>
+
+            <div style={{ fontWeight: 600, margin: '6px 0' }}>{t('expenses.taxSection')}</div>
+            <label>{t('expenses.vendorTaxId')}</label>
+            <input value={vendorTaxId} onChange={e => { setVendorTaxId(e.target.value); markEdited('vendorTaxId'); }} style={fieldStyle('vendorTaxId')} />
+            <div style={row2}>
+              <div>
+                <label>{t('expenses.documentType')}</label>
+                <select value={documentType} onChange={e => { setDocumentType(e.target.value); markEdited('documentType'); }} style={fieldStyle('documentType')}>
+                  <option value="">{t('expenses.docType_none')}</option>
+                  {docTypes.map(d => <option key={d} value={d}>{t(`expenses.docType_${d}`)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label>{t('expenses.documentNumber')}</label>
+                <input value={documentNumber} onChange={e => { setDocumentNumber(e.target.value); markEdited('documentNumber'); }} style={fieldStyle('documentNumber')} />
+              </div>
+            </div>
+            <label>{t('expenses.allocationNumber')}</label>
+            <input value={allocationNumber} onChange={e => { setAllocationNumber(e.target.value); markEdited('allocationNumber'); }} style={fieldStyle('allocationNumber')} />
+
+            {costCenters.length > 0 && (
+              <>
+                <label>{t('expenses.costCenter')}</label>
+                <select value={costCenterId} onChange={e => setCostCenterId(e.target.value)} style={{ width: '100%', marginBottom: 10 }}>
+                  <option value="">{t('expenses.costCenterNone')}</option>
+                  {costCenters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </>
+            )}
+            <PaymentMethodFields method={method} setMethod={(m) => { setMethod(m); markEdited('method'); }} details={details} setDetails={setDetails} />
+            {error && <div className="error-banner" style={{ marginBottom: 10 }}>{error}</div>}
+            {needsConfirm && (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10, cursor: 'pointer' }}>
+                <input type="checkbox" checked={confirmed} onChange={e => setConfirmed(e.target.checked)} style={{ width: 'auto' }} />
+                {t('expenses.confirmChecked')}
+              </label>
+            )}
+            <button type="button" disabled={saving || parsing || !description.trim() || !amountValid || (needsConfirm && !confirmed)} onClick={submit} style={{ width: '100%' }}>
+              {saving ? t('common.saving') : needsConfirm ? t('expenses.confirmAndSave') : t('expenses.submit')}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

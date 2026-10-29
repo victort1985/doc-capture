@@ -85,16 +85,20 @@ export class LedgerPostingService {
    * any reclaimable VAT — see Expense.vatAmount's own doc comment for
    * why VAT is split out rather than folded into the expense total),
    * credit whichever of Cash/Bank it came from. */
-  async postExpense(organizationId: number, expenseId: number, date: string, amount: number, method: PaymentMethod, description: string, vatAmount?: number | null): Promise<void> {
+  async postExpense(organizationId: number, expenseId: number, date: string, amount: number, method: PaymentMethod, description: string, vatAmount?: number | null, vatDeductiblePercent?: number | null): Promise<void> {
     const expenses = await this.accounting.getSystemAccount(organizationId, '5000');
     const cashLike = method === PaymentMethod.CASH
       ? await this.accounting.getSystemAccount(organizationId, '1000')
       : await this.accounting.getSystemAccount(organizationId, '1010');
-    const netExpense = vatAmount ? Math.round((amount - vatAmount) * 100) / 100 : amount;
+    // Only the legally reclaimable share of VAT is an asset (input
+    // VAT); the rest is a real cost and stays inside the expense.
+    const pct = vatDeductiblePercent == null ? 100 : Math.min(100, Math.max(0, vatDeductiblePercent));
+    const reclaimable = vatAmount ? Math.round(vatAmount * pct) / 100 : 0;
+    const netExpense = Math.round((amount - reclaimable) * 100) / 100;
     await this.accounting.postEntry(organizationId, date, `הוצאה — ${description}`, expenses.id, cashLike.id, netExpense, 'expense', expenseId);
-    if (vatAmount) {
+    if (reclaimable) {
       const inputVat = await this.accounting.getSystemAccount(organizationId, '1200');
-      await this.accounting.postEntry(organizationId, date, `מע"מ תשומות — הוצאה ${expenseId}`, inputVat.id, cashLike.id, vatAmount, 'expense-vat', expenseId);
+      await this.accounting.postEntry(organizationId, date, `מע"מ תשומות — הוצאה ${expenseId}`, inputVat.id, cashLike.id, reclaimable, 'expense-vat', expenseId);
     }
   }
 

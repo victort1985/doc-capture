@@ -565,29 +565,39 @@ export function mapExpenseToRecords(
 ): HeaderAndLines {
   const linkId = expense.id;
   const issueDate = expense.createdAt;
-  const documentDate = new Date(expense.date);
+  // The date printed on the supplier's document (the real transaction
+  // date) is what the format's "document date" means — fall back to
+  // the bookkeeping date for expenses entered without it.
+  const documentDate = new Date(expense.transactionDate ?? expense.date);
+  const docNumber = expense.documentNumber || String(expense.id);
+  const vat = expense.vatAmount ?? 0;
+  const exclVat = Math.round((expense.amount - vat) * 100) / 100;
+  const vendorVatId = expense.vendorTaxId && /^\d{1,9}$/.test(expense.vendorTaxId) ? expense.vendorTaxId : undefined;
 
   const header = buildDocumentHeaderRecord({
     recordNumberInFile: headerRecordNumber,
     vatId,
     documentType: DOCUMENT_TYPE_CODES.CASH_OUT,
-    documentNumber: String(expense.id),
+    documentNumber: docNumber,
     issueDate,
-    amountBeforeDiscount: expense.amount,
+    partyName: expense.vendorName ?? undefined,
+    partyVatId: vendorVatId,
+    amountBeforeDiscount: exclVat,
     documentDiscount: 0,
-    amountAfterDiscountExclVat: expense.amount,
-    vatAmount: 0,
+    amountAfterDiscountExclVat: exclVat,
+    vatAmount: vat,
     totalAmountInclVat: expense.amount,
+    withholdingTaxAmount: expense.withholdingTaxAmount ?? undefined,
     documentDate,
     linkId,
-    partyKey: resolvePartyKey(undefined, expense.id),
+    partyKey: resolvePartyKey(expense.vendorName ?? undefined, expense.id, vendorVatId),
   });
 
   const line = buildReceiptLineRecord({
     recordNumberInFile: lineRecordNumber,
     vatId,
     documentType: DOCUMENT_TYPE_CODES.CASH_OUT,
-    documentNumber: String(expense.id),
+    documentNumber: docNumber,
     lineNumber: 1,
     paymentMethod: mapVixorPaymentMethod(expense.method),
     branchNumber: expense.branchNumber ?? undefined,

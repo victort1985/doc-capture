@@ -100,6 +100,67 @@ export class Expense {
   @Column({ type: 'varchar', nullable: true })
   referenceNumber?: string | null;
 
+  /** Date the purchase itself actually happened, as printed on the
+   * receipt/invoice. `date` stays the bookkeeping date the expense is
+   * posted to the ledger under; they usually match but can differ. */
+  @Column({ type: 'date', nullable: true })
+  transactionDate?: string | null;
+
+  /** Supplier / store name as printed on the document. */
+  @Column({ type: 'varchar', nullable: true })
+  vendorName?: string | null;
+
+  /** Supplier's VAT / company registration number (ע.מ. / ח.פ.) —
+   * required in the Tax Authority open-format export (field 1215)
+   * and for reclaiming input VAT. */
+  @Column({ type: 'varchar', nullable: true })
+  vendorTaxId?: string | null;
+
+  /** Kind of source document: tax_invoice, tax_invoice_receipt,
+   * receipt, invoice, credit_note, cash_slip, other. */
+  @Column({ type: 'varchar', nullable: true })
+  documentType?: string | null;
+
+  /** The supplier's own document number (not our internal id). */
+  @Column({ type: 'varchar', nullable: true })
+  documentNumber?: string | null;
+
+  /** Israel Tax Authority allocation number (מספר הקצאה), issued for
+   * tax invoices above the statutory threshold; needed to deduct VAT. */
+  @Column({ type: 'varchar', nullable: true })
+  allocationNumber?: string | null;
+
+  /** VAT rate printed on the document, percent (e.g. 18). */
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true, transformer: numericTransformer })
+  vatRate?: number | null;
+
+  /** Share of vatAmount legally reclaimable, percent: 100 (default
+   * when null), 66.67 / 25 for vehicle-related, 0 for non-deductible.
+   * The non-reclaimable part is booked as cost, not as input VAT. */
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true, transformer: numericTransformer })
+  vatDeductiblePercent?: number | null;
+
+  /** ISO currency of the original document (null = ILS). `amount`
+   * is always the ILS value; foreignAmount/exchangeRate keep the
+   * original for the audit trail. */
+  @Column({ type: 'varchar', length: 3, nullable: true })
+  currency?: string | null;
+
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: numericTransformer })
+  foreignAmount?: number | null;
+
+  @Column({ type: 'numeric', precision: 14, scale: 6, nullable: true, transformer: numericTransformer })
+  exchangeRate?: number | null;
+
+  /** Tax withheld at source (ניכוי מס במקור), if any. */
+  @Column({ type: 'numeric', precision: 12, scale: 2, nullable: true, transformer: numericTransformer })
+  withholdingTaxAmount?: number | null;
+
+  /** Language the scanner detected on the receipt (he/ru/en/ar), set
+   * only for expenses created from a scan. */
+  @Column({ type: 'varchar', nullable: true })
+  scanLanguage?: string | null;
+
   @Column({ type: 'varchar', nullable: true })
   receiptStoragePath?: string | null;
 

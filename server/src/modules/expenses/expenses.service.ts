@@ -46,6 +46,19 @@ export class ExpensesService {
       accountNumber: dto.accountNumber,
       checkDate: dto.checkDate,
       referenceNumber: dto.referenceNumber,
+      transactionDate: dto.transactionDate,
+      vendorName: dto.vendorName,
+      vendorTaxId: dto.vendorTaxId ? dto.vendorTaxId.replace(/\D/g, '') : undefined,
+      documentType: dto.documentType,
+      documentNumber: dto.documentNumber,
+      allocationNumber: dto.allocationNumber,
+      vatRate: dto.vatRate,
+      vatDeductiblePercent: dto.vatDeductiblePercent,
+      currency: dto.currency && dto.currency !== 'ILS' ? dto.currency : undefined,
+      foreignAmount: dto.foreignAmount,
+      exchangeRate: dto.exchangeRate,
+      withholdingTaxAmount: dto.withholdingTaxAmount,
+      scanLanguage: dto.scanLanguage,
       costCenter: dto.costCenterId ? ({ id: dto.costCenterId } as any) : undefined,
       organization: organizationId != null ? ({ id: organizationId } as any) : undefined,
       createdBy: { id: userId } as any,
@@ -54,7 +67,7 @@ export class ExpensesService {
 
     if (organizationId != null) {
       try {
-        await this.ledgerPostingService.postExpense(organizationId, saved.id, saved.date, saved.amount, saved.method, saved.description, saved.vatAmount);
+        await this.ledgerPostingService.postExpense(organizationId, saved.id, saved.date, saved.amount, saved.method, saved.description, saved.vatAmount, saved.vatDeductiblePercent);
       } catch {
         // best-effort — a bookkeeping hiccup must never block recording the expense itself
       }
@@ -254,7 +267,10 @@ export class ExpensesService {
     // characters.
     const rawExt = file.originalname.includes('.') ? file.originalname.slice(file.originalname.lastIndexOf('.')) : '.jpg';
     const ext = rawExt.replace(/[/\\:*?"<>|\x00-\x1f]/g, '_').slice(0, 10);
-    const relativePath = `Expenses/${id}_${Date.now()}${ext}`;
+    // Organised, human-findable layout: Expenses/<yyyy-mm>/<date>_<vendor>_<id>.<ext>
+    const when = (expense.transactionDate ?? expense.date ?? new Date().toISOString().slice(0, 10)).slice(0, 10);
+    const vendor = (expense.vendorName ?? '').replace(/[^\p{L}\p{N}]+/gu, '_').replace(/^_+|_+$/g, '').slice(0, 40);
+    const relativePath = `Expenses/${when.slice(0, 7)}/${when}${vendor ? `_${vendor}` : ''}_${id}${ext}`;
     const { adapter, encryptAtRest } = await this.storageService.getAdapterWithMeta(connectionId);
     expense.receiptStoragePath = await writeMaybeEncrypted(adapter, relativePath, file.buffer, encryptAtRest);
     return this.expensesRepo.save(expense);

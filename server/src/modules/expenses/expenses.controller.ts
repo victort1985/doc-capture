@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseIntPipe, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ExpensesService } from './expenses.service';
@@ -54,6 +54,27 @@ export class ExpensesController {
   async parseReceipt(@UploadedFile() file: { mimetype: string; buffer: Buffer } | undefined) {
     if (!file) return { amount: null, date: null, vendor: null };
     return this.parserService.parse(file.buffer, file.mimetype);
+  }
+
+  /** Full receipt scanner: crops/straightens/cleans the photo, detects
+   * the receipt's language, reads it and returns every field it could
+   * extract (plus per-field confidence) together with the cleaned scan
+   * as a base64 JPEG. Nothing is saved — the admin panel shows the
+   * result for review, and only the person's confirmation creates the
+   * expense (POST /expenses) and stores the scan (POST /expenses/:id/receipt). */
+  @Post('scan')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 25 * 1024 * 1024 } }))
+  async scan(@UploadedFile() file: { mimetype: string; buffer: Buffer } | undefined) {
+    if (!file) throw new BadRequestException('No file uploaded');
+    const r = await this.parserService.scan(file.buffer, file.mimetype);
+    return {
+      fields: r.fields,
+      cropped: r.cropped,
+      warnings: r.warnings,
+      ocrLanguages: r.ocrLanguages,
+      rawText: r.rawText.slice(0, 6000),
+      scanImage: r.scanImage ? `data:${r.scanMimeType};base64,${r.scanImage.toString('base64')}` : null,
+    };
   }
 
   @Post(':id/receipt')
