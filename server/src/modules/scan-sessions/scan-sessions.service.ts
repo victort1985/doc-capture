@@ -118,7 +118,7 @@ export class ScanSessionsService {
       mode: dto.filter,
       brightness: dto.brightness,
       contrast: dto.contrast,
-      removeShadows: dto.removeShadows,
+      removeShadows: true, // always clean: old app builds send false explicitly
     });
   }
 
