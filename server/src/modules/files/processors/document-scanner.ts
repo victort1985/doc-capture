@@ -1,5 +1,6 @@
 import sharp from 'sharp';
 import { scanDocument, rectifiedSize } from './docscan';
+import { cleanPage, WORK_SIZE } from './docscan/page-cleaner';
 
 /**
  * Document scanner, in three composable steps so the upload flow can put a
@@ -58,43 +59,13 @@ export interface FilterOptions {
   brightness?: number;
   /** -100..100, default 0 */
   contrast?: number;
+  /** Divide out shadows / uneven light / crease shading. Default: true. */
   removeShadows?: boolean;
 }
 
 // ---------------------------------------------------------------------
-// Basic image ops
+// Detection
 // ---------------------------------------------------------------------
-
-function boxBlur(gray: Buffer | Uint8ClampedArray | Float32Array, width: number, height: number, radius: number, passes: number): Float32Array {
-  let src: Buffer | Uint8ClampedArray | Float32Array = gray;
-  for (let p = 0; p < passes; p++) {
-    const tmp = new Float32Array(src.length);
-    for (let y = 0; y < height; y++) {
-      let acc = 0;
-      const rowStart = y * width;
-      for (let x = -radius; x <= radius; x++) acc += src[rowStart + Math.min(width - 1, Math.max(0, x))];
-      for (let x = 0; x < width; x++) {
-        tmp[rowStart + x] = acc / (radius * 2 + 1);
-        const addX = Math.min(width - 1, x + radius + 1);
-        const subX = Math.max(0, x - radius);
-        acc += src[rowStart + addX] - src[rowStart + subX];
-      }
-    }
-    const tmp2 = new Float32Array(src.length);
-    for (let x = 0; x < width; x++) {
-      let acc = 0;
-      for (let y = -radius; y <= radius; y++) acc += tmp[Math.min(height - 1, Math.max(0, y)) * width + x];
-      for (let y = 0; y < height; y++) {
-        tmp2[y * width + x] = acc / (radius * 2 + 1);
-        const addY = Math.min(height - 1, y + radius + 1);
-        const subY = Math.max(0, y - radius);
-        acc += tmp[addY * width + x] - tmp[subY * width + x];
-      }
-    }
-    src = tmp2;
-  }
-  return src as Float32Array;
-}
 
 /**
  * Locates the document's 4 corners (full-resolution coordinates). Returns
@@ -332,53 +303,6 @@ export async function warpDocument(
 // Filters: white balance, shadow removal, brightness/contrast, B&W
 // ---------------------------------------------------------------------
 
-function grayWorldWhiteBalance(rgba: Buffer, width: number, height: number): Buffer {
-  let sumR = 0, sumG = 0, sumB = 0;
-  const n = width * height;
-  for (let i = 0; i < n; i++) {
-    sumR += rgba[i * 4];
-    sumG += rgba[i * 4 + 1];
-    sumB += rgba[i * 4 + 2];
-  }
-  const avgR = sumR / n, avgG = sumG / n, avgB = sumB / n;
-  const avgGray = (avgR + avgG + avgB) / 3;
-  const scaleR = avgGray / Math.max(1, avgR);
-  const scaleG = avgGray / Math.max(1, avgG);
-  const scaleB = avgGray / Math.max(1, avgB);
-
-  const out = Buffer.from(rgba);
-  for (let i = 0; i < n; i++) {
-    out[i * 4] = Math.max(0, Math.min(255, Math.round(rgba[i * 4] * scaleR)));
-    out[i * 4 + 1] = Math.max(0, Math.min(255, Math.round(rgba[i * 4 + 1] * scaleG)));
-    out[i * 4 + 2] = Math.max(0, Math.min(255, Math.round(rgba[i * 4 + 2] * scaleB)));
-  }
-  return out;
-}
-
-/** Removes shadows/uneven lighting while preserving colour: computes a
- * per-pixel brightening ratio from the *luminance* channel only (via
- * flat-fielding), then applies that same ratio to all 3 colour channels
- * so hue/saturation stay intact instead of collapsing to grayscale. */
-function removeShadowsColor(rgba: Buffer, width: number, height: number): Buffer {
-  const n = width * height;
-  const luminance = new Float32Array(n);
-  for (let i = 0; i < n; i++) {
-    luminance[i] = 0.299 * rgba[i * 4] + 0.587 * rgba[i * 4 + 1] + 0.114 * rgba[i * 4 + 2];
-  }
-  const radius = Math.max(15, Math.round(Math.min(width, height) * 0.04));
-  const background = boxBlur(luminance, width, height, radius, 2);
-
-  const out = Buffer.from(rgba);
-  for (let i = 0; i < n; i++) {
-    const bg = Math.max(background[i], 30);
-    const ratio = Math.min(255 / bg, 1.6);
-    out[i * 4] = Math.max(0, Math.min(255, Math.round(rgba[i * 4] * ratio)));
-    out[i * 4 + 1] = Math.max(0, Math.min(255, Math.round(rgba[i * 4 + 1] * ratio)));
-    out[i * 4 + 2] = Math.max(0, Math.min(255, Math.round(rgba[i * 4 + 2] * ratio)));
-  }
-  return out;
-}
-
 function applyBrightnessContrastRgb(rgba: Buffer, width: number, height: number, brightness: number, contrast: number): Buffer {
   const b = Math.max(-100, Math.min(100, brightness)) * 1.27;
   const contrastFactor = (100 + Math.max(-100, Math.min(100, contrast))) / 100;
@@ -459,8 +383,12 @@ export async function applyFilters(imageBuffer: Buffer, opts: FilterOptions): Pr
   const { data: rgbaIn, info } = await sharp(imageBuffer).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const { width, height } = info;
 
-  let rgba = grayWorldWhiteBalance(rgbaIn, width, height);
-  if (opts.removeShadows) rgba = removeShadowsColor(rgba, width, height);
+  // page cleaning: neutral paper is colour-balanced, shadows / uneven light / crease shading are
+  // divided out (on by default — a scan should look clean), coloured paper and print keep their colour
+  const k = Math.min(1, WORK_SIZE / Math.max(width, height));
+  const sw = Math.max(2, Math.round(width * k)), sh = Math.max(2, Math.round(height * k));
+  const smallRgb = await sharp(rgbaIn, { raw: { width, height, channels: 4 } }).removeAlpha().resize(sw, sh, { fit: 'fill' }).raw().toBuffer();
+  let rgba = cleanPage(rgbaIn, width, height, { data: smallRgb, w: sw, h: sh }, { removeShadows: opts.removeShadows ?? true });
   rgba = applyBrightnessContrastRgb(rgba, width, height, opts.brightness ?? 0, opts.contrast ?? 0);
 
   if (opts.mode === 'original') {

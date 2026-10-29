@@ -68,7 +68,7 @@ class _ScanReviewScreenState extends State<ScanReviewScreen> {
   String _filter = 'bw'; // 'original' | 'bw'
   double _brightness = 0;
   double _contrast = 0;
-  bool _removeShadows = false;
+  bool _removeShadows = true;
 
   bool _showingPreview = false;
   // The server-rendered crop with NO colour adjustments applied (filter:
