@@ -24,6 +24,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { contentDisposition } from '../../common/utils/content-disposition';
 
 const MAX_FILE_SIZE = (parseInt(process.env.MAX_FILE_SIZE_MB || '20', 10)) * 1024 * 1024;
 
@@ -99,7 +100,7 @@ export class FilesController {
     const file = await this.filesService.downloadFile(id);
     res.set({
       'Content-Type': file.mimetype,
-      'Content-Disposition': `attachment; filename="${file.filename.replace(/"/g, '')}"`,
+      'Content-Disposition': contentDisposition('attachment', file.filename),
     });
     res.send(file.buffer);
   }

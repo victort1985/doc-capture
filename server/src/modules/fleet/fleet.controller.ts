@@ -7,6 +7,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { UserRole } from '../users/entities/user.entity';
+import { contentDisposition } from '../../common/utils/content-disposition';
 
 type RequestUser = { id: number; organizationId: number | null; role: string; isGlobal: boolean };
 
@@ -91,7 +92,7 @@ export class FleetController {
   @Get('documents/:id/download')
   async downloadDocument(@Param('id', ParseIntPipe) id: number, @Res() res: Response) {
     const file = await this.fleetService.downloadDocument(id);
-    res.set({ 'Content-Type': file.mimetype, 'Content-Disposition': `inline; filename="${file.originalName.replace(/"/g, '')}"` });
+    res.set({ 'Content-Type': file.mimetype, 'Content-Disposition': contentDisposition('inline', file.originalName) });
     res.send(file.buffer);
   }
 

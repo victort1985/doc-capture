@@ -9,6 +9,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { contentDisposition } from '../../common/utils/content-disposition';
 
 type ReqUser = { id: number; organizationId: number | null };
 
@@ -67,7 +68,7 @@ export class DataMigrationController {
     }
     res.set({
       'Content-Type': job.fileMimeType || 'application/octet-stream',
-      'Content-Disposition': `attachment; filename="${job.fileName}"`,
+      'Content-Disposition': contentDisposition('attachment', job.fileName),
     });
     res.send(job.fileBuffer);
   }

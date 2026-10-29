@@ -8,6 +8,7 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { contentDisposition } from '../../common/utils/content-disposition';
 
 type ReqUser = { organizationId: number | null };
 
@@ -79,7 +80,7 @@ export class TaxAuthorityExportController {
     const fileName = outputPath.replace(/\//g, '_') + '.zip';
     res.set({
       'Content-Type': 'application/zip',
-      'Content-Disposition': `attachment; filename="${fileName}"`,
+      'Content-Disposition': contentDisposition('attachment', fileName),
       // The Tax Authority's own simulator caps BKMVDATA.TXT at 4MB
       // (see packaging.service.ts's own doc comment) — surfaced here
       // so the admin panel can warn before the person even tries

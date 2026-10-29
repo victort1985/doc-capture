@@ -7,6 +7,7 @@ import { DeliveryNotesService } from './delivery-notes.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { getActiveOrgId } from '../../common/utils/active-org.util';
+import { contentDisposition } from '../../common/utils/content-disposition';
 
 type ReqUser = { id: number; organizationId: number | null; allowedOrganizationIds?: number[]; firstName?: string; lastName?: string; username?: string };
 
@@ -112,7 +113,7 @@ export class DeliveryNotesController {
   @Get(':id/pdf')
   async downloadPdf(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Req() req: Request, @Res() res: Response) {
     const { buffer, filename } = await this.svc.downloadPdf(id, getActiveOrgId(user, req));
-    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="${filename}"` });
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': contentDisposition('inline', filename) });
     res.send(buffer);
   }
 }

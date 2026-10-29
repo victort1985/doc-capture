@@ -5,6 +5,7 @@ import { BackupService } from './backup.service';
 import { BackupSchedulerService, UpdateBackupScheduleDto } from './backup-scheduler.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { SuperAdminGuard } from '../../common/guards/super-admin.guard';
+import { contentDisposition } from '../../common/utils/content-disposition';
 
 @Controller('backup')
 @UseGuards(JwtAuthGuard, SuperAdminGuard)
@@ -30,7 +31,7 @@ export class BackupController {
     const downloadName = filename.replace(/\.enc$/, ''); // .sql.gz once decrypted
     res.set({
       'Content-Type': 'application/gzip',
-      'Content-Disposition': `attachment; filename="${downloadName}"`,
+      'Content-Disposition': contentDisposition('attachment', downloadName),
       'Content-Length': buffer.length,
     });
     res.send(buffer);
