@@ -8,7 +8,7 @@ const db = require('./db');
 const { signPayload } = require('./crypto-sign');
 const { provisionTenant, deployAll, deprovisionTenant, createTenantAdmin } = require('./provision');
 const { encryptConnectionFile } = require('./connection-file');
-const { provisionTenantHostname, deprovisionTenantHostname, cloudflareAutomationEnabled } = require('./cloudflare-dns');
+const { provisionTenantHostname, deprovisionTenantHostname, cloudflareAutomationEnabled, cloudflareMissingEnv } = require('./cloudflare-dns');
 
 const app = express();
 app.use(express.json());
@@ -218,7 +218,11 @@ app.post('/admin/tenants', requireAdmin, async (req, res) => {
     });
 
     let cloudflareNote = '';
-    if (!publicUrl && cloudflareAutomationEnabled()) {
+    if (publicUrl) {
+      cloudflareNote = `\n\nℹ️ Public URL "${publicUrl}" was entered manually, so no Cloudflare DNS record / tunnel route was created. Leave the field blank to create them automatically, or press "Sync DNS" later.`;
+    } else if (!cloudflareAutomationEnabled()) {
+      cloudflareNote = `\n\n⚠️ Cloudflare automation is OFF — missing in license-server/.env: ${cloudflareMissingEnv().join(', ')}. No DNS record was created; add them and press "Sync DNS".`;
+    } else {
       try {
         const autoUrl = await provisionTenantHostname(slug, Number(port));
         db.prepare('UPDATE licenses SET public_url = ? WHERE id = ?').run(autoUrl.replace(/^https?:\/\//, ''), info.lastInsertRowid);
@@ -237,6 +241,34 @@ app.post('/admin/tenants', requireAdmin, async (req, res) => {
     // rather than silently losing the attempt.
     res.status(500).json({ error: err.message, output: err.output || '' });
   }
+});
+
+/** Idempotently makes sure every provisioned tenant under TENANT_BASE_DOMAIN has its tunnel
+ * route + DNS record (e.g. a tenant created while Cloudflare automation was misconfigured).
+ * Returns a human-readable report. */
+async function syncAllTenantDns() {
+  if (!cloudflareAutomationEnabled()) {
+    return `⚠️ Cloudflare automation is OFF — missing in .env: ${cloudflareMissingEnv().join(', ')}`;
+  }
+  const baseDomain = process.env.TENANT_BASE_DOMAIN || 'vixor.app';
+  const rows = db.prepare('SELECT id, slug, port, public_url FROM licenses WHERE provisioned = 1 AND slug IS NOT NULL').all();
+  const lines = [];
+  for (const r of rows) {
+    const wanted = `${r.slug}.${baseDomain}`;
+    if (r.public_url && r.public_url.replace(/^https?:\/\//, '') !== wanted) { lines.push(`– ${r.slug}: custom Public URL (${r.public_url}), skipped`); continue; }
+    try {
+      await provisionTenantHostname(r.slug, Number(r.port));
+      if (!r.public_url) db.prepare('UPDATE licenses SET public_url = ? WHERE id = ?').run(wanted, r.id);
+      lines.push(`✓ ${wanted}`);
+    } catch (e) {
+      lines.push(`✗ ${wanted}: ${e.message}`);
+    }
+  }
+  return `🌐 Cloudflare DNS sync:\n${lines.join('\n') || '(no tenants)'}`;
+}
+
+app.post('/admin/dns/sync', requireAdmin, async (req, res) => {
+  res.json({ output: await syncAllTenantDns() });
 });
 
 // In-memory deploy job state — this is a single-process internal tool
@@ -264,7 +296,11 @@ app.post('/admin/deploy', requireAdmin, (req, res) => {
   // moment, regardless of what timeout anything in between imposes.
   deployJob = { running: true, output: '', error: null, startedAt: new Date().toISOString(), finishedAt: null };
   deployAll()
-    .then((output) => { deployJob = { ...deployJob, running: false, output, finishedAt: new Date().toISOString() }; })
+    .then(async (output) => {
+      let dnsReport = '';
+      try { dnsReport = '\n\n' + await syncAllTenantDns(); } catch (e) { dnsReport = `\n\n⚠️ DNS sync failed: ${e.message}`; }
+      deployJob = { ...deployJob, running: false, output: output + dnsReport, finishedAt: new Date().toISOString() };
+    })
     .catch((err) => { deployJob = { ...deployJob, running: false, output: err.output || '', error: err.message, finishedAt: new Date().toISOString() }; });
   res.status(202).json({ started: true });
 });

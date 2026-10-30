@@ -82,6 +82,7 @@
         Pulls latest code, builds once, restarts every running instance. Can take a few minutes.
       </p>
       <button onclick="deployAll()">Deploy now</button>
+      <button class="ghost" onclick="syncDns()" title="Create missing Cloudflare tunnel routes / DNS records for all tenants">Sync DNS</button>
       <pre id="deployOutput" class="hidden" style="white-space:pre-wrap;font-size:11.5px;background:var(--paper);padding:10px;border-radius:6px;margin-top:10px;max-height:300px;overflow:auto;"></pre>
     </div>
 
@@ -257,6 +258,16 @@ async function provisionTenant() {
     }
     out.textContent = `❌ ${e.message}\n\n${e.output || ''}`;
   }
+}
+
+async function syncDns() {
+  const out = document.getElementById('deployOutput');
+  out.classList.remove('hidden');
+  out.textContent = 'Syncing Cloudflare DNS…';
+  try {
+    const r = await api('/admin/dns/sync', { method: 'POST' });
+    out.textContent = r.output;
+  } catch (e) { out.textContent = '❌ ' + e.message; }
 }
 
 async function deployAll() {

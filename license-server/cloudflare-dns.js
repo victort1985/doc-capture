@@ -109,7 +109,7 @@ async function addDnsRecord(hostname) {
   } catch (err) {
     // Error code 81057 = "record already exists" — fine, not a failure
     // (e.g. re-running provisioning after a partial earlier attempt).
-    if (!/81057/.test(err.message)) throw err;
+    if (!/8105[37]/.test(err.message)) throw err;
   }
 }
 
@@ -139,7 +139,11 @@ async function deprovisionTenantHostname(slug) {
   await removeTunnelHostname(hostname);
 }
 
+/** Which of the four required variables are still missing from .env (for a clear message). */
+const cloudflareMissingEnv = () =>
+  ['CLOUDFLARE_API_TOKEN', 'CLOUDFLARE_ACCOUNT_ID', 'CLOUDFLARE_ZONE_ID', 'CLOUDFLARE_TUNNEL_ID'].filter((k) => !process.env[k]);
+
 const cloudflareAutomationEnabled = () =>
   !!(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_ZONE_ID && process.env.CLOUDFLARE_TUNNEL_ID);
 
-module.exports = { provisionTenantHostname, deprovisionTenantHostname, cloudflareAutomationEnabled };
+module.exports = { cloudflareMissingEnv, provisionTenantHostname, deprovisionTenantHostname, cloudflareAutomationEnabled };
