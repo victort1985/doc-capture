@@ -4,7 +4,7 @@ import { Plus, X, CheckCircle2, Upload, Paperclip } from 'lucide-react';
 import { apiFetch, BASE_URL, getToken } from '../services/api';
 import BankBranchPicker, { BankNamePicker } from '../components/BankBranchPicker';
 
-interface ExpenseRow { id: number; date: string; description: string; category?: string; amount: number; method: string; receiptStoragePath?: string | null; }
+interface ExpenseRow { id: number; date: string; description: string; category?: string; amount: number; method: string; receiptStoragePath?: string | null; [key: string]: any; }
 interface SupplierInvoiceRow { id: number; supplierName: string; invoiceNumber?: string; date: string; dueDate?: string; amount: number; paidAt?: string; storagePath?: string | null; }
 
 export default function ExpensesPage() {
@@ -17,6 +17,8 @@ export default function ExpensesPage() {
   const [expenses, setExpenses] = useState<ExpenseRow[]>([]);
   const [supplierInvoices, setSupplierInvoices] = useState<SupplierInvoiceRow[]>([]);
   const [showCreateExpense, setShowCreateExpense] = useState(false);
+  const [viewExpense, setViewExpense] = useState<ExpenseRow | null>(null);
+  const [editExpense, setEditExpense] = useState<ExpenseRow | null>(null);
   const [showCreateSupplierInvoice, setShowCreateSupplierInvoice] = useState(false);
   const [markPaidTarget, setMarkPaidTarget] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -155,13 +157,13 @@ export default function ExpensesPage() {
             </thead>
             <tbody>
               {expenses.map((e) => (
-                <tr key={e.id} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                <tr key={e.id} onClick={() => setViewExpense(e)} style={{ borderBottom: '1px solid var(--border, #f0f0f0)', cursor: 'pointer' }}>
                   <td style={{ padding: '8px 12px' }}>{e.date}</td>
                   <td style={{ padding: '8px 12px' }}>{e.description}</td>
                   <td style={{ padding: '8px 12px', color: 'var(--ink-soft)' }}>{e.category ?? ''}</td>
                   <td style={{ padding: '8px 12px' }}>{methodLabel[e.method] ?? e.method}</td>
                   <td style={{ padding: '8px 12px', fontWeight: 700 }}>₪{Number(e.amount).toFixed(2)}</td>
-                  <td style={{ padding: '8px 12px' }}>
+                  <td style={{ padding: '8px 12px' }} onClick={(ev) => ev.stopPropagation()}>
                     {e.receiptStoragePath && (
                       <button type="button" className="ghost" onClick={() => viewFile('expenses', e.id)} title={t('expenses.viewReceipt')} style={{ marginInlineEnd: 6 }}>
                         <Paperclip size={15} />
@@ -229,6 +231,13 @@ export default function ExpensesPage() {
         </div>
       )}
 
+      {viewExpense && (
+        <ExpenseDetailModal expense={viewExpense} onClose={() => setViewExpense(null)}
+          onEdit={() => { setEditExpense(viewExpense); setViewExpense(null); }} />
+      )}
+      {editExpense && (
+        <CreateExpenseModal expense={editExpense} onClose={() => setEditExpense(null)} onCreated={() => { setEditExpense(null); load(); }} />
+      )}
       {showCreateExpense && (
         <CreateExpenseModal onClose={() => setShowCreateExpense(false)} onCreated={() => { setShowCreateExpense(false); load(); }} />
       )}
@@ -338,8 +347,10 @@ interface ScanFields {
 }
 interface ScanResponse { fields: ScanFields; cropped: boolean; warnings: string[]; ocrLanguages: string[]; rawText: string; scanImage: string | null; }
 
-function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+function CreateExpenseModal({ onClose, onCreated, expense }: { onClose: () => void; onCreated: () => void; expense?: ExpenseRow }) {
   const { t } = useTranslation();
+  const editing = !!expense;
+  const [existingUrl, setExistingUrl] = useState<string | null>(null);
   const [date, setDate] = useState('');
   const [dateTouched, setDateTouched] = useState(false);
   const [transactionDate, setTransactionDate] = useState('');
@@ -370,6 +381,39 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
   const [showRaw, setShowRaw] = useState(false);
   const [costCenters, setCostCenters] = useState<{ id: number; name: string }[]>([]);
   const [costCenterId, setCostCenterId] = useState('');
+
+  // edit mode: fill every control from the stored expense and load its receipt image
+  useEffect(() => {
+    if (!expense) return;
+    const x = expense;
+    const str = (v: unknown) => (v == null ? '' : String(v));
+    setDate(str(x.date).slice(0, 10)); setDateTouched(true);
+    setTransactionDate(str(x.transactionDate).slice(0, 10));
+    setDescription(str(x.description)); setCategory(str(x.category));
+    setAmount(x.amount != null ? String(x.amount) : '');
+    setVatAmount(str(x.vatAmount)); setVatTouched(true);
+    setVatRate(str(x.vatRate) || '18');
+    setVatDeductible(x.vatDeductiblePercent == null ? '100' : String(x.vatDeductiblePercent));
+    setVendorName(str(x.vendorName)); setVendorTaxId(str(x.vendorTaxId));
+    setDocumentType(str(x.documentType)); setDocumentNumber(str(x.documentNumber)); setAllocationNumber(str(x.allocationNumber));
+    setCurrency(str(x.currency) || 'ILS'); setForeignAmount(str(x.foreignAmount)); setExchangeRate(str(x.exchangeRate));
+    setMethod((x.method as PayMethod) || 'cash');
+    setDetails({
+      cardLast4: str(x.cardLast4), cardType: str(x.cardType), approvalNumber: str(x.approvalNumber), installments: str(x.installments),
+      checkNumber: str(x.checkNumber), bankName: str(x.bankName), branchNumber: str(x.branchNumber), accountNumber: str(x.accountNumber),
+      checkDate: str(x.checkDate).slice(0, 10), referenceNumber: str(x.referenceNumber),
+    });
+    setCostCenterId(x.costCenter?.id ? String(x.costCenter.id) : '');
+    let url: string | null = null;
+    if (x.receiptStoragePath) {
+      fetch(`${BASE_URL}/expenses/${x.id}/receipt`, { headers: { Authorization: `Bearer ${getToken()}` } })
+        .then(r => (r.ok ? r.blob() : Promise.reject(new Error('receipt'))))
+        .then(b => { url = URL.createObjectURL(b); setExistingUrl(url); })
+        .catch(() => {});
+    }
+    return () => { if (url) URL.revokeObjectURL(url); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => { apiFetch<{ id: number; name: string }[]>('/cost-centers').then(setCostCenters).catch(() => {}); }, []);
 
@@ -459,29 +503,30 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
     setSaving(true); setError(null);
     try {
       if (foreign && !(Number(exchangeRate) > 0)) throw new Error(t('expenses.exchangeRate'));
-      const res = await apiFetch<{ id: number }>('/expenses', {
-        method: 'POST',
+      const U = editing ? null : undefined; // when editing, an emptied field is sent as null so it is cleared
+      const res = await apiFetch<{ id: number }>(editing ? `/expenses/${expense!.id}` : '/expenses', {
+        method: editing ? 'PATCH' : 'POST',
         body: JSON.stringify({
-          date: date || transactionDate || undefined, transactionDate: transactionDate || undefined,
-          description, category: category || undefined, amount: amountIls, method,
-          vatAmount: vatAmount ? Number(vatAmount) : undefined,
-          vatRate: vatRate ? Number(vatRate) : undefined,
-          vatDeductiblePercent: vatDeductible !== '100' ? Number(vatDeductible) : undefined,
-          vendorName: vendorName || undefined, vendorTaxId: vendorTaxId || undefined,
-          documentType: documentType || undefined, documentNumber: documentNumber || undefined, allocationNumber: allocationNumber || undefined,
-          currency: foreign ? currency : undefined, foreignAmount: foreign ? Number(foreignAmount) : undefined, exchangeRate: foreign ? Number(exchangeRate) : undefined,
+          date: date || transactionDate || undefined, transactionDate: transactionDate || U,
+          description, category: category || U, amount: amountIls, method,
+          vatAmount: vatAmount !== '' ? Number(vatAmount) : U,
+          vatRate: vatRate ? Number(vatRate) : U,
+          vatDeductiblePercent: vatDeductible !== '100' ? Number(vatDeductible) : U,
+          vendorName: vendorName || U, vendorTaxId: vendorTaxId || U,
+          documentType: documentType || U, documentNumber: documentNumber || U, allocationNumber: allocationNumber || U,
+          currency: foreign ? currency : U, foreignAmount: foreign ? Number(foreignAmount) : U, exchangeRate: foreign ? Number(exchangeRate) : U,
           scanLanguage: scan?.fields.language || undefined,
-          costCenterId: costCenterId ? Number(costCenterId) : undefined,
-          cardLast4: details.cardLast4 || undefined,
-          cardType: details.cardType || undefined,
-          approvalNumber: details.approvalNumber || undefined,
-          installments: details.installments ? Number(details.installments) : undefined,
-          checkNumber: details.checkNumber || undefined,
-          bankName: details.bankName || undefined,
-          branchNumber: details.branchNumber || undefined,
-          accountNumber: details.accountNumber || undefined,
-          checkDate: details.checkDate || undefined,
-          referenceNumber: details.referenceNumber || undefined,
+          costCenterId: costCenterId ? Number(costCenterId) : U,
+          cardLast4: details.cardLast4 || U,
+          cardType: details.cardType || U,
+          approvalNumber: details.approvalNumber || U,
+          installments: details.installments ? Number(details.installments) : U,
+          checkNumber: details.checkNumber || U,
+          bankName: details.bankName || U,
+          branchNumber: details.branchNumber || U,
+          accountNumber: details.accountNumber || U,
+          checkDate: details.checkDate || U,
+          referenceNumber: details.referenceNumber || U,
         }),
       });
       // store the cleaned scan (falls back to the original upload) in the Expenses folder
@@ -507,9 +552,9 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={onClose}>
-      <div className="card" style={{ width: scan ? 'min(980px, 96vw)' : 460, maxHeight: '94vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+      <div className="card" style={{ width: (scan || existingUrl) ? 'min(980px, 96vw)' : 460, maxHeight: '94vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-          <h2 style={{ margin: 0 }}>{t('expenses.newExpense')}</h2>
+          <h2 style={{ margin: 0 }}>{editing ? t('expenses.editExpense') : t('expenses.newExpense')}</h2>
           <button className="ghost" onClick={onClose}><X size={16} /></button>
         </div>
 
@@ -526,6 +571,11 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
         {parsing && <div style={{ marginBottom: 12, color: 'var(--muted)' }}>{t('expenses.scanningReceipt')}</div>}
 
         <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          {!scan && existingUrl && (
+            <div style={{ flex: '1 1 300px', minWidth: 260, maxWidth: 420 }}>
+              <img src={existingUrl} alt={t('expenses.receipt')} style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />
+            </div>
+          )}
           {scan && (
             <div style={{ flex: '1 1 300px', minWidth: 260, maxWidth: 420 }}>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8, fontSize: 13 }}>
@@ -644,6 +694,93 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
             <button type="button" disabled={saving || parsing || !description.trim() || !amountValid || (needsConfirm && !confirmed)} onClick={submit} style={{ width: '100%' }}>
               {saving ? t('common.saving') : needsConfirm ? t('expenses.confirmAndSave') : t('expenses.submit')}
             </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpenseDetailModal({ expense, onClose, onEdit }: { expense: ExpenseRow; onClose: () => void; onEdit: () => void }) {
+  const { t } = useTranslation();
+  const [url, setUrl] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [isPdf, setIsPdf] = useState(false);
+  useEffect(() => {
+    if (!expense.receiptStoragePath) return;
+    let objectUrl: string | null = null;
+    fetch(`${BASE_URL}/expenses/${expense.id}/receipt`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(r => (r.ok ? r.blob() : Promise.reject(new Error('receipt'))))
+      .then(b => { objectUrl = URL.createObjectURL(b); setIsPdf(b.type === 'application/pdf'); setUrl(objectUrl); })
+      .catch(() => setFailed(true));
+    return () => { if (objectUrl) URL.revokeObjectURL(objectUrl); };
+  }, [expense.id, expense.receiptStoragePath]);
+
+  const x = expense;
+  const val = (v: unknown) => (v == null || v === '' ? null : String(v));
+  const methodNames: Record<string, string> = {
+    credit_card: t('payments.methodCreditCard'), cash: t('payments.methodCash'), bank_transfer: t('payments.methodBankTransfer'),
+    check: t('payments.methodCheck'), bit: t('payments.methodBit'), standing_order: t('payments.methodStandingOrder'),
+  };
+  const foreign = x.currency && x.currency !== 'ILS';
+  const rows: [string, string | null][] = [
+    [t('expenses.vendorName'), val(x.vendorName)],
+    [t('expenses.description'), val(x.description)],
+    [t('expenses.category'), val(x.category)],
+    [t('expenses.transactionDate'), val(x.transactionDate)],
+    [t('expenses.date'), val(x.date)],
+    [t('expenses.amount'), `₪${Number(x.amount).toFixed(2)}`],
+    [t('expenses.currency'), foreign ? val(x.currency) : null],
+    [t('expenses.foreignAmount'), foreign ? val(x.foreignAmount) : null],
+    [t('expenses.exchangeRate'), foreign ? val(x.exchangeRate) : null],
+    [t('expenses.method'), methodNames[x.method] ?? val(x.method)],
+    [t('payments.cardLast4'), val(x.cardLast4)],
+    [t('payments.cardType'), val(x.cardType)],
+    [t('payments.approvalNumber'), val(x.approvalNumber)],
+    [t('payments.installments'), val(x.installments)],
+    [t('payments.checkNumber'), val(x.checkNumber)],
+    [t('payments.bankName'), val(x.bankName)],
+    [t('payments.branchNumber'), val(x.branchNumber)],
+    [t('payments.accountNumber'), val(x.accountNumber)],
+    [t('payments.checkDate'), val(x.checkDate)],
+    [t('payments.referenceNumber'), val(x.referenceNumber)],
+    [t('expenses.vendorTaxId'), val(x.vendorTaxId)],
+    [t('expenses.documentType'), x.documentType ? t(`expenses.docType_${x.documentType}`) : null],
+    [t('expenses.documentNumber'), val(x.documentNumber)],
+    [t('expenses.allocationNumber'), val(x.allocationNumber)],
+    [t('expenses.vatAmount'), val(x.vatAmount)],
+    [t('expenses.vatRate'), val(x.vatRate)],
+    [t('expenses.vatDeductible'), x.vatDeductiblePercent == null ? null : `${x.vatDeductiblePercent}%`],
+  ];
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }} onClick={onClose}>
+      <div className="card" style={{ width: 'min(920px, 96vw)', maxHeight: '94vh', overflow: 'auto' }} onClick={e => e.stopPropagation()}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, gap: 8 }}>
+          <h2 style={{ margin: 0 }}>{t('expenses.details')} #{x.id}</h2>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button type="button" onClick={onEdit}>{t('expenses.edit')}</button>
+            <button className="ghost" onClick={onClose} title={t('expenses.close')}><X size={16} /></button>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <div style={{ flex: '1 1 300px', minWidth: 260, maxWidth: 420 }}>
+            {url && !isPdf && <img src={url} alt={t('expenses.receipt')} style={{ width: '100%', borderRadius: 8, border: '1px solid var(--border)' }} />}
+            {url && isPdf && <iframe src={url} title={t('expenses.receipt')} style={{ width: '100%', height: 480, border: '1px solid var(--border)', borderRadius: 8 }} />}
+            {!url && !failed && x.receiptStoragePath && <div style={{ color: 'var(--muted)' }}>…</div>}
+            {failed && <div className="error-banner">{t('expenses.receiptLoadFailed')}</div>}
+            {!x.receiptStoragePath && <div style={{ color: 'var(--muted)' }}>{t('expenses.noReceipt')}</div>}
+          </div>
+          <div style={{ flex: '2 1 360px', minWidth: 280 }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <tbody>
+                {rows.filter(([, v]) => v != null).map(([k, v]) => (
+                  <tr key={k} style={{ borderBottom: '1px solid var(--border, #f0f0f0)' }}>
+                    <td style={{ padding: '6px 8px', color: 'var(--ink-soft)', width: '40%' }}>{k}</td>
+                    <td style={{ padding: '6px 8px', fontWeight: 600, wordBreak: 'break-word' }}>{v}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>

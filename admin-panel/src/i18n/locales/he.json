@@ -1563,6 +1563,12 @@
   "expenses": {
     "eyebrow": "משרד",
     "title": "הוצאות ורכישות",
+    "editExpense": "עריכת הוצאה",
+    "edit": "עריכה",
+    "details": "הוצאה",
+    "noReceipt": "לא צורפה קבלה",
+    "receiptLoadFailed": "לא ניתן לטעון את הקבלה",
+    "close": "סגירה",
     "newExpense": "הוצאה חדשה",
     "uploadReceiptToAutofill": "העלה קבלה — ימלא את השדות אוטומטית",
     "scanningReceipt": "סורק: חיתוך, ניקוי, זיהוי שפה ונתונים…",

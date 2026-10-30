@@ -102,6 +102,11 @@ export class LedgerPostingService {
     }
   }
 
+  /** Drops an expense's auto-posted entries (used before re-posting an edited expense). */
+  async unpostExpense(organizationId: number, expenseId: number): Promise<void> {
+    await this.accounting.deleteBySource(organizationId, ['expense', 'expense-vat'], expenseId);
+  }
+
   /** Supplier invoice: owed the moment it's recorded (debit Purchases
    * net of reclaimable VAT — same reasoning as postExpense above,
    * credit Accounts Payable for the full amount actually owed) —

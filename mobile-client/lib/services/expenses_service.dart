@@ -25,10 +25,13 @@ class Expense {
   final double amount;
   final PaymentMethod method;
   final DateTime createdAt;
+  /// The full server record — the detail/edit screens read every field from here.
+  final Map<String, dynamic> raw;
+  bool get hasReceipt => (raw['receiptStoragePath'] ?? '').toString().isNotEmpty;
 
   Expense({
     required this.id, required this.date, required this.description, this.category,
-    required this.amount, required this.method, required this.createdAt,
+    required this.amount, required this.method, required this.createdAt, this.raw = const {},
   });
 
   factory Expense.fromJson(Map<String, dynamic> j) => Expense(
@@ -39,6 +42,7 @@ class Expense {
         amount: (j['amount'] as num?)?.toDouble() ?? 0,
         method: _parseExpenseMethod(j['method']),
         createdAt: DateTime.tryParse(j['createdAt'] ?? '') ?? DateTime.now(),
+        raw: Map<String, dynamic>.from(j),
       );
 }
 
@@ -125,39 +129,51 @@ class ExpensesService {
     double? foreignAmount,
     double? exchangeRate,
     String? scanLanguage,
+    /// when set, the expense is edited (PATCH) instead of created and cleared fields are sent as null
+    int? updateId,
   }) async {
-    final res = await _api.post('/expenses', {
-      if (transactionDate != null && transactionDate.isNotEmpty) 'transactionDate': transactionDate,
-      if (vendorName != null && vendorName.isNotEmpty) 'vendorName': vendorName,
-      if (vendorTaxId != null && vendorTaxId.isNotEmpty) 'vendorTaxId': vendorTaxId,
-      if (documentType != null && documentType.isNotEmpty) 'documentType': documentType,
-      if (documentNumber != null && documentNumber.isNotEmpty) 'documentNumber': documentNumber,
-      if (allocationNumber != null && allocationNumber.isNotEmpty) 'allocationNumber': allocationNumber,
-      if (vatAmount != null) 'vatAmount': vatAmount,
-      if (vatRate != null) 'vatRate': vatRate,
-      if (vatDeductiblePercent != null) 'vatDeductiblePercent': vatDeductiblePercent,
-      if (currency != null && currency.isNotEmpty) 'currency': currency,
-      if (foreignAmount != null) 'foreignAmount': foreignAmount,
-      if (exchangeRate != null) 'exchangeRate': exchangeRate,
+    final upd = updateId != null;
+    final body = <String, dynamic>{
+      if (transactionDate != null && transactionDate.isNotEmpty) 'transactionDate': transactionDate else if (upd) 'transactionDate': null,
+      if (vendorName != null && vendorName.isNotEmpty) 'vendorName': vendorName else if (upd) 'vendorName': null,
+      if (vendorTaxId != null && vendorTaxId.isNotEmpty) 'vendorTaxId': vendorTaxId else if (upd) 'vendorTaxId': null,
+      if (documentType != null && documentType.isNotEmpty) 'documentType': documentType else if (upd) 'documentType': null,
+      if (documentNumber != null && documentNumber.isNotEmpty) 'documentNumber': documentNumber else if (upd) 'documentNumber': null,
+      if (allocationNumber != null && allocationNumber.isNotEmpty) 'allocationNumber': allocationNumber else if (upd) 'allocationNumber': null,
+      if (vatAmount != null) 'vatAmount': vatAmount else if (upd) 'vatAmount': null,
+      if (vatRate != null) 'vatRate': vatRate else if (upd) 'vatRate': null,
+      if (vatDeductiblePercent != null) 'vatDeductiblePercent': vatDeductiblePercent else if (upd) 'vatDeductiblePercent': null,
+      if (currency != null && currency.isNotEmpty) 'currency': currency else if (upd) 'currency': null,
+      if (foreignAmount != null) 'foreignAmount': foreignAmount else if (upd) 'foreignAmount': null,
+      if (exchangeRate != null) 'exchangeRate': exchangeRate else if (upd) 'exchangeRate': null,
       if (scanLanguage != null && scanLanguage.isNotEmpty) 'scanLanguage': scanLanguage,
       if (date != null && date.isNotEmpty) 'date': date,
       'description': description,
-      if (category != null && category.isNotEmpty) 'category': category,
+      if (category != null && category.isNotEmpty) 'category': category else if (upd) 'category': null,
       'amount': amount,
       'method': paymentMethodValue(method),
-      if (cardLast4 != null && cardLast4.isNotEmpty) 'cardLast4': cardLast4,
-      if (cardType != null && cardType.isNotEmpty) 'cardType': cardType,
-      if (approvalNumber != null && approvalNumber.isNotEmpty) 'approvalNumber': approvalNumber,
-      if (installments != null) 'installments': installments,
-      if (checkNumber != null && checkNumber.isNotEmpty) 'checkNumber': checkNumber,
-      if (bankName != null && bankName.isNotEmpty) 'bankName': bankName,
-      if (branchNumber != null && branchNumber.isNotEmpty) 'branchNumber': branchNumber,
-      if (accountNumber != null && accountNumber.isNotEmpty) 'accountNumber': accountNumber,
-      if (checkDate != null && checkDate.isNotEmpty) 'checkDate': checkDate,
-      if (referenceNumber != null && referenceNumber.isNotEmpty) 'referenceNumber': referenceNumber,
-    });
-    return Expense.fromJson(res);
+      if (cardLast4 != null && cardLast4.isNotEmpty) 'cardLast4': cardLast4 else if (upd) 'cardLast4': null,
+      if (cardType != null && cardType.isNotEmpty) 'cardType': cardType else if (upd) 'cardType': null,
+      if (approvalNumber != null && approvalNumber.isNotEmpty) 'approvalNumber': approvalNumber else if (upd) 'approvalNumber': null,
+      if (installments != null) 'installments': installments else if (upd) 'installments': null,
+      if (checkNumber != null && checkNumber.isNotEmpty) 'checkNumber': checkNumber else if (upd) 'checkNumber': null,
+      if (bankName != null && bankName.isNotEmpty) 'bankName': bankName else if (upd) 'bankName': null,
+      if (branchNumber != null && branchNumber.isNotEmpty) 'branchNumber': branchNumber else if (upd) 'branchNumber': null,
+      if (accountNumber != null && accountNumber.isNotEmpty) 'accountNumber': accountNumber else if (upd) 'accountNumber': null,
+      if (checkDate != null && checkDate.isNotEmpty) 'checkDate': checkDate else if (upd) 'checkDate': null,
+      if (referenceNumber != null && referenceNumber.isNotEmpty) 'referenceNumber': referenceNumber else if (upd) 'referenceNumber': null,
+    };
+    final res = upd ? await _api.patch('/expenses/$updateId', body) : await _api.post('/expenses', body);
+    return Expense.fromJson(Map<String, dynamic>.from(res as Map));
   }
+
+  Future<Expense> get(int id) async {
+    final res = await _api.get('/expenses/$id');
+    return Expense.fromJson(Map<String, dynamic>.from(res as Map));
+  }
+
+  /// The stored receipt image (bytes), or throws if none/unreachable.
+  Future<Uint8List> fetchReceipt(int id) => _api.getBytes('/expenses/$id/receipt');
 
   /// Extracts amount/date/vendor from a receipt photo BEFORE the
   /// expense is created, to pre-fill the form — separate from

@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import '../services/expenses_service.dart';
 import '../services/payments_service.dart' show PaymentMethod;
 import 'expense_form_screen.dart';
+import 'expense_detail_screen.dart';
 
 class ExpensesScreen extends StatefulWidget {
   const ExpensesScreen({super.key});
@@ -68,6 +69,12 @@ class ExpensesScreenState extends State<ExpensesScreen> {
                         final e = _expenses[i];
                         return Card(
                           child: ListTile(
+                            onTap: () async {
+                              final changed = await Navigator.of(context).push<bool>(
+                                MaterialPageRoute(builder: (_) => ExpenseDetailScreen(expense: e)),
+                              );
+                              if (changed == true) _load();
+                            },
                             leading: CircleAvatar(
                               backgroundColor: AppColors.stampWash,
                               child: Icon(

@@ -1563,6 +1563,12 @@
   "expenses": {
     "eyebrow": "Office",
     "title": "Expenses & Purchases",
+    "editExpense": "Edit expense",
+    "edit": "Edit",
+    "details": "Expense",
+    "noReceipt": "No receipt attached",
+    "receiptLoadFailed": "Could not load the receipt",
+    "close": "Close",
     "newExpense": "New expense",
     "uploadReceiptToAutofill": "Upload receipt — auto-fills the fields below",
     "scanningReceipt": "Scanning: cropping, cleaning, detecting language and data…",

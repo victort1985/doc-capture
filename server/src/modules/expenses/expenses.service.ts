@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Expense } from './entities/expense.entity';
 import { SupplierInvoice } from './entities/supplier-invoice.entity';
 import { CreateExpenseDto } from './dto/create-expense.dto';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { CreateSupplierInvoiceDto } from './dto/create-supplier-invoice.dto';
 import { MarkSupplierInvoicePaidDto } from './dto/mark-supplier-invoice-paid.dto';
 import { LedgerPostingService } from '../accounting/ledger-posting.service';
@@ -70,6 +71,42 @@ export class ExpensesService {
         await this.ledgerPostingService.postExpense(organizationId, saved.id, saved.date, saved.amount, saved.method, saved.description, saved.vatAmount, saved.vatDeductiblePercent);
       } catch {
         // best-effort — a bookkeeping hiccup must never block recording the expense itself
+      }
+    }
+    return saved;
+  }
+
+  private async loadOwnedExpense(id: number, organizationId: number | null): Promise<Expense> {
+    const expense = await this.expensesRepo.findOne({ where: { id }, relations: ['organization', 'costCenter'] });
+    if (!expense || (organizationId != null && expense.organization?.id !== organizationId)) throw new NotFoundException('Expense not found');
+    return expense;
+  }
+
+  async findExpense(id: number, organizationId: number | null): Promise<Expense> {
+    return this.loadOwnedExpense(id, organizationId);
+  }
+
+  /** Edits an expense. Only fields present in the dto change; a ledger
+   * re-post keeps the books in step with the corrected figures. */
+  async updateExpense(id: number, organizationId: number | null, dto: UpdateExpenseDto): Promise<Expense> {
+    const expense = await this.loadOwnedExpense(id, organizationId);
+    const { costCenterId, vendorTaxId, currency, ...rest } = dto;
+    for (const [key, value] of Object.entries(rest)) {
+      if (value === undefined) continue;
+      (expense as any)[key] = value === '' ? null : value;
+    }
+    if (vendorTaxId !== undefined) expense.vendorTaxId = vendorTaxId ? vendorTaxId.replace(/\D/g, '') : null;
+    if (currency !== undefined) expense.currency = currency && currency !== 'ILS' ? currency : null;
+    if (costCenterId !== undefined) expense.costCenter = costCenterId ? ({ id: costCenterId } as any) : null;
+    if (!expense.description) throw new BadRequestException('Description is required');
+    const saved = await this.expensesRepo.save(expense);
+
+    if (organizationId != null) {
+      try {
+        await this.ledgerPostingService.unpostExpense(organizationId, saved.id);
+        await this.ledgerPostingService.postExpense(organizationId, saved.id, saved.date, saved.amount, saved.method, saved.description, saved.vatAmount, saved.vatDeductiblePercent);
+      } catch {
+        // best-effort, same as on create
       }
     }
     return saved;

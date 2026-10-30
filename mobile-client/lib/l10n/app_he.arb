@@ -741,5 +741,15 @@
   "expenseCatUtilities": "חשמל, מים ושירותים",
   "expenseCatMaterials": "חומרים וכלי עבודה",
   "expenseCatRepairs": "תיקונים ושירות",
-  "expenseCatInsurance": "ביטוח"
+  "expenseCatInsurance": "ביטוח",
+  "expenseEdit": "עריכה",
+  "expenseEditTitle": "עריכת הוצאה",
+  "expenseDetailsTitle": "הוצאה",
+  "expenseReceiptTitle": "קבלה",
+  "expenseNoReceipt": "לא צורפה קבלה",
+  "expenseReceiptLoadFailed": "לא ניתן לטעון את הקבלה",
+  "expenseAmountIls": "סכום, ₪",
+  "expenseUpdated": "ההוצאה עודכנה",
+  "expenseDetailsTax": "נתונים לדוח המס",
+  "expenseDetailsPayment": "תשלום"
 }

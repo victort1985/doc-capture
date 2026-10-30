@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +10,9 @@ import '../services/expenses_service.dart';
 import '../services/payments_service.dart' show PaymentMethod;
 
 class ExpenseFormScreen extends StatefulWidget {
-  const ExpenseFormScreen({super.key});
+  /// When set the screen edits this expense instead of creating a new one.
+  const ExpenseFormScreen({super.key, this.expense});
+  final Expense? expense;
   @override
   State<ExpenseFormScreen> createState() => _ExpenseFormScreenState();
 }
@@ -59,11 +62,74 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   DateTime? _checkDate;
   final _referenceNumberController = TextEditingController();
 
+  bool get _editing => widget.expense != null;
+  Uint8List? _existingReceipt;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.expense;
+    if (e != null) _loadExisting(e);
+  }
+
+  /// Edit mode: fill every control from the stored expense.
+  void _loadExisting(Expense e) {
+    final r = e.raw;
+    String s(String k) => (r[k] ?? '').toString();
+    double? n(String k) => r[k] is num ? (r[k] as num).toDouble() : double.tryParse(s(k));
+    DateTime? d(String k) => DateTime.tryParse(s(k));
+    _descriptionController.text = e.description;
+    _categoryController.text = e.category ?? '';
+    _amountController.text = e.amount.toStringAsFixed(2);
+    _date = d('date') ?? _date;
+    _dateTouched = true;
+    _transactionDate = d('transactionDate');
+    _method = e.method;
+    _vendorController.text = s('vendorName');
+    _vendorTaxIdController.text = s('vendorTaxId');
+    _documentNumberController.text = s('documentNumber');
+    _allocationController.text = s('allocationNumber');
+    _documentType = s('documentType');
+    final vat = n('vatAmount');
+    _vatAmountController.text = vat == null ? '' : vat.toStringAsFixed(2);
+    _vatTouched = true;
+    final rate = n('vatRate');
+    if (rate != null) _vatRateController.text = rate.toString();
+    final ded = n('vatDeductiblePercent');
+    _vatDeductible = '100';
+    if (ded != null) {
+      for (final opt in const ['100', '66.67', '25', '0']) {
+        if ((double.parse(opt) - ded).abs() < 0.1) _vatDeductible = opt;
+      }
+    }
+    _currencyController.text = s('currency').isEmpty ? 'ILS' : s('currency');
+    final fa = n('foreignAmount');
+    _foreignAmountController.text = fa == null ? '' : fa.toStringAsFixed(2);
+    final er = n('exchangeRate');
+    _exchangeRateController.text = er == null ? '' : er.toString();
+    _cardLast4Controller.text = s('cardLast4');
+    final ct = s('cardType').toLowerCase();
+    if (const ['visa', 'mastercard', 'isracard', 'amex', 'diners'].contains(ct)) _cardType = ct;
+    _approvalNumberController.text = s('approvalNumber');
+    if (s('installments').isNotEmpty) _installmentsController.text = s('installments');
+    _checkNumberController.text = s('checkNumber');
+    _bankNameController.text = s('bankName');
+    _branchNumberController.text = s('branchNumber');
+    _accountNumberController.text = s('accountNumber');
+    _checkDate = d('checkDate');
+    _referenceNumberController.text = s('referenceNumber');
+    if (e.hasReceipt) {
+      ExpensesService(context.read<ApiService>()).fetchReceipt(e.id).then((b) {
+        if (mounted) setState(() => _existingReceipt = b);
+      }).catchError((_) {});
+    }
+  }
+
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
       initialDate: _date,
-      firstDate: DateTime.now().subtract(const Duration(days: 365)),
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 5)),
       lastDate: DateTime.now().add(const Duration(days: 30)),
     );
     if (picked != null) setState(() { _date = picked; _dateTouched = true; });
@@ -330,7 +396,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             onTap: () async {
               final picked = await showDatePicker(
                 context: context, initialDate: _checkDate ?? DateTime.now(),
-                firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                firstDate: DateTime.now().subtract(const Duration(days: 365 * 5)),
                 lastDate: DateTime.now().add(const Duration(days: 365)),
               );
               if (picked != null) setState(() => _checkDate = picked);
@@ -363,7 +429,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _transactionDate ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 365 * 3)),
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 5)),
       lastDate: DateTime.now().add(const Duration(days: 2)),
     );
     if (picked != null) {
@@ -421,6 +487,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         foreignAmount: foreign ? _parseNum(_foreignAmountController.text) : null,
         exchangeRate: foreign ? _parseNum(_exchangeRateController.text) : null,
         scanLanguage: _scan?.language,
+        updateId: widget.expense?.id,
       );
       // A failed receipt upload shouldn't undo an already-successful
       // expense creation — the expense itself is the important part;
@@ -434,6 +501,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
       } catch (_) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.expenseReceiptUploadError)));
       }
+      if (mounted && _editing) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.expenseUpdated)));
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       // show the server's reason (validation message / HTTP status) so a failure is diagnosable
@@ -502,7 +570,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     final l10n = AppLocalizations.of(context)!;
     final scan = _scan;
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.expenseNew)),
+      appBar: AppBar(title: Text(_editing ? l10n.expenseEditTitle : l10n.expenseNew)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -552,6 +620,13 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
                 borderRadius: BorderRadius.circular(10),
                 child: Image.memory(scan.image!, height: 240, width: double.infinity, fit: BoxFit.contain),
               ),
+          ] else if (_receiptPhoto == null && _existingReceipt != null) ...[
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.memory(_existingReceipt!, height: 200, width: double.infinity, fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Text(l10n.expenseReceiptLoadFailed)),
+            ),
           ] else if (_receiptPhoto != null) ...[
             const SizedBox(height: 10),
             ClipRRect(

@@ -61,6 +61,14 @@ export class AccountingService {
     return account;
   }
 
+  /** Removes the entries auto-posted for one source document so it can be
+   * re-posted after the document was edited. */
+  async deleteBySource(organizationId: number, sourceTypes: string[], sourceId: number): Promise<void> {
+    for (const sourceType of sourceTypes) {
+      await this.ledgerRepo.delete({ sourceType, sourceId, organization: { id: organizationId } } as any);
+    }
+  }
+
   async postEntry(
     organizationId: number,
     date: string,

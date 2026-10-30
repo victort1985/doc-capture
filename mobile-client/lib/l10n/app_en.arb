@@ -741,5 +741,15 @@
   "expenseCatUtilities": "Utilities",
   "expenseCatMaterials": "Materials & tools",
   "expenseCatRepairs": "Repairs & service",
-  "expenseCatInsurance": "Insurance"
+  "expenseCatInsurance": "Insurance",
+  "expenseEdit": "Edit",
+  "expenseEditTitle": "Edit expense",
+  "expenseDetailsTitle": "Expense",
+  "expenseReceiptTitle": "Receipt",
+  "expenseNoReceipt": "No receipt attached",
+  "expenseReceiptLoadFailed": "Could not load the receipt",
+  "expenseAmountIls": "Amount, ₪",
+  "expenseUpdated": "Expense updated",
+  "expenseDetailsTax": "Tax report data",
+  "expenseDetailsPayment": "Payment"
 }

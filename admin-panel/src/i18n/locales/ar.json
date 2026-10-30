@@ -87,6 +87,12 @@
     "tilesHint": "اختر فئة أعلاه لرؤية محتوياتها."
   },
   "expenses": {
+    "editExpense": "تعديل المصروف",
+    "edit": "تعديل",
+    "details": "المصروف",
+    "noReceipt": "لا يوجد إيصال مرفق",
+    "receiptLoadFailed": "تعذر تحميل الإيصال",
+    "close": "إغلاق",
     "scanReceipt": "مسح الإيصال",
     "takePhoto": "التقاط صورة",
     "chooseFile": "اختيار ملف / صورة",

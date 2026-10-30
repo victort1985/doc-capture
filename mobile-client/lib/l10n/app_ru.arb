@@ -741,5 +741,15 @@
   "expenseCatUtilities": "Коммунальные",
   "expenseCatMaterials": "Материалы и инструменты",
   "expenseCatRepairs": "Ремонт и сервис",
-  "expenseCatInsurance": "Страховка"
+  "expenseCatInsurance": "Страховка",
+  "expenseEdit": "Изменить",
+  "expenseEditTitle": "Редактирование расхода",
+  "expenseDetailsTitle": "Расход",
+  "expenseReceiptTitle": "Чек",
+  "expenseNoReceipt": "Чек не прикреплён",
+  "expenseReceiptLoadFailed": "Не удалось загрузить чек",
+  "expenseAmountIls": "Сумма, ₪",
+  "expenseUpdated": "Расход обновлён",
+  "expenseDetailsTax": "Данные для налоговой",
+  "expenseDetailsPayment": "Оплата"
 }

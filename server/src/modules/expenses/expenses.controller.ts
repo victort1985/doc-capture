@@ -1,9 +1,10 @@
-import { BadRequestException, Body, Controller, Get, Param, ParseIntPipe, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, ParseIntPipe, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
 import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ExpensesService } from './expenses.service';
 import { ExpenseReceiptParserService } from './expense-receipt-parser.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
+import { UpdateExpenseDto } from './dto/update-expense.dto';
 import { CreateSupplierInvoiceDto } from './dto/create-supplier-invoice.dto';
 import { MarkSupplierInvoicePaidDto } from './dto/mark-supplier-invoice-paid.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -77,6 +78,16 @@ export class ExpensesController {
     };
   }
 
+  @Get(':id')
+  findOne(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser) {
+    return this.service.findExpense(id, user.organizationId);
+  }
+
+  @Patch(':id')
+  update(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateExpenseDto, @CurrentUser() user: ReqUser) {
+    return this.service.updateExpense(id, user.organizationId, dto);
+  }
+
   @Post(':id/receipt')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
   attachReceipt(
@@ -90,7 +101,10 @@ export class ExpensesController {
   @Get(':id/receipt')
   async getReceipt(@Param('id', ParseIntPipe) id: number, @CurrentUser() user: ReqUser, @Res() res: Response) {
     const buffer = await this.service.getExpenseReceipt(id, user.organizationId, user.id);
-    res.set({ 'Content-Type': 'application/octet-stream', 'Content-Disposition': `inline; filename="receipt-${id}"` });
+    const type = buffer[0] === 0xff && buffer[1] === 0xd8 ? 'image/jpeg'
+      : buffer[0] === 0x89 && buffer[1] === 0x50 ? 'image/png'
+      : buffer.subarray(0, 4).toString() === '%PDF' ? 'application/pdf' : 'application/octet-stream';
+    res.set({ 'Content-Type': type, 'Content-Disposition': `inline; filename="receipt-${id}"` });
     res.send(buffer);
   }
 }
