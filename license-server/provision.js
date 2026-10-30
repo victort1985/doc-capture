@@ -42,6 +42,7 @@ async function provisionTenant({ slug, customerName, port, maxDevices, licenseKe
     '-n', 'bash', scriptPath,
     slug, customerName, String(port), String(maxDevices || 5),
     dbPassword, licenseKey, licenseServerUrl,
+    process.env.TENANT_BASE_DOMAIN || 'vixor.app',
   ]);
 }
 

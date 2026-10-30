@@ -25,6 +25,8 @@ MAX_DEVICES="${4:-5}"
 ARG_DB_PASSWORD="${5:-}"
 ARG_LICENSE_KEY="${6:-}"
 ARG_LICENSE_SERVER_URL="${7:-}"
+# public base domain tenants live under (sign-<slug>.<domain> is derived from it)
+BASE_DOMAIN="${8:-${TENANT_BASE_DOMAIN:-vixor.app}}"
 
 if [[ ! "$SLUG" =~ ^[a-z0-9-]+$ ]]; then
   echo "ERROR: slug must be lowercase letters, digits, and dashes only (used in DB name, systemd instance name, tenants/ folder)." >&2
@@ -80,6 +82,7 @@ sed \
   -e "s|__DB_DATABASE__|$DB_NAME|" \
   -e "s|__LICENSE_SERVER_URL__|$LICENSE_SERVER_URL|" \
   -e "s|__SLUG__|$SLUG|g" \
+  -e "s|__BASE_DOMAIN__|$BASE_DOMAIN|g" \
   "$SOURCE_DIR/scripts/tenant.env.template" > "$TENANT_DIR/.env"
 chown -R doccapture:doccapture "$TENANT_DIR"
 
@@ -150,12 +153,11 @@ Done. Next steps:
 2. Point a subdomain at this instance (nginx/Caddy), proxying to
    127.0.0.1:$PORT — e.g. company-a.vixor-erp.com
 
-2b. ALSO add a Cloudflare Tunnel route + DNS record for
-    sign.$SLUG.doc-capture.app -> 127.0.0.1:$PORT (same target as
-    step 2, just a second hostname on the same tenant process).
-    Without this, remote delivery-note signing links for this tenant
-    will always show "link not found" — see the SIGN_BASE_URL comment
-    in $TENANT_DIR/.env for why.
+2b. Remote delivery-note signing links use sign-$SLUG.$BASE_DOMAIN
+    (SIGN_BASE_URL in $TENANT_DIR/.env). When provisioned from the
+    license-server admin UI the Cloudflare tunnel route + DNS record
+    for it are created automatically; for a manual run, add
+    sign-$SLUG.$BASE_DOMAIN -> 127.0.0.1:$PORT yourself.
 
 3. Give the customer their license key: $LICENSE_KEY
 

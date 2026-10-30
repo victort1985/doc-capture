@@ -128,15 +128,22 @@ async function provisionTenantHostname(slug, port) {
   const hostname = `${slug}.${baseDomain}`;
   await addTunnelHostname(hostname, port);
   await addDnsRecord(hostname);
+  // Second hostname on the same tenant process for remote delivery-note signing links
+  // (server/src/main.ts serves the signing page for hosts starting with "sign-"). One DNS
+  // level only: the free wildcard certificate doesn't cover sign.<slug>.<domain>.
+  const signHost = `sign-${slug}.${baseDomain}`;
+  await addTunnelHostname(signHost, port);
+  await addDnsRecord(signHost);
   return `https://${hostname}`;
 }
 
 /** Full teardown: DNS record + tunnel ingress rule. */
 async function deprovisionTenantHostname(slug) {
   const baseDomain = process.env.TENANT_BASE_DOMAIN || 'vixor.app';
-  const hostname = `${slug}.${baseDomain}`;
-  await removeDnsRecord(hostname);
-  await removeTunnelHostname(hostname);
+  for (const hostname of [`${slug}.${baseDomain}`, `sign-${slug}.${baseDomain}`]) {
+    await removeDnsRecord(hostname);
+    await removeTunnelHostname(hostname);
+  }
 }
 
 /** Which of the four required variables are still missing from .env (for a clear message). */

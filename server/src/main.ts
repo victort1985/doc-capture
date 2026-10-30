@@ -84,7 +84,8 @@ async function bootstrap() {
   // Must be registered early so it runs before admin panel static middleware.
   xApp.use((req: any, res: any, next: any) => {
     const host: string = (req.headers.host || '').toLowerCase();
-    if (host.startsWith('sign.')) {
+    // `sign.<domain>` (shared) or `sign-<tenant>.<domain>` (per-tenant, one DNS level so the free wildcard cert covers it)
+    if (host.startsWith('sign.') || host.startsWith('sign-')) {
       // Extract token from path: /TOKEN or /TOKEN/submit
       const parts = req.path.replace(/^\//, '').split('/');
       req.params = req.params || {};
