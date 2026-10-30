@@ -61,6 +61,13 @@ describe('amount parsing', () => {
   it('ignores dates, times, percents and long ids', () => expect(amountsInLine('26/06/2026 14:32 18% 5133181792 45.50')).toEqual([45.5]));
 });
 
+describe('card last 4', () => {
+  it.each([
+    ['אשראי ויזה ****0540', '0540'], ['Card XXXX-XXXX-XXXX-0540', '0540'], ['כרטיס אשראי xxxxxxxxxxxx0540', '0540'],
+    ['Visa ending in 0540', '0540'], ['ספרות אחרונות: 0540', '0540'], ['Оплата картой VISA •••• 0540', '0540'],
+  ])('%s', (line, last4) => expect(extractReceipt(`Shop Ltd\n${line}\nTotal 10.00`).cardLast4).toBe(last4));
+});
+
 describe('receipt extraction', () => {
   it('Hebrew tax invoice-receipt', () => {
     const r = extractReceipt(HE);

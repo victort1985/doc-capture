@@ -255,8 +255,27 @@ export function extractReceipt(rawText: string, forcedLanguage?: ReceiptLanguage
   const payText = lines.join('\n');
   outerPay: for (const v of vocabs) for (const [re, m] of v.payment) { if (re.test(payText)) { paymentMethod = m; break outerPay; } }
   let cardLast4: string | null = null;
-  const c4 = payText.match(/(?:\*{2,}|[xX]{2,}|•{2,}|\.{3,})\s*(\d\s?\d\s?\d\s?\d)(?!\d)/) || payText.match(/(?:כרטיס|card|карт[аы]|بطاقة)\D{0,16}(\d{4})(?!\d)/i);
-  if (c4) { cardLast4 = c4[1].replace(/\s/g, ''); paymentMethod = paymentMethod ?? 'credit_card'; conf.cardLast4 = 'high'; }
+  const cardPatterns: RegExp[] = [
+    // masked number: ****0540, XXXX 0540, xxxx-xxxx-xxxx-0540, •••• 0540
+    /(?:\*{2,}|[xX]{2,}|•{2,}|\.{3,}|#{2,})[\s-]*(\d\s?\d\s?\d\s?\d)(?!\d)/,
+    // explicit "last 4 digits" wording in all supported languages
+    /(?:ספרות\s*אחרונות|סיפרות\s*אחרונות|last\s*(?:4|four)(?:\s*digits)?|ending(?:\s*in)?|заканчивается\s*на|последние\s*4\s*цифры|آخر\s*4\s*أرقام)\D{0,12}(\d{4})(?!\d)/i,
+    // label followed by the digits
+    /(?:כרטיס|card|карт[аы]|بطاقة)\D{0,16}(\d{4})(?!\d)/i,
+  ];
+  for (const re of cardPatterns) {
+    const m = payText.match(re);
+    if (m) { cardLast4 = m[1].replace(/\s/g, ''); break; }
+  }
+  if (!cardLast4) {
+    // last resort: a lone 4-digit number on a line that talks about a card / credit payment
+    for (const l of lines) {
+      if (!/אשראי|ויזה|מאסטר|ישראכרט|דיינרס|כרטיס|visa|master|isracard|amex|карт|بطاقة/i.test(l)) continue;
+      const nums = [...l.replace(/\d{1,4}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/g, ' ').matchAll(/(?<![\d.,])(\d{4})(?![\d.,])/g)].map((x) => x[1]).filter((n) => !/^(19|20)\d\d$/.test(n));
+      if (nums.length) { cardLast4 = nums[nums.length - 1]; conf.cardLast4 = 'low'; break; }
+    }
+  }
+  if (cardLast4) { paymentMethod = paymentMethod ?? 'credit_card'; if (!conf.cardLast4) conf.cardLast4 = 'high'; }
   let cardType: string | null = null;
   for (const [re, name] of CARD_TYPES) if (re.test(payText)) { cardType = name; break; }
   if (cardType) paymentMethod = paymentMethod === 'cash' ? 'cash' : 'credit_card';

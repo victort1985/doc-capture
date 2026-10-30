@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
@@ -428,8 +429,20 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.expenseReceiptUploadError)));
       }
       if (mounted) Navigator.of(context).pop(true);
-    } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.expenseSaveError)));
+    } catch (e) {
+      // show the server's reason (validation message / HTTP status) so a failure is diagnosable
+      var detail = '';
+      if (e is DioException) {
+        final d = e.response?.data;
+        if (d is Map && d['message'] != null) {
+          detail = d['message'] is List ? (d['message'] as List).join('; ') : d['message'].toString();
+        } else if (e.response?.statusCode != null) {
+          detail = 'HTTP ${e.response!.statusCode}';
+        }
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(detail.isEmpty ? l10n.expenseSaveError : '${l10n.expenseSaveError}: $detail')));
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
