@@ -164,11 +164,17 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
     double? num_(String k) => (f[k] is num) ? (f[k] as num).toDouble() : null;
     void mark(String k) => auto[k] = conf[k] ?? 'high';
 
-    final vendor = str('vendorName');
+    // store (trade) name -> vendor field; registered legal name -> description
+    final legal = str('vendorName');
+    final brand = str('brandName');
+    final vendor = brand ?? legal;
     if (vendor != null) {
       _vendorController.text = vendor;
-      if (_descriptionController.text.trim().isEmpty) _descriptionController.text = vendor;
       mark('vendorName');
+    }
+    if (legal != null && _descriptionController.text.trim().isEmpty) {
+      _descriptionController.text = legal;
+      auto['description'] = conf['vendorName'] ?? 'high';
     }
     final taxId = str('vendorTaxId');
     if (taxId != null) { _vendorTaxIdController.text = taxId; mark('vendorTaxId'); }

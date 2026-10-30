@@ -331,7 +331,7 @@ function PaymentMethodFields({ method, setMethod, details, setDetails }: {
 
 type Conf = 'high' | 'low';
 interface ScanFields {
-  language: string; vendorName: string | null; vendorTaxId: string | null; documentType: string | null; documentNumber: string | null;
+  language: string; vendorName: string | null; brandName?: string | null; vendorTaxId: string | null; documentType: string | null; documentNumber: string | null;
   allocationNumber: string | null; transactionDate: string | null; total: number | null; vatAmount: number | null; vatRate: number | null;
   currency: string | null; paymentMethod: string | null; cardLast4: string | null; cardType: string | null; approvalNumber: string | null;
   installments: number | null; categoryCode: string | null; confidence: Record<string, Conf>;
@@ -401,7 +401,10 @@ function CreateExpenseModal({ onClose, onCreated }: { onClose: () => void; onCre
     const a: Record<string, Conf> = {};
     const mark = (name: string, v: unknown, c?: Conf) => { if (v != null && v !== '') a[name] = c ?? 'high'; };
     const conf = f.confidence ?? {};
-    if (f.vendorName) { setVendorName(f.vendorName); setDescription(prev => prev.trim() ? prev : f.vendorName!); mark('vendorName', f.vendorName, conf.vendorName); mark('description', f.vendorName, conf.vendorName); }
+    // store (trade) name -> vendor field; registered legal name -> description
+    const storeName = f.brandName || f.vendorName;
+    if (storeName) { setVendorName(storeName); mark('vendorName', storeName, f.brandName ? conf.brandName : conf.vendorName); }
+    if (f.vendorName) { setDescription(prev => prev.trim() ? prev : f.vendorName!); mark('description', f.vendorName, conf.vendorName); }
     if (f.vendorTaxId) { setVendorTaxId(f.vendorTaxId); mark('vendorTaxId', f.vendorTaxId, conf.vendorTaxId); }
     if (f.documentType) { setDocumentType(f.documentType); mark('documentType', f.documentType, conf.documentType); }
     if (f.documentNumber) { setDocumentNumber(f.documentNumber); mark('documentNumber', f.documentNumber, conf.documentNumber); }

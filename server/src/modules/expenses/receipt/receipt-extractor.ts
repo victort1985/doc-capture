@@ -325,7 +325,7 @@ export function extractReceipt(rawText: string, forcedLanguage?: ReceiptLanguage
   if (vendorName) {
     vendorName = vendorName.replace(/[|_~=*#]+/g, ' ');
     if (/[\u05d0-\u05ea]/.test(vendorName)) vendorName = vendorName.replace(/(?:^|\s)[A-Za-z?!.:;]{1,4}(?=\s|$)/g, ' '); // stray Latin OCR junk inside a Hebrew name
-    vendorName = vendorName.replace(/\s{2,}/g, ' ').trim().slice(0, 80); conf.vendorName = withSuffix ? 'high' : 'low'; }
+    vendorName = vendorName.replace(/\s{2,}/g, ' ').trim().slice(0, 80).replace(/בע["”״]$/, 'בע"מ'); conf.vendorName = withSuffix ? 'high' : 'low'; }
 
   // trade name: Israeli card terminals print "שם מסוף: <store>" — usually the recognisable brand
   let brandName: string | null = null;
