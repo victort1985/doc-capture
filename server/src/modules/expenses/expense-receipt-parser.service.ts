@@ -71,48 +71,61 @@ export class ExpenseReceiptParserService {
         imageBuf = fileBuffer;
       }
 
-      // 1) crop + straighten + clean
-      const { image: scan, cropped } = await this.prepareScan(imageBuf);
+      // 1) crop + straighten + clean (the cleaned image is what gets stored)
+      const prepared = await this.prepareScan(imageBuf);
+      const cropped = prepared.cropped;
+      let scan = prepared.image;
+      let ocrBase = prepared.ocrBase;
 
-      // 2) OCR: detect language first, then read with the right model
+      // 2) OCR: detect the language first, then read with that language's model
       const installed = await this.getInstalledLangs();
       const wanted = (Object.keys(TESS_LANG) as ReceiptLanguage[]).filter((l) => installed.has(TESS_LANG[l]));
       for (const l of Object.keys(TESS_LANG) as ReceiptLanguage[]) {
         if (!installed.has(TESS_LANG[l])) warnings.push(`OCR language pack "${TESS_LANG[l]}" is not installed on the server (${l} receipts will read poorly)`);
       }
-      const ocrInput = await this.ocrReadyImage(scan);
+      const allLangs = wanted.map((l) => TESS_LANG[l]).join('+') || 'eng';
       const imgPath = path.join(tmpDir, 'scan.png');
-      await fs.writeFile(imgPath, ocrInput);
+      const readable = (g: { counts: Record<ReceiptLanguage, number> }) => g.counts.he + g.counts.ru + g.counts.ar + g.counts.en;
 
-      let text = await this.ocr(imgPath, wanted.map((l) => TESS_LANG[l]).join('+') || 'eng', 6);
+      await fs.writeFile(imgPath, await this.grayPng(ocrBase, 1));
+      let text = await this.ocr(imgPath, allLangs, 6);
       let guess = detectLanguage(text);
-      let rotatedScan = scan;
       // sideways / upside-down photo: nothing readable → try the other orientations
-      if (guess.counts.he + guess.counts.ru + guess.counts.ar + guess.counts.en < 25) {
+      if (readable(guess) < 25) {
         for (const angle of [90, 270, 180]) {
-          const rot = await sharp(ocrInput).rotate(angle).png().toBuffer();
-          await fs.writeFile(imgPath, rot);
-          const t = await this.ocr(imgPath, wanted.map((l) => TESS_LANG[l]).join('+') || 'eng', 6);
+          const rotated = await sharp(ocrBase).rotate(angle).toBuffer();
+          await fs.writeFile(imgPath, await this.grayPng(rotated, 1));
+          const t = await this.ocr(imgPath, allLangs, 6);
           const g = detectLanguage(t);
-          const readable = g.counts.he + g.counts.ru + g.counts.ar + g.counts.en;
-          if (readable > guess.counts.he + guess.counts.ru + guess.counts.ar + guess.counts.en) {
-            text = t; guess = g;
-            rotatedScan = await sharp(scan).rotate(angle).jpeg({ quality: 88 }).toBuffer();
-            await fs.writeFile(imgPath, rot);
+          if (readable(g) > readable(guess)) {
+            text = t; guess = g; ocrBase = rotated;
+            scan = await sharp(scan).rotate(angle).jpeg({ quality: 88 }).toBuffer();
           }
         }
-        if (rotatedScan !== scan) await fs.writeFile(imgPath, await this.ocrReadyImage(rotatedScan));
       }
+      const rotatedScan = scan;
 
-      // second pass with the detected language's model (+ English for brand names / card networks)
+      // second pass with the detected language's model (+ English for brand names / card networks),
+      // on two renderings of the photo; the one that yields more fields wins
       const lang = guess.language;
       const langs = [TESS_LANG[lang], 'eng'].filter((x, i, a) => installed.has(x) && a.indexOf(x) === i);
-      if (langs.length && !(langs.length === wanted.length)) {
-        const refined = await this.ocr(imgPath, langs.join('+'), 4);
-        if (refined.replace(/\s/g, '').length >= text.replace(/\s/g, '').length * 0.6) text = refined;
+      let best = { text, fields: extractReceipt(text, lang), score: -1 };
+      best.score = this.fieldScore(best.fields);
+      if (langs.length) {
+        const meta = await sharp(ocrBase).metadata();
+        const scales = (meta.width ?? 0) < 1400 ? [1, 3] : [1];
+        for (const scale of scales) {
+          await fs.writeFile(imgPath, await this.grayPng(ocrBase, scale));
+          const t = await this.ocr(imgPath, langs.join('+'), 6);
+          if (t.replace(/\s/g, '').length < 20) continue;
+          const f = extractReceipt(t, lang);
+          const sc = this.fieldScore(f);
+          if (sc > best.score) best = { text: t, fields: f, score: sc };
+        }
       }
+      text = best.text;
 
-      const fields = extractReceipt(text, lang);
+      const fields = best.fields;
       return { fields, scanImage: rotatedScan, scanMimeType: 'image/jpeg', cropped, warnings, ocrLanguages: langs, rawText: text };
     } catch (err: any) {
       this.logger.error(`Receipt scan failed: ${err?.message}`);
@@ -123,7 +136,7 @@ export class ExpenseReceiptParserService {
   }
 
   /** Auto-rotate (EXIF) → find the receipt's edges → perspective-correct → de-shadow → JPEG. */
-  private async prepareScan(input: Buffer): Promise<{ image: Buffer; cropped: boolean }> {
+  private async prepareScan(input: Buffer): Promise<{ image: Buffer; cropped: boolean; ocrBase: Buffer }> {
     let base: Buffer = await sharp(input).rotate().toBuffer();
     const meta = await sharp(base).metadata();
     // cap huge phone photos: 3000px on the long side is plenty for OCR and keeps the file small
@@ -148,16 +161,28 @@ export class ExpenseReceiptParserService {
     }
     const cleaned = await applyFilters(working, { mode: 'original', removeShadows: true });
     const image = await sharp(cleaned).jpeg({ quality: 88 }).toBuffer();
-    return { image, cropped };
+    // OCR reads the cropped but UNCLEANED photo: shadow removal / white balance help the
+    // stored scan look clean, but measurably hurt thin thermal-print text for tesseract.
+    return { image, cropped, ocrBase: working };
   }
 
-  /** Grayscale + normalise + upscale small images: what tesseract reads best. */
-  private async ocrReadyImage(img: Buffer): Promise<Buffer> {
-    const meta = await sharp(img).metadata();
-    const minSide = Math.min(meta.width ?? 0, meta.height ?? 0);
-    let p = sharp(img).greyscale().normalise();
-    if (minSide && minSide < 1200) p = p.resize({ width: Math.round((meta.width ?? 1200) * (1200 / minSide)), kernel: 'lanczos3' });
-    return p.sharpen().png().toBuffer();
+  /** Plain grayscale rendering (optionally upscaled) — tesseract reads thin thermal-print
+   * text best from the untouched grayscale photo; heavy contrast/threshold processing hurt. */
+  private async grayPng(img: Buffer, scale: number): Promise<Buffer> {
+    let p = sharp(img).greyscale();
+    if (scale !== 1) {
+      const meta = await sharp(img).metadata();
+      p = p.resize({ width: Math.round((meta.width ?? 1000) * scale), kernel: 'cubic' });
+    }
+    return p.png().toBuffer();
+  }
+
+  /** How complete an extraction looks — used to pick between OCR renderings. */
+  private fieldScore(f: ExtractedReceipt): number {
+    const keys: Array<keyof ExtractedReceipt> = ['vendorName', 'vendorTaxId', 'documentNumber', 'transactionDate', 'total', 'vatAmount', 'cardLast4', 'approvalNumber', 'documentType'];
+    let sc = keys.filter((k) => f[k] != null).length;
+    for (const k of Object.keys(f.confidence)) if ((f.confidence as any)[k] === 'high') sc += 0.5;
+    return sc;
   }
 
   private async ocr(imgPath: string, langs: string, psm: number): Promise<string> {

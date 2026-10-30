@@ -138,4 +138,20 @@ describe('receipt extraction', () => {
     expect(r.confidence.total).toBe('low');
     expect(extractReceipt('').total).toBeNull();
   });
+  it('real noisy Hebrew card receipt (zero-VAT)', () => {
+    const text = [
+      '“Ue te ae a |', 'זול סטרוק', 'הודיה ארל סחר בע"', 'חטיבת גולני 38 אילח', 'ח.פ 515317337',
+      'האריך: 21:07 28/04/2026', 'חשברניות ‎On‏ קבלה; 2127108', 'ניקוי בלים 14.90 1 14,90',
+      'סה"כ פריטים: 3', 'סה"כ לא חייב בנוע"זו 56,70', 'סה"כ חי יב 0.00', 'מע"מ 18% 0,00',
+      'ברטים אשראי 70 50', 'שם מסוף: זול סטוק noon', 'מספר כרטים: 0540', 'אישור; 0028670', 'סברם; 56.70',
+    ].join('\n');
+    const r = extractReceipt(text);
+    expect(r.cardLast4).toBe('0540');
+    expect(r.total).toBe(56.7);
+    expect(r.vatAmount).toBe(0);
+    expect(r.documentNumber).toBe('2127108');
+    expect(r.transactionDate).toBe('2026-04-28');
+    expect(r.vendorName).toContain('סחר');
+    expect(r.brandName).toBe('זול סטוק');
+  });
 });

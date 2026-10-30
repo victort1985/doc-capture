@@ -36,17 +36,19 @@ const num = String.raw`(\d{5,12})`;
 
 export const VOCAB: Record<ReceiptLanguage, Vocabulary> = {
   he: {
-    totalLabels: [/סה"?כ\s*(?:כולל\s*מע"?מ\s*)?לתשלום/, /לתשלום/, /סה"?כ\s*כולל\s*מע"?מ/, /סה"?כ\s*חיוב/, /סה"?כ/, /סכום\s*כולל/, /סכום/],
-    notTotal: /ביניים|לפני\s*מע"?מ|ללא\s*מע"?מ|הנחה|עודף|מזומן\s*שולם|שולם\s*במזומן|נקודות/,
+    totalLabels: [/סה"?[כב]\s*(?:כולל\s*מע"?מ\s*)?לתשלום/, /לתשלום/, /ל[תו]?שלום\s*[:;]/, /סה"?[כב]\s*כולל\s*מע"?מ/, /סה"?[כב]\s*חיוב/, /סה"?[כב]/, /סכום\s*כולל/, /סכום/],
+    notTotal: /פריטים|לא\s*חייב|חייב\s*במע"?מ|ביניים|לפני\s*מע"?מ|ללא\s*מע"?מ|הנחה|עודף|מזומן\s*שולם|שולם\s*במזומן|נקודות/,
     vatLabels: [/מע"?מ/, /מעמ\b/],
     beforeVatLabels: [/לפני\s*מע"?מ/, /ללא\s*מע"?מ/, /סכום\s*נטו/, /נטו/],
-    dateLabels: /תאריך|תא'/,
+    dateLabels: /[תה]אריך|תא'/,
     dueDateLabels: /לתשלום\s*עד|תאריך\s*(?:פירעון|תשלום|יעד)|פירעון/,
     taxId: [
       new RegExp(String.raw`(?:ע\.?\s?מ\.?|עוסק\s*מורשה|עוסק\s*פטור|ח\.?\s?פ\.?|ח"פ|מס'?\s*עוסק|מספר\s*עוסק|מס'?\s*חברה)\D{0,12}(\d{8,9})`),
     ],
     docNumber: [
       /(?:חשבונית(?:\s*מס)?(?:\s*\/?\s*קבלה)?|קבלה|מסמך|אסמכתא|תעודה)\s*(?:מס(?:פר)?'?|#|:|-|\.)*\s*(\d{3,12})/,
+      // OCR often garbles "חשבונית מס" — tolerate junk between the title and the number
+      /(?:חש\S{2,6}|קבלה)[^\d\n]{0,14}?(\d{5,12})/,
     ],
     allocation: [new RegExp(String.raw`(?:מס(?:פר)?'?\s*)?הקצאה\D{0,10}${num}`)],
     approval: [/(?:מס(?:פר)?'?\s*)?אישור\D{0,8}(\d{4,10})/, /אסמכתא\D{0,6}(\d{4,12})/],
@@ -56,7 +58,7 @@ export const VOCAB: Record<ReceiptLanguage, Vocabulary> = {
       'יולי': 7, 'אוגוסט': 8, 'ספטמבר': 9, 'אוקטובר': 10, 'נובמבר': 11, 'דצמבר': 12,
     },
     docTypes: [
-      [/חשבונית\s*מס\s*[\/\\]?\s*קבלה/, 'tax_invoice_receipt'],
+      [/חשבונית\s*מס\s*[\/\\]?\s*קבלה|חש\S{2,6}\s*\S{0,4}\s*[\/\\]?\s*קבלה/, 'tax_invoice_receipt'],
       [/חשבונית\s*זיכוי|זיכוי\s*חשבונית/, 'credit_note'],
       [/חשבונית\s*מס/, 'tax_invoice'],
       [/חשבונית\s*עסקה/, 'invoice'],
@@ -64,7 +66,7 @@ export const VOCAB: Record<ReceiptLanguage, Vocabulary> = {
       [/חשבונית/, 'invoice'],
     ],
     notVendor: /סה"?כ|מע"?מ|חשבונית|קבלה|העתק|מקור|תאריך|שעה|טלפון|טל['.]|פקס|עוסק|ח\.?פ|לכבוד|כתובת/,
-    legalSuffix: /בע"?מ|\(?\s*1990\s*\)?|עמותה|שותפות|עוסק/,
+    legalSuffix: /בע"?מ|בע["”']\s*$|בע\S?מ|\(?\s*1990\s*\)?|עמותה|שותפות|עוסק/,
     payment: [
       [/ביט\b|\bbit\b/i, 'bit'], [/העברה\s*בנקאית|העברת\s*בנק/, 'bank_transfer'], [/שיק/, 'check'],
       [/אשראי|ויזה|מאסטר|מסטרקארד|ישראכרט|דיינרס|כאל|אמריקן|כרטיס|visa|master/i, 'credit_card'], [/מזומן/, 'cash'],
@@ -72,7 +74,7 @@ export const VOCAB: Record<ReceiptLanguage, Vocabulary> = {
   },
   ru: {
     totalLabels: [/итого\s*к\s*оплате/i, /к\s*оплате/i, /всего\s*к\s*оплате/i, /итого\s*с\s*ндс/i, /итого/i, /всего/i, /сумма\s*чека/i, /сумма/i],
-    notTotal: /подытог|без\s*ндс|скидк|сдача|бонус|баллов/i,
+    notTotal: /позиц|подытог|без\s*ндс|скидк|сдача|бонус|баллов/i,
     vatLabels: [/ндс/i],
     beforeVatLabels: [/без\s*ндс/i, /сумма\s*без/i],
     dateLabels: /дата/i,
@@ -104,7 +106,7 @@ export const VOCAB: Record<ReceiptLanguage, Vocabulary> = {
   },
   en: {
     totalLabels: [/(?:total|amount|balance)\s*due/i, /grand\s*total/i, /total\s*(?:amount\s*)?(?:incl\.?|including)\s*(?:vat|tax)/i, /total\s*payable/i, /amount\s*paid/i, /\btotal\b/i, /\bamount\b/i, /\bsum\b/i],
-    notTotal: /sub\s*-?\s*total|before\s*(?:vat|tax)|excl(?:uding|\.)?\s*(?:vat|tax)|net\s*total|discount|change\b|tip\b/i,
+    notTotal: /\bitems?\b|sub\s*-?\s*total|before\s*(?:vat|tax)|excl(?:uding|\.)?\s*(?:vat|tax)|net\s*total|discount|change\b|tip\b/i,
     vatLabels: [/\bvat\b/i, /\bgst\b/i, /\bsales\s*tax\b/i, /\btax\b/i],
     beforeVatLabels: [/before\s*(?:vat|tax)/i, /excl(?:uding|\.)?\s*(?:vat|tax)/i, /net\s*(?:amount|total)/i, /sub\s*-?\s*total/i],
     dateLabels: /\bdate\b/i,

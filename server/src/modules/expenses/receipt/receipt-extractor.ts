@@ -10,6 +10,8 @@ export interface ExtractedReceipt {
   languageConfidence: number;
   vendorName: string | null;
   vendorTaxId: string | null;
+  /** Trade name / store (e.g. from the card terminal line), when it differs from the legal entity name. */
+  brandName: string | null;
   documentType: DocType | null;
   documentNumber: string | null;
   allocationNumber: string | null;
@@ -66,14 +68,14 @@ const STRIP_FOR_AMOUNTS = [
 ];
 
 /** All plausible money amounts on a line, in reading order. */
-export function amountsInLine(line: string, requireDecimals = false): number[] {
+export function amountsInLine(line: string, requireDecimals = false, allowZero = false): number[] {
   let l = line;
   for (const re of STRIP_FOR_AMOUNTS) l = l.replace(re, ' ');
   const out: number[] = [];
   for (const m of l.matchAll(/(?<![\w.,])\d{1,3}(?:[ ,.]\d{3})+(?:[.,]\d{1,2})?(?![\d])|(?<![\w.,])\d+[.,]\d{1,2}(?!\d)|(?<![\w.,])\d+(?![\w.,]\d)/g)) {
     if (requireDecimals && !/[.,]\d{1,2}$/.test(m[0])) continue;
     const v = parseAmount(m[0]);
-    if (v != null && v > 0 && v < 10_000_000) out.push(v);
+    if (v != null && (v > 0 || (allowZero && v === 0)) && v < 10_000_000) out.push(v);
   }
   return out;
 }
@@ -152,7 +154,18 @@ export function extractReceipt(rawText: string, forcedLanguage?: ReceiptLanguage
   // --- tax id
   let vendorTaxId: string | null = null;
   const tid = firstMatch((v) => v.taxId);
-  if (tid) { vendorTaxId = tid[1]; conf.vendorTaxId = 'high'; }
+  if (tid) {
+    vendorTaxId = tid[1];
+    conf.vendorTaxId = language === 'he' && vendorTaxId.length <= 9 && !isValidIsraeliId(vendorTaxId) ? 'low' : 'high';
+  }
+  if (!vendorTaxId && language === 'he') {
+    // label unreadable: a 9-digit number near the top that passes the Israeli check digit is the business number
+    for (const l of lines.slice(0, 14)) {
+      const cleaned = l.replace(/\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}/g, ' ');
+      const m = [...cleaned.matchAll(/(?<![\d.,-])(\d{8,9})(?![\d.,-])/g)].map((x) => x[1]).find(isValidIsraeliId);
+      if (m) { vendorTaxId = m; conf.vendorTaxId = 'low'; break; }
+    }
+  }
 
   // --- document / allocation numbers
   const dn = firstMatch((v) => v.docNumber);
@@ -206,12 +219,22 @@ export function extractReceipt(rawText: string, forcedLanguage?: ReceiptLanguage
         if (rateM && !vatRate) vatRate = parseFloat(rateM[1].replace(',', '.'));
         // skip a line that is the grand-total "incl. VAT" label rather than a VAT line
         if (v.totalLabels.some((t) => t.test(l)) && !/^\s*(?:מע"?מ|ндс|vat|tax)/i.test(l)) continue;
-        const amts = amountsInLine(l.replace(/\d{1,2}(?:[.,]\d+)?\s*%/g, ' '), true);
+        // an explicit "0.00" is a real answer (VAT-exempt receipt), not a miss
+        const amts = amountsInLine(l.replace(/\d{1,2}(?:[.,]\d+)?\s*%/g, ' '), true, true);
         if (amts.length) { vatAmount = amts[amts.length - 1]; conf.vatAmount = 'high'; break; }
       }
       if (vatAmount != null) break;
     }
     if (vatAmount != null) break;
+  }
+  if (vatAmount == null) {
+    // the VAT label itself may be unreadable: a "<rate>% <amount>" line is still a VAT line
+    for (const l of lines) {
+      const m = l.match(/(\d{1,2}(?:[.,]\d+)?)\s*%\s*[^\d]{0,6}(\d+[.,]\d{2})\s*$/);
+      if (m && parseFloat(m[1].replace(',', '.')) >= 5 && parseFloat(m[1].replace(',', '.')) <= 25) {
+        vatRate = parseFloat(m[1].replace(',', '.')); vatAmount = parseAmount(m[2]); conf.vatAmount = 'low'; break;
+      }
+    }
   }
 
   let amountBeforeVat: number | null = null;
@@ -235,10 +258,11 @@ export function extractReceipt(rawText: string, forcedLanguage?: ReceiptLanguage
     if (all.length) { total = Math.max(...all); conf.total = 'low'; }
   }
   if (total != null && vatAmount != null && vatAmount >= total) { vatAmount = null; delete conf.vatAmount; } // a "VAT" figure ≥ total is a mis-read
+  if (vatAmount === 0) { vatRate = 0; conf.vatRate = 'high'; }
   if (vatAmount == null && vatRate != null && total != null && vatRate > 0) {
     vatAmount = round2((total * vatRate) / (100 + vatRate)); conf.vatAmount = 'low';
   }
-  if (vatAmount != null && total != null && vatRate == null) {
+  if (vatAmount != null && vatAmount > 0 && total != null && vatRate == null) {
     const implied = (vatAmount / (total - vatAmount)) * 100;
     const nearest = KNOWN_VAT_RATES.reduce((a, b) => (Math.abs(b - implied) < Math.abs(a - implied) ? b : a));
     if (Math.abs(nearest - implied) < 0.6) { vatRate = nearest; conf.vatRate = 'low'; }
@@ -261,7 +285,7 @@ export function extractReceipt(rawText: string, forcedLanguage?: ReceiptLanguage
     // explicit "last 4 digits" wording in all supported languages
     /(?:ספרות\s*אחרונות|סיפרות\s*אחרונות|last\s*(?:4|four)(?:\s*digits)?|ending(?:\s*in)?|заканчивается\s*на|последние\s*4\s*цифры|آخر\s*4\s*أرقام)\D{0,12}(\d{4})(?!\d)/i,
     // label followed by the digits
-    /(?:כרטיס|card|карт[аы]|بطاقة)\D{0,16}(\d{4})(?!\d)/i,
+    /(?:כרט\S{0,4}|card|карт[аы]|بطاقة)\D{0,16}(\d{4})(?!\d)/i,
   ];
   for (const re of cardPatterns) {
     const m = payText.match(re);
@@ -293,10 +317,23 @@ export function extractReceipt(rawText: string, forcedLanguage?: ReceiptLanguage
     const digits = (l.match(/\d/g) || []).length;
     return letters.length >= 3 && digits <= letters.length && !vocabs.some((v) => v.notVendor.test(l)) && !/^[^\w\u0400-\u04ff\u0590-\u06ff]*$/.test(l);
   };
-  const withSuffix = top.find((l) => isUsable(l) && vocabs.some((v) => v.legalSuffix.test(l)));
-  const firstUsable = top.find(isUsable);
+  const hebDoc = language === 'he';
+  const isUsable2 = (l: string) => isUsable(l) && (!hebDoc || (l.match(/[\u05d0-\u05ea]/g) || []).length >= 3);
+  const withSuffix = top.find((l) => isUsable2(l) && vocabs.some((v) => v.legalSuffix.test(l)));
+  const firstUsable = top.find(isUsable2);
   vendorName = (withSuffix ?? firstUsable ?? null);
-  if (vendorName) { vendorName = vendorName.replace(/[|_~=*#]+/g, ' ').replace(/\s{2,}/g, ' ').trim().slice(0, 80); conf.vendorName = withSuffix ? 'high' : 'low'; }
+  if (vendorName) {
+    vendorName = vendorName.replace(/[|_~=*#]+/g, ' ');
+    if (/[\u05d0-\u05ea]/.test(vendorName)) vendorName = vendorName.replace(/(?:^|\s)[A-Za-z?!.:;]{1,4}(?=\s|$)/g, ' '); // stray Latin OCR junk inside a Hebrew name
+    vendorName = vendorName.replace(/\s{2,}/g, ' ').trim().slice(0, 80); conf.vendorName = withSuffix ? 'high' : 'low'; }
+
+  // trade name: Israeli card terminals print "שם מסוף: <store>" — usually the recognisable brand
+  let brandName: string | null = null;
+  for (const l of lines) {
+    const m = l.match(/שם\s*מסוף\s*[:;]?\s*(.{3,40})$/);
+    if (m) { brandName = m[1].replace(/[|_~=*#]+/g, ' ').replace(/(?:^|\s)[A-Za-z?!.:;]{1,6}(?=\s|$)/g, ' ').replace(/\s{2,}/g, ' ').trim(); break; }
+  }
+  if (brandName) conf.brandName = 'low';
 
   // --- category
   let categoryCode: string | null = null;
@@ -305,10 +342,19 @@ export function extractReceipt(rawText: string, forcedLanguage?: ReceiptLanguage
   if (categoryCode) conf.categoryCode = 'low';
 
   return {
-    language, languageConfidence: guess.confidence, vendorName, vendorTaxId, documentType, documentNumber, allocationNumber,
+    language, languageConfidence: guess.confidence, vendorName, vendorTaxId, brandName, documentType, documentNumber, allocationNumber,
     transactionDate, transactionTime, total, vatAmount, vatRate, amountBeforeVat, currency, paymentMethod, cardLast4, cardType,
     approvalNumber, installments, categoryCode, confidence: conf,
   };
+}
+
+/** Israeli ID / company-number check digit (same algorithm as the teudat zehut). */
+export function isValidIsraeliId(id: string): boolean {
+  const s = id.padStart(9, '0');
+  if (!/^\d{9}$/.test(s)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) { let d = Number(s[i]) * ((i % 2) + 1); if (d > 9) d -= 9; sum += d; }
+  return sum % 10 === 0;
 }
 
 function round2(n: number): number { return Math.round(n * 100) / 100; }
