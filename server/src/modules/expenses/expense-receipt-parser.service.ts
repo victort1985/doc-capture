@@ -137,10 +137,12 @@ export class ExpenseReceiptParserService {
 
   /** Auto-rotate (EXIF) → find the receipt's edges → perspective-correct → de-shadow → JPEG. */
   private async prepareScan(input: Buffer): Promise<{ image: Buffer; cropped: boolean; ocrBase: Buffer }> {
-    let base: Buffer = await sharp(input).rotate().toBuffer();
-    const meta = await sharp(base).metadata();
-    // cap huge phone photos: 3000px on the long side is plenty for OCR and keeps the file small
-    if (Math.max(meta.width ?? 0, meta.height ?? 0) > 3000) base = await sharp(base).resize({ width: 3000, height: 3000, fit: 'inside' }).toBuffer();
+    // Decode + EXIF-rotate + cap the size in ONE pass: 3000px on the long side is plenty for OCR, and
+    // 100–200 MP Android camera photos would otherwise be decoded at full size (memory spike / timeout).
+    const base: Buffer = await sharp(input, { failOn: 'none', limitInputPixels: false })
+      .rotate()
+      .resize({ width: 3000, height: 3000, fit: 'inside', withoutEnlargement: true })
+      .toBuffer();
 
     let cropped = false;
     let working = base;

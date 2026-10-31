@@ -136,13 +136,13 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   }
 
   Future<void> _pickReceiptFromCamera() async {
-    final photo = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 90);
+    final photo = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: 2800, maxHeight: 2800, imageQuality: 88);
     if (photo == null || !mounted) return;
     await _useReceiptPhoto(File(photo.path));
   }
 
   Future<void> _pickReceiptFromGallery() async {
-    final photo = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
+    final photo = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2800, maxHeight: 2800, imageQuality: 88);
     if (photo == null || !mounted) return;
     await _useReceiptPhoto(File(photo.path));
   }
@@ -319,10 +319,22 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
         _scan = scan;
         _applyScan(scan, l10n);
       });
-    } catch (_) {
+    } catch (e) {
       if (mounted) {
         setState(() => _scan = null);
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l10n.expenseScanFailed)));
+        // append the reason (HTTP status / network error) so a failure is diagnosable
+        var detail = '';
+        if (e is DioException) {
+          final d = e.response?.data;
+          if (d is Map && d['message'] != null) {
+            detail = d['message'] is List ? (d['message'] as List).join('; ') : d['message'].toString();
+          } else if (e.response?.statusCode != null) {
+            detail = 'HTTP ${e.response!.statusCode}';
+          } else {
+            detail = e.type.name;
+          }
+        }
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(detail.isEmpty ? l10n.expenseScanFailed : '${l10n.expenseScanFailed} ($detail)')));
       }
     } finally {
       if (mounted) setState(() => _parsingReceipt = false);
