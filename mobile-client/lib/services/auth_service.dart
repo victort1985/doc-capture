@@ -35,6 +35,10 @@ class AuthUser {
 
   bool hasPermission(String key) => permissions[key] ?? false;
 
+  /// Scan / upload permission. Older cached sessions without the key keep
+  /// working until the next login (the server enforces it anyway).
+  bool get canScanUpload => permissions['data.scanUpload'] ?? true;
+
   /// Full name for auto-filling lessor signature etc.
   String get fullName {
     final parts = [firstName, lastName].where((s) => s != null && s.isNotEmpty).toList();

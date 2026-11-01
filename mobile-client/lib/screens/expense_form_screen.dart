@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../l10n/app_localizations.dart';
 import '../services/api_service.dart';
+import '../store/app_state.dart';
 import '../services/expenses_service.dart';
 import '../services/payments_service.dart' show PaymentMethod;
 
@@ -581,6 +582,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final scan = _scan;
+    final canScan = context.read<AppState>().currentUser?.canScanUpload ?? true;
     return Scaffold(
       appBar: AppBar(title: Text(_editing ? l10n.expenseEditTitle : l10n.expenseNew)),
       body: ListView(
@@ -590,7 +592,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
           Row(children: [
             Expanded(
               child: FilledButton.icon(
-                onPressed: _parsingReceipt ? null : _pickReceiptFromCamera,
+                onPressed: (_parsingReceipt || !canScan) ? null : _pickReceiptFromCamera,
                 icon: const Icon(Icons.document_scanner_outlined, size: 18),
                 label: Text(l10n.expenseScanReceipt),
               ),
@@ -598,7 +600,7 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
             const SizedBox(width: 10),
             Expanded(
               child: OutlinedButton.icon(
-                onPressed: _parsingReceipt ? null : _pickReceiptFromGallery,
+                onPressed: (_parsingReceipt || !canScan) ? null : _pickReceiptFromGallery,
                 icon: const Icon(Icons.photo_library_outlined, size: 18),
                 label: Text(l10n.expenseScanFromGallery),
               ),

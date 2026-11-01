@@ -38,6 +38,13 @@ export const FEATURE_KEYS = [
   // reason to ever open the web admin panel; this lets an admin
   // scope who's even allowed to try.
   'system.adminPanelAccess',
+  // Scanning documents/receipts and uploading files or photos into the
+  // company storage — every upload endpoint in the app (scan sessions,
+  // file upload, receipts, call/vehicle/calendar attachments, orders).
+  // Regular users keep it ON by default because they already could do
+  // all of this before the permission existed; an admin can switch it
+  // off per user or per group.
+  'data.scanUpload',
 ] as const;
 
 export type FeatureKey = (typeof FEATURE_KEYS)[number];
@@ -62,6 +69,7 @@ export const ROLE_DEFAULTS: Record<UserRole, Record<FeatureKey, boolean>> = {
     'payroll.viewMonthlyGrossSalary': false,
     'payroll.manageTimeClockEntries': false,
     'system.adminPanelAccess': false,
+    'data.scanUpload': true,
   },
 };
 

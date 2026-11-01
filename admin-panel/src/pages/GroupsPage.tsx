@@ -43,6 +43,7 @@ const FEATURE_KEYS: { key: string; group: string }[] = [
   { key: 'office.debit_notes', group: 'office' },
   { key: 'office.expenses', group: 'office' },
   { key: 'office.rentals', group: 'office' },
+  { key: 'data.scanUpload', group: 'data' },
   { key: 'system.adminPanelAccess', group: 'system' },
 ];
 

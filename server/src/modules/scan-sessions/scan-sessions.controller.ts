@@ -1,3 +1,5 @@
+import { FeatureGuard } from '../../common/guards/feature.guard';
+import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import {
   BadRequestException,
   Body,
@@ -34,6 +36,8 @@ export class ScanSessionsController {
   constructor(private readonly scanSessions: ScanSessionsService) {}
 
   @Post('start')
+  @UseGuards(FeatureGuard)
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
   async start(
     @UploadedFile() file: { originalname: string; buffer: Buffer; mimetype: string },

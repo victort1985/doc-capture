@@ -1,3 +1,5 @@
+import { FeatureGuard } from '../../common/guards/feature.guard';
+import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import {
   Body,
   Controller,
@@ -84,6 +86,8 @@ export class CalendarController {
   }
 
   @Post('events/:id/attachments')
+  @UseGuards(FeatureGuard)
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
   addAttachment(
     @Param('id', ParseIntPipe) id: number,

@@ -45,6 +45,7 @@ const FEATURE_KEYS: { key: string; group: string }[] = [
   { key: 'office.debit_notes', group: 'office' },
   { key: 'office.expenses', group: 'office' },
   { key: 'office.rentals', group: 'office' },
+  { key: 'data.scanUpload', group: 'data' },
   { key: 'system.adminPanelAccess', group: 'system' },
 ];
 
@@ -62,6 +63,7 @@ const ROLE_DEFAULTS: Record<string, Record<string, boolean>> = {
     'office.delivery_notes': false, 'office.quotes': false, 'office.invoices': false, 'office.orders': false, 'office.payments': false,
     'office.returns': false, 'office.credit_notes': false, 'office.debit_notes': false, 'office.expenses': false, 'office.rentals': false,
     'system.adminPanelAccess': false,
+    'data.scanUpload': true,
   },
 };
 

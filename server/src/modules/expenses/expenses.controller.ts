@@ -12,12 +12,16 @@ import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { UserRole } from '../users/entities/user.entity';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { FeatureGuard } from '../../common/guards/feature.guard';
+import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 
 type ReqUser = { id: number; organizationId: number | null };
 
+/** Open to ADMIN and to anyone granted the "Expenses" permission (office.expenses);
+ * scanning / uploading a receipt additionally needs data.scanUpload. */
 @Controller('expenses')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN)
+@UseGuards(JwtAuthGuard, FeatureGuard)
+@RequireFeature('office.expenses')
 export class ExpensesController {
   constructor(
     private readonly service: ExpensesService,
@@ -51,6 +55,7 @@ export class ExpensesController {
    * find it; none of this is ever treated as final — see
    * ExpenseReceiptParserService's own doc comment on reliability. */
   @Post('parse-receipt')
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
   async parseReceipt(@UploadedFile() file: { mimetype: string; buffer: Buffer } | undefined) {
     if (!file) return { amount: null, date: null, vendor: null };
@@ -64,6 +69,7 @@ export class ExpensesController {
    * result for review, and only the person's confirmation creates the
    * expense (POST /expenses) and stores the scan (POST /expenses/:id/receipt). */
   @Post('scan')
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 25 * 1024 * 1024 } }))
   async scan(@UploadedFile() file: { mimetype: string; buffer: Buffer } | undefined) {
     if (!file) throw new BadRequestException('No file uploaded');
@@ -89,6 +95,7 @@ export class ExpensesController {
   }
 
   @Post(':id/receipt')
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
   attachReceipt(
     @Param('id', ParseIntPipe) id: number,

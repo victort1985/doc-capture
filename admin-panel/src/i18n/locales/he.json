@@ -645,6 +645,7 @@
     "phonebook": "פנקס טלפונים",
     "organizations": "ארגונים",
     "office": "משרד (נייד)",
+    "data": "נתונים",
     "system": "מערכת"
   },
   "perm": {
@@ -677,6 +678,7 @@
     "office.debit_notes": "הודעות חיוב",
     "office.expenses": "הוצאות",
     "office.rentals": "השכרות",
+    "data.scanUpload": "סריקה והעלאת נתונים (קבלות, מסמכים, קבצים, תמונות לאחסון)",
     "system.adminPanelAccess": "יכול להתחבר לפאנל הניהול"
   },
   "groups": {

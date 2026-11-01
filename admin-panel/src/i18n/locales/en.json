@@ -645,6 +645,7 @@
     "phonebook": "Phone book",
     "organizations": "Organizations",
     "office": "Office (mobile)",
+    "data": "Data",
     "system": "System"
   },
   "perm": {
@@ -677,6 +678,7 @@
     "office.debit_notes": "Debit notes",
     "office.expenses": "Expenses",
     "office.rentals": "Rentals",
+    "data.scanUpload": "Scanning and uploading data (receipts, documents, files, photos to storage)",
     "system.adminPanelAccess": "Can log into the admin panel"
   },
   "groups": {

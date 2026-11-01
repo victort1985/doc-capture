@@ -645,6 +645,7 @@
     "phonebook": "Телефонная книга",
     "organizations": "Организации",
     "office": "Офис (моб.)",
+    "data": "Данные",
     "system": "Система"
   },
   "perm": {
@@ -677,6 +678,7 @@
     "office.debit_notes": "Дебет-ноты",
     "office.expenses": "Расходы",
     "office.rentals": "Прокат",
+    "data.scanUpload": "Сканирование и загрузка данных (чеки, документы, файлы, фото в хранилище)",
     "system.adminPanelAccess": "Может входить в админ-панель"
   },
   "groups": {

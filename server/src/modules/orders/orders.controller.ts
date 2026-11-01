@@ -1,3 +1,5 @@
+import { FeatureGuard } from '../../common/guards/feature.guard';
+import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import {
   BadRequestException,
   Body,
@@ -54,6 +56,8 @@ export class OrdersController {
    * person gets a chance to review/correct the OCR-extracted fields
    * before anything is actually saved. */
   @Post()
+  @UseGuards(FeatureGuard)
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
   async create(@UploadedFile() file: { buffer: Buffer } | undefined, @CurrentUser() user: RequestUser) {
     if (!file) throw new BadRequestException('No file provided');
@@ -64,6 +68,8 @@ export class OrdersController {
   /** Step 1 of the review flow: runs OCR, returns extracted fields
    * plus a short-lived token — nothing is saved yet. */
   @Post('parse')
+  @UseGuards(FeatureGuard)
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
   async parse(@UploadedFile() file: { buffer: Buffer } | undefined, @CurrentUser() user: RequestUser) {
     if (!file) throw new BadRequestException('No file provided');
@@ -88,6 +94,8 @@ export class OrdersController {
   /** Attaches the scanned delivery note as page 2+ and marks the order
    * complete with the given invoice number. */
   @Post(':id/invoice')
+  @UseGuards(FeatureGuard)
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: MAX_FILE_SIZE } }))
   async addInvoice(
     @Param('id', ParseIntPipe) id: number,

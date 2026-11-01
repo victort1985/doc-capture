@@ -1,3 +1,5 @@
+import { FeatureGuard } from '../../common/guards/feature.guard';
+import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import {
   BadRequestException,
   Body,
@@ -37,6 +39,8 @@ export class FilesController {
   ) {}
 
   @Post('upload')
+  @UseGuards(FeatureGuard)
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(
     FilesInterceptor('files', 20, { limits: { fileSize: MAX_FILE_SIZE } }),
   )

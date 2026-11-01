@@ -1,4 +1,6 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import { FeatureGuard } from '../../common/guards/feature.guard';
+import { RequireFeature } from '../../common/decorators/require-feature.decorator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { FleetService } from './fleet.service';
@@ -79,6 +81,8 @@ export class FleetController {
   }
 
   @Post('vehicles/:id/documents')
+  @UseGuards(FeatureGuard)
+  @RequireFeature('data.scanUpload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 20 * 1024 * 1024 } }))
   addDocument(
     @Param('id', ParseIntPipe) id: number,
