@@ -110,6 +110,18 @@ export class FleetService {
 
   // ── Vehicle documents ──────────────────────────────────────────────
 
+  /** Storage folder name: <make>_<year>_<licensePlate> (e.g. טויוטה_2020_12-345-67). */
+  static vehicleFolderName(v: Pick<Vehicle, 'id' | 'make' | 'year' | 'licensePlate'>): string {
+    const clean = (x: unknown) =>
+      String(x ?? '')
+        .replace(/[\\/:*?"<>|\u0000-\u001f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .replace(/^\.+/, '');
+    const name = [v.make, v.year, v.licensePlate].map(clean).filter(Boolean).join('_');
+    return name || String(v.id);
+  }
+
   async addDocument(
     vehicleId: number,
     userId: number,
@@ -120,7 +132,9 @@ export class FleetService {
     const connectionId = settings?.documentStorageConnection?.id;
     const ext = path.extname(file.originalname) || '.pdf';
     const filename = `${Date.now()}${ext}`;
-    const relativePath = `vehicles/${vehicleId}/${filename}`;
+    const vehicle = await this.vehiclesRepo.findOne({ where: { id: vehicleId } });
+    if (!vehicle) throw new NotFoundException('Vehicle not found');
+    const relativePath = `vehicles/${FleetService.vehicleFolderName(vehicle)}/${filename}`;
 
     const doc = this.docsRepo.create({
       vehicle: { id: vehicleId } as any,
