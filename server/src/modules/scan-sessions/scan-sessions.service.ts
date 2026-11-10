@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Cron } from '@nestjs/schedule';
 import sharp from 'sharp';
+import { normalizePhoto } from '../../common/imaging/normalize-photo';
 import { PDFDocument } from 'pdf-lib';
 import { ScanSession } from './entities/scan-session.entity';
 import { StartScanDto } from './dto/start-scan.dto';
@@ -53,7 +54,7 @@ export class ScanSessionsService {
       );
     }
 
-    const rotated = await sharp(file.buffer).rotate().toBuffer();
+    const rotated = await normalizePhoto(file.buffer);
     const meta = await sharp(rotated).metadata();
     const width = meta.width!, height = meta.height!;
 

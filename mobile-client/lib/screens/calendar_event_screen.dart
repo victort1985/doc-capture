@@ -1,3 +1,4 @@
+import '../services/capture_options.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
@@ -186,7 +187,7 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
     if (!_isEdit) return;
     File? file;
     if (imageSource != null) {
-      final picked = await ImagePicker().pickImage(source: imageSource, imageQuality: 88);
+      final picked = await ImagePicker().pickImage(source: imageSource, maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
       if (picked != null) file = File(picked.path);
     } else {
       final result = await FilePicker.platform.pickFiles(type: FileType.any);
@@ -203,7 +204,7 @@ class _CalendarEventScreenState extends State<CalendarEventScreen> {
   /// would, the rendered bytes go straight to this event's attachments.
   Future<void> _scanAttachment() async {
     if (!_isEdit) return;
-    final photo = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 90);
+    final photo = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
     if (photo == null || !mounted) return;
 
     final bytes = await Navigator.of(context).push<Uint8List>(

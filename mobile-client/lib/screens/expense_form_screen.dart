@@ -1,3 +1,4 @@
+import '../services/capture_options.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:dio/dio.dart';
@@ -137,13 +138,13 @@ class _ExpenseFormScreenState extends State<ExpenseFormScreen> {
   }
 
   Future<void> _pickReceiptFromCamera() async {
-    final photo = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: 2800, maxHeight: 2800, imageQuality: 88);
+    final photo = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
     if (photo == null || !mounted) return;
     await _useReceiptPhoto(File(photo.path));
   }
 
   Future<void> _pickReceiptFromGallery() async {
-    final photo = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: 2800, maxHeight: 2800, imageQuality: 88);
+    final photo = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
     if (photo == null || !mounted) return;
     await _useReceiptPhoto(File(photo.path));
   }

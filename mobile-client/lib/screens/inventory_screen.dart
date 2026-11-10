@@ -1,3 +1,4 @@
+import '../services/capture_options.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -118,7 +119,7 @@ class _InventoryScreenState extends State<InventoryScreen> with SingleTickerProv
   /// picks are (processed on "Upload", same document/photo handling
   /// either way based on _docType).
   Future<void> _pickFromGallery() async {
-    final picked = await ImagePicker().pickMultiImage(imageQuality: 90);
+    final picked = await ImagePicker().pickMultiImage(maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
     if (picked.isEmpty) return;
     setState(() => _selectedFiles = [..._selectedFiles, ...picked.map((x) => File(x.path))]);
   }

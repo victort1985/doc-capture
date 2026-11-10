@@ -1,3 +1,4 @@
+import '../services/capture_options.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -209,13 +210,13 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
   }
 
   Future<void> _pickFromCamera() async {
-    final photo = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 90);
+    final photo = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
     if (photo == null || !mounted) return;
     await _addInvoiceFromScan(File(photo.path));
   }
 
   Future<void> _pickFromGallery() async {
-    final photo = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 90);
+    final photo = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
     if (photo == null || !mounted) return;
     await _addInvoiceFromScan(File(photo.path));
   }

@@ -1,3 +1,4 @@
+import '../services/capture_options.dart';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -294,7 +295,7 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> with SingleTic
             label: const Text('Camera'),
             onPressed: () async {
               Navigator.pop(ctx);
-              final img = await ImagePicker().pickImage(source: ImageSource.camera, imageQuality: 85);
+              final img = await ImagePicker().pickImage(source: ImageSource.camera, maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
               if (img == null) return;
               await widget.svc.uploadDocument(widget.vehicle.id, img.path, img.name, 'image/jpeg', description: descCtrl.text.isNotEmpty ? descCtrl.text : null);
               _loadDocs(); widget.onRefresh();
@@ -305,7 +306,7 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> with SingleTic
             label: const Text('File'),
             onPressed: () async {
               Navigator.pop(ctx);
-              final file = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+              final file = await ImagePicker().pickImage(source: ImageSource.gallery, maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
               if (file == null) return;
               await widget.svc.uploadDocument(widget.vehicle.id, file.path, file.name, 'image/jpeg', description: descCtrl.text.isNotEmpty ? descCtrl.text : null);
               _loadDocs(); widget.onRefresh();

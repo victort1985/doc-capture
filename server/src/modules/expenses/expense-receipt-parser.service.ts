@@ -5,6 +5,7 @@ import * as fs from 'fs/promises';
 import * as os from 'os';
 import * as path from 'path';
 import sharp from 'sharp';
+import { normalizePhoto } from '../../common/imaging/normalize-photo';
 import { applyFilters, detectDocumentCorners, warpDocument } from '../files/processors/document-scanner';
 import { extractReceipt, ExtractedReceipt } from './receipt/receipt-extractor';
 import { detectLanguage, ReceiptLanguage } from './receipt/receipt-lang';
@@ -139,10 +140,7 @@ export class ExpenseReceiptParserService {
   private async prepareScan(input: Buffer): Promise<{ image: Buffer; cropped: boolean; ocrBase: Buffer }> {
     // Decode + EXIF-rotate + cap the size in ONE pass: 3000px on the long side is plenty for OCR, and
     // 100–200 MP Android camera photos would otherwise be decoded at full size (memory spike / timeout).
-    const base: Buffer = await sharp(input, { failOn: 'none', limitInputPixels: false })
-      .rotate()
-      .resize({ width: 3000, height: 3000, fit: 'inside', withoutEnlargement: true })
-      .toBuffer();
+    const base: Buffer = await normalizePhoto(input);
 
     let cropped = false;
     let working = base;

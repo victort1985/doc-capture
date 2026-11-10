@@ -1,3 +1,4 @@
+import '../services/capture_options.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -52,7 +53,7 @@ class _CameraScreenState extends State<CameraScreen> {
     if (_capturing) return;
     setState(() => _capturing = true);
     try {
-      final shot = await _picker.pickImage(source: ImageSource.camera, imageQuality: 90);
+      final shot = await _picker.pickImage(source: ImageSource.camera, maxWidth: CaptureOptions.maxSide, maxHeight: CaptureOptions.maxSide, imageQuality: CaptureOptions.quality);
       if (shot != null) {
         setState(() => _captured.add(File(shot.path)));
       }
